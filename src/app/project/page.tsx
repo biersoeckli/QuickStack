@@ -19,6 +19,7 @@ import {
 import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
 import { Plus } from "lucide-react";
+import ChooseTemplateDialog from "./choose-template-dialog";
 
 
 export default async function AppsPage({
@@ -39,6 +40,7 @@ export default async function AppsPage({
             <PageTitle
                 title="Apps"
                 subtitle={`All Apps for Project "${project.name}"`}>
+                <ChooseTemplateDialog projectId={projectId}><Button variant="secondary"><Plus /> Create App from Template</Button></ChooseTemplateDialog>
                 <EditAppDialog projectId={projectId}><Button><Plus /> Create App</Button></EditAppDialog>
             </PageTitle>
             <AppTable app={data} projectId={project.id} />

@@ -1,7 +1,9 @@
 import { z } from "zod";
 
+export const appSourceTypeZodModel = z.enum(["GIT", "CONTAINER"]);
+
 export const appSourceInfoInputZodModel = z.object({
-  sourceType: z.enum(["GIT", "CONTAINER"]),
+  sourceType: appSourceTypeZodModel,
   containerImageSource: z.string().nullish(),
 
   gitUrl: z.string().trim().nullish(),

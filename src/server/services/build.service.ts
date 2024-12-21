@@ -39,13 +39,12 @@ class BuildService {
 
         if (!forceBuild && latestSuccessfulBuld?.gitCommit && latestRemoteGitHash &&
             latestSuccessfulBuld?.gitCommit === latestRemoteGitHash) {
-            await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
-            console.log(`Last build is already up to date with data in git repo for app ${app.id}`);
 
             if (await registryService.doesImageExist(app.id, 'latest')) {
+                await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
                 return [latestSuccessfulBuld.name, latestRemoteGitHash, Promise.resolve()];
             } else {
-                await dlog(deploymentId, `Docker Image for last build not found in internal registry, starting new build.`);
+                await dlog(deploymentId, `Docker Image for last build not found in internal registry, creating new build.`);
             }
         }
         return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash);

@@ -1,11 +1,12 @@
 import { stringToNumber } from "@/shared/utils/zod.utils";
-import { access } from "fs";
 import { z } from "zod";
+
+export const appVolumeTypeZodModel = z.enum(["ReadWriteOnce", "ReadWriteMany"]);
 
 export const appVolumeEditZodModel = z.object({
   containerMountPath: z.string().trim().min(1),
   size: stringToNumber,
-  accessMode: z.string().min(1).nullish(),
+  accessMode:  appVolumeTypeZodModel.nullish().or(z.string().nullish()),
 })
 
 export type AppVolumeEditModel = z.infer<typeof appVolumeEditZodModel>;
