@@ -23,15 +23,6 @@ export default function QuickStackMaintenanceSettings({
                 <CardTitle>Maintenance</CardTitle>
             </CardHeader>
             <CardContent className="flex gap-4 flex-wrap">
-                <Button variant="secondary" onClick={async () => {
-                    if (await useConfirm.openConfirmDialog({
-                        title: 'Update QuickStack',
-                        description: 'This action will restart the QuickStack service and installs the lastest version. It may take a few minutes to complete.',
-                        okButton: "Update QuickStack",
-                    })) {
-                        Toast.fromAction(() => updateQuickstack());
-                    }
-                }}><Rocket /> Update QuickStack</Button>
 
                 {qsPodName && <LogsDialog namespace={Constants.QS_NAMESPACE} podName={qsPodName}>
                     <Button variant="secondary" ><SquareTerminal /> Open QuickStack Logs</Button>

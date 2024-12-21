@@ -51,7 +51,8 @@ export const getConfiguredHostname: () => Promise<ServerActionResult<unknown, st
 export const updateQuickstack = async () =>
   simpleAction(async () => {
     await getAuthUserSession();
-    await quickStackService.updateQuickStack();
+    const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
+    await quickStackService.updateQuickStack(useCaranyChannel);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
   });
 
@@ -67,4 +68,14 @@ export const purgeRegistryImages = async () =>
     await getAuthUserSession();
     const deletedSize = await registryService.purgeRegistryImages();
     return new SuccessActionResult(undefined, `Successfully purged ${StringUtils.convertBytesToReadableSize(deletedSize)} of images.`);
+  });
+
+export const setCanaryChannel = async (useCanaryChannel: boolean) =>
+  simpleAction(async () => {
+    await getAuthUserSession();
+    await paramService.save({
+      name: ParamService.USE_CANARY_CHANNEL,
+      value: !!useCanaryChannel ? 'true' : 'false'
+    });
+    return new SuccessActionResult(undefined, `Turned ${useCanaryChannel ? 'on' : 'off'} the canary channel.`);
   });

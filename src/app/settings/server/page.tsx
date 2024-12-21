@@ -16,6 +16,7 @@ import QuickStackMaintenanceSettings from "./qs-maintenance-settings";
 import podService from "@/server/services/pod.service";
 import { Constants } from "@/shared/utils/constants";
 import ServerBreadcrumbs from "./server-breadcrumbs";
+import QuickStackVersionInfo from "./qs-version-info";
 
 export default async function ProjectPage() {
 
@@ -24,8 +25,9 @@ export default async function ProjectPage() {
     const disableNodePortAccess = await paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false);
     const letsEncryptMail = await paramService.getString(ParamService.LETS_ENCRYPT_MAIL, session.email);
     const qsPodInfos = await podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME);
-    console.log(qsPodInfos)
     const qsPodInfo = qsPodInfos.find(p => !!p);
+    const useCanaryChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
+
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
@@ -37,6 +39,7 @@ export default async function ProjectPage() {
                 <div><QuickStackIngressSettings disableNodePortAccess={disableNodePortAccess!} serverUrl={serverUrl!} /></div>
                 <div> <QuickStackLetsEncryptSettings letsEncryptMail={letsEncryptMail!} /></div>
                 <div><QuickStackMaintenanceSettings qsPodName={qsPodInfo?.podName} /></div>
+                <div><QuickStackVersionInfo useCanaryChannel={useCanaryChannel!} /></div>
             </div>
         </div>
     )

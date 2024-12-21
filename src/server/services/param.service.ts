@@ -9,6 +9,7 @@ export class ParamService {
     static readonly QS_SERVER_HOSTNAME = 'qsServerHostname';
     static readonly DISABLE_NODEPORT_ACCESS = 'disableNodePortAccess';
     static readonly LETS_ENCRYPT_MAIL = 'letsEncryptMail';
+    static readonly USE_CANARY_CHANNEL = 'useCanaryChannel';
     static readonly K3S_JOIN_TOKEN = Constants.K3S_JOIN_TOKEN;
 
     async getUncached(name: string) {
