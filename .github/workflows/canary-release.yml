@@ -1,9 +1,9 @@
-name: Production - Build and Push Docker Image
+name: Canary - Build and Push Docker Image
 
 on:
-  workflow_dispatch:
-  release:
-    types: [released, prereleased]
+  push:
+    branches:
+      - canary
 
 permissions:
   contents: read
@@ -52,9 +52,8 @@ jobs:
         with:
           context: ./
           push: true
-          platforms: linux/amd64 #,linux/arm64
+          platforms: linux/amd64
           build-args: |
-            VERSION_ARG=${{ github.ref_name }}
+            VERSION_ARG=canary
           tags: |
-            quickstack/quickstack:latest
-#            quickstack/quickstack:${{ github.ref_name }}
+            quickstack/quickstack:canary
