@@ -52,6 +52,9 @@ export default function CreateTemplateAppSetupDialog({
                 description: `Click deploy to start the ${appLabel}.`,
             });
             setIsOpen(false);
+            if (dialogClosed) {
+                dialogClosed();
+            }
         }
         FormUtils.mapValidationErrorsToForm<typeof appTemplateZodModel>(state, form);
     }, [state]);

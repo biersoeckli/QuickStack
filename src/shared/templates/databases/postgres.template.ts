@@ -31,7 +31,7 @@ export const postgreAppTemplate: AppTemplateModel = {
                 label: "Database Password",
                 value: "",
                 isEnvVar: true,
-                randomGeneratedIfEmpty: false,
+                randomGeneratedIfEmpty: true,
             },
         ],
         appModel: {

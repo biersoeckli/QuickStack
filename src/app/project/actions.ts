@@ -6,6 +6,7 @@ import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils
 import { z } from "zod";
 import appTemplateService from "@/server/services/app-template.service";
 import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-template.model";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -27,6 +28,9 @@ export const createApp = async (appName: string, projectId: string, appId?: stri
 export const createAppFromTemplate = async(prevState: any, inputData: AppTemplateModel, projectId: string) =>
     saveFormAction(inputData, appTemplateZodModel, async (validatedData) => {
         await getAuthUserSession();
+        if (validatedData.templates.some(x => x.inputSettings.some(y => !y.randomGeneratedIfEmpty && !y.value))) {
+            throw new ServiceException('Please fill out all required fields.');
+        }
         await appTemplateService.createAppFromTemplate(projectId, validatedData);
         return new SuccessActionResult(undefined, "App created successfully.");
     });
