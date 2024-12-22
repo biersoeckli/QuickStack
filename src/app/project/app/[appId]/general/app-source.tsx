@@ -32,7 +32,9 @@ export default function GeneralAppSource({ app }: {
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppSourceInfoInputModel) => saveGeneralAppSourceInfo(state, payload, app.id), FormUtils.getInitialFormState<typeof appSourceInfoInputZodModel>());
     useEffect(() => {
         if (state.status === 'success') {
-            toast.success('Source Info Saved');
+            toast.success('Source Info Saved', {
+                description: "Click \"deploy\" to apply the changes to your app.",
+            });
         }
         FormUtils.mapValidationErrorsToForm<typeof appSourceInfoInputZodModel>(state, form)
     }, [state]);
@@ -69,7 +71,7 @@ export default function GeneralAppSource({ app }: {
                             form.setValue('sourceType', val as 'GIT' | 'CONTAINER');
                         }} className="mt-2">
                             <TabsList>
-                                <TabsTrigger value="GIT">Git</TabsTrigger>
+                                {app.appType === 'APP' && <TabsTrigger value="GIT">Git</TabsTrigger>}
                                 <TabsTrigger value="CONTAINER">Docker Container</TabsTrigger>
                             </TabsList>
                             <TabsContent value="GIT" className="space-y-4 mt-4">

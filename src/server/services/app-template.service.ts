@@ -2,6 +2,10 @@ import { AppTemplateContentModel, AppTemplateInputSettingsModel, AppTemplateMode
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "./app.service";
 import { allTemplates } from "@/shared/templates/all.templates";
+import { AppTemplateUtils } from "../utils/app-template.utils";
+import { DatabaseTemplateInfoModel } from "@/shared/model/database-template-info.model";
+import { revalidateTag } from "next/cache";
+import { Tags } from "../utils/cache-tag-generator.utils";
 
 class AppTemplateService {
 
@@ -10,18 +14,34 @@ class AppTemplateService {
             throw new ServiceException(`Template with name '${template.name}' not found.`);
         }
 
+        let databaseInfo: DatabaseTemplateInfoModel | undefined;
+
         for (const tmpl of template.templates) {
-            await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings);
+            const createdAppId = await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings);
+            const extendedApp = await appService.getExtendedById(createdAppId, false);
+
+            // used for templates with multiple apps and a database
+            if (databaseInfo) {
+                AppTemplateUtils.replacePlaceholdersInEnvVariablesWithDatabaseInfo(extendedApp, databaseInfo);
+                await appService.save({
+                    id: createdAppId,
+                    envVars: extendedApp.envVars
+                });
+            }
+            if (extendedApp.appType !== 'APP') {
+                databaseInfo = AppTemplateUtils.getDatabaseModelFromApp(extendedApp);
+            }
         }
     }
 
-    private async createAppFromTemplateContent(projectId: string, template: AppTemplateContentModel, inputValues: AppTemplateInputSettingsModel[]) {
+    private async createAppFromTemplateContent(projectId: string, template: AppTemplateContentModel,
+        inputValues: AppTemplateInputSettingsModel[]) {
 
-        const mappedApp = this.mapTemplateInputValuesToApp(template, inputValues);
+        const mappedApp = AppTemplateUtils.mapTemplateInputValuesToApp(template, inputValues);
         const createdApp = await appService.save({
             ...mappedApp,
             projectId
-        });
+        }, false);
 
         const savedDomains = await Promise.all(template.appDomains.map(async x => {
             return await appService.saveDomain({
@@ -45,25 +65,6 @@ class AppTemplateService {
         }));
 
         return createdApp.id;
-    }
-
-    mapTemplateInputValuesToApp(appTemplate: AppTemplateContentModel,
-        inputValues: AppTemplateInputSettingsModel[]) {
-
-        const app = { ...appTemplate.appModel };
-
-        const envVariables = inputValues.filter(x => x.isEnvVar);
-        const otherConfigValues = inputValues.filter(x => !x.isEnvVar);
-
-        for (const envVariable of envVariables) {
-            app.envVars += `${envVariable.key}=${envVariable.value}\n`;
-        }
-
-        for (const configValue of otherConfigValues) {
-            (app as any)[configValue.key] = configValue.value;
-        }
-
-        return app;
     }
 }
 

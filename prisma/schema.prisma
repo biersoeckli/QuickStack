@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider   = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 generator zod {
@@ -126,6 +126,7 @@ model Project {
 model App {
   id         String  @id @default(uuid())
   name       String
+  appType    String  @default("APP") // APP, POSTGRES, MYSQL, MONGO
   projectId  String
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sourceType String  @default("GIT") // GIT, CONTAINER

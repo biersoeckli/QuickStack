@@ -5,6 +5,7 @@ import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDoma
 export const AppModel = z.object({
   id: z.string(),
   name: z.string(),
+  appType: z.string(),
   projectId: z.string(),
   sourceType: z.string(),
   containerImageSource: z.string().nullish(),

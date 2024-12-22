@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const appSourceTypeZodModel = z.enum(["GIT", "CONTAINER"]);
+export const appTypeZodModel = z.enum(["APP", "POSTGRES", "MYSQL", "MARIADB", "MONGODB"]);
 
 export const appSourceInfoInputZodModel = z.object({
   sourceType: appSourceTypeZodModel,

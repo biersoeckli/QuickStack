@@ -1,25 +1,13 @@
 'use server'
 
-import { Button } from "@/components/ui/button";
 
-import Link from "next/link";
-import { getAuthUserSession, getUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import projectService from "@/server/services/project.service";
 import AppTable from "./apps-table";
-import { EditAppDialog } from "./edit-app-dialog";
 import appService from "@/server/services/app.service";
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
-import { Plus } from "lucide-react";
-import ChooseTemplateDialog from "./choose-template-dialog";
+import CreateProjectActions from "./create-project-actions";
 
 
 export default async function AppsPage({
@@ -40,8 +28,7 @@ export default async function AppsPage({
             <PageTitle
                 title="Apps"
                 subtitle={`All Apps for Project "${project.name}"`}>
-                <ChooseTemplateDialog projectId={projectId}><Button variant="secondary"><Plus /> Create App from Template</Button></ChooseTemplateDialog>
-                <EditAppDialog projectId={projectId}><Button><Plus /> Create App</Button></EditAppDialog>
+                <CreateProjectActions projectId={projectId} />
             </PageTitle>
             <AppTable app={data} projectId={project.id} />
             <ProjectBreadcrumbs project={project} />

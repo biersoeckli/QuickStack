@@ -27,7 +27,9 @@ export default function EnvEdit({ app }: {
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppEnvVariablesModel) => saveEnvVariables(state, payload, app.id), FormUtils.getInitialFormState<typeof appEnvVariablesZodModel>());
     useEffect(() => {
         if (state.status === 'success') {
-            toast.success('Env Variables Limits Saved');
+            toast.success('Env Variables Limits Saved', {
+                description: "Click \"deploy\" to apply the changes to your app.",
+            });
         }
         FormUtils.mapValidationErrorsToForm<typeof appEnvVariablesZodModel>(state, form);
     }, [state]);

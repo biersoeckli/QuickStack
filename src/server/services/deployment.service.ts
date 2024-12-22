@@ -13,6 +13,7 @@ import { Constants } from "../../shared/utils/constants";
 import svcService from "./svc.service";
 import { dlog } from "./deployment-logs.service";
 import registryService from "./registry.service";
+import { EnvVarUtils } from "../utils/env-var.utils";
 
 class DeploymentService {
 
@@ -57,7 +58,7 @@ class DeploymentService {
             dlog(deploymentId, `Configured ${volumes.length} Storage Volumes.`);
         }
 
-        const envVars = this.parseEnvVariables(app);
+        const envVars = EnvVarUtils.parseEnvVariables(app);
         dlog(deploymentId, `Configured ${envVars.length} Env Variables.`);
 
         const existingDeployment = await this.getDeployment(app.projectId, app.id);
@@ -158,14 +159,6 @@ class DeploymentService {
         dlog(deploymentId, `Updating ingress...`);
         await ingressService.createOrUpdateIngressForApp(deploymentId, app);
         dlog(deploymentId, `Deployment applied`);
-    }
-
-    private parseEnvVariables(app: AppExtendedModel) {
-        return app.envVars ? app.envVars.split('\n').filter(x => !!x).map(env => {
-            const [name] = env.split('=');
-            const value = env.replace(`${name}=`, '');
-            return { name, value };
-        }) : [];
     }
 
     async setReplicasForDeployment(projectId: string, appId: string, replicas: number) {

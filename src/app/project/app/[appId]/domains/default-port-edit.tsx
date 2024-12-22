@@ -40,7 +40,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
         if (state.status === 'success') {
             form.reset();
             toast.success('Port saved successfully. ', {
-                description: "Klick \"deploy\" to apply the changes to your app.",
+                description: "Click \"deploy\" to apply the changes to your app.",
             });
             setIsOpen(false);
         }

@@ -69,7 +69,7 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
     if (state.status === 'success') {
       form.reset();
       toast.success('Volume saved successfully', {
-        description: "Klick \"deploy\" to apply the changes to your app.",
+        description: "Click \"deploy\" to apply the changes to your app.",
       });
       setIsOpen(false);
     }

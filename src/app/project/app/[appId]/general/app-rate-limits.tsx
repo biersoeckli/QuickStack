@@ -18,6 +18,7 @@ import { App } from "@prisma/client";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { cn } from "@/frontend/utils/utils";
 
 
 export default function GeneralAppRateLimits({ app }: {
@@ -31,7 +32,9 @@ export default function GeneralAppRateLimits({ app }: {
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppRateLimitsModel) => saveGeneralAppRateLimits(state, payload, app.id), FormUtils.getInitialFormState<typeof appRateLimitsZodModel>());
     useEffect(() => {
         if (state.status === 'success') {
-            toast.success('Rate Limits Saved');
+            toast.success('Rate Limits Saved', {
+                description: "Click \"deploy\" to apply the changes to your app.",
+            });
         }
         FormUtils.mapValidationErrorsToForm<typeof appRateLimitsZodModel>(state, form);
     }, [state]);
@@ -47,7 +50,7 @@ export default function GeneralAppRateLimits({ app }: {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={cn('grid grid-cols-2 gap-4 ', app.appType !== 'APP' && 'hidden')}>
 
                             <FormField
                                 control={form.control}

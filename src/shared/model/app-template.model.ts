@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { AppDomainModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
-import { appSourceTypeZodModel } from "./app-source-info.model";
+import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appVolumeTypeZodModel } from "./volume-edit.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined(),
     dockerfilePath: z.undefined(),
+    appType: appTypeZodModel,
     sourceType: appSourceTypeZodModel,
     id: z.undefined(),
     createdAt: z.undefined(),
@@ -17,6 +18,7 @@ export const appTemplateInputSettingsZodModel = z.object({
     label: z.string(),
     value: z.any(),
     isEnvVar: z.boolean(),
+    randomGeneratedIfEmpty: z.boolean(),
 });
 export type AppTemplateInputSettingsModel = z.infer<typeof appTemplateInputSettingsZodModel>;
 
@@ -42,6 +44,7 @@ export type AppTemplateContentModel = z.infer<typeof appTemplateContentZodModel>
 
 export const appTemplateZodModel = z.object({
     name: z.string(),
+    iconName: z.string().nullish(),
     templates: appTemplateContentZodModel.array(),
 });
 

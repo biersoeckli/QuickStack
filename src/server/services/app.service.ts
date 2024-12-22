@@ -81,20 +81,30 @@ class AppService {
         })(projectId as string);
     }
 
-    async getExtendedById(appId: string): Promise<AppExtendedModel> {
-        return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
-            where: {
-                id
-            }, include: {
-                project: true,
-                appDomains: true,
-                appVolumes: true,
-                appPorts: true
-            }
-        }),
-            [Tags.app(appId)], {
-            tags: [Tags.app(appId)]
-        })(appId);
+    async getExtendedById(appId: string, cached = true): Promise<AppExtendedModel> {
+        const include = {
+            project: true,
+            appDomains: true,
+            appVolumes: true,
+            appPorts: true
+        };
+        if (cached) {
+            return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
+                where: {
+                    id
+                },
+                include
+            }),
+                [Tags.app(appId)], {
+                tags: [Tags.app(appId)]
+            })(appId);
+        } else {
+            return await dataAccess.client.app.findFirstOrThrow({
+                where: {
+                    id: appId
+                }, include
+            });
+        }
     }
 
     async getById(appId: string) {
@@ -108,7 +118,7 @@ class AppService {
         })(appId);
     }
 
-    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput) {
+    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, createDefaultPort = true) {
         let savedItem: App;
         try {
             if (item.id) {
@@ -123,13 +133,15 @@ class AppService {
                 savedItem = await dataAccess.client.app.create({
                     data: item as Prisma.AppUncheckedCreateInput
                 });
-                // add default port 80
-                await dataAccess.client.appPort.create({
-                    data: {
-                        appId: savedItem.id,
-                        port: 80
-                    }
-                });
+                if (createDefaultPort) {
+                    // add default port 80
+                    await dataAccess.client.appPort.create({
+                        data: {
+                            appId: savedItem.id,
+                            port: 80
+                        }
+                    });
+                }
             }
         } finally {
             revalidateTag(Tags.apps(item.projectId as string));

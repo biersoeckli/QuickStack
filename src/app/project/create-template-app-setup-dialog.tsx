@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -20,6 +21,7 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { toast } from "sonner"
 import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-template.model"
 import { createAppFromTemplate } from "./actions"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function CreateTemplateAppSetupDialog({
     appTemplate,
@@ -45,7 +47,10 @@ export default function CreateTemplateAppSetupDialog({
     useEffect(() => {
         if (state.status === 'success') {
             form.reset();
-            toast.success('App created successfully');
+            const appLabel = ((appTemplate?.templates.length ?? 0) > 1) ? 'Apps' : 'App';
+            toast.success(`${appLabel} Created successfully`, {
+                description: `Click deploy to start the ${appLabel}.`,
+            });
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof appTemplateZodModel>(state, form);
@@ -66,54 +71,65 @@ export default function CreateTemplateAppSetupDialog({
                     dialogClosed();
                 }
             }}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle>Create App "{appTemplate?.name}"</DialogTitle>
                         <DialogDescription>
                             Insert your values for the template.
                         </DialogDescription>
                     </DialogHeader>
-                    <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
-                            return formAction(data);
-                        })()}>
-                            {appTemplate?.templates.map((t, templateIndex) =>
-                                <div className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name={`templates[${templateIndex}].appModel.name` as any}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>App Name</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {t.inputSettings.map((input, settingsIndex) => (
-                                        <FormField
-                                            control={form.control}
-                                            name={`templates[${templateIndex}].inputSettings[${settingsIndex}].value` as any}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>{input.label}</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    ))}
+                    <ScrollArea className="max-h-[70vh]">
+                        <div className="px-2">
+                            <Form {...form} >
+                                <form action={(e) => form.handleSubmit((data) => {
+                                    return formAction(data);
+                                })()}>
+                                    <div className="space-y-6">
+                                        {appTemplate?.templates.map((t, templateIndex) => (
+                                            <>
+                                                {templateIndex > 0 && <div className="border-t pb-4"></div>}
+                                                {appTemplate?.templates.length > 1 &&
+                                                    <div className="text-2xl font-semibold">{t.appModel.name}</div>}
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`templates[${templateIndex}].appModel.name` as any}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>App Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                {t.inputSettings.map((input, settingsIndex) => (
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`templates[${templateIndex}].inputSettings[${settingsIndex}].value` as any}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>{input.label}</FormLabel>
+                                                                <FormControl>
+                                                                    <Input {...field} />
+                                                                </FormControl>
+                                                                {input.randomGeneratedIfEmpty &&
+                                                                    <FormDescription>If left empty, a random value will be generated.</FormDescription>}
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                ))}
+                                            </>
+                                        ))}
+                                        <p className="text-red-500">{state.message}</p>
+                                        <SubmitButton>Create</SubmitButton>
+                                    </div>
 
-                                    <p className="text-red-500">{state.message}</p>
-                                    <SubmitButton>Save</SubmitButton>
-                                </div>
-                            )}
-                        </form>
-                    </Form >
+                                </form>
+                            </Form >
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
         </>
