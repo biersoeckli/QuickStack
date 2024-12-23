@@ -14,6 +14,7 @@ import svcService from "./svc.service";
 import { dlog } from "./deployment-logs.service";
 import registryService from "./registry.service";
 import { EnvVarUtils } from "../utils/env-var.utils";
+import configMapService from "./config-map.service";
 
 class DeploymentService {
 
@@ -58,6 +59,14 @@ class DeploymentService {
             dlog(deploymentId, `Configured ${volumes.length} Storage Volumes.`);
         }
 
+        const { fileVolumeMounts, fileVolumes } = await configMapService.createOrUpdateConfigMapForApp(app);
+        if (fileVolumes && fileVolumes.length > 0) {
+            dlog(deploymentId, `Configured ${fileVolumes.length} File Mounts.`);
+        }
+
+        const allVolumes = [...volumes, ...fileVolumes];
+        const allVolumeMounts = [...volumeMounts, ...fileVolumeMounts];
+
         const envVars = EnvVarUtils.parseEnvVariables(app);
         dlog(deploymentId, `Configured ${envVars.length} Env Variables.`);
 
@@ -93,10 +102,10 @@ class DeploymentService {
                                 image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
                                 ...(envVars.length > 0 ? { env: envVars } : {}),
-                                ...(volumeMounts.length > 0 ? { volumeMounts: volumeMounts } : {}),
+                                ...(allVolumeMounts.length > 0 ? { volumeMounts: allVolumeMounts } : {}),
                             }
                         ],
-                        ...(volumes.length > 0 ? { volumes: volumes } : {}),
+                        ...(allVolumes.length > 0 ? { volumes: allVolumes } : {}),
                     }
                 }
             }
@@ -154,6 +163,7 @@ class DeploymentService {
             dlog(deploymentId, `Creating deployment...`);
             const res = await k3s.apps.createNamespacedDeployment(app.projectId, body);
         }
+        await configMapService.deleteUnusedConfigMaps(app);
         await pvcService.deleteUnusedPvcOfApp(app);
         await svcService.createOrUpdateService(deploymentId, app);
         dlog(deploymentId, `Updating ingress...`);

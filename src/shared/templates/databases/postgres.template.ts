@@ -45,7 +45,7 @@ export const postgreAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [{
             size: 500,
-            containerMountPath: '/var/lib/postgresql/data',
+            containerMountPath: '/var/lib/postgresql',
             accessMode: 'ReadWriteOnce'
         }],
         appPorts: [{

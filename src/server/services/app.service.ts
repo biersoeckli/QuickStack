@@ -1,14 +1,13 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { App, AppDomain, AppPort, AppVolume, Prisma } from "@prisma/client";
+import { App, AppDomain, AppFileMount, AppPort, AppVolume, Prisma } from "@prisma/client";
 import { DefaultArgs } from "@prisma/client/runtime/library";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
 import buildService from "./build.service";
-import namespaceService from "./namespace.service";
 import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
 import svcService from "./svc.service";
@@ -86,7 +85,8 @@ class AppService {
             project: true,
             appDomains: true,
             appVolumes: true,
-            appPorts: true
+            appPorts: true,
+            appFileMounts: true,
         };
         if (cached) {
             return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
@@ -267,6 +267,64 @@ class AppService {
         }
         try {
             await dataAccess.client.appVolume.delete({
+                where: {
+                    id
+                }
+            });
+        } finally {
+            revalidateTag(Tags.app(existingVolume.appId));
+            revalidateTag(Tags.apps(existingVolume.app.projectId));
+        }
+    }
+
+    async saveFileMount(fileMountToBeSaved: Prisma.AppFileMountUncheckedCreateInput | Prisma.AppFileMountUncheckedUpdateInput) {
+        let savedItem: AppFileMount;
+        const existingApp = await this.getExtendedById(fileMountToBeSaved.appId as string);
+        const existingAppWithSameVolumeMountPath = await dataAccess.client.appFileMount.findMany({
+            where: {
+                appId: fileMountToBeSaved.appId as string,
+            }
+        });
+
+        if (existingAppWithSameVolumeMountPath.filter(x => x.id !== fileMountToBeSaved.id)
+            .some(x => x.containerMountPath === fileMountToBeSaved.containerMountPath)) {
+            throw new ServiceException("Mount Path is already configured within the same app.");
+        }
+
+        try {
+            if (fileMountToBeSaved.id) {
+                savedItem = await dataAccess.client.appFileMount.update({
+                    where: {
+                        id: fileMountToBeSaved.id as string
+                    },
+                    data: fileMountToBeSaved
+                });
+            } else {
+                savedItem = await dataAccess.client.appFileMount.create({
+                    data: fileMountToBeSaved as Prisma.AppFileMountUncheckedCreateInput
+                });
+            }
+
+        } finally {
+            revalidateTag(Tags.apps(existingApp.projectId as string));
+            revalidateTag(Tags.app(existingApp.id as string));
+        }
+        return savedItem;
+    }
+
+    async deleteFileMountById(id: string) {
+        const existingVolume = await dataAccess.client.appFileMount.findFirst({
+            where: {
+                id
+            }, include: {
+                app: true
+            }
+        });
+        if (!existingVolume) {
+            return;
+        }
+        try {
+            await dataAccess.client.appFileMount.delete({
                 where: {
                     id
                 }

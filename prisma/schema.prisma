@@ -147,9 +147,10 @@ model App {
   cpuReservation    Int?
   cpuLimit          Int?
 
-  appDomains AppDomain[]
-  appVolumes AppVolume[]
-  appPorts   AppPort[]
+  appDomains    AppDomain[]
+  appPorts      AppPort[]
+  appVolumes    AppVolume[]
+  appFileMounts AppFileMount[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -185,6 +186,19 @@ model AppVolume {
   containerMountPath String
   size               Int
   accessMode         String @default("rwo")
+  appId              String
+  app                App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appId, containerMountPath])
+}
+
+model AppFileMount {
+  id                 String @id @default(uuid())
+  containerMountPath String
+  content            String
   appId              String
   app                App    @relation(fields: [appId], references: [id], onDelete: Cascade)
 

@@ -74,8 +74,8 @@ export default function StorageList({ app }: {
     return <>
         <Card>
             <CardHeader>
-                <CardTitle>Storage</CardTitle>
-                <CardDescription>Add one or more volumes to your application.</CardDescription>
+                <CardTitle>Volumes</CardTitle>
+                <CardDescription>Add one or more volumes to to configure persistent storage within your container.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>

@@ -7,6 +7,7 @@ import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils
 import { z } from "zod";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import pvcService from "@/server/services/pvc.service";
+import { fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -31,10 +32,10 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         });
     });
 
-export const deleteVolume = async (volumeID: string) =>
+export const deleteVolume = async (volumeId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
-        await appService.deleteVolumeById(volumeID);
+        await appService.deleteVolumeById(volumeId);
         return new SuccessActionResult(undefined, 'Successfully deleted volume');
     });
 
@@ -42,7 +43,7 @@ export const getPvcUsage = async (appId: string, projectId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
         return pvcService.getPvcUsageFromApp(appId, projectId);
-    }) as Promise<ServerActionResult<any, {pvcName: string, usage: number}[]>>;
+    }) as Promise<ServerActionResult<any, { pvcName: string, usage: number }[]>>;
 
 export const downloadPvcData = async (volumeId: string) =>
     simpleAction(async () => {
@@ -50,3 +51,25 @@ export const downloadPvcData = async (volumeId: string) =>
         const fileNameOfDownloadedFile = await pvcService.downloadPvcData(volumeId);
         return new SuccessActionResult(fileNameOfDownloadedFile, 'Successfully zipped volume data'); // returns the download path on the server
     }) as Promise<ServerActionResult<any, string>>;
+
+const actionAppFileMountEditZodModel = fileMountEditZodModel.merge(z.object({
+    appId: z.string(),
+    id: z.string().nullish()
+}));
+
+export const saveFileMount = async (prevState: any, inputData: z.infer<typeof actionAppFileMountEditZodModel>) =>
+    saveFormAction(inputData, actionAppFileMountEditZodModel, async (validatedData) => {
+        await getAuthUserSession();
+        const existingApp = await appService.getExtendedById(validatedData.appId);
+        await appService.saveFileMount({
+            ...validatedData,
+            id: validatedData.id ?? undefined,
+        });
+    });
+
+export const deleteFileMount = async (fileMountId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        await appService.deleteFileMountById(fileMountId);
+        return new SuccessActionResult(undefined, 'Successfully deleted volume');
+    });

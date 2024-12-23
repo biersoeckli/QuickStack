@@ -7,7 +7,7 @@ import GeneralAppSource from "./general/app-source";
 import EnvEdit from "./environment/env-edit";
 import { App } from "@prisma/client";
 import DomainsList from "./domains/domains";
-import StorageList from "./storage/storages";
+import StorageList from "./volumes/storages";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { BuildJobModel } from "@/shared/model/build-job";
 import BuildsTab from "./overview/deployments";
@@ -17,6 +17,7 @@ import InternalHostnames from "./domains/ports-and-internal-hostnames";
 import TerminalStreamed from "./overview/terminal-streamed";
 import { useEffect } from "react";
 import { useBreadcrumbs } from "@/frontend/states/zustand.states";
+import FileMount from "./volumes/file-mount";
 
 export default function AppTabs({
     app,
@@ -58,6 +59,7 @@ export default function AppTabs({
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
                 <StorageList app={app} />
+                <FileMount app={app} />
             </TabsContent>
         </Tabs>
     )

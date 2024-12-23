@@ -56,4 +56,8 @@ export class KubeObjectNameUtils {
     static getIngressName(domainId: string): `ingress-${string}` {
         return `ingress-${domainId}`;
     }
+
+    static getConfigMapName(id: string): `cm-${string}` {
+        return `cm-${id}`;
+    }
 }
