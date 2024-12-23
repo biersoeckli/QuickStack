@@ -29,11 +29,13 @@ class SetupPodService {
     async getPodsForApp(projectId: string, appId: string): Promise<{
         podName: string;
         containerName: string;
+        uid?: string;
     }[]> {
         const res = await k3s.core.listNamespacedPod(projectId, undefined, undefined, undefined, undefined, `app=${appId}`);
         return res.body.items.map((item) => ({
             podName: item.metadata?.name!,
-            containerName: item.spec?.containers?.[0].name!
+            containerName: item.spec?.containers?.[0].name!,
+            uid: item.metadata?.uid,
         })).filter((item) => !!item.podName && !!item.containerName);
     }
 }

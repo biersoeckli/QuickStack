@@ -8,9 +8,12 @@ export function formatDate(date: Date | undefined | null): string {
     return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy');
 }
 
-export function formatDateTime(date: Date | undefined | null): string {
+export function formatDateTime(date: Date | undefined | null, includeSeconds = false): string {
     if (!date) {
         return '';
+    }
+    if (includeSeconds) {
+        return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy HH:mm:ss');
     }
     return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy HH:mm');
 }

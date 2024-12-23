@@ -4,6 +4,7 @@ import { SuccessActionResult } from "@/shared/model/server-action-error-return.m
 import appService from "@/server/services/app.service";
 import deploymentService from "@/server/services/deployment.service";
 import { getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
+import eventService from "@/server/services/event.service";
 
 
 export const deploy = async (appId: string, forceBuild = false) =>
@@ -27,4 +28,11 @@ export const startApp = async (appId: string) =>
         const app = await appService.getExtendedById(appId);
         await deploymentService.setReplicasForDeployment(app.projectId, app.id, app.replicas);
         return new SuccessActionResult(undefined, 'Successfully started app.');
+    });
+
+export const getLatestAppEvents = async (appId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        const app = await appService.getById(appId);
+        return await eventService.getEventsForApp(app.projectId, app.id);
     });
