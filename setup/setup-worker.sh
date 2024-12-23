@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=<https://<IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE>:6443> JOIN_TOKEN=<TOKEN> sh -
+# curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=<https://IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE:6443> JOIN_TOKEN=<TOKEN> sh -
 
 if [ -z "${K3S_URL}" ]; then
   echo "Error: Missing parameter 'K3S_URL'."
@@ -58,8 +58,8 @@ sudo apt-get install nfs-common -y
 # Installation of k3s
 curl -sfL https://get.k3s.io | K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
 
-# Check for Ready node, takes ~30 seconds
-sudo k3s kubectl get node
-
-echo "Waiting for Kubernetes to start..."
-wait_until_all_pods_running
+echo ""
+echo "-----------------------------------------------------------------------------------------------------------"
+echo "* Node Setup completed. It might take a few minutes until the node is visible in the QuickStack settings. *"
+echo "-----------------------------------------------------------------------------------------------------------"
+echo ""

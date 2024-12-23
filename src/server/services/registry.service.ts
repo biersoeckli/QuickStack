@@ -66,8 +66,6 @@ class RegistryService {
         console.log("Ensuring namespace is created...");
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
 
-        await this.createPersistenvColumeCLaim();
-
         await this.createOrUpdateRegistryConfigMap();
 
         await this.createOrUpdateRegistryDeployment();
@@ -153,10 +151,6 @@ class RegistryService {
                                 image: 'registry:latest',
                                 volumeMounts: [
                                     {
-                                        name: 'registry-data-pv',
-                                        mountPath: '/var/lib/registry',
-                                    },
-                                    {
                                         name: REGISTRY_CONFIG_MAP_NAME,
                                         mountPath: '/etc/docker/registry',
                                         readOnly: true,
@@ -165,12 +159,6 @@ class RegistryService {
                             },
                         ],
                         volumes: [
-                            {
-                                name: 'registry-data-pv',
-                                persistentVolumeClaim: {
-                                    claimName: REGISTRY_PVC_NAME,
-                                },
-                            },
                             {
                                 name: REGISTRY_CONFIG_MAP_NAME,
                                 configMap: {
@@ -194,7 +182,7 @@ class RegistryService {
 
     private async createOrUpdateRegistryConfigMap() {
 
-        // https://distribution.github.io/distribution/about/configuration/
+        // Source: https://distribution.github.io/distribution/about/configuration/
         console.log("Creating Registry ConfigMap...");
         const configMapManifest = {
             apiVersion: 'v1',
@@ -237,34 +225,6 @@ http:
         }
 
         await k3s.core.createNamespacedConfigMap(BUILD_NAMESPACE, configMapManifest);
-    }
-
-    private async createPersistenvColumeCLaim() {
-        console.log("Creating Registry PVC...");
-        const pvcManifest = {
-            apiVersion: 'v1',
-            kind: 'PersistentVolumeClaim',
-            metadata: {
-                name: REGISTRY_PVC_NAME,
-                namespace: BUILD_NAMESPACE,
-            },
-            spec: {
-                accessModes: ['ReadWriteOnce'],
-                storageClassName: 'longhorn',
-                resources: {
-                    requests: {
-                        storage: '5Gi',
-                    },
-                },
-            },
-        };
-
-        const listRes = await k3s.core.listNamespacedPersistentVolumeClaim(BUILD_NAMESPACE);
-        if (listRes.body.items.find(pvc => pvc.metadata?.name === REGISTRY_PVC_NAME)) {
-            console.log("PVC already exists, skipping creation...");
-            return;
-        }
-        await k3s.core.createNamespacedPersistentVolumeClaim(BUILD_NAMESPACE, pvcManifest);
     }
 }
 

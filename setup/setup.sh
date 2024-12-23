@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# curl -sfL https://get.quickstack.dev/setup.sh | sh -
+
 wait_until_all_pods_running() {
 
     # Waits another 5 seconds to make sure all pods are registered for the first time.
@@ -117,7 +119,5 @@ wait_until_all_pods_running
 sudo kubectl logs -f job/quickstack-setup-job -n quickstack
 
 # evaluate url to add node to cluster
-echo "To add a worker node to the cluster, run the following command on the worker node:"
-echo "------------------------------------------------------------"
-echo "curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=https://<IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE>:6443 JOIN_TOKEN=$joinTokenForOtherNodes sh -"
-echo "------------------------------------------------------------"
+# echo "To add an additional node to the cluster, run the following command on the worker node:"
+# echo "curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=https://<IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE>:6443 JOIN_TOKEN=$joinTokenForOtherNodes sh -"
