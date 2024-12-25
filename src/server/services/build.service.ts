@@ -32,7 +32,10 @@ class BuildService {
 
         // Check if last build is already up to date with data in git repo
         const latestSuccessfulBuld = buildsForApp.find(x => x.status === 'SUCCEEDED');
-        const latestRemoteGitHash = await gitService.getLatestRemoteCommitHash(app);
+        const latestRemoteGitHash = await gitService.openGitContext(app, async (ctx) => {
+            await ctx.checkIfDockerfileExists();
+            return await ctx.getLatestRemoteCommitHash();
+        });
 
         dlog(deploymentId, `Cloned repository successfully`);
         dlog(deploymentId, `Latest remote git hash: ${latestRemoteGitHash}`);

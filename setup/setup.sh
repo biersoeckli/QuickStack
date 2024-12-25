@@ -2,6 +2,46 @@
 
 # curl -sfL https://get.quickstack.dev/setup.sh | sh -
 
+select_network_interface() {
+    echo "Detecting network interfaces with IPv4 addresses..."
+    interfaces_with_ips=$(ip -o -4 addr show | awk '{print $2, $4}' | sort -u)
+
+    if [ $(echo "$interfaces_with_ips" | wc -l) -eq 1 ]; then
+        # If only one interface is found, use it by default
+        selected_iface=$(echo "$interfaces_with_ips" | awk '{print $1}')
+        selected_ip=$(echo "$interfaces_with_ips" | awk '{print $2}')
+        echo "Only one network interface detected: $selected_iface ($selected_ip)"
+    else
+        echo ""
+        echo "*******************************************************************************************************"
+        echo ""
+        echo "Multiple network interfaces detected:"
+        echo "If you plan to use QuickStack in a cluster using multiple servers in multiple Networks (private/public),"
+        echo "choose the network Interface you want to use for the communication between the servers."
+        echo ""
+        echo "If you plan to use QuickStack in a single server setup, choose the network Interface with the public IP."
+        echo ""
+        options=()
+        while read -r iface ip; do
+            options+=("$iface ($ip)")
+        done <<< "$interfaces_with_ips"
+
+        PS3="Please select the network interface to use: "
+        select entry in "${options[@]}"; do
+            if [ -n "$entry" ]; then
+                selected_iface=$(echo "$entry" | awk -F' ' '{print $1}')
+                selected_ip=$(echo "$entry" | awk -F'[()]' '{print $2}')
+                echo "Selected interface: $selected_iface ($selected_ip)"
+                break
+            else
+                echo "Invalid selection. Please try again."
+            fi
+        done
+    fi
+
+    echo "Using network interface: $selected_iface with IP address: $selected_ip"
+}
+
 wait_until_all_pods_running() {
 
     # Waits another 5 seconds to make sure all pods are registered for the first time.
@@ -37,8 +77,19 @@ wait_until_all_pods_running() {
     sudo kubectl get pods -A
 }
 
+# Prompt for network interface
+select_network_interface
+
+# install nfs-common and open-iscsi
+echo "Installing nfs-common..."
+sudo apt-get update
+sudo apt-get install open-iscsi nfs-common -y
+
 # Installation of k3s
-curl -sfL https://get.k3s.io | sh -
+#curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
+
+echo "Installing k3s with --flannel-iface=$selected_iface"
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
 # Todo: Check for Ready node, takes ~30 seconds
 sudo k3s kubectl get node
 
@@ -46,22 +97,27 @@ echo "Waiting for Kubernetes to start..."
 wait_until_all_pods_running
 
 # Installation of Longhorn
-sudo kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.0/deploy/longhorn.yaml
+sudo kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml
 echo "Waiting for Longhorn to start..."
 wait_until_all_pods_running
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # THIS MUST BE INSTALLED ON ALL NODES --> https://longhorn.io/docs/1.7.2/deploy/install/#installing-nfsv4-client
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-echo "Installing nfs-common..."
-sudo kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/prerequisite/longhorn-nfs-installation.yaml
-wait_until_all_pods_running
+
+#sudo kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.0/deploy/prerequisite/longhorn-nfs-installation.yaml
+#wait_until_all_pods_running
 
 # Installation of Cert-Manager
 sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.1/cert-manager.yaml
 echo "Waiting for Cert-Manager to start..."
 wait_until_all_pods_running
 sudo kubectl -n cert-manager get pod
+
+# Checking installation of Longhorn
+sudo apt-get install jq -y
+sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | bash
+
 
 joinTokenForOtherNodes=$(sudo cat /var/lib/rancher/k3s/server/node-token)
 

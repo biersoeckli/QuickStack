@@ -16,47 +16,53 @@ fi
 k3sUrl="$1"
 joinToken="$2"
 
-wait_until_all_pods_running() {
 
-    # Waits another 5 seconds to make sure all pods are registered for the first time.
-    sleep 5
+select_network_interface() {
+    echo "Detecting network interfaces with IPv4 addresses..."
+    interfaces_with_ips=$(ip -o -4 addr show | awk '{print $2, $4}' | sort -u)
 
-    while true; do
-        OUTPUT=$(sudo k3s kubectl get pods -A --no-headers 2>&1)
+    if [ $(echo "$interfaces_with_ips" | wc -l) -eq 1 ]; then
+        # If only one interface is found, use it by default
+        selected_iface=$(echo "$interfaces_with_ips" | awk '{print $1}')
+        selected_ip=$(echo "$interfaces_with_ips" | awk '{print $2}')
+        echo "Only one network interface detected: $selected_iface ($selected_ip)"
+    else
+        echo ""
+        echo "*******************************************************************************************************"
+        echo ""
+        echo "Multiple network interfaces detected:"
+        echo "Please select the ip address wich is in the same network as the master node."
+        echo "If you havent configured a private network between the nodes, select the public ip address."
+        echo ""
+        options=()
+        while read -r iface ip; do
+            options+=("$iface ($ip)")
+        done <<< "$interfaces_with_ips"
 
-        # Checks if there are no resources found --> Kubernetes ist still starting up
-        if echo "$OUTPUT" | grep -q "No resources found"; then
-            echo "Kubernetes is still starting up..."
-        else
-            # Extracts the STATUS column from the kubectl output and filters out the values "Running" and "Completed".
-            STATUS=$(echo "$OUTPUT" | awk '{print $4}' | grep -vE '^(Running|Completed)$')
-
-            # If the STATUS variable is empty, all pods are running and the loop can be exited.
-            if [ -z "$STATUS" ]; then
-            echo "Pods started successfully."
-            break
+        PS3="Please select the network interface to use: "
+        select entry in "${options[@]}"; do
+            if [ -n "$entry" ]; then
+                selected_iface=$(echo "$entry" | awk -F' ' '{print $1}')
+                selected_ip=$(echo "$entry" | awk -F'[()]' '{print $2}')
+                echo "Selected interface: $selected_iface ($selected_ip)"
+                break
             else
-            echo "Waiting for all pods to come online..."
+                echo "Invalid selection. Please try again."
             fi
-        fi
+        done
+    fi
 
-        # Waits for X seconds before checking the pod status again.
-        sleep 10
-    done
-
-    # Waits another 5 seconds to make sure all pods are ready.
-    sleep 5
-
-    sudo kubectl get node
-    sudo kubectl get pods -A
+    echo "Using network interface: $selected_iface with IP address: $selected_ip"
 }
 
-# install nfs-common
+
+# install nfs-common and open-iscsi
 sudo apt-get update
-sudo apt-get install nfs-common -y
+sudo apt-get install open-iscsi nfs-common -y
 
 # Installation of k3s
-curl -sfL https://get.k3s.io | K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
+echo "Installing k3s with --flannel-iface=$selected_iface"
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="v1.31.3+k3s1" K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
 
 echo ""
 echo "-----------------------------------------------------------------------------------------------------------"
