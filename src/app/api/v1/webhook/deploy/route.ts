@@ -9,23 +9,30 @@ import { z } from "zod";
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-    return simpleRoute(async () => {
-        const url = new URL(request.url);
-        const searchParams = url.searchParams;
+const routeLogic = (request: Request) => simpleRoute(async () => {
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
 
-        const { id } = z.object({
-            id: z.string().min(1),
-        }).parse({
-            id: searchParams.get("id"),
-        });
-
-        const app = await appService.getByWebhookId(id);
-        await appService.buildAndDeploy(app.id, true);
-
-        return NextResponse.json({
-            status: "success",
-            body: "Deployment triggered.",
-        });
+    const { id } = z.object({
+        id: z.string().min(1),
+    }).parse({
+        id: searchParams.get("id"),
     });
+
+    const app = await appService.getByWebhookId(id);
+    await appService.buildAndDeploy(app.id, true);
+
+    return NextResponse.json({
+        status: "success",
+        body: "Deployment triggered.",
+    });
+});
+
+
+export async function GET(request: Request) {
+    return routeLogic(request);
+}
+
+export async function POST(request: Request) {
+    return routeLogic(request);
 }
