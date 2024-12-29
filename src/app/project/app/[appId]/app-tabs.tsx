@@ -19,6 +19,7 @@ import { useEffect } from "react";
 import { useBreadcrumbs } from "@/frontend/states/zustand.states";
 import FileMount from "./volumes/file-mount";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
+import DbCredentials from "./credentials/db-crendentials";
 
 export default function AppTabs({
     app,
@@ -37,6 +38,7 @@ export default function AppTabs({
         <Tabs defaultValue="general" value={tabName} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
             <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                {app.appType !== 'APP' && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="environment">Environment</TabsTrigger>
                 <TabsTrigger value="domains">Domains</TabsTrigger>
@@ -48,6 +50,9 @@ export default function AppTabs({
                 <BuildsTab app={app} />
                 <WebhookDeploymentInfo app={app} />
             </TabsContent>
+            {app.appType !== 'APP' && <TabsContent value="credentials" className="space-y-4">
+                <DbCredentials app={app} />
+            </TabsContent>}
             <TabsContent value="general" className="space-y-4">
                 <GeneralAppSource app={app} />
                 <GeneralAppRateLimits app={app} />

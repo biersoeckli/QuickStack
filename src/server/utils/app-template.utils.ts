@@ -69,6 +69,7 @@ export class AppTemplateUtils {
                 password: envVars.find(x => x.name === 'MONGO_INITDB_ROOT_PASSWORD')?.value!,
                 port,
                 hostname,
+                internalConnectionUrl: `mongodb://${hostname}:${port}/${envVars.find(x => x.name === 'MONGO_INITDB_DATABASE')?.value!}`,
             };
         } else if (app.appType === 'MYSQL') {
             returnVal = {
@@ -77,6 +78,7 @@ export class AppTemplateUtils {
                 password: envVars.find(x => x.name === 'MYSQL_PASSWORD')?.value!,
                 port,
                 hostname,
+                internalConnectionUrl: `mysql://${envVars.find(x => x.name === 'MYSQL_USER')?.value!}:${envVars.find(x => x.name === 'MYSQL_PASSWORD')?.value!}@${hostname}:${port}/${envVars.find(x => x.name === 'MYSQL_DATABASE')?.value!}`,
             };
         } else if (app.appType === 'POSTGRES') {
             returnVal = {
@@ -85,6 +87,7 @@ export class AppTemplateUtils {
                 password: envVars.find(x => x.name === 'POSTGRES_PASSWORD')?.value!,
                 port,
                 hostname,
+                internalConnectionUrl: `postgresql://${envVars.find(x => x.name === 'POSTGRES_USER')?.value!}:${envVars.find(x => x.name === 'POSTGRES_PASSWORD')?.value!}@${hostname}:${port}/${envVars.find(x => x.name === 'POSTGRES_DB')?.value!}`,
             };
         } else if (app.appType === 'MARIADB') {
             returnVal = {
@@ -93,6 +96,7 @@ export class AppTemplateUtils {
                 password: envVars.find(x => x.name === 'MYSQL_PASSWORD')?.value!,
                 port,
                 hostname,
+                internalConnectionUrl: `mariadb://${envVars.find(x => x.name === 'MYSQL_USER')?.value!}:${envVars.find(x => x.name === 'MYSQL_PASSWORD')?.value!}@${hostname}:${port}/${envVars.find(x => x.name === 'MYSQL_DATABASE')?.value!}`,
             };
         } else {
             throw new ServiceException('Unknown database type, could not load database information.');
