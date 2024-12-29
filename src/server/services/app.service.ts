@@ -118,6 +118,14 @@ class AppService {
         })(appId);
     }
 
+    async getByWebhookId(webhookId: string) {
+        return await dataAccess.client.app.findFirstOrThrow({
+            where: {
+                webhookId
+            }
+        });
+    }
+
     async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, createDefaultPort = true) {
         let savedItem: App;
         try {
@@ -149,6 +157,16 @@ class AppService {
             revalidateTag(Tags.projects());
         }
         return savedItem;
+    }
+
+    async regenerateWebhookId(appId: string) {
+        const existingApp = await this.getById(appId);
+
+        const randomBytes = crypto.randomBytes(32).toString('hex');
+        await this.save({
+            ...existingApp,
+            webhookId: randomBytes
+        });
     }
 
     async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput) {

@@ -22,6 +22,7 @@ export const AppModel = z.object({
   memoryLimit: z.number().int().nullish(),
   cpuReservation: z.number().int().nullish(),
   cpuLimit: z.number().int().nullish(),
+  webhookId: z.string().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

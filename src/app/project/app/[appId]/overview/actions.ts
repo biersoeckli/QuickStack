@@ -39,3 +39,9 @@ export const getRessourceDataApp = async (projectId: string, appId: string) =>
         await getAuthUserSession();
         return await monitorAppService.getPodsForApp(projectId, appId);
     }) as Promise<ServerActionResult<unknown, PodsResourceInfoModel>>;
+
+export const createNewWebhookUrl = async (appId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        await appService.regenerateWebhookId(appId);
+    });

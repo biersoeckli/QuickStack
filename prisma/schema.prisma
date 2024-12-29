@@ -149,6 +149,8 @@ model App {
   cpuReservation    Int?
   cpuLimit          Int?
 
+  webhookId String?
+
   appDomains    AppDomain[]
   appPorts      AppPort[]
   appVolumes    AppVolume[]

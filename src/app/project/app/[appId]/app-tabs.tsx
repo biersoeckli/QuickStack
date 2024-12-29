@@ -18,6 +18,7 @@ import TerminalStreamed from "./overview/terminal-streamed";
 import { useEffect } from "react";
 import { useBreadcrumbs } from "@/frontend/states/zustand.states";
 import FileMount from "./volumes/file-mount";
+import WebhookDeploymentInfo from "./overview/webhook-deployment";
 
 export default function AppTabs({
     app,
@@ -45,6 +46,7 @@ export default function AppTabs({
                 <MonitoringTab app={app} />
                 <Logs app={app} />
                 <BuildsTab app={app} />
+                <WebhookDeploymentInfo app={app} />
             </TabsContent>
             <TabsContent value="general" className="space-y-4">
                 <GeneralAppSource app={app} />
