@@ -15,6 +15,7 @@ import { dlog } from "./deployment-logs.service";
 import registryService from "./registry.service";
 import { EnvVarUtils } from "../utils/env-var.utils";
 import configMapService from "./config-map.service";
+import secretService from "./secret.service";
 
 class DeploymentService {
 
@@ -156,6 +157,12 @@ class DeploymentService {
             }
         }
 
+        const dockerPullSecretName = await secretService.createOrUpdateDockerPullSecret(app);
+        if (dockerPullSecretName) {
+            dlog(deploymentId, `Configured credentials to pull Docker Image (${dockerPullSecretName})`);
+            body.spec!.template!.spec!.imagePullSecrets = [{ name: dockerPullSecretName }];
+        }
+
         if (existingDeployment) {
             dlog(deploymentId, `Replacing existing deployment...`);
             const res = await k3s.apps.replaceNamespacedDeployment(app.id, app.projectId, body);
@@ -163,9 +170,11 @@ class DeploymentService {
             dlog(deploymentId, `Creating deployment...`);
             const res = await k3s.apps.createNamespacedDeployment(app.projectId, body);
         }
+        dlog(deploymentId, `Cleanup unused ressources from previous deployments...`);
         await configMapService.deleteUnusedConfigMaps(app);
         await pvcService.deleteUnusedPvcOfApp(app);
         await svcService.createOrUpdateService(deploymentId, app);
+        await secretService.delteUnusedSecrets(app);
         dlog(deploymentId, `Updating ingress...`);
         await ingressService.createOrUpdateIngressForApp(deploymentId, app);
         dlog(deploymentId, `Deployment applied`);

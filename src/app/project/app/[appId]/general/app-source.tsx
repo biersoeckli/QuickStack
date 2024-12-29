@@ -2,7 +2,7 @@
 
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { AppSourceInfoInputModel, appSourceInfoInputZodModel } from "@/shared/model/app-source-info.model";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -162,6 +162,38 @@ export default function GeneralAppSource({ app }: {
                                         </FormItem>
                                     )}
                                 />
+                                <div className="grid grid-cols-2 gap-4">
+
+                                    <FormField
+                                        control={form.control}
+                                        name="containerRegistryUsername"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Registry Username</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                </FormControl>
+                                                <FormDescription>Only required if your image is stored in a private registry.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="containerRegistryPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Registry Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                </FormControl>
+                                                <FormDescription>Only required if your image is stored in a private registry.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </TabsContent>
                         </Tabs>
                     </CardContent>

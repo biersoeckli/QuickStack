@@ -131,7 +131,9 @@ model App {
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sourceType String  @default("GIT") // GIT, CONTAINER
 
-  containerImageSource String?
+  containerImageSource      String?
+  containerRegistryUsername String?
+  containerRegistryPassword String?
 
   gitUrl         String?
   gitBranch      String?

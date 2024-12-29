@@ -60,4 +60,8 @@ export class KubeObjectNameUtils {
     static getConfigMapName(id: string): `cm-${string}` {
         return `cm-${id}`;
     }
+
+    static toSecretId(id: string): `secret-${string}` {
+        return `secret-${id}`;
+    }
 }
