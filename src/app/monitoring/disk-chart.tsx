@@ -28,8 +28,8 @@ export default function ChartDiskRessources({
 }) {
 
     const chartData = [{
-        diskUsed: nodeRessource.diskUsageAbsolut, //* 360 / nodeRessource.diskUsageCapacity,
-        diskReserved: nodeRessource.diskUsageReserved, //* 360 / nodeRessource.diskUsageCapacity,
+        diskUsed: nodeRessource.diskUsageAbsolut,
+        diskReserved: nodeRessource.diskUsageReserved,
         diskSchedulable: nodeRessource.diskSpaceSchedulable
     }];
 
@@ -48,108 +48,93 @@ export default function ChartDiskRessources({
         },
     } satisfies ChartConfig
 
-    return (<Card className="flex flex-col">
-        <CardHeader className="items-center pb-0">
-            <CardTitle>Disk</CardTitle>
-            <CardDescription>Usage in %</CardDescription>
-        </CardHeader>
-
-        <CardContent className="flex flex-1 items-center pb-0">
-            <ChartContainer
-                config={chartConfig}
-                className="mx-auto aspect-square w-full max-w-[250px]"
+    return (
+        <ChartContainer
+            config={chartConfig}
+            className="mx-auto aspect-square w-full max-w-[250px]"
+        >
+            <RadialBarChart
+                data={chartData}
+                innerRadius={80}
+                outerRadius={110}
             >
-                <RadialBarChart
-                    data={chartData}
-                    innerRadius={80}
-                    outerRadius={110}
-                >
-                    <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent hideLabel formatter={(value, name) => {
-                            // Convert the value from bytes to gigabytes
-                            const formattedValue = StringUtils.convertBytesToReadableSize(value as number);
-                            // Optionally, you can customize the label (name) here if needed
-                            return <div className='flex gap-2'>
-                                <div className='self-center rounded w-2 h-2' style={{ backgroundColor: (chartConfig as any)[name].color }}></div>
-                                <div className='flex-1'>{(chartConfig as any)[name].label}:</div>
-                                <div>{formattedValue}</div>
-                            </div>
-                        }} />}
-                    />
-                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-                        <Label
-                            content={({ viewBox }) => {
-                                if (
-                                    viewBox &&
-                                    'cx' in viewBox &&
-                                    'cy' in viewBox
-                                ) {
-                                    return (
-                                        <text
+                <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel formatter={(value, name) => {
+                        // Convert the value from bytes to gigabytes
+                        const formattedValue = StringUtils.convertBytesToReadableSize(value as number);
+                        // Optionally, you can customize the label (name) here if needed
+                        return <div className='flex gap-2'>
+                            <div className='self-center rounded w-2 h-2' style={{ backgroundColor: (chartConfig as any)[name].color }}></div>
+                            <div className='flex-1'>{(chartConfig as any)[name].label}:</div>
+                            <div>{formattedValue}</div>
+                        </div>
+                    }} />}
+                />
+                <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                    <Label
+                        content={({ viewBox }) => {
+                            if (
+                                viewBox &&
+                                'cx' in viewBox &&
+                                'cy' in viewBox
+                            ) {
+                                return (
+                                    <text
+                                        x={viewBox.cx}
+                                        y={viewBox.cy}
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                    >
+                                        <tspan
                                             x={viewBox.cx}
-                                            y={viewBox.cy}
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
+                                            y={(viewBox.cy || 0) - 10}
+                                            className="fill-foreground text-4xl font-bold"
                                         >
-                                            <tspan
-                                                x={viewBox.cx}
-                                                y={viewBox.cy}
-                                                className="fill-foreground text-4xl font-bold"
-                                            >
-                                                {((nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved) / nodeRessource.diskUsageCapacity * 100).toFixed(1)}
-                                            </tspan>
-                                            <tspan
-                                                x={viewBox.cx}
-                                                y={(viewBox.cy || 0) + 24}
-                                                className="fill-muted-foreground"
-                                            >
-                                                %
-                                            </tspan>
-                                        </text>
-                                    );
-                                }
-                            }}
-                        />
-                    </PolarRadiusAxis>
-                    <RadialBar
-                        dataKey="diskUsed"
-                        stackId="a"
-                        cornerRadius={5}
-                        fill="var(--color-diskUsed)"
-                        className="stroke-transparent stroke-2"
+                                            {((nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved) / nodeRessource.diskUsageCapacity * 100).toFixed(0)}%
+                                        </tspan>
+                                        <tspan
+                                            x={viewBox.cx}
+                                            y={(viewBox.cy || 0) + 14}
+                                            className="fill-muted-foreground"
+                                        >
+                                            Storage
+                                        </tspan>
+                                        <tspan
+                                            x={viewBox.cx}
+                                            y={(viewBox.cy || 0) + 30}
+                                            className="fill-muted-foreground">
+                                            {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved, 1, true)} / {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageCapacity, 1)}
+                                        </tspan>
+                                    </text>
+                                );
+                            }
+                        }}
                     />
-                    <RadialBar
-                        dataKey="diskReserved"
-                        fill="var(--color-diskReserved)"
-                        stackId="a"
-                        cornerRadius={5}
-                        className="stroke-transparent stroke-2"
-                    />
-                    <RadialBar
-                        dataKey="diskSchedulable"
-                        fill="var(--color-diskSchedulable)"
-                        stackId="a"
-                        cornerRadius={5}
-                        className="stroke-transparent stroke-2"
-                    />
-                </RadialBarChart>
-            </ChartContainer>
-        </CardContent>
-
-
-        <CardFooter className="flex-col gap-2 text-sm">
-            <div className="flex items-center gap-2 font-medium leading-none">
-                Disk Used + Reserved:  {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved)}
-            </div>
-            <div className="flex items-center gap-2 font-medium leading-none">
-                Disk Schedulable:  {StringUtils.convertBytesToReadableSize(nodeRessource.diskSpaceSchedulable)}
-            </div>
-            <div className="flex items-center gap-2 font-medium leading-none">
-                Disk Capacity: {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageCapacity)}
-            </div>
-        </CardFooter>
-    </Card>
+                </PolarRadiusAxis>
+                <RadialBar
+                    dataKey="diskUsed"
+                    stackId="a"
+                    cornerRadius={5}
+                    fill="var(--color-diskUsed)"
+                    className="stroke-transparent stroke-2"
+                />
+                <RadialBar
+                    dataKey="diskReserved"
+                    fill="var(--color-diskReserved)"
+                    stackId="a"
+                    cornerRadius={5}
+                    className="stroke-transparent stroke-2"
+                />
+                <RadialBar
+                    dataKey="diskSchedulable"
+                    fill="var(--color-diskSchedulable)"
+                    stackId="a"
+                    cornerRadius={5}
+                    className="stroke-transparent stroke-2"
+                />
+            </RadialBarChart>
+        </ChartContainer>
     );
 }
 

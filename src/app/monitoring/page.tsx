@@ -12,7 +12,7 @@ export default async function ResourceNodesInfoPage() {
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
-                title={'Resources Nodes'}
+                title={'Monitoring'}
                 subtitle={`View all resources of the nodes which belong to the QuickStack Cluster.`}>
             </PageTitle>
             <ResourceNodes resourcesNodes={resourcesNode} />
