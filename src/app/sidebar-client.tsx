@@ -1,6 +1,5 @@
 'use client'
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
@@ -18,19 +17,15 @@ import {
   SidebarMenuAction,
   useSidebar
 } from "@/components/ui/sidebar"
-import { AppleIcon, BookOpen, Boxes, Calendar, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Home, Inbox, Info, Plus, Radio, Search, Server, Settings, Settings2, User, User2 } from "lucide-react"
+import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Info, Plus, Server, Settings, Settings2, User } from "lucide-react"
 import Link from "next/link"
 import { EditProjectDialog } from "./projects/edit-project-dialog"
-import projectService from "@/server/services/project.service"
-import { getAuthUserSession, getUserSession } from "@/server/utils/action-wrapper.utils"
 import { SidebarLogoutButton } from "./sidebar-logout-button"
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar"
 import { App, Project } from "@prisma/client"
-import { useIsMobile } from "@/frontend/hooks/use-mobile"
 import { UserSession } from "@/shared/model/sim-session.model"
 
 
@@ -39,6 +34,11 @@ const settingsMenu = [
     title: "Profile",
     url: "/settings/profile",
     icon: User,
+  },
+  {
+    title: "S3 Targets",
+    url: "/settings/s3-targets",
+    icon: Settings,
   },
   {
     title: "QuickStack Settings",

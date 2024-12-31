@@ -8,6 +8,10 @@ export class Tags {
         return `projects`;
     }
 
+    static s3Targets() {
+        return `targets`;
+    }
+
     static apps(projectId: string) {
         return `apps-${projectId}`;
     }
