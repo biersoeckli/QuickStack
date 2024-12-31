@@ -65,7 +65,7 @@ class ClusterService {
     async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
         const topNodes = await k8s.topNodes(k3s.core);
 
-        return await Promise.all (topNodes.map(async (node) => {
+        return await Promise.all(topNodes.map(async (node) => {
             const diskInfo = await longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!);
             return {
                 name: node.Node.metadata?.name!,
@@ -74,9 +74,12 @@ class ClusterService {
                 ramUsageAbsolut: Number(node.Memory?.RequestTotal!),
                 ramUsageCapacity: Number(node.Memory?.Capacity!),
                 diskUsageAbsolut: diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable,
+                diskUsageReserved: diskInfo.totalStorageReserved,
                 diskUsageCapacity: diskInfo.totalStorageMaximum,
-            }}));
-        }
+                diskSpaceSchedulable: diskInfo.totalSchedulableStorage
+            }
+        }));
+    }
 }
 
 const clusterService = new ClusterService();

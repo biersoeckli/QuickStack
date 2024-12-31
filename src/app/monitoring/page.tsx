@@ -7,13 +7,13 @@ import ResourceNodes from "./monitoring-nodes";
 
 export default async function ResourceNodesInfoPage() {
 
+    await getAuthUserSession();
     const resourcesNode = await clusterService.getNodeResourceUsage();
-    const session = await getAuthUserSession();
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
                 title={'Resources Nodes'}
-                subtitle={`View all resources of the nodes which belongs to the QuickStack Cluster.`}>
+                subtitle={`View all resources of the nodes which belong to the QuickStack Cluster.`}>
             </PageTitle>
             <ResourceNodes resourcesNodes={resourcesNode} />
         </div>
