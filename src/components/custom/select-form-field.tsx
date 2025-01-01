@@ -28,7 +28,7 @@ export default function SelectFormField<TFormType extends FieldValues>(
         name: keyof TFormType;
         values: [string, string][];
         placeholder?: string;
-        formDescription?: string;
+        formDescription?: string | React.ReactNode;
         onValueChange?: (value: string) => void;
     }
 ) {

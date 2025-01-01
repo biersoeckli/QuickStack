@@ -8,6 +8,8 @@ import quickStackService from "@/server/services/qs.service";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import registryService from "@/server/services/registry.service";
 import { StringUtils } from "@/shared/utils/string.utils";
+import { RegistryStorageLocationSettingsModel, registryStorageLocationSettingsZodModel } from "@/shared/model/registry-storage-location-settings.model";
+import { Constants } from "@/shared/utils/constants";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -59,7 +61,8 @@ export const updateQuickstack = async () =>
 export const updateRegistry = async () =>
   simpleAction(async () => {
     await getAuthUserSession();
-    await registryService.deployRegistry(true);
+    const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
+    await registryService.deployRegistry(registryLocation!, true);
     return new SuccessActionResult(undefined, 'Registry will be updated, this might take a few seconds.');
   });
 
@@ -78,4 +81,16 @@ export const setCanaryChannel = async (useCanaryChannel: boolean) =>
       value: !!useCanaryChannel ? 'true' : 'false'
     });
     return new SuccessActionResult(undefined, `Turned ${useCanaryChannel ? 'on' : 'off'} the canary channel.`);
+  });
+
+export const setRegistryStorageLocation = async (prevState: any, inputData: RegistryStorageLocationSettingsModel) =>
+  saveFormAction(inputData, registryStorageLocationSettingsZodModel, async (validatedData) => {
+    await getAuthUserSession();
+
+    await registryService.deployRegistry(validatedData.registryStorageLocation, true);
+
+    await paramService.save({
+      name: ParamService.REGISTRY_SOTRAGE_LOCATION,
+      value: validatedData.registryStorageLocation
+    });
   });

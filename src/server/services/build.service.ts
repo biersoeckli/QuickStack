@@ -13,6 +13,7 @@ import podService from "./pod.service";
 import stream from "stream";
 import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
+import paramService, { ParamService } from "./param.service";
 
 const kanikoImage = "gcr.io/kaniko-project/executor:latest";
 
@@ -21,7 +22,8 @@ class BuildService {
 
     async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, Promise<void>]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
-        await registryService.deployRegistry();
+        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
+        await registryService.deployRegistry(registryLocation!);
         const buildsForApp = await this.getBuildsForApp(app.id);
         if (buildsForApp.some((job) => job.status === 'RUNNING')) {
             throw new ServiceException("A build job is already running for this app.");

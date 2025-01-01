@@ -53,7 +53,24 @@ class RegistryApiAdapter {
             }
         });
 
-        await this.checkIfResponseIsOk(response);
+
+        if (!response.ok) {
+            console.error(`Error while fetching ${response.url} ${response.status} ${response.statusText}`);
+            console.error(response.headers);
+            console.error(response);
+            try {
+                const resText = await response.text();
+                if (resText.includes('NAME_UNKNOWN')) {
+                    // manifest was deleted but repository name still exists in catalog
+                    return [];
+                }
+                console.error(resText);
+            } catch (error) {
+                // do nothing
+            }
+            throw new Error(`Error while connecting to container registry.`);
+        }
+
         const data = await response.json();
         return data?.tags ?? [] as string[];
     }
@@ -80,7 +97,18 @@ class RegistryApiAdapter {
             cache: 'no-cache',
             method: 'GET',
             headers: {
-                "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json",
+                "Accept": [
+                    'application/vnd.oci.image.manifest.v1+json',
+                    'application/vnd.oci.image.index.v1+json',
+                    'application/vnd.docker.distribution.manifest.v2+json',
+                    'application/vnd.docker.distribution.manifest.v1+json',
+                    'application/vnd.docker.container.image.v1+json',
+                    'application/vnd.docker.image.rootfs.diff.tar.gzip',
+                    'application/vnd.docker.image.rootfs.foreign.diff.tar.gzip',
+                    'application/vnd.docker.image.rootfs.diff.tar',
+                    'application/vnd.oci.image.layer.v1.tar+gzip',
+                    'application/vnd.docker.plugin.v1+json'
+                ].join(', ')
             }
         });
 
@@ -88,6 +116,25 @@ class RegistryApiAdapter {
         return response;
     }
 
+    private async deleteBlob(repository: string, digest: string) {
+        const response = await fetch(`${this.registryBaseUrl}/v2/${repository}/blobs/${digest}`, {
+            cache: 'no-cache',
+            method: 'DELETE'
+        });
+
+        await this.checkIfResponseIsOk(response);
+        return response;
+    }
+
+    private async deleteManifest(repository: string, digest: string) {
+        const response = await fetch(`${this.registryBaseUrl}/v2/${repository}/manifests/${digest}`, {
+            cache: 'no-cache',
+            method: 'DELETE'
+        });
+
+        await this.checkIfResponseIsOk(response);
+        return response;
+    }
 
     async deleteImage(repository: string, tag: string) {
 
@@ -96,13 +143,17 @@ class RegistryApiAdapter {
 
         console.log(`Digest for ${repository}:${tag} is ${digest}`);
 
-        // Step 2: Delete the image using the digest
-        const deleteUrl = `${this.registryBaseUrl}/v2/${repository}/manifests/${digest}`;
-        const deleteResponse = await fetch(deleteUrl, {
-            method: "DELETE"
-        });
+        await Promise.all(manifest.layers.map(async (layer) => {
+            console.log(`Deleting blob ${layer.digest} (size: ${layer.size})`);
+            try {
+                await this.deleteBlob(repository, layer.digest);
+            } catch (error) {
+                console.error(`Error while deleting blob ${layer.digest}`);
+            }
+        }));
 
-        await this.checkIfResponseIsOk(deleteResponse);
+        console.log(`Deleting manifest ${digest}`);
+        await this.deleteManifest(repository, digest);
 
         console.log(`Image ${repository}:${tag} (size: ${manifest?.config?.size}) successfully deleted from registry.`);
 

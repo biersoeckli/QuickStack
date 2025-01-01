@@ -21,6 +21,7 @@ export const nodeInfoZodModel = z.object({
   memoryStatusText: z.string().optional(),
   diskStatusText: z.string().optional(),
   pidStatusText: z.string().optional(),
+  isMasterNode: z.boolean(),
 })
 
 export type NodeInfoModel = z.infer<typeof nodeInfoZodModel>;

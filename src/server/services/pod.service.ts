@@ -3,11 +3,7 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import setupPodService from "./setup-services/setup-pod.service";
 import fs from 'fs';
-import fsPromises from 'fs/promises';
-import * as tar from 'tar';
 import stream from 'stream';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
 import * as k8s from '@kubernetes/client-node';
 
 class PodService {
@@ -29,6 +25,47 @@ class PodService {
 
     async getPodsForApp(projectId: string, appId: string): Promise<PodsInfoModel[]> {
         return setupPodService.getPodsForApp(projectId, appId);
+    }
+
+    public async runCommandInPod(
+        namespace: string,
+        podName: string,
+        containerName: string,
+        command: string[],
+    ): Promise<void> {
+        const writerStream = new stream.PassThrough();
+        const stderrStream = new stream.PassThrough();
+        return new Promise<void>((resolve, reject) => {
+
+            const exec = new k8s.Exec(k3s.getKubeConfig());
+            exec
+                .exec(
+                    namespace,
+                    podName,
+                    containerName,
+                    command,
+                    writerStream,
+                    stderrStream,
+                    null,
+                    false,
+                    async ({ status }) => {
+                        try {
+                            console.log(`Output for command "${command.join(' ')}": \n ${writerStream.read().toString()}`);
+                            if (status === 'Failure') {
+                                return reject(
+                                    new Error(
+                                        `Error while running command "${command.join(' ')}": \n ${stderrStream.read().toString()}`,
+                                    ),
+                                );
+                            }
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                )
+                .catch(reject);
+        });
     }
 
     /**

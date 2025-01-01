@@ -6,4 +6,5 @@ export class Constants {
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';
+    static readonly INTERNAL_REGISTRY_LOCATION = 'internal-registry-location';
 }

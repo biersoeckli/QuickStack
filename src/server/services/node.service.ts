@@ -1,4 +1,3 @@
-import { spec } from "node:test/reporters";
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from "@/shared/model/node-info.model";
@@ -25,6 +24,7 @@ class ClusterService {
                     containerRuntimeVersion: node.status?.nodeInfo?.containerRuntimeVersion!,
                     kubeProxyVersion: node.status?.nodeInfo?.kubeProxyVersion!,
                     kubeletVersion: node.status?.nodeInfo?.kubeletVersion!,
+                    isMasterNode: node.metadata?.labels?.['node-role.kubernetes.io/master'] === 'true',
 
                     memoryOk: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].status === 'False',
                     memoryStatusText: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].message,
@@ -40,6 +40,11 @@ class ClusterService {
             revalidate: 10,
             tags: [Tags.nodeInfos()]
         })();
+    }
+
+    async getMasterNode(): Promise<NodeInfoModel> {
+        const nodes = await this.getNodeInfo();
+        return nodes.find(node => node.isMasterNode)!;
     }
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {

@@ -1,45 +1,27 @@
 'use client'
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/frontend/utils/utils"
-import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { useFormState } from 'react-dom'
 import { useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { AppVolume, S3Target } from "@prisma/client"
-import { AppVolumeEditModel, appVolumeEditZodModel } from "@/shared/model/volume-edit.model"
+import { S3Target } from "@prisma/client"
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
 import { toast } from "sonner"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
-import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { S3TargetEditModel, s3TargetEditZodModel } from "@/shared/model/s3-target-edit.model"
 import { saveS3Target } from "./actions"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
@@ -84,101 +66,105 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
           <DialogHeader>
             <DialogTitle>Edit S3 Target</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
-              return formAction(data);
-            })()}>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <ScrollArea className="max-h-[70vh]">
+            <div className="px-2">
+              <Form {...form}>
+                <form action={(e) => form.handleSubmit((data) => {
+                  return formAction(data);
+                })()}>
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="endpoint"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S3 Endpoint</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="endpoint"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>S3 Endpoint</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
 
-                <FormField
-                  control={form.control}
-                  name="region"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S3 Region</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="region"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>S3 Region</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="bucketName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S3 Bucket Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="bucketName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>S3 Bucket Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="accessKeyId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S3 Access Key</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="accessKeyId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>S3 Access Key</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="secretKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S3 Secret Key</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="secretKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>S3 Secret Key</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <p className="text-red-500">{state.message}</p>
-                <SubmitButton>Save</SubmitButton>
-              </div>
-            </form>
-          </Form >
+                    <p className="text-red-500">{state.message}</p>
+                    <SubmitButton>Save</SubmitButton>
+                  </div>
+                </form>
+              </Form >
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
