@@ -4,10 +4,10 @@ import { z } from "zod";
 
 export const nodeResourceZodModel = z.object({
   name: z.string(),
-  cpuUsageAbsolut: z.number(),
-  cpuUsageCapacity: z.number(),
-  ramUsageAbsolut: z.number(),
-  ramUsageCapacity: z.number(),
+  cpuUsage: z.number(),
+  cpuCapacity: z.number(),
+  ramUsage: z.number(),
+  ramCapacity: z.number(),
   diskUsageAbsolut: z.number(),
   diskUsageCapacity: z.number(),
   diskUsageReserved: z.number(),

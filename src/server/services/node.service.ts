@@ -5,6 +5,7 @@ import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
 import longhornApiAdapter from "../adapter/longhorn-api.adapter";
+import { KubernetesSizeConverter } from "../utils/kubernetes-size-converter.utils";
 
 class ClusterService {
 
@@ -70,14 +71,30 @@ class ClusterService {
     async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
         const topNodes = await k8s.topNodes(k3s.core);
 
+        const metricsData: k8s.NodeMetricsList = await k3s.metrics.getNodeMetrics();
+
         return await Promise.all(topNodes.map(async (node) => {
+            const nodeMetrics = metricsData.items.filter((metric) => metric.metadata.name === node.Node.metadata?.name)
+                .map((metric) => {
+                    return {
+                        timestamp: new Date(metric.timestamp),
+                        cpuUsage: KubernetesSizeConverter.fromNanoCpu(KubernetesSizeConverter.toNanoCpu(metric.usage.cpu)),
+                        ramUsage: KubernetesSizeConverter.toBytes(metric.usage.memory)
+                    }
+                });
+
+            // sorted by timestamp descending
+            nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+            const latestUsageItem = nodeMetrics[0];
+
             const diskInfo = await longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!);
+
             return {
                 name: node.Node.metadata?.name!,
-                cpuUsageAbsolut: Number(node.CPU?.RequestTotal!),
-                cpuUsageCapacity: Number(node.CPU?.Capacity!),
-                ramUsageAbsolut: Number(node.Memory?.RequestTotal!),
-                ramUsageCapacity: Number(node.Memory?.Capacity!),
+                cpuUsage: latestUsageItem.cpuUsage,
+                cpuCapacity: Number(node.CPU?.Capacity!),
+                ramUsage: latestUsageItem.ramUsage,
+                ramCapacity: Number(node.Memory?.Capacity!),
                 diskUsageAbsolut: diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable,
                 diskUsageReserved: diskInfo.totalStorageReserved,
                 diskUsageCapacity: diskInfo.totalStorageMaximum,

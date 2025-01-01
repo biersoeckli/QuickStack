@@ -69,7 +69,7 @@ export default function ResourcesNodes({
                   <RadialBarChart
                     data={chartData}
                     startAngle={0}
-                    endAngle={360 * node.cpuUsageAbsolut / node.cpuUsageCapacity}
+                    endAngle={360 * node.cpuUsage / node.cpuCapacity}
                     innerRadius={80}
                     outerRadius={110}
                   >
@@ -109,7 +109,7 @@ export default function ResourcesNodes({
                                   y={(viewBox.cy || 0) - 10}
                                   className="fill-foreground text-4xl font-bold"
                                 >
-                                  {(node.cpuUsageAbsolut / node.cpuUsageCapacity * 100).toFixed(0)}%
+                                  {(node.cpuUsage / node.cpuCapacity * 100).toFixed(0)}%
                                 </tspan>
                                 <tspan
                                   x={viewBox.cx}
@@ -122,7 +122,7 @@ export default function ResourcesNodes({
                                   x={viewBox.cx}
                                   y={(viewBox.cy || 0) + 30}
                                   className="fill-muted-foreground"                                      >
-                                  Load: {(node.cpuUsageAbsolut).toFixed(2)}
+                                  Load: {(node.cpuUsage).toFixed(2)}
                                 </tspan>
                               </text>
                             );
@@ -143,7 +143,7 @@ export default function ResourcesNodes({
                   <RadialBarChart
                     data={chartData}
                     startAngle={0}
-                    endAngle={360 * node.ramUsageAbsolut / node.ramUsageCapacity}
+                    endAngle={360 * node.ramUsage / node.ramCapacity}
                     innerRadius={80}
                     outerRadius={110}
                   >
@@ -183,7 +183,7 @@ export default function ResourcesNodes({
                                   y={(viewBox.cy || 0) - 10}
                                   className="fill-foreground text-4xl font-bold"
                                 >
-                                  {(node.ramUsageAbsolut / node.ramUsageCapacity * 100).toFixed(0)}%
+                                  {(node.ramUsage / node.ramCapacity * 100).toFixed(0)}%
                                 </tspan>
                                 <tspan
                                   x={viewBox.cx}
@@ -196,7 +196,7 @@ export default function ResourcesNodes({
                                   x={viewBox.cx}
                                   y={(viewBox.cy || 0) + 30}
                                   className="fill-muted-foreground"                                      >
-                                  {(node.ramUsageAbsolut / (1024 * 1024 * 1024)).toFixed(2)} / {StringUtils.convertBytesToReadableSize(node.ramUsageCapacity)}
+                                  {(node.ramUsage / (1024 * 1024 * 1024)).toFixed(2)} / {StringUtils.convertBytesToReadableSize(node.ramCapacity)}
                                 </tspan>
                               </text>
                             );

@@ -6,6 +6,7 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { StringUtils } from "@/shared/utils/string.utils";
 
 export default function MonitoringTab({
     app
@@ -42,24 +43,21 @@ export default function MonitoringTab({
     return <>
         <Card>
             <CardContent className="pb-0">
-            {!selectedPod ? <FullLoadingSpinner /> :
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>CPU %</TableHead>
-                            <TableHead>CPU</TableHead>
-                            <TableHead>RAM %</TableHead>
-                            <TableHead>RAM</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                {!selectedPod ? <FullLoadingSpinner /> :
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell className="font-medium">{selectedPod?.cpuPercent.toFixed(2)}</TableCell>
-                                <TableCell>
-                                <TooltipProvider>
+                                <TableHead>CPU %</TableHead>
+                                <TableHead>RAM</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell className="font-medium">
+                                    <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuAbsolut.toFixed(2)}</div>
+                                                <div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuPercent.toFixed(2)}</div>
                                             </TooltipTrigger>
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{selectedPod?.cpuAbsolut.toFixed(10)} cores</p>
@@ -67,14 +65,12 @@ export default function MonitoringTab({
                                         </Tooltip>
                                     </TooltipProvider>
                                 </TableCell>
-                                <TableCell className="font-medium">{selectedPod?.ramPercent.toFixed(2)}</TableCell>
-                                <TableCell className="font-medium">{selectedPod?.ramAbsolut.toFixed(2)}</TableCell>
+                                <TableCell className="font-medium">{StringUtils.convertBytesToReadableSize(selectedPod?.ramAbsolut)}</TableCell>
                             </TableRow>
-                    </TableBody>
-                </Table>
-        }
+                        </TableBody>
+                    </Table>
+                }
             </CardContent>
         </Card >
-
     </>;
 }

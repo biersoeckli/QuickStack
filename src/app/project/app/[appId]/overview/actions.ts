@@ -37,7 +37,7 @@ export const getPodsForApp = async (appId: string) =>
 export const getRessourceDataApp = async (projectId: string, appId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
-        return await monitorAppService.getPodsForApp(projectId, appId);
+        return await monitorAppService.getMonitoringForApp(projectId, appId);
     }) as Promise<ServerActionResult<unknown, PodsResourceInfoModel>>;
 
 export const createNewWebhookUrl = async (appId: string) =>
