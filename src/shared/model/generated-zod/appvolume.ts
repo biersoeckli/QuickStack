@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteApp, RelatedAppModel } from "./index"
+import { CompleteApp, RelatedAppModel, CompleteVolumeBackup, RelatedVolumeBackupModel } from "./index"
 
 export const AppVolumeModel = z.object({
   id: z.string(),
@@ -14,6 +14,7 @@ export const AppVolumeModel = z.object({
 
 export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
   app: CompleteApp
+  volumeBackups: CompleteVolumeBackup[]
 }
 
 /**
@@ -23,4 +24,5 @@ export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
  */
 export const RelatedAppVolumeModel: z.ZodSchema<CompleteAppVolume> = z.lazy(() => AppVolumeModel.extend({
   app: RelatedAppModel,
+  volumeBackups: RelatedVolumeBackupModel.array(),
 }))

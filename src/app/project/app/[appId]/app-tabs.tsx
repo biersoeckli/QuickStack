@@ -5,28 +5,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import GeneralAppRateLimits from "./general/app-rate-limits";
 import GeneralAppSource from "./general/app-source";
 import EnvEdit from "./environment/env-edit";
-import { App } from "@prisma/client";
+import { S3Target } from "@prisma/client";
 import DomainsList from "./domains/domains";
 import StorageList from "./volumes/storages";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { BuildJobModel } from "@/shared/model/build-job";
 import BuildsTab from "./overview/deployments";
 import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
 import InternalHostnames from "./domains/ports-and-internal-hostnames";
-import TerminalStreamed from "./overview/terminal-streamed";
-import { useEffect } from "react";
-import { useBreadcrumbs } from "@/frontend/states/zustand.states";
 import FileMount from "./volumes/file-mount";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
+import VolumeBackupList from "./volumes/volume-backup";
+import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
 
 export default function AppTabs({
     app,
-    tabName
+    tabName,
+    s3Targets,
+    volumeBackups
 }: {
     app: AppExtendedModel;
     tabName: string;
+    s3Targets: S3Target[],
+    volumeBackups: VolumeBackupExtendedModel[]
 }) {
     const router = useRouter();
 
@@ -67,6 +69,10 @@ export default function AppTabs({
             <TabsContent value="storage" className="space-y-4">
                 <StorageList app={app} />
                 <FileMount app={app} />
+                <VolumeBackupList
+                    app={app}
+                    s3Targets={s3Targets}
+                    volumeBackups={volumeBackups} />
             </TabsContent>
         </Tabs>
     )

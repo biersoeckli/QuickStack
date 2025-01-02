@@ -8,6 +8,8 @@ import { z } from "zod";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import pvcService from "@/server/services/pvc.service";
 import { fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
+import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/backup-volume-edit.model";
+import volumeBackupService from "@/server/services/volume-backup.service";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -60,7 +62,6 @@ const actionAppFileMountEditZodModel = fileMountEditZodModel.merge(z.object({
 export const saveFileMount = async (prevState: any, inputData: z.infer<typeof actionAppFileMountEditZodModel>) =>
     saveFormAction(inputData, actionAppFileMountEditZodModel, async (validatedData) => {
         await getAuthUserSession();
-        const existingApp = await appService.getExtendedById(validatedData.appId);
         await appService.saveFileMount({
             ...validatedData,
             id: validatedData.id ?? undefined,
@@ -72,4 +73,21 @@ export const deleteFileMount = async (fileMountId: string) =>
         await getAuthUserSession();
         await appService.deleteFileMountById(fileMountId);
         return new SuccessActionResult(undefined, 'Successfully deleted volume');
+    });
+
+export const saveBackupVolume = async (prevState: any, inputData: VolumeBackupEditModel) =>
+    saveFormAction(inputData, volumeBackupEditZodModel, async (validatedData) => {
+        await getAuthUserSession();
+        await volumeBackupService.save({
+            ...validatedData,
+            id: validatedData.id ?? undefined,
+        });
+        return new SuccessActionResult();
+    });
+
+export const deleteBackupVolume = async (backupVolumeId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        await volumeBackupService.deleteById(backupVolumeId);
+        return new SuccessActionResult(undefined, 'Successfully deleted backup schedule');
     });

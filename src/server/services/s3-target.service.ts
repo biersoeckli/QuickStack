@@ -56,7 +56,6 @@ class S3TargetService {
                     data: item as Prisma.S3TargetUncheckedCreateInput
                 });
             }
-            await namespaceService.createNamespaceIfNotExists(savedItem.id);
         } finally {
             revalidateTag(Tags.s3Targets());
         }

@@ -49,7 +49,7 @@ export default function QuickStackRegistrySettings({
                 <CardTitle>Registry Storage Location</CardTitle>
                 <CardDescription>
                     After a build the Docker Image is stored on the server by default. This can take up a lot of disk space.
-                    If your want to store all Docker Images from the registry in a external S3 Storage you can configure it here.
+                    If your want to store all Docker Images from the registry in an external S3 Storage you can configure it here.
                 </CardDescription>
             </CardHeader>
             <Form {...form}>

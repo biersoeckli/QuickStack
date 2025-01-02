@@ -88,6 +88,7 @@ class AppService {
             appPorts: true,
             appFileMounts: true,
         };
+
         if (cached) {
             return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
                 where: {

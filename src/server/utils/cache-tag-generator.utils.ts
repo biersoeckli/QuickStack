@@ -12,6 +12,10 @@ export class Tags {
         return `targets`;
     }
 
+    static volumeBackups() {
+        return `volume-backups`;
+    }
+
     static apps(projectId: string) {
         return `apps-${projectId}`;
     }
