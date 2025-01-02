@@ -21,15 +21,39 @@ import { NodeResourceModel } from '@/shared/model/node-resource.model';
 import {
   useBreadcrumbs,
 } from '@/frontend/states/zustand.states';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ChartDiskRessources from './disk-chart';
 import { StringUtils } from '@/shared/utils/string.utils';
+import { Actions } from '@/frontend/utils/nextjs-actions.utils';
+import { getNodeResourceUsage } from './actions';
+import { toast } from 'sonner';
+import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 
 export default function ResourcesNodes({
   resourcesNodes,
 }: {
-  resourcesNodes: NodeResourceModel[];
+  resourcesNodes?: NodeResourceModel[];
 }) {
+
+  const [updatedNodeRessources, setUpdatedResourcesNodes] = useState<NodeResourceModel[] | undefined>(resourcesNodes);
+
+  const fetchResourcesNodes = async () => {
+    try {
+      const data = await Actions.run(() => getNodeResourceUsage());
+      setUpdatedResourcesNodes(data);
+    } catch (ex) {
+      toast.error('An error occurred while fetching current resource usage');
+      console.error('An error occurred while fetching resources nodes', ex);
+    }
+  }
+
+  useEffect(() => {
+    const intervalId = setInterval(() => fetchResourcesNodes(), 5000);
+    return () => {
+      clearInterval(intervalId);
+    }
+  }, [resourcesNodes]);
+
   const chartData = [
     { browser: 'safari', usage: 1, fill: 'var(--color-safari)' },
   ];
@@ -46,13 +70,16 @@ export default function ResourcesNodes({
 
   const { setBreadcrumbs } = useBreadcrumbs();
   useEffect(
-    () => setBreadcrumbs([{ name: 'Monitoring', url: '/monitoring' }]),
-    []
-  );
+    () => setBreadcrumbs([{ name: 'Monitoring', url: '/monitoring' }]
+    ), []);
+
+  if (!updatedNodeRessources) {
+    return <FullLoadingSpinner />
+  }
 
   return (
     <div className="space-y-6">
-      {resourcesNodes.map((node, index) => (<>
+      {updatedNodeRessources.map((node, index) => (<>
         <Card className="flex flex-col">
           <CardHeader className="pb-0 text-center">
             <CardTitle>{node.name}</CardTitle>
