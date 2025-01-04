@@ -86,7 +86,7 @@ export default function VolumeBackupEditDialog({
           <Form {...form}>
             <form action={(e) => form.handleSubmit((data) => {
               return formAction(data);
-            })()}>
+            }, console.error)()}>
               <div className="space-y-4">
                 <FormField
                   control={form.control}

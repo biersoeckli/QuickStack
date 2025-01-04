@@ -11,6 +11,14 @@ export class FsUtils {
         }
     }
 
+    static async deleteFileIfExists(pathName: string) {
+        try {
+            await fs.promises.unlink(pathName);
+        } catch (ex) {
+
+        }
+    }
+
     static directoryExists(pathName: string) {
         try {
             return fs.existsSync(pathName);

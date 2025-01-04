@@ -78,6 +78,9 @@ export const deleteFileMount = async (fileMountId: string) =>
 export const saveBackupVolume = async (prevState: any, inputData: VolumeBackupEditModel) =>
     saveFormAction(inputData, volumeBackupEditZodModel, async (validatedData) => {
         await getAuthUserSession();
+        if (validatedData.retention < 1) {
+            throw new ServiceException('Retention must be at least 1');
+        }
         await volumeBackupService.save({
             ...validatedData,
             id: validatedData.id ?? undefined,
@@ -90,4 +93,11 @@ export const deleteBackupVolume = async (backupVolumeId: string) =>
         await getAuthUserSession();
         await volumeBackupService.deleteById(backupVolumeId);
         return new SuccessActionResult(undefined, 'Successfully deleted backup schedule');
+    });
+
+export const runBackupVolumeSchedule = async (backupVolumeId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        await volumeBackupService.createBackupForVolume(backupVolumeId);
+        return new SuccessActionResult(undefined, 'Backup created and uploaded successfully');
     });

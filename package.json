@@ -16,6 +16,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.717.0",
     "@hookform/resolvers": "^3.9.0",
     "@kubernetes/client-node": "^0.22.2",
     "@next-auth/prisma-adapter": "^1.0.7",

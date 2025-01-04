@@ -4,11 +4,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { EditIcon, TrashIcon } from "lucide-react";
+import { EditIcon, Play, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteBackupVolume, deleteVolume } from "./actions";
+import { deleteBackupVolume, runBackupVolumeSchedule } from "./actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { S3Target, VolumeBackup } from "@prisma/client";
+import { S3Target } from "@prisma/client";
 import React from "react";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import VolumeBackupEditDialog from "./volume-backup-edit-overlay";
@@ -25,6 +25,7 @@ export default function VolumeBackupList({
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const [isLoading, setIsLoading] = React.useState(false);
 
     const asyncDeleteBackupVolume = async (volumeId: string) => {
         const confirm = await openDialog({
@@ -34,6 +35,22 @@ export default function VolumeBackupList({
         });
         if (confirm) {
             await Toast.fromAction(() => deleteBackupVolume(volumeId));
+        }
+    };
+
+    const asyncRunBackupVolumeSchedule = async (volumeId: string) => {
+        const confirm = await openDialog({
+            title: "Create Backup",
+            description: "Are you sure you want to create a backup now?",
+            okButton: "Create Backup"
+        });
+        setIsLoading(true);
+        try {
+            if (confirm) {
+                await Toast.fromAction(() => runBackupVolumeSchedule(volumeId), undefined, 'Creating backup...');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -63,11 +80,14 @@ export default function VolumeBackupList({
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
                                 <TableCell className="font-medium flex gap-2">
+                                    <Button disabled={isLoading} variant="ghost" onClick={() => asyncRunBackupVolumeSchedule(volumeBackup.id)}>
+                                        <Play />
+                                    </Button>
                                     <VolumeBackupEditDialog volumeBackup={volumeBackup}
                                         s3Targets={s3Targets} volumes={app.appVolumes}>
-                                        <Button variant="ghost"><EditIcon /></Button>
+                                        <Button disabled={isLoading} variant="ghost"><EditIcon /></Button>
                                     </VolumeBackupEditDialog>
-                                    <Button variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
+                                    <Button disabled={isLoading} variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
                                         <TrashIcon />
                                     </Button>
                                 </TableCell>

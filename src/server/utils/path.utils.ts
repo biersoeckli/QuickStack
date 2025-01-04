@@ -19,6 +19,10 @@ export class PathUtils {
         return path.join(this.tempDataRoot, 'volume-downloads');
     }
 
+    static get tempBackupDataFolder() {
+        return path.join(this.tempDataRoot, 'backup-data');
+    }
+
     static gitRootPathForApp(appId: string): string {
         return path.join(PathUtils.gitRootPath, this.convertIdToFolderFriendlyName(appId));
     }
@@ -37,6 +41,10 @@ export class PathUtils {
 
     static volumeDownloadZipPath(volumeId: string): string {
         return path.join(this.tempVolumeDownloadPath, `${volumeId}.tar.gz`);
+    }
+
+    static backupVolumeDownloadZipPath(backupVolumeId: string): string {
+        return path.join(this.tempBackupDataFolder, `${backupVolumeId}.tar.gz`);
     }
 
     static splitPath(relativePath: string): { folderPath: string | undefined; filePath: string } {

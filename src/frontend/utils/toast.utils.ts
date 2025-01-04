@@ -2,7 +2,9 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { toast } from "sonner";
 
 export class Toast {
-    static async fromAction<A, B>(action: () => Promise<ServerActionResult<A, B>>, defaultSuccessMessage = 'Operation successful') {
+    static async fromAction<A, B>(action: () => Promise<ServerActionResult<A, B>>,
+        defaultSuccessMessage = 'Operation successful',
+        defaultLoadingMessage = 'loading...') {
 
         return new Promise<ServerActionResult<A, B>>(async (resolve, reject) => {
             toast.promise(async () => {
@@ -12,7 +14,7 @@ export class Toast {
                 }
                 return retVal;
             }, {
-                loading: 'loading...',
+                loading: defaultLoadingMessage,
                 success: (result: ServerActionResult<A, B>) => {
                     resolve(result);
                     return result.message ?? defaultSuccessMessage;
