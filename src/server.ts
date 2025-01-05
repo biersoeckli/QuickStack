@@ -7,7 +7,7 @@ import { CommandExecutorUtils } from './server/utils/command-executor.utils'
 import dataAccess from './server/adapter/db.client'
 import { FancyConsoleUtils } from './shared/utils/fancy-console.utils'
 import { Constants } from './shared/utils/constants'
-import registreAllBackupSchedules from './backup.server'
+import backupService from './server/services/standalone-services/backup.service'
 
 // Source: https://nextjs.org/docs/app/building-your-application/configuring/custom-server
 
@@ -51,10 +51,10 @@ async function initializeNextJs() {
         }
     }
 
-    await registreAllBackupSchedules();
+    await backupService.registerAllBackups();
 
-    const app = next({ dev })
-    const handle = app.getRequestHandler()
+    const app = next({ dev });
+    const handle = app.getRequestHandler();
 
     app.prepare().then(() => {
 

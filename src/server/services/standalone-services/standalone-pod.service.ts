@@ -114,32 +114,31 @@ class SetupPodService {
         return new Promise<void>((resolve, reject) => {
 
             const exec = new k8s.Exec(k3s.getKubeConfig());
-            exec
-                .exec(
-                    namespace,
-                    podName,
-                    containerName,
-                    command,
-                    writerStream,
-                    stderrStream,
-                    null,
-                    false,
-                    async ({ status }) => {
-                        try {
-                            writerStream.close();
-                            if (status === 'Failure') {
-                                return reject(
-                                    new Error(
-                                        `Error from cpFromPod - details: \n ${stderrStream.read().toString()}`,
-                                    ),
-                                );
-                            }
-                            resolve();
-                        } catch (e) {
-                            reject(e);
+            exec.exec(
+                namespace,
+                podName,
+                containerName,
+                command,
+                writerStream,
+                stderrStream,
+                null,
+                false,
+                async ({ status }) => {
+                    try {
+                        writerStream.close();
+                        if (status === 'Failure') {
+                            return reject(
+                                new Error(
+                                    `Error from cpFromPod - details: \n ${stderrStream.read().toString()}`,
+                                ),
+                            );
                         }
-                    },
-                )
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+            )
                 .catch(reject);
         });
     }

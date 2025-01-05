@@ -21,7 +21,7 @@ class ScheduleService {
     scheduleJob(jobName: string, cronExpression: string, callback: schedule.JobCallback) {
         const job = new this.schedule.Job(jobName, callback);
         job.schedule(cronExpression);
-        console.log(`[${ScheduleService.name}] Job ${jobName} scheduled with cron ${cronExpression}`);
+        console.log(`[${ScheduleService.name}] Job scheduled with cron ${cronExpression}`);
     }
 
     cancelJob(jobName: string) {
@@ -30,6 +30,10 @@ class ScheduleService {
             job.cancel();
             console.log(`[${ScheduleService.name}] Job ${jobName} cancelled`);
         }
+    }
+
+    getAlJobs() {
+        return Object.keys(this.schedule.scheduledJobs);
     }
 
     printScheduledJobs() {

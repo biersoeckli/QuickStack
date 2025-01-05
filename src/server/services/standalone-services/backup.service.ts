@@ -3,31 +3,45 @@ import { ServiceException } from "../../../shared/model/service.exception.model"
 import { PathUtils } from "../../utils/path.utils";
 import { FsUtils } from "../../utils/fs.utils";
 import s3Service from "../aws-s3.service";
-import { VolumeBackup } from "@prisma/client";
 import scheduleService from "./schedule.service";
 import standalonePodService from "./standalone-pod.service";
+import { ListUtils } from "../../../shared/utils/list.utils";
 
 class BackupService {
 
-    async registerBackupJob(volumeBackup: VolumeBackup) {
-        const cron = volumeBackup.cron;
-        const jobName = `backup-volume-${volumeBackup.id}`;
-        scheduleService.scheduleJob(jobName, cron, async () => {
-            try {
-                await this.runBackupForVolume(volumeBackup.id);
-            } catch (e) {
-                console.error(`Error during backup for volume ${volumeBackup.id}`);
-                console.error(e);
-            }
-        });
+    async registerAllBackups() {
+        const allVolumeBackups = await dataAccess.client.volumeBackup.findMany();
+        console.log(`Deregistering existing backup schedules...`);
+        this.unregisterAllBackups();
+
+        console.log(`Registering ${allVolumeBackups.length} backup schedules...`);
+        const groupedByCron = ListUtils.groupBy(allVolumeBackups, vb => vb.cron);
+
+        for (const [cron, volumeBackups] of Array.from(groupedByCron.entries())) {
+            scheduleService.scheduleJob(cron, cron, async () => {
+                console.log(`Running backup for ${volumeBackups.length} volumes...`);
+                for (const volumeBackup of volumeBackups) {
+                    try {
+                        await this.runBackupForVolume(volumeBackup.id);
+                    } catch (e) {
+                        console.error(`Error during backup for volume ${volumeBackup.volumeId} and backup ${volumeBackup.id}`);
+                        console.error(e);
+                    }
+                }
+                console.log(`Backup for ${volumeBackups.length} volumes finished.`);
+            });
+        }
     }
 
-    async unregisterBackupJob(volumeBackupId: string) {
-        const jobName = `backup-volume-${volumeBackupId}`;
-        scheduleService.cancelJob(jobName);
+    async unregisterAllBackups() {
+        const allJobs = scheduleService.getAlJobs();
+        for (const jobName of allJobs) {
+            scheduleService.cancelJob(jobName);
+        }
     }
 
     async runBackupForVolume(backupVolumeId: string) {
+        console.log(`Running backup for backupVolume ${backupVolumeId}`);
 
         const backupVolume = await dataAccess.client.volumeBackup.findFirstOrThrow({
             where: {

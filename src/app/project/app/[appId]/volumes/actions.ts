@@ -82,22 +82,19 @@ export const saveBackupVolume = async (prevState: any, inputData: VolumeBackupEd
         if (validatedData.retention < 1) {
             throw new ServiceException('Retention must be at least 1');
         }
-        if (validatedData.id) {
-            await backupService.unregisterBackupJob(validatedData.id);
-        }
         const savedVolumeBackup = await volumeBackupService.save({
             ...validatedData,
             id: validatedData.id ?? undefined,
         });
-        await backupService.registerBackupJob(savedVolumeBackup);
+        await backupService.registerAllBackups();
         return new SuccessActionResult();
     });
 
 export const deleteBackupVolume = async (backupVolumeId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
-        await backupService.unregisterBackupJob(backupVolumeId);
         await volumeBackupService.deleteById(backupVolumeId);
+        await backupService.registerAllBackups();
         return new SuccessActionResult(undefined, 'Successfully deleted backup schedule');
     });
 
