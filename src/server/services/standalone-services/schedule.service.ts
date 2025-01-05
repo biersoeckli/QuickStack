@@ -11,7 +11,7 @@ declare const globalThis: {
 
 const scheduleInstance = globalThis.globalSchedule ?? globalScheduleInstance()
 
-if (process.env.NODE_ENV !== 'production') globalThis.globalSchedule = scheduleInstance
+globalThis.globalSchedule = scheduleInstance
 
 
 class ScheduleService {
@@ -33,7 +33,7 @@ class ScheduleService {
     }
 
     getAlJobs() {
-        return Object.keys(this.schedule.scheduledJobs);
+        return Object.keys(this.schedule.scheduledJobs ?? {});
     }
 
     printScheduledJobs() {
