@@ -5,7 +5,7 @@ export const volumeBackupEditZodModel = z.object({
   id: z.string().nullish(),
   volumeId: z.string(),
   targetId: z.string(),
-  cron: z.string().trim().regex(/^ *(\*|[0-5]?\d) *(\*|[01]?\d) *(\*|[0-2]?\d) *(\*|[0-6]?\d) *(\*|[0-6]?\d) *$/),
+  cron: z.string().trim().regex(/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})/),
   //cron: z.string().trim().min(1),
   retention: stringToNumber,
 });

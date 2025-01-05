@@ -44,9 +44,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
   useEffect(() => {
     if (state.status === 'success') {
       form.reset();
-      toast.success('Volume saved successfully', {
-        description: "Click \"deploy\" to apply the changes to your app.",
-      });
+      toast.success('S3 Target saved successfully');
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof s3TargetEditZodModel>(state, form);

@@ -5,7 +5,7 @@ import * as k8s from '@kubernetes/client-node';
 import stream from 'stream';
 import { StreamUtils } from "../../shared/utils/stream.utils";
 import WebSocket from "ws";
-import setupPodService from "./setup-services/setup-pod.service";
+import standalonePodService from "./standalone-services/standalone-pod.service";
 
 interface TerminalStrean {
     stdoutStream: stream.PassThrough;
@@ -34,7 +34,7 @@ export class TerminalService {
                 const streamInputKey = StreamUtils.getInputStreamName(terminalInfo);
                 const streamOutputKey = StreamUtils.getOutputStreamName(terminalInfo);
 
-                const podReachable = await setupPodService.waitUntilPodIsRunningFailedOrSucceded(terminalInfo.namespace, terminalInfo.podName);
+                const podReachable = await standalonePodService.waitUntilPodIsRunningFailedOrSucceded(terminalInfo.namespace, terminalInfo.podName);
                 if (!podReachable) {
                     socket.emit(streamOutputKey, 'Pod is not reachable.');
                     return;

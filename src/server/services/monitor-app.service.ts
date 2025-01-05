@@ -1,6 +1,6 @@
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
-import setupPodService from "./setup-services/setup-pod.service";
+import standalonePodService from "./standalone-services/standalone-pod.service";
 import clusterService from "./node.service";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { KubernetesSizeConverter } from "../utils/kubernetes-size-converter.utils";
@@ -8,7 +8,7 @@ import { KubernetesSizeConverter } from "../utils/kubernetes-size-converter.util
 class MonitorAppService {
     async getMonitoringForApp(projectId: string, appId: string): Promise<PodsResourceInfoModel> {
         const metricsClient = new k8s.Metrics(k3s.getKubeConfig());
-        const podsFromApp = await setupPodService.getPodsForApp(projectId, appId);
+        const podsFromApp = await standalonePodService.getPodsForApp(projectId, appId);
         const topPods = await k8s.topPods(k3s.core, metricsClient, projectId);
 
         const filteredTopPods = topPods.filter((topPod) =>

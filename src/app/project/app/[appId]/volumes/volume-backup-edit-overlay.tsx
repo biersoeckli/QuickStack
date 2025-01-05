@@ -68,7 +68,7 @@ export default function VolumeBackupEditDialog({
 
   useEffect(() => {
     form.reset(volumeBackup);
-  }, [volumeBackup]);
+  }, [volumeBackup, volumes, s3Targets]);
 
   return (
     <>

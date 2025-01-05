@@ -4,7 +4,7 @@ import namespaceService from "./namespace.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import crypto from "crypto";
 import { FancyConsoleUtils } from "../../shared/utils/fancy-console.utils";
-import setupPodService from "./setup-services/setup-pod.service";
+import standalonePodService from "./standalone-services/standalone-pod.service";
 import ingressSetupService from "./setup-services/ingress-setup.service";
 
 class QuickStackService {
@@ -43,14 +43,14 @@ class QuickStackService {
     async waitUntilQuickstackIsRunning() {
         console.log('Waiting for QuickStack to be running...');
         await new Promise((resolve) => setTimeout(resolve, 5000));
-        const pods = await setupPodService.getPodsForApp(this.QUICKSTACK_NAMESPACE, this.QUICKSTACK_DEPLOYMENT_NAME);
+        const pods = await standalonePodService.getPodsForApp(this.QUICKSTACK_NAMESPACE, this.QUICKSTACK_DEPLOYMENT_NAME);
         const quickStackPod = pods.find(p => p);
         if (!quickStackPod) {
             console.error('[ERROR] QuickStack pod was not found');
             return;
         }
-        await setupPodService.waitUntilPodIsRunningFailedOrSucceded(this.QUICKSTACK_NAMESPACE, quickStackPod.podName);
-        if (setupPodService) {
+        await standalonePodService.waitUntilPodIsRunningFailedOrSucceded(this.QUICKSTACK_NAMESPACE, quickStackPod.podName);
+        if (standalonePodService) {
             console.log('QuickStack is now running');
         } else {
             console.warn('Could not verify if QuickStack is running, please check manually.');
