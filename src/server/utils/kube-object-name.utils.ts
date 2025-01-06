@@ -53,6 +53,10 @@ export class KubeObjectNameUtils {
         return `pvc-${volumeId}`;
     }
 
+    static toRestorePodName(volumeId: string): `restore-${string}` {
+        return `restore-${volumeId}`;
+    }
+
     static getIngressName(domainId: string): `ingress-${string}` {
         return `ingress-${domainId}`;
     }

@@ -11,11 +11,29 @@ import { fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/backup-volume-edit.model";
 import volumeBackupService from "@/server/services/volume-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
+import { volumeUploadZodModel } from "@/shared/model/volume-upload.model";
+import restoreService from "@/server/services/restore.service";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
     id: z.string().nullish()
 }));
+
+export const restoreVolumeFromZip = async (prevState: any, inputData: FormData, volumeId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        const validatedData = volumeUploadZodModel.parse({
+            volumeId,
+            file: ''
+        });
+
+        const file = inputData.get('file') as File;
+        if (!file) {
+            throw new ServiceException('No file provided');
+        }
+        await restoreService.restore(file, validatedData.volumeId);
+        return new SuccessActionResult();
+    });
 
 export const saveVolume = async (prevState: any, inputData: z.infer<typeof actionAppVolumeEditZodModel>) =>
     saveFormAction(inputData, actionAppVolumeEditZodModel, async (validatedData) => {

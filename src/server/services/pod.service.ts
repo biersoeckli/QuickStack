@@ -12,6 +12,13 @@ class PodService {
         }
     }
 
+    async waitUntilPodIsTerminated(projectId: string, podName: string) {
+        const isPodTerminated = await standalonePodService.waitUntilPodIsTerminated(projectId, podName);
+        if (!isPodTerminated) {
+            throw new ServiceException(`Pod ${podName} did not become terminated in time (timeout).`);
+        }
+    }
+
     async getPodInfoByName(projectId: string, podName: string) {
         const res = await k3s.core.readNamespacedPod(podName, projectId);
         return {
@@ -44,6 +51,13 @@ class PodService {
         return await standalonePodService.cpFromPod(namespace, podName, containerName, srcPath, zipOutputPath, cwd);
     }
 
+    async deleteRestorePodIfExists(namespace: string, name: string) {
+        const existingPods = await k3s.core.listNamespacedPod(namespace);
+        const pod = existingPods.body.items.find((item) => item.metadata?.labels?.app === name);
+        if (pod) {
+            await k3s.core.deleteNamespacedPod(name, namespace);
+        }
+    }
 }
 
 const podService = new PodService();
