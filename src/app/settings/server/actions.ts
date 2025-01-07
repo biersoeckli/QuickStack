@@ -10,6 +10,8 @@ import registryService from "@/server/services/registry.service";
 import { StringUtils } from "@/shared/utils/string.utils";
 import { RegistryStorageLocationSettingsModel, registryStorageLocationSettingsZodModel } from "@/shared/model/registry-storage-location-settings.model";
 import { Constants } from "@/shared/utils/constants";
+import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
+import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -29,6 +31,29 @@ export const updateIngressSettings = async (prevState: any, inputData: QsIngress
 
     await quickStackService.createOrUpdateService(!validatedData.disableNodePortAccess);
     await quickStackService.createOrUpdateIngress(validatedData.serverUrl);
+  });
+
+
+export const updatePublicIpv4Settings = async (prevState: any, inputData: QsPublicIpv4SettingsModel) =>
+  saveFormAction(inputData, qsPublicIpv4SettingsZodModel, async (validatedData) => {
+    await getAuthUserSession();
+
+    await paramService.save({
+      name: ParamService.PUBLIC_IPV4_ADDRESS,
+      value: validatedData.publicIpv4
+    });
+  });
+
+
+export const updatePublicIpv4SettingsAutomatically = async () =>
+  simpleAction(async () => {
+    await getAuthUserSession();
+
+    const publicIpv4 = await ipAddressFinderAdapter.getPublicIpOfServer();
+    await paramService.save({
+      name: ParamService.PUBLIC_IPV4_ADDRESS,
+      value: publicIpv4
+    });
   });
 
 export const updateLetsEncryptSettings = async (prevState: any, inputData: QsLetsEncryptSettingsModel) =>

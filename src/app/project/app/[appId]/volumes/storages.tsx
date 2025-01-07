@@ -4,21 +4,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, TrashIcon, Upload } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon } from "lucide-react";
 import DialogEditDialog from "./storage-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteVolume, downloadPvcData, getPvcUsage } from "./actions";
+import { deleteVolume, downloadPvcData, getPvcUsage, openFileBrowserForVolume } from "./actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { AppVolume } from "@prisma/client";
 import React from "react";
 import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
-import StorageRestoreDialog from "./storage-restore-overlay";
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Code } from "@/components/custom/code";
+import { Label } from "@/components/ui/label";
 
 type AppVolumeWithCapacity = (AppVolume & { capacity?: string });
 
@@ -89,6 +90,47 @@ export default function StorageList({ app }: {
         }
     }
 
+    const openFileBrowserForVolumeAsync = async (volumeId: string) => {
+
+        try {
+            const confirm = await openDialog({
+                title: "Open File Browser",
+                description: "To view the Files of the volume, your app has to be stopped. The file browser will be opened in a new tab. Are you sure you want to open the file browser?",
+                okButton: "Stop App and Open File Browser"
+            });
+            if (!confirm) {
+                return;
+            }
+            setIsLoading(true);
+            const fileBrowserStartResult = await Toast.fromAction(() => openFileBrowserForVolume(volumeId), undefined, 'Starting file browser...')
+            if (fileBrowserStartResult.status !== 'success' || !fileBrowserStartResult.data) {
+                return;
+            }
+            await openDialog({
+                title: "File Browser Ready",
+                description: <>
+                    The File Browser is ready and can be opened in a new tab. <br />
+                    Use the following credentials to login:
+                    <div className="pt-3 grid grid-cols-1 gap-1">
+                        <Label>Username</Label>
+                        <div> <Code>quickstack</Code></div>
+                    </div>
+                    <div className="pt-3 pb-4 grid grid-cols-1 gap-1">
+                        <Label>Password</Label>
+                        <div><Code>{fileBrowserStartResult.data.password}</Code></div>
+                    </div>
+                    <div>
+                        <Button variant='outline' onClick={() => window.open(fileBrowserStartResult.data!.url, '_blank')}>Open File Browser</Button>
+                    </div>
+                </>,
+                okButton: '',
+                cancelButton: "Close"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     return <>
         <Card>
             <CardHeader>
@@ -127,7 +169,19 @@ export default function StorageList({ app }: {
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
-                                    <StorageRestoreDialog app={app} volume={volume}>
+                                    <TooltipProvider>
+                                        <Tooltip delayDuration={200}>
+                                            <TooltipTrigger>
+                                                <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
+                                                    <Folder />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>View content of Volume</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    {/*<StorageRestoreDialog app={app} volume={volume}>
                                         <TooltipProvider>
                                             <Tooltip delayDuration={200}>
                                                 <TooltipTrigger>
@@ -140,7 +194,7 @@ export default function StorageList({ app }: {
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
-                                    </StorageRestoreDialog>
+                                    </StorageRestoreDialog>*/}
                                     <DialogEditDialog app={app} volume={volume}>
                                         <TooltipProvider>
                                             <Tooltip delayDuration={200}>

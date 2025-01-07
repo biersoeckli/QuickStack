@@ -27,9 +27,7 @@ class SvcService {
         }
     }
 
-    async createOrUpdateService(deplyomentId: string, app: AppExtendedModel) {
-        const existingService = await this.getService(app.projectId, app.id);
-        // port configuration with removed duplicates
+    async createOrUpdateServiceForApp(deplyomentId: string, app: AppExtendedModel) {
         const ports: {
             name: string;
             port: number;
@@ -51,29 +49,45 @@ class SvcService {
 
         if (ports.length === 0) {
             dlog(deplyomentId, `No domain or internal port settings found, service (HTTP) will not be created or updated. The application will run, but will not be accessible via the internal network or the internet.`);
+        }
+
+        await this.createOrUpdateService(app.projectId, app.id, ports);
+
+        dlog(deplyomentId, `Updating service (HTTP) with ports ${ports.map(x => x.port).join(', ')}...`);
+
+    }
+
+    async createOrUpdateService(namespace: string, kubeAppName: string, ports: {
+        name: string;
+        port: number;
+        targetPort: number;
+    }[]) {
+        const existingService = await this.getService(namespace, kubeAppName);
+        // port configuration with removed duplicates
+
+        if (ports.length === 0) {
             if (existingService) {
-                await this.deleteService(app.projectId, app.id);
+                await this.deleteService(namespace, kubeAppName);
             }
             return;
         }
 
         const body = {
             metadata: {
-                name: KubeObjectNameUtils.toServiceName(app.id)
+                name: KubeObjectNameUtils.toServiceName(kubeAppName)
             },
             spec: {
                 selector: {
-                    app: app.id
+                    app: kubeAppName
                 },
                 ports: ports
             }
         };
 
-        dlog(deplyomentId, `Updating service (HTTP) with ports ${ports.map(x => x.port).join(', ')}...`);
         if (existingService) {
-            await k3s.core.replaceNamespacedService(KubeObjectNameUtils.toServiceName(app.id), app.projectId, body);
+            await k3s.core.replaceNamespacedService(KubeObjectNameUtils.toServiceName(kubeAppName), namespace, body);
         } else {
-            await k3s.core.createNamespacedService(app.projectId, body);
+            await k3s.core.createNamespacedService(namespace, body);
         }
 
     }

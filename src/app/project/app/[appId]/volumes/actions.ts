@@ -13,6 +13,7 @@ import volumeBackupService from "@/server/services/volume-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
 import { volumeUploadZodModel } from "@/shared/model/volume-upload.model";
 import restoreService from "@/server/services/restore.service";
+import fileBrowserService from "@/server/services/file-browser-service";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -122,3 +123,13 @@ export const runBackupVolumeSchedule = async (backupVolumeId: string) =>
         await backupService.runBackupForVolume(backupVolumeId);
         return new SuccessActionResult(undefined, 'Backup created and uploaded successfully');
     });
+
+export const openFileBrowserForVolume = async (volumeId: string) =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        const fileBrowserDomain = await fileBrowserService.deployFileBrowserForVolume(volumeId);
+        return new SuccessActionResult(fileBrowserDomain, 'File browser started successfully');
+    }) as Promise<ServerActionResult<any, {
+        url: string;
+        password: string;
+    }>>;

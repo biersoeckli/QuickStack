@@ -4,7 +4,6 @@ import { ListUtils } from "../../shared/utils/list.utils";
 
 type clientType = keyof PrismaClient<Prisma.PrismaClientOptions, never | undefined>;
 
-
 const prismaClientSingleton = () => {
   return new PrismaClient()
 }

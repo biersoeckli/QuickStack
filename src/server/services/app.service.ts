@@ -50,7 +50,7 @@ class AppService {
         }
         try {
             await svcService.deleteService(existingApp.projectId, existingApp.id);
-            await deploymentService.deleteDeployment(existingApp.projectId, existingApp.id);
+            await deploymentService.deleteDeploymentIfExists(existingApp.projectId, existingApp.id);
             await ingressService.deleteAllIngressForApp(existingApp.projectId, existingApp.id);
             await pvcService.deleteAllPvcOfApp(existingApp.projectId, existingApp.id);
             await buildService.deleteAllBuildsOfApp(existingApp.id);

@@ -16,6 +16,8 @@ import registryService from "./registry.service";
 import { EnvVarUtils } from "../utils/env-var.utils";
 import configMapService from "./config-map.service";
 import secretService from "./secret.service";
+import fileBrowserService from "./file-browser-service";
+import podService from "./pod.service";
 
 class DeploymentService {
 
@@ -27,7 +29,7 @@ class DeploymentService {
         }
     }
 
-    async deleteDeployment(projectId: string, appId: string) {
+    async deleteDeploymentIfExists(projectId: string, appId: string) {
         const existingDeployment = await this.getDeployment(projectId, appId);
         if (!existingDeployment) {
             return;
@@ -45,6 +47,11 @@ class DeploymentService {
 
     async createDeployment(deploymentId: string, app: AppExtendedModel, buildJobName?: string, gitCommitHash?: string) {
         await this.validateDeployment(app);
+
+        dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
+        for (let volume of app.appVolumes) {
+            await fileBrowserService.deleteFileBrowserForVolumeIfExists(volume.id);
+        }
 
         dlog(deploymentId, `Starting deployment of containter...`);
 
@@ -173,7 +180,7 @@ class DeploymentService {
         dlog(deploymentId, `Cleanup unused ressources from previous deployments...`);
         await configMapService.deleteUnusedConfigMaps(app);
         await pvcService.deleteUnusedPvcOfApp(app);
-        await svcService.createOrUpdateService(deploymentId, app);
+        await svcService.createOrUpdateServiceForApp(deploymentId, app);
         await secretService.delteUnusedSecrets(app);
         dlog(deploymentId, `Updating ingress...`);
         await ingressService.createOrUpdateIngressForApp(deploymentId, app);
@@ -187,6 +194,14 @@ class DeploymentService {
         }
         existingDeployment.spec!.replicas = replicas;
         return k3s.apps.replaceNamespacedDeployment(appId, projectId, existingDeployment);
+    }
+
+    async setReplicasToZeroAndWaitForShutdown(projectId: string, appId: string) {
+        await this.setReplicasForDeployment(projectId, appId, 0);
+        const podNames = await podService.getPodsForApp(projectId, appId);
+        for (const pod of podNames) {
+            await podService.waitUntilPodIsTerminated(projectId, pod.podName);
+        }
     }
 
 

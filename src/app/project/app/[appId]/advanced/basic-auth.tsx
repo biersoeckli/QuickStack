@@ -4,10 +4,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { EditIcon, Eye, EyeClosed, EyeOffIcon, TrashIcon } from "lucide-react";
+import { EditIcon, Eye, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { AppVolume } from "@prisma/client";
 import React from "react";
 import FileMountEditDialog from "./basic-auth-edit-dialog";
 import BasicAuthEditDialog from "./basic-auth-edit-dialog";

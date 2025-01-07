@@ -7,6 +7,7 @@ import paramService, { ParamService } from "@/server/services/param.service";
 import quickStackService from "@/server/services/qs.service";
 import userService from "@/server/services/user.service";
 import { saveFormAction } from "@/server/utils/action-wrapper.utils";
+import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
 
 
 export const registerUser = async (prevState: any, inputData: RegisterFormInputSchema) =>
@@ -17,6 +18,13 @@ export const registerUser = async (prevState: any, inputData: RegisterFormInputS
         }
         await userService.registerUser(validatedData.email, validatedData.password);
         await quickStackService.createOrUpdateCertIssuer(validatedData.email);
+
+        try {
+            await paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS, await ipAddressFinderAdapter.getPublicIpOfServer());
+        } catch (e) {
+            // ignore
+            console.error('Failes to evaluate public ip address', e);
+        }
         if (validatedData.qsHostname) {
             const url = new URL(validatedData.qsHostname.includes('://') ? validatedData.qsHostname : `https://${validatedData.qsHostname}`);
             await paramService.save({

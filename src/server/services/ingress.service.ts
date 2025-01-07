@@ -15,7 +15,7 @@ class IngressService {
         return res.body.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
     }
 
-    async getIngress(projectId: string, domainId: string) {
+    async getIngressByName(projectId: string, domainId: string) {
         const res = await k3s.network.listNamespacedIngress(projectId);
         return res.body.items.find((item) => item.metadata?.name === KubeObjectNameUtils.getIngressName(domainId));
     }
@@ -60,10 +60,13 @@ class IngressService {
         await this.deleteUnusedIngressesOfApp(app);
     }
 
-    async createOrUpdateIngress(deploymentId: string, app: AppExtendedModel, domain: AppDomain, basicAuthMiddlewareName?: string) {
+    async createOrUpdateIngress(deploymentId: string,
+        app: { id: string, projectId: string },
+        domain: { id: string, hostname: string, port: number, useSsl: boolean, redirectHttps: boolean },
+        basicAuthMiddlewareName?: string) {
         const hostname = domain.hostname;
         const ingressName = KubeObjectNameUtils.getIngressName(domain.id);
-        const existingIngress = await this.getIngress(app.projectId, domain.id);
+        const existingIngress = await this.getIngressByName(app.projectId, domain.id);
 
         const middlewares = [
             basicAuthMiddlewareName,
@@ -129,35 +132,40 @@ class IngressService {
     }
 
     async configureBasicAuthForApp(app: AppExtendedModel) {
-        if (app.appBasicAuths.length === 0) {
+        if (!app.appBasicAuths || app.appBasicAuths.length === 0) {
             return undefined;
         }
         return await this.configureBasicAuthMiddleware(app.projectId, app.id, app.appBasicAuths.map(basicAuth => [basicAuth.username, basicAuth.password]));
     }
 
     async deleteUnusedBasicAuthMiddlewaresForApp(app: AppExtendedModel) {
-        if (app.appBasicAuths.length > 0) {
+        if (!app.appBasicAuths || app.appBasicAuths.length > 0) {
             return;
         }
 
+        await this.deleteUnusedBasicAuthMiddlewares(app.projectId, app.id);
+    }
+
+    async deleteUnusedBasicAuthMiddlewares(namespace: string, basicAuthId: string) {
+
         // delete middleware
-        const middlewareName = `basic-auth-${app.id}`;
+        const middlewareName = `ba-${basicAuthId}`;
         const existingMiddlewares = await k3s.customObjects.listNamespacedCustomObject('traefik.io',            // group
             'v1alpha1',              // version
-            app.projectId,        // namespace
+            namespace,        // namespace
             'middlewares'            // plural name of the custom resource
         );
         const existingBasicAuthMiddleware = (existingMiddlewares.body as any).items.find((item: any) => item.metadata?.name === middlewareName);
         if (existingBasicAuthMiddleware) {
-            await k3s.customObjects.deleteNamespacedCustomObject('traefik.io', 'v1alpha1', app.projectId, 'middlewares', middlewareName);
+            await k3s.customObjects.deleteNamespacedCustomObject('traefik.io', 'v1alpha1', namespace, 'middlewares', middlewareName);
         }
 
         // delete secret
-        const secretName = `basic-auth-secret-${app.id}`;
-        const existingSecrets = await k3s.core.listNamespacedSecret(app.projectId);
+        const secretName = `bas-${basicAuthId}`;
+        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
         const existingSecret = existingSecrets.body.items.find((item) => item.metadata?.name === secretName);
         if (existingSecret) {
-            await k3s.core.deleteNamespacedSecret(secretName, app.projectId);
+            await k3s.core.deleteNamespacedSecret(secretName, namespace);
         }
     }
 
@@ -167,8 +175,8 @@ class IngressService {
      */
     async configureBasicAuthMiddleware(namespace: string, basicAuthId: string, usernamePassword: [string, string][]) {
 
-        const basicAuthNameMiddlewareName = `basic-auth-${basicAuthId}`;
-        const basicAuthSecretName = `basic-auth-secret-${basicAuthId}`;
+        const basicAuthNameMiddlewareName = `ba-${basicAuthId}`; // basic auth middleware
+        const basicAuthSecretName = `bas-${basicAuthId}`; // basic auth secret
 
         const secretNamespace = namespace;
         const middlewareNamespace = namespace;

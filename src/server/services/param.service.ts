@@ -11,6 +11,7 @@ export class ParamService {
     static readonly LETS_ENCRYPT_MAIL = 'letsEncryptMail';
     static readonly USE_CANARY_CHANNEL = 'useCanaryChannel';
     static readonly REGISTRY_SOTRAGE_LOCATION = 'registryStorageLocation';
+    static readonly PUBLIC_IPV4_ADDRESS = 'publicIpv4Address';
     static readonly K3S_JOIN_TOKEN = Constants.K3S_JOIN_TOKEN;
 
     async getUncached(name: string) {
