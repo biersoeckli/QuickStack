@@ -18,6 +18,7 @@ import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
 import VolumeBackupList from "./volumes/volume-backup";
 import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
+import BasicAuth from "./advanced/basic-auth";
 
 export default function AppTabs({
     app,
@@ -45,6 +46,7 @@ export default function AppTabs({
                 <TabsTrigger value="environment">Environment</TabsTrigger>
                 <TabsTrigger value="domains">Domains</TabsTrigger>
                 <TabsTrigger value="storage">Storage</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="grid grid-cols-1 3xl:grid-cols-2 gap-4">
                 <MonitoringTab app={app} />
@@ -73,6 +75,9 @@ export default function AppTabs({
                     app={app}
                     s3Targets={s3Targets}
                     volumeBackups={volumeBackups} />
+            </TabsContent>
+            <TabsContent value="advanced" className="space-y-4">
+                <BasicAuth app={app} />
             </TabsContent>
         </Tabs>
     )

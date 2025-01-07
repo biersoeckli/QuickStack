@@ -1,7 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { App, AppDomain, AppFileMount, AppPort, AppVolume, Prisma } from "@prisma/client";
+import { App, AppBasicAuth, AppDomain, AppFileMount, AppPort, AppVolume, Prisma } from "@prisma/client";
 import { DefaultArgs } from "@prisma/client/runtime/library";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -87,6 +87,7 @@ class AppService {
             appVolumes: true,
             appPorts: true,
             appFileMounts: true,
+            appBasicAuths: true
         };
 
         if (cached) {
@@ -407,6 +408,53 @@ class AppService {
         } finally {
             revalidateTag(Tags.app(existingPort.appId));
             revalidateTag(Tags.apps(existingPort.app.projectId));
+        }
+    }
+
+    async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput) {
+        let savedItem: AppBasicAuth;
+        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string);
+        try {
+            if (itemToBeSaved.id) {
+                savedItem = await dataAccess.client.appBasicAuth.update({
+                    where: {
+                        id: itemToBeSaved.id as string
+                    },
+                    data: itemToBeSaved
+                });
+            } else {
+                savedItem = await dataAccess.client.appBasicAuth.create({
+                    data: itemToBeSaved as Prisma.AppBasicAuthUncheckedCreateInput
+                });
+            }
+
+        } finally {
+            revalidateTag(Tags.apps(existingApp.projectId as string));
+            revalidateTag(Tags.app(existingApp.id as string));
+        }
+        return savedItem;
+    }
+
+    async deleteBasicAuthById(id: string) {
+        const existingItem = await dataAccess.client.appBasicAuth.findFirst({
+            where: {
+                id
+            }, include: {
+                app: true
+            }
+        });
+        if (!existingItem) {
+            return;
+        }
+        try {
+            await dataAccess.client.appBasicAuth.delete({
+                where: {
+                    id
+                }
+            });
+        } finally {
+            revalidateTag(Tags.app(existingItem.appId));
+            revalidateTag(Tags.apps(existingItem.app.projectId));
         }
     }
 }

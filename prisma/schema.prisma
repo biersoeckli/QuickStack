@@ -155,6 +155,7 @@ model App {
   appPorts      AppPort[]
   appVolumes    AppVolume[]
   appFileMounts AppFileMount[]
+  appBasicAuths AppBasicAuth[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -243,6 +244,17 @@ model VolumeBackup {
   target    S3Target  @relation(fields: [targetId], references: [id], onDelete: Cascade)
   cron      String
   retention Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppBasicAuth {
+  id       String @id @default(uuid())
+  username String
+  password String
+  appId    String
+  app      App    @relation(fields: [appId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

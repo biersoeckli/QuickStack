@@ -21,7 +21,7 @@ class VolumeBackupService {
     }
 
     async getForApp(appId: string): Promise<VolumeBackupExtendedModel[]> {
-        return await unstable_cache(() => dataAccess.client.volumeBackup.findMany({
+        return await unstable_cache((appId: string) => dataAccess.client.volumeBackup.findMany({
             where: {
                 volume: {
                     appId
@@ -36,7 +36,7 @@ class VolumeBackupService {
         }),
             [Tags.volumeBackups()], {
             tags: [Tags.volumeBackups()]
-        })();
+        })(appId);
     }
 
     async getById(id: string) {

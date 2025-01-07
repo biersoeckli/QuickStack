@@ -4,14 +4,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, TrashIcon } from "lucide-react";
-import DialogEditDialog from "./storage-edit-overlay";
+import { EditIcon, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteFileMount, deleteVolume, downloadPvcData, getPvcUsage } from "./actions";
+import { deleteFileMount } from "./actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { AppVolume } from "@prisma/client";
 import React from "react";
-import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
 import FileMountEditDialog from "./file-mount-edit-dialog";
 
 type AppVolumeWithCapacity = (AppVolume & { capacity?: string });
