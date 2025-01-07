@@ -19,6 +19,7 @@ import DbCredentials from "./credentials/db-crendentials";
 import VolumeBackupList from "./volumes/volume-backup";
 import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
 import BasicAuth from "./advanced/basic-auth";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export default function AppTabs({
     app,
@@ -39,15 +40,19 @@ export default function AppTabs({
 
     return (
         <Tabs defaultValue="general" value={tabName} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
-            <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                {app.appType !== 'APP' && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="environment">Environment</TabsTrigger>
-                <TabsTrigger value="domains">Domains</TabsTrigger>
-                <TabsTrigger value="storage">Storage</TabsTrigger>
-                <TabsTrigger value="advanced">Advanced</TabsTrigger>
-            </TabsList>
+            <ScrollArea >
+                <TabsList>
+
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    {app.appType !== 'APP' && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="environment">Environment</TabsTrigger>
+                    <TabsTrigger value="domains">Domains</TabsTrigger>
+                    <TabsTrigger value="storage">Storage</TabsTrigger>
+                    <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             <TabsContent value="overview" className="grid grid-cols-1 3xl:grid-cols-2 gap-4">
                 <MonitoringTab app={app} />
                 <Logs app={app} />
