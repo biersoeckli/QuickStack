@@ -45,6 +45,7 @@ MYSQL_USER=wordpress
             containerMountPath: '/var/lib/mysql',
             accessMode: 'ReadWriteOnce'
         }],
+        appFileMounts: [],
         appPorts: [{
             port: 3306,
         }]
@@ -78,6 +79,12 @@ WORDPRESS_TABLE_PREFIX=wp_
             size: 500,
             containerMountPath: '/var/www/html',
             accessMode: 'ReadWriteMany'
+        }],
+        appFileMounts: [{
+            containerMountPath: '/usr/local/etc/php/conf.d/custom.ini',
+            content: `upload_max_filesize = 100M
+post_max_size = 100M
+`
         }],
         appPorts: [{
             port: 80,

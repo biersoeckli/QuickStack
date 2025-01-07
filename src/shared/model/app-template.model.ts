@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppDomainModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
+import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appVolumeTypeZodModel } from "./volume-edit.model";
 
@@ -28,6 +28,12 @@ export const appTemplateContentZodModel = z.object({
     appDomains: AppDomainModel.array(),
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
+        id: z.undefined(),
+        appId: z.undefined(),
+        createdAt: z.undefined(),
+        updatedAt: z.undefined(),
+    }).array(),
+    appFileMounts: AppFileMountModel.extend({
         id: z.undefined(),
         appId: z.undefined(),
         createdAt: z.undefined(),

@@ -55,6 +55,7 @@ export const mariadbAppTemplate: AppTemplateModel = {
             containerMountPath: '/var/lib/mysql',
             accessMode: 'ReadWriteOnce'
         }],
+        appFileMounts: [],
         appPorts: [{
             port: 3306,
         }]

@@ -48,6 +48,7 @@ export const mongodbAppTemplate: AppTemplateModel = {
             containerMountPath: '/data/db',
             accessMode: 'ReadWriteOnce'
         }],
+        appFileMounts: [],
         appPorts: [{
             port: 27017,
         }]

@@ -48,6 +48,7 @@ export const postgreAppTemplate: AppTemplateModel = {
             containerMountPath: '/var/lib/postgresql',
             accessMode: 'ReadWriteOnce'
         }],
+        appFileMounts: [],
         appPorts: [{
             port: 5432,
         }]
