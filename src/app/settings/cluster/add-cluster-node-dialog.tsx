@@ -13,7 +13,7 @@ export default function AddClusterNodeDialog({ children, clusterJoinToken }: { c
     const [command, setCommand] = useState<string>(``);
 
     useEffect(() => {
-        setCommand(`curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=https://MASTER-IP:6443 JOIN_TOKEN=${clusterJoinToken ?? ''} sh -`);
+        setCommand(`curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=https://MASTER_IP:6443 JOIN_TOKEN=${clusterJoinToken ?? ''} sh -`);
     }, [clusterJoinToken]);
 
     return (

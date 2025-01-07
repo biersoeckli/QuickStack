@@ -3,78 +3,78 @@
 # curl -sfL https://get.quickstack.dev/setup.sh | sh -
 
 select_network_interface() {
-    echo "Detecting network interfaces with IPv4 addresses..."
-    interfaces_with_ips=$(ip -o -4 addr show | awk '{print $2, $4}' | sort -u)
+  if [ -z "$INSTALL_K3S_INTERFACE" ]; then
+    interfaces_with_ips=$(ip -o -4 addr show | awk '!/^[0-9]*: lo:/ {print $2, $4}' | cut -d'/' -f1)
 
-    if [ $(echo "$interfaces_with_ips" | wc -l) -eq 1 ]; then
-        # If only one interface is found, use it by default
-        selected_iface=$(echo "$interfaces_with_ips" | awk '{print $1}')
-        selected_ip=$(echo "$interfaces_with_ips" | awk '{print $2}')
-        echo "Only one network interface detected: $selected_iface ($selected_ip)"
+    echo "Available network interfaces:"
+    echo "$interfaces_with_ips"
+    echo ""
+    echo "*******************************************************************************************************"
+    echo ""
+    echo "If you plan to use QuickStack in a cluster using multiple servers in multiple Networks (private/public),"
+    echo "choose the network Interface you want to use for the communication between the servers."
+    echo ""
+    echo "If you plan to use QuickStack in a single server setup, choose the network Interface with the public IP."
+    echo ""
+
+    i=1
+    echo "$interfaces_with_ips" | while read -r iface ip; do
+      printf "%d) %s (%s)\n" "$i" "$iface" "$ip"
+      i=$((i + 1))
+    done
+
+    printf "Please enter the number of the interface to use (1-%d): " "$((i - 1))"
+    # Change read to use /dev/tty explicitly
+    read -r choice </dev/tty
+
+    selected=$(echo "$interfaces_with_ips" | sed -n "${choice}p")
+    selected_iface=$(echo "$selected" | awk '{print $1}')
+    selected_ip=$(echo "$selected" | awk '{print $2}')
+
+    if [ -n "$selected" ]; then
+      echo "Selected interface: $selected_iface ($selected_ip)"
     else
-        echo ""
-        echo "*******************************************************************************************************"
-        echo ""
-        echo "Multiple network interfaces detected:"
-        echo "If you plan to use QuickStack in a cluster using multiple servers in multiple Networks (private/public),"
-        echo "choose the network Interface you want to use for the communication between the servers."
-        echo ""
-        echo "If you plan to use QuickStack in a single server setup, choose the network Interface with the public IP."
-        echo ""
-        options=()
-        while read -r iface ip; do
-            options+=("$iface ($ip)")
-        done <<< "$interfaces_with_ips"
-
-        PS3="Please select the network interface to use: "
-        select entry in "${options[@]}"; do
-            if [ -n "$entry" ]; then
-                selected_iface=$(echo "$entry" | awk -F' ' '{print $1}')
-                selected_ip=$(echo "$entry" | awk -F'[()]' '{print $2}')
-                echo "Selected interface: $selected_iface ($selected_ip)"
-                break
-            else
-                echo "Invalid selection. Please try again."
-            fi
-        done
+      echo "Invalid selection. Exiting."
+      exit 1
     fi
+  fi
 
-    echo "Using network interface: $selected_iface with IP address: $selected_ip"
+  echo "Using network interface: $selected_iface with IP address: $selected_ip"
 }
 
 wait_until_all_pods_running() {
 
-    # Waits another 5 seconds to make sure all pods are registered for the first time.
-    sleep 5
+  # Waits another 5 seconds to make sure all pods are registered for the first time.
+  sleep 5
 
-    while true; do
-        OUTPUT=$(sudo k3s kubectl get pods -A --no-headers 2>&1)
+  while true; do
+    OUTPUT=$(sudo k3s kubectl get pods -A --no-headers 2>&1)
 
-        # Checks if there are no resources found --> Kubernetes ist still starting up
-        if echo "$OUTPUT" | grep -q "No resources found"; then
-            echo "Kubernetes is still starting up..."
-        else
-            # Extracts the STATUS column from the kubectl output and filters out the values "Running" and "Completed".
-            STATUS=$(echo "$OUTPUT" | awk '{print $4}' | grep -vE '^(Running|Completed)$')
+    # Checks if there are no resources found --> Kubernetes ist still starting up
+    if echo "$OUTPUT" | grep -q "No resources found"; then
+      echo "Kubernetes is still starting up..."
+    else
+      # Extracts the STATUS column from the kubectl output and filters out the values "Running" and "Completed".
+      STATUS=$(echo "$OUTPUT" | awk '{print $4}' | grep -vE '^(Running|Completed)$')
 
-            # If the STATUS variable is empty, all pods are running and the loop can be exited.
-            if [ -z "$STATUS" ]; then
-            echo "Pods started successfully."
-            break
-            else
-            echo "Waiting for all pods to come online..."
-            fi
-        fi
+      # If the STATUS variable is empty, all pods are running and the loop can be exited.
+      if [ -z "$STATUS" ]; then
+        echo "Pods started successfully."
+        break
+      else
+        echo "Waiting for all pods to come online..."
+      fi
+    fi
 
-        # Waits for X seconds before checking the pod status again.
-        sleep 10
-    done
+    # Waits for X seconds before checking the pod status again.
+    sleep 10
+  done
 
-    # Waits another 5 seconds to make sure all pods are ready.
-    sleep 5
+  # Waits another 5 seconds to make sure all pods are ready.
+  sleep 5
 
-    sudo kubectl get node
-    sudo kubectl get pods -A
+  sudo kubectl get node
+  sudo kubectl get pods -A
 }
 
 # Prompt for network interface
@@ -118,11 +118,10 @@ sudo kubectl -n cert-manager get pod
 sudo apt-get install jq -y
 sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | bash
 
-
 joinTokenForOtherNodes=$(sudo cat /var/lib/rancher/k3s/server/node-token)
 
 # deploy QuickStack
-cat <<EOF > quickstack-setup-job.yaml
+cat <<EOF >quickstack-setup-job.yaml
 apiVersion: v1
 kind: Namespace
 metadata:

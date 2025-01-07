@@ -1,4 +1,4 @@
-# QuickStack 
+# QuickStack
 
 QuickStack is a open source self-hosted Platform-as-a-Service (PaaS) solution designed to simplify the management of containerized applications on Virtual Private Server (VPS) infrastructures.
 Developed as part of a student project at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/), QuickStack provides a scalable and cost-effective alternative to commercial cloud PaaS offerings like Vercel, Digital Ocean App Platform or Azure App Service.
@@ -24,7 +24,7 @@ Before getting started, ensure that you have:
 1. **Connect to your VPS via SSH.**
 2. **Run the setup script:**
 ```bash
-curl -sfL https://get.quickstack.dev/setup.sh | sh
+curl -sfL https://get.quickstack.dev/setup.sh | sh -
 ```
 
 ## Contributing

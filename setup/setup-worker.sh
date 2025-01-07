@@ -3,58 +3,59 @@
 # curl -sfL https://get.quickstack.dev/setup-worker.sh | K3S_URL=<https://IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE:6443> JOIN_TOKEN=<TOKEN> sh -
 
 if [ -z "${K3S_URL}" ]; then
-  echo "Error: Missing parameter 'K3S_URL'."
-  echo "Example K3S_URL https://<IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE>:6443"
-  exit 1
+    echo "Error: Missing parameter 'K3S_URL'."
+    echo "Example K3S_URL https://<IP-ADDRESS-OR-HOSTNAME-OF-MASTERNODE>:6443"
+    exit 1
 fi
 
 if [ -z "${JOIN_TOKEN}" ]; then
-  echo "Error: Missing parameter 'JOIN_TOKEN'."
-  exit 1
+    echo "Error: Missing parameter 'JOIN_TOKEN'."
+    exit 1
 fi
 
 k3sUrl="$1"
 joinToken="$2"
 
-
 select_network_interface() {
-    echo "Detecting network interfaces with IPv4 addresses..."
-    interfaces_with_ips=$(ip -o -4 addr show | awk '{print $2, $4}' | sort -u)
+    if [ -z "$INSTALL_K3S_INTERFACE" ]; then
+        interfaces_with_ips=$(ip -o -4 addr show | awk '!/^[0-9]*: lo:/ {print $2, $4}' | cut -d'/' -f1)
 
-    if [ $(echo "$interfaces_with_ips" | wc -l) -eq 1 ]; then
-        # If only one interface is found, use it by default
-        selected_iface=$(echo "$interfaces_with_ips" | awk '{print $1}')
-        selected_ip=$(echo "$interfaces_with_ips" | awk '{print $2}')
-        echo "Only one network interface detected: $selected_iface ($selected_ip)"
-    else
+        echo "Available network interfaces:"
+        echo "$interfaces_with_ips"
         echo ""
         echo "*******************************************************************************************************"
         echo ""
-        echo "Multiple network interfaces detected:"
         echo "Please select the ip address wich is in the same network as the master node."
         echo "If you havent configured a private network between the nodes, select the public ip address."
         echo ""
-        options=()
-        while read -r iface ip; do
-            options+=("$iface ($ip)")
-        done <<< "$interfaces_with_ips"
 
-        PS3="Please select the network interface to use: "
-        select entry in "${options[@]}"; do
-            if [ -n "$entry" ]; then
-                selected_iface=$(echo "$entry" | awk -F' ' '{print $1}')
-                selected_ip=$(echo "$entry" | awk -F'[()]' '{print $2}')
-                echo "Selected interface: $selected_iface ($selected_ip)"
-                break
-            else
-                echo "Invalid selection. Please try again."
-            fi
+        i=1
+        echo "$interfaces_with_ips" | while read -r iface ip; do
+            printf "%d) %s (%s)\n" "$i" "$iface" "$ip"
+            i=$((i + 1))
         done
+
+        printf "Please enter the number of the interface to use (1-%d): " "$((i-1))"
+        # Change read to use /dev/tty explicitly
+        read -r choice </dev/tty
+
+        selected=$(echo "$interfaces_with_ips" | sed -n "${choice}p")
+        selected_iface=$(echo "$selected" | awk '{print $1}')
+        selected_ip=$(echo "$selected" | awk '{print $2}')
+
+        if [ -n "$selected" ]; then
+            echo "Selected interface: $selected_iface ($selected_ip)"
+        else
+            echo "Invalid selection. Exiting."
+            exit 1
+        fi
     fi
 
     echo "Using network interface: $selected_iface with IP address: $selected_ip"
 }
 
+# Call the function to select the network interface
+select_network_interface
 
 # install nfs-common and open-iscsi
 sudo apt-get update
