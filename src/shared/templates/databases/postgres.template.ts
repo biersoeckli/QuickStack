@@ -40,12 +40,13 @@ export const postgreAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            envVars: ``,
+            envVars: `PGDATA=/var/lib/qs-postgres/data
+`,
         },
         appDomains: [],
         appVolumes: [{
-            size: 500,
-            containerMountPath: '/var/lib/postgresql',
+            size: 300,
+            containerMountPath: '/var/lib/qs-postgres',
             accessMode: 'ReadWriteOnce'
         }],
         appFileMounts: [],
