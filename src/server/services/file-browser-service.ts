@@ -7,7 +7,7 @@ import deploymentService from "./deployment.service";
 import k3s from "../adapter/kubernetes-api.adapter";
 import ingressService from "./ingress.service";
 import svcService from "./svc.service";
-import { randomBytes, randomUUID } from "crypto";
+import { randomBytes } from "crypto";
 import podService from "./pod.service";
 import bcrypt from "bcrypt";
 
@@ -177,6 +177,11 @@ class FileBrowserService {
                                 name: kubeAppName,
                                 image: 'filebrowser/filebrowser:v2.31.2',
                                 imagePullPolicy: 'Always',
+                                /*args: [
+                                    // ...existing code...
+                                    "--commands",
+                                    "cp,apk,rm,ls,mv"
+                                ],*/
                                 volumeMounts: [
                                     {
                                         name: 'fb-data',

@@ -27,6 +27,9 @@ import {
 } from "@/components/ui/avatar"
 import { App, Project } from "@prisma/client"
 import { UserSession } from "@/shared/model/sim-session.model"
+import { usePathname } from "next/navigation"
+import { useRouter } from "next/router"
+import { useEffect, useState } from "react"
 
 
 const settingsMenu = [
@@ -59,6 +62,30 @@ export function SidebarCient({
   projects: (Project & { apps: App[] })[];
   session: UserSession;
 }) {
+
+  const path = usePathname();
+
+  const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
+  const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (path.startsWith('/project/app/')) {
+      const appId = path.split('/')[3];
+      const project = projects.find(p => p.apps.some(a => a.id === appId));
+      setCurrentlySelectedProjectId(project?.id || null);
+      setCurrentlySelectedAppId(appId);
+
+    } else if (path.startsWith("/project")) {
+      const projectId = path.split('/')[2];
+      setCurrentlySelectedProjectId(projectId);
+      setCurrentlySelectedAppId(null);
+
+    } else {
+      setCurrentlySelectedProjectId(null);
+      setCurrentlySelectedAppId(null);
+
+    }
+  }, [path]);
 
   const {
     state,
@@ -117,7 +144,8 @@ export function SidebarCient({
                 <SidebarMenuButton asChild tooltip={{
                   children: 'All Projects',
                   hidden: open,
-                }}>
+                }}
+                  isActive={path === '/'}>
                   <Link href="/">
                     <FolderClosed />
                     <span>Projects</span>
@@ -135,8 +163,10 @@ export function SidebarCient({
                         <SidebarMenuButton asChild tooltip={{
                           children: `Project: ${item.name}`,
                           hidden: open,
-                        }}>
-                          <Link href={`/project?projectId=${item.id}`}>
+                        }}
+                          isActive={currentlySelectedProjectId === item.id}
+                        >
+                          <Link href={`/project/${item.id}`}>
                             <Dot />  <span>{item.name}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -154,7 +184,8 @@ export function SidebarCient({
                             className="min-w-56 rounded-lg"
                           >
                             {item.apps.map((app) => (
-                              <DropdownMenuItem asChild key={app.name}>
+                              <DropdownMenuItem asChild key={app.name}
+                                className={currentlySelectedAppId === app.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
                                 <a href={`/project/app/${app.id}`}>{app.name}</a>
                               </DropdownMenuItem>
                             ))}
@@ -176,7 +207,8 @@ export function SidebarCient({
                 <SidebarMenuButton asChild tooltip={{
                   children: 'Monitoring',
                   hidden: open,
-                }}>
+                }}
+                  isActive={path.startsWith('/monitoring')}>
                   <Link href="/monitoring">
                     <ChartNoAxesCombined />
                     <span>Monitoring</span>

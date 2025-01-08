@@ -42,7 +42,7 @@ export default function S3TargetsTable({ targets }: {
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}
             data={targets}
-            onItemClickLink={(item) => `/project?projectId=${item.id}`}
+            onItemClickLink={(item) => `/project/${item.id}`}
             actionCol={(item) =>
                 <>
                     <div className="flex">

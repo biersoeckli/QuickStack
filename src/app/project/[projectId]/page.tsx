@@ -9,15 +9,16 @@ import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
 import CreateProjectActions from "./create-project-actions";
 
-
 export default async function AppsPage({
     searchParams,
+    params
 }: {
     searchParams?: { [key: string]: string | undefined };
+    params: { projectId: string }
 }) {
     await getAuthUserSession();
 
-    const projectId = searchParams?.projectId;
+    const projectId = params?.projectId;
     if (!projectId) {
         return <p>Could not find project with id {projectId}</p>
     }

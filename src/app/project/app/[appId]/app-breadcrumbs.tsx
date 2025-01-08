@@ -10,7 +10,7 @@ export default function AppBreadcrumbs({ app }: { app: AppExtendedModel }) {
     const { setBreadcrumbs } = useBreadcrumbs();
     useEffect(() => setBreadcrumbs([
         { name: "Projects", url: "/" },
-        { name: app.project.name, url: "/project?projectId=" + app.projectId },
+        { name: app.project.name, url: "/project/" + app.projectId },
         { name: app.name },
     ]), []);
     return <></>;
