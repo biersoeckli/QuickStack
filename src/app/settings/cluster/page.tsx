@@ -7,6 +7,7 @@ import NodeInfo from "./nodeInfo";
 import AddClusterNodeDialog from "./add-cluster-node-dialog";
 import { Button } from "@/components/ui/button";
 import paramService, { ParamService } from "@/server/services/param.service";
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function ClusterInfoPage() {
 
@@ -22,6 +23,10 @@ export default async function ClusterInfoPage() {
                     <Button>Add Cluster Node</Button>
                 </AddClusterNodeDialog>
             </PageTitle>
+            <BreadcrumbSetter items={[
+                { name: "Settings", url: "/settings/profile" },
+                { name: "Cluster" },
+            ]} />
             <NodeInfo nodeInfos={nodeInfo} />
         </div>
     )

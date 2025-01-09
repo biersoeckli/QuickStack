@@ -12,6 +12,7 @@ import { Constants } from "@/shared/utils/constants";
 import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
+import buildService from "@/server/services/build.service";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -73,6 +74,13 @@ export const getConfiguredHostname: () => Promise<ServerActionResult<unknown, st
     await getAuthUserSession();
 
     return await paramService.getString(ParamService.QS_SERVER_HOSTNAME);
+  });
+
+export const cleanupOldBuildJobs = async () =>
+  simpleAction(async () => {
+    await getAuthUserSession();
+    await buildService.deleteAllFailedOrSuccededBuilds();
+    return new SuccessActionResult(undefined, 'Successfully cleaned up old build jobs.');
   });
 
 export const updateQuickstack = async () =>

@@ -9,6 +9,9 @@ import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import dataAccess from "../adapter/db.client";
 import pvcService from "./pvc.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
+import appService from "./app.service";
+import projectService from "./project.service";
+import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 
 class MonitorService {
 
@@ -65,6 +68,43 @@ class MonitorService {
         return appVolumesWithUsage;
     }
 
+    async getMonitoringForAllApps() {
+        const [topPods, totalResourcesNodes, projects] = await Promise.all([
+            k8s.topPods(k3s.core, new k8s.Metrics(k3s.getKubeConfig())),
+            this.getTotalAvailableNodeRessources(),
+            projectService.getAllProjects()
+        ]);
+
+        const appStats: AppMonitoringUsageModel[] = [];
+
+        for (let project of projects) {
+            for (let app of project.apps) {
+                const podsFromApp = await standalonePodService.getPodsForApp(project.id, app.id);
+                const filteredTopPods = topPods.filter((topPod) =>
+                    podsFromApp.some((pod) => pod.podName === topPod.Pod.metadata?.name)
+                );
+                const totalResourcesApp = this.calulateTotalRessourceUsageOfApp(filteredTopPods);
+                const cpuUsagePercent = (totalResourcesApp.cpu / totalResourcesNodes.cpu) * 100;
+                appStats.push({
+                    projectId: project.id,
+                    projectName: project.name,
+                    appName: app.name,
+                    appId: app.id,
+                    cpuUsage: totalResourcesApp.cpu,
+                    cpuUsagePercent,
+                    ramUsageBytes: totalResourcesApp.ramBytes
+                })
+            }
+        }
+        appStats.sort((a, b) => {
+            if (a.projectName === b.projectName) {
+                return a.appName.localeCompare(b.appName);
+            }
+            return a.projectName.localeCompare(b.projectName);
+        });
+        return appStats;
+    }
+
     async getMonitoringForApp(projectId: string, appId: string): Promise<PodsResourceInfoModel> {
         const metricsClient = new k8s.Metrics(k3s.getKubeConfig());
         const podsFromApp = await standalonePodService.getPodsForApp(projectId, appId);
@@ -74,25 +114,8 @@ class MonitorService {
             podsFromApp.some((pod) => pod.podName === topPod.Pod.metadata?.name)
         );
 
-        const topNodes = await clusterService.getNodeInfo();
-        const totalResourcesNodes = topNodes.reduce(
-            (acc, node) => {
-                acc.cpu += Number(node.cpuCapacity) || 0;
-                acc.ramBytes += KubeSizeConverter.fromKubeSizeToBytes(node.ramCapacity) || 0;
-                return acc;
-            },
-            { cpu: 0, ramBytes: 0 }
-        );
-
-        const totalResourcesApp = filteredTopPods.reduce(
-            (acc, pod) => {
-                acc.cpu += Number(pod.CPU.CurrentUsage) || 0;
-                acc.ramBytes += Number(pod.Memory.CurrentUsage) || 0;
-                return acc;
-            },
-            { cpu: 0, ramBytes: 0 }
-        );
-
+        const totalResourcesNodes = await this.getTotalAvailableNodeRessources();
+        const totalResourcesApp = this.calulateTotalRessourceUsageOfApp(filteredTopPods);
 
         var totalRamNodesCorrectUnit: number = totalResourcesNodes.ramBytes;
         var totalRamAppCorrectUnit: number = totalResourcesApp.ramBytes;
@@ -106,6 +129,30 @@ class MonitorService {
             ramPercent: appRamUsagePercent,
             ramAbsolutBytes: totalRamAppCorrectUnit
         }
+    }
+
+    private calulateTotalRessourceUsageOfApp(filteredTopPods: k8s.PodStatus[]) {
+        return filteredTopPods.reduce(
+            (acc, pod) => {
+                acc.cpu += Number(pod.CPU.CurrentUsage) || 0;
+                acc.ramBytes += Number(pod.Memory.CurrentUsage) || 0;
+                return acc;
+            },
+            { cpu: 0, ramBytes: 0 }
+        );
+    }
+
+    private async getTotalAvailableNodeRessources() {
+        const topNodes = await clusterService.getNodeInfo();
+        const totalResourcesNodes = topNodes.reduce(
+            (acc, node) => {
+                acc.cpu += Number(node.cpuCapacity) || 0;
+                acc.ramBytes += KubeSizeConverter.fromKubeSizeToBytes(node.ramCapacity) || 0;
+                return acc;
+            },
+            { cpu: 0, ramBytes: 0 }
+        );
+        return totalResourcesNodes;
     }
 
     async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usedBytes: number }>> {

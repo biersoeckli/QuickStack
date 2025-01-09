@@ -14,12 +14,6 @@ export default async function NodeInfo({ nodeInfos }: { nodeInfos: NodeInfoModel
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
 
-    const { setBreadcrumbs } = useBreadcrumbs();
-    useEffect(() => setBreadcrumbs([
-        { name: "Settings", url: "/settings/profile" },
-        { name: "Cluster" },
-    ]), []);
-
     const setNodeStatusClick = async (nodeName: string, schedulable: boolean) => {
         const confirmation = await openDialog({
             title: 'Update Node Status',
@@ -87,7 +81,7 @@ export default async function NodeInfo({ nodeInfos }: { nodeInfos: NodeInfoModel
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                            <span className={nodeInfo.schedulable ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}> {nodeInfo.schedulable ? 'Yes' : 'No'}</span>
+                                                <span className={nodeInfo.schedulable ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}> {nodeInfo.schedulable ? 'Yes' : 'No'}</span>
                                             </TooltipTrigger>
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{nodeInfo.schedulable ? 'Node is ready to run containers.' : 'Node ist deactivated. All containers will be scheduled on other nodes.'}</p>

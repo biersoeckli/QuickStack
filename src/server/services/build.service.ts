@@ -172,6 +172,17 @@ class BuildService {
         }
     }
 
+    async deleteAllFailedOrSuccededBuilds() {
+        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
+        const jobsToDelete = jobs.body.items.filter((job) => {
+            const status = this.getJobStatusString(job.status);
+            return status !== 'RUNNING';
+        });
+        for (const job of jobsToDelete) {
+            await this.deleteBuild(job.metadata?.name!);
+        }
+    }
+
     async deleteAllBuildsOfProject(projectId: string) {
         const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
         const jobsOfProject = jobs.body.items.filter((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID] === projectId);

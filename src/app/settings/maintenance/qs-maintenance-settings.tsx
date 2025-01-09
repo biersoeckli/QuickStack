@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { purgeRegistryImages, updateQuickstack, updateRegistry } from "./actions";
+import { cleanupOldBuildJobs, purgeRegistryImages, updateQuickstack, updateRegistry } from "../server/actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -17,16 +17,12 @@ export default function QuickStackMaintenanceSettings({
 
     const useConfirm = useConfirmDialog();
 
-    return <>
+    return <div className="space-y-4">
         <Card>
             <CardHeader>
-                <CardTitle>Maintenance</CardTitle>
+                <CardTitle>Free Up Disk Space</CardTitle>
             </CardHeader>
             <CardContent className="flex gap-4 flex-wrap">
-
-                {qsPodName && <LogsDialog namespace={Constants.QS_NAMESPACE} podName={qsPodName}>
-                    <Button variant="secondary" ><SquareTerminal /> Open QuickStack Logs</Button>
-                </LogsDialog>}
 
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({
@@ -40,6 +36,29 @@ export default function QuickStackMaintenanceSettings({
 
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({
+                        title: 'Cleanup Old Build Jobs',
+                        description: 'This action deletes all old build jobs. Use this action to free up disk space.',
+                        okButton: "Cleanup Old Build Jobs"
+                    })) {
+                        Toast.fromAction(() => cleanupOldBuildJobs());
+                    }
+                }}><Trash /> Cleanup Old Build Jobs</Button>
+
+
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Monitoring & Troubleshooting</CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-4 flex-wrap">
+
+                {qsPodName && <LogsDialog namespace={Constants.QS_NAMESPACE} podName={qsPodName}>
+                    <Button variant="secondary" ><SquareTerminal /> Open QuickStack Logs</Button>
+                </LogsDialog>}
+
+                <Button variant="secondary" onClick={async () => {
+                    if (await useConfirm.openConfirmDialog({
                         title: 'Update Registry',
                         description: 'This action will restart the internal QuickStack container registry.',
                         okButton: "Update Registry"
@@ -49,7 +68,6 @@ export default function QuickStackMaintenanceSettings({
                 }}><RotateCcw /> Force Update Registry</Button>
 
             </CardContent>
-        </Card >
-
-    </>;
+        </Card>
+    </div>;
 }

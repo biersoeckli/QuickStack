@@ -31,13 +31,12 @@ import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitor
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
 import AppVolumeMonitoring from './app-volumes-monitoring';
+import AppRessourceMonitoring from './app-monitoring';
 
 export default function ResourcesNodes({
   resourcesNodes,
-  volumesUsage
 }: {
   resourcesNodes?: NodeResourceModel[];
-  volumesUsage?: AppVolumeMonitoringUsageModel[]
 }) {
 
   const [updatedNodeRessources, setUpdatedResourcesNodes] = useState<NodeResourceModel[] | undefined>(resourcesNodes);
@@ -248,7 +247,6 @@ export default function ResourcesNodes({
         </Card>
       </>))
       }
-      <AppVolumeMonitoring volumesUsage={volumesUsage} />
-    </div >
+    </div>
   );
 }

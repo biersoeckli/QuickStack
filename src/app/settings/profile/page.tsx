@@ -11,7 +11,7 @@ import PageTitle from "@/components/custom/page-title";
 import ProfilePasswordChange from "./profile-password-change";
 import ToTpSettings from "./totp-settings";
 import userService from "@/server/services/user.service";
-import BreadcrumbsSettings from "./profile-breadcrumbs";
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function ProjectPage() {
 
@@ -23,7 +23,10 @@ export default async function ProjectPage() {
                 title={'Profile'}
                 subtitle={`View or edit your Profile information and configure your authentication.`}>
             </PageTitle>
-            <BreadcrumbsSettings />
+            <BreadcrumbSetter items={[
+                { name: "Settings", url: "/settings/profile" },
+                { name: "Profile" },
+            ]} />
             <ProfilePasswordChange />
             <ToTpSettings totpEnabled={data.twoFaEnabled} />
         </div>

@@ -55,7 +55,7 @@ export default function MonitoringTab({
                             <TableRow>
                                 <TableCell className="font-medium">
                                     <TooltipProvider>
-                                        <Tooltip>
+                                        <Tooltip delayDuration={200}>
                                             <TooltipTrigger asChild>
                                                 <div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuPercent.toFixed(2)}</div>
                                             </TooltipTrigger>

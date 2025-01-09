@@ -39,19 +39,24 @@ const settingsMenu = [
     icon: User,
   },
   {
-    title: "QuickStack Settings",
-    url: "/settings/server",
+    title: "S3 Targets",
+    url: "/settings/s3-targets",
     icon: Settings,
   },
   {
-    title: "S3 Targets",
-    url: "/settings/s3-targets",
+    title: "QuickStack Settings",
+    url: "/settings/server",
     icon: Settings,
   },
   {
     title: "Cluster",
     url: "/settings/cluster",
     icon: Server,
+  },
+  {
+    title: "Maintenance",
+    url: "/settings/maintenance",
+    icon: Settings,
   },
 ]
 

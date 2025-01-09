@@ -7,15 +7,22 @@ import ResourceNodes from "./monitoring-nodes";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
 import monitoringService from "@/server/services/monitoring.service";
+import AppRessourceMonitoring from "./app-monitoring";
+import AppVolumeMonitoring from "./app-volumes-monitoring";
+import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 
 export default async function ResourceNodesInfoPage() {
 
     await getAuthUserSession();
     let resourcesNode: NodeResourceModel[] | undefined;
     let volumesUsage: AppVolumeMonitoringUsageModel[] | undefined;
+    let updatedNodeRessources: AppMonitoringUsageModel[] | undefined;
     try {
-        resourcesNode = await clusterService.getNodeResourceUsage();
-        volumesUsage = await monitoringService.getAllAppVolumesUsage();
+        [resourcesNode, volumesUsage, updatedNodeRessources] = await Promise.all([
+            clusterService.getNodeResourceUsage(),
+            monitoringService.getAllAppVolumesUsage(),
+            await monitoringService.getMonitoringForAllApps()
+        ]);
     } catch (ex) {
         // do nothing --> if an error occurs, the ResourceNodes will show a loading spinner and error message
     }
@@ -26,7 +33,11 @@ export default async function ResourceNodesInfoPage() {
                 title={'Monitoring'}
                 subtitle={`View all resources of the nodes which belong to the QuickStack Cluster.`}>
             </PageTitle>
-            <ResourceNodes resourcesNodes={resourcesNode} volumesUsage={volumesUsage} />
+            <div className="space-y-6">
+                <ResourceNodes resourcesNodes={resourcesNode} />
+                <AppRessourceMonitoring appsRessourceUsage={updatedNodeRessources} />
+                <AppVolumeMonitoring volumesUsage={volumesUsage} />
+            </div>
         </div>
     )
 }

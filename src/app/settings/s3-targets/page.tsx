@@ -6,6 +6,7 @@ import s3TargetService from "@/server/services/s3-target.service";
 import S3TargetsTable from "./s3-targets-table";
 import S3TargetEditOverlay from "./s3-target-edit-overlay";
 import { Button } from "@/components/ui/button";
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function S3TargetsPage() {
 
@@ -21,6 +22,10 @@ export default async function S3TargetsPage() {
                     <Button>Add S3 Target</Button>
                 </S3TargetEditOverlay>
             </PageTitle>
+            <BreadcrumbSetter items={[
+                { name: "Settings", url: "/settings/profile" },
+                { name: "S3 Targets" },
+            ]} />
             <S3TargetsTable targets={data} />
         </div>
     )

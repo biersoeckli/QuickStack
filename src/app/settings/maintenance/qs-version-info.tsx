@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { purgeRegistryImages, setCanaryChannel, updateQuickstack, updateRegistry } from "./actions";
+import { purgeRegistryImages, setCanaryChannel, updateQuickstack, updateRegistry } from "../server/actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
