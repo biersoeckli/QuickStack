@@ -19,8 +19,6 @@ import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress"
-import dataAccess from '@/server/adapter/db.client';
-import { ProgressIndicator } from '@radix-ui/react-progress';
 
 type AppVolumeMonitoringUsageExtendedModel = AppVolumeMonitoringUsageModel & {
     usedPercentage: number;
@@ -77,6 +75,9 @@ export default function AppVolumeMonitoring({
 
     if (!updatedVolumeUsage) {
         return <Card>
+            <CardHeader>
+                <CardTitle>App Volumes Capacity</CardTitle>
+            </CardHeader>
             <CardContent>
                 <FullLoadingSpinner />
             </CardContent>

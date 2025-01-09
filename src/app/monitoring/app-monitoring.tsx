@@ -9,18 +9,14 @@ import {
 } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
 import { Actions } from '@/frontend/utils/nextjs-actions.utils';
-import { getMonitoringForAllApps, getVolumeMonitoringUsage } from './actions';
+import { getMonitoringForAllApps } from './actions';
 import { toast } from 'sonner';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
-import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitoring-usage.model';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
 import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Progress } from "@/components/ui/progress"
-import dataAccess from '@/server/adapter/db.client';
-import { ProgressIndicator } from '@radix-ui/react-progress';
 import { AppMonitoringUsageModel } from '@/shared/model/app-monitoring-usage.model';
 
 export default function AppRessourceMonitoring({
@@ -51,6 +47,9 @@ export default function AppRessourceMonitoring({
 
     if (!updatedAppUsage) {
         return <Card>
+            <CardHeader>
+                <CardTitle>App Ressource Usage</CardTitle>
+            </CardHeader>
             <CardContent>
                 <FullLoadingSpinner />
             </CardContent>

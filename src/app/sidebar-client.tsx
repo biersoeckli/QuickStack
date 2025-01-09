@@ -17,7 +17,7 @@ import {
   SidebarMenuAction,
   useSidebar
 } from "@/components/ui/sidebar"
-import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Info, Plus, Server, Settings, Settings2, User } from "lucide-react"
+import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, History, Info, Plus, Server, Settings, Settings2, User } from "lucide-react"
 import Link from "next/link"
 import { EditProjectDialog } from "./projects/edit-project-dialog"
 import { SidebarLogoutButton } from "./sidebar-logout-button"
@@ -217,6 +217,26 @@ export function SidebarCient({
                   <Link href="/monitoring">
                     <ChartNoAxesCombined />
                     <span>Monitoring</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip={{
+                  children: 'Monitoring',
+                  hidden: open,
+                }}
+                  isActive={path.startsWith('/backups')}>
+                  <Link href="/backups">
+                    <History />
+                    <span>Backups</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
