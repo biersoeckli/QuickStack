@@ -231,6 +231,17 @@ class AppService {
         }
     }
 
+    async getAllVolumesWithApp() {
+        return await dataAccess.client.appVolume.findMany({
+            include: {
+                app: true
+            },
+            orderBy: {
+                appId: 'asc'
+            }
+        });
+    }
+
     async getVolumeById(id: string) {
         return await dataAccess.client.appVolume.findFirst({
             where: {

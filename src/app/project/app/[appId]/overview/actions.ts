@@ -7,7 +7,7 @@ import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-a
 import appService from "@/server/services/app.service";
 import buildService from "@/server/services/build.service";
 import deploymentService from "@/server/services/deployment.service";
-import monitorAppService from "@/server/services/monitor-app.service";
+import monitoringService from "@/server/services/monitoring.service";
 import podService from "@/server/services/pod.service";
 import { getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
@@ -37,7 +37,7 @@ export const getPodsForApp = async (appId: string) =>
 export const getRessourceDataApp = async (projectId: string, appId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
-        return await monitorAppService.getMonitoringForApp(projectId, appId);
+        return await monitoringService.getMonitoringForApp(projectId, appId);
     }) as Promise<ServerActionResult<unknown, PodsResourceInfoModel>>;
 
 export const createNewWebhookUrl = async (appId: string) =>

@@ -7,11 +7,11 @@ import { QsLetsEncryptSettingsModel, qsLetsEncryptSettingsZodModel } from "@/sha
 import quickStackService from "@/server/services/qs.service";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import registryService from "@/server/services/registry.service";
-import { StringUtils } from "@/shared/utils/string.utils";
 import { RegistryStorageLocationSettingsModel, registryStorageLocationSettingsZodModel } from "@/shared/model/registry-storage-location-settings.model";
 import { Constants } from "@/shared/utils/constants";
 import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
+import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -95,7 +95,7 @@ export const purgeRegistryImages = async () =>
   simpleAction(async () => {
     await getAuthUserSession();
     const deletedSize = await registryService.purgeRegistryImages();
-    return new SuccessActionResult(undefined, `Successfully purged ${StringUtils.convertBytesToReadableSize(deletedSize)} of images.`);
+    return new SuccessActionResult(undefined, `Successfully purged ${KubeSizeConverter.convertBytesToReadableSize(deletedSize)} of images.`);
   });
 
 export const setCanaryChannel = async (useCanaryChannel: boolean) =>

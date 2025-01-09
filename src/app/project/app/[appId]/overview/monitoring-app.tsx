@@ -6,7 +6,7 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { StringUtils } from "@/shared/utils/string.utils";
+import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 
 export default function MonitoringTab({
     app
@@ -60,12 +60,12 @@ export default function MonitoringTab({
                                                 <div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuPercent.toFixed(2)}</div>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p className="max-w-[350px]">{selectedPod?.cpuAbsolut.toFixed(10)} cores</p>
+                                                <p className="max-w-[350px]">{selectedPod?.cpuAbsolutCores.toFixed(10)} cores</p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                 </TableCell>
-                                <TableCell className="font-medium">{StringUtils.convertBytesToReadableSize(selectedPod?.ramAbsolut)}</TableCell>
+                                <TableCell className="font-medium">{KubeSizeConverter.convertBytesToReadableSize(selectedPod?.ramAbsolutBytes)}</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>

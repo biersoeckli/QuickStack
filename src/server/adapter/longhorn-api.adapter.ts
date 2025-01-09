@@ -26,6 +26,49 @@ class LonghornApiAdapter {
         return (usedStorage / (1024 * 1024));
     }
 
+    async getAllLonghornVolumes(): Promise<{
+        actualSizeBytes: number;
+        sizeBytes: number;
+        name: string;
+    }[]> {
+        const response = await fetch(`${this.longhornBaseUrl}/v1/volumes`, {
+            cache: 'no-cache',
+            method: 'GET',
+            headers: {
+
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP-Error: ${response.status}`);
+        }
+
+        const data = await response.json() as {
+            data: {
+                id: string;
+                controllers: {
+                    actualSize: string;
+                    name: string;
+                    size: string;
+                }[]
+            }[]
+        };
+
+        return data.data.map(volume => {
+            const firstController = volume.controllers.find(x => !!x);
+            if (!firstController || !firstController.actualSize || !firstController.size || !firstController.name) {
+                return undefined;
+            }
+            return {
+                actualSizeBytes: parseInt(firstController.actualSize),
+                sizeBytes: parseInt(firstController.size),
+                name: volume.id
+            };
+        }).filter(x => !!x);
+    }
+
 
     async getNodeStorageInfo(nodeName: String) {
         const response = await fetch(`${this.longhornBaseUrl}/v1/nodes/${nodeName}`, {

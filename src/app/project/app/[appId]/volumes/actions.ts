@@ -14,6 +14,7 @@ import backupService from "@/server/services/standalone-services/backup.service"
 import { volumeUploadZodModel } from "@/shared/model/volume-upload.model";
 import restoreService from "@/server/services/restore.service";
 import fileBrowserService from "@/server/services/file-browser-service";
+import monitoringService from "@/server/services/monitoring.service";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -64,7 +65,7 @@ export const deleteVolume = async (volumeId: string) =>
 export const getPvcUsage = async (appId: string, projectId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
-        return pvcService.getPvcUsageFromApp(appId, projectId);
+        return monitoringService.getPvcUsageFromApp(appId, projectId);
     }) as Promise<ServerActionResult<any, { pvcName: string, usage: number }[]>>;
 
 export const downloadPvcData = async (volumeId: string) =>

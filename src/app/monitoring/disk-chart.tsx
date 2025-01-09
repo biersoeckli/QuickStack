@@ -2,24 +2,14 @@
 
 import {
     Label,
-    PolarGrid,
     PolarRadiusAxis,
     RadialBar,
     RadialBarChart,
 } from 'recharts';
 
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { NodeResourceModel } from '@/shared/model/node-resource.model';
-import { useEffect } from 'react';
-import { StringUtils } from '@/shared/utils/string.utils';
+import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
 
 export default function ChartDiskRessources({
     nodeRessource,
@@ -62,7 +52,7 @@ export default function ChartDiskRessources({
                     cursor={false}
                     content={<ChartTooltipContent hideLabel formatter={(value, name) => {
                         // Convert the value from bytes to gigabytes
-                        const formattedValue = StringUtils.convertBytesToReadableSize(value as number);
+                        const formattedValue = KubeSizeConverter.convertBytesToReadableSize(value as number);
                         // Optionally, you can customize the label (name) here if needed
                         return <div className='flex gap-2'>
                             <div className='self-center rounded w-2 h-2' style={{ backgroundColor: (chartConfig as any)[name].color }}></div>
@@ -104,7 +94,7 @@ export default function ChartDiskRessources({
                                             x={viewBox.cx}
                                             y={(viewBox.cy || 0) + 30}
                                             className="fill-muted-foreground">
-                                            {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved, 1, true)} / {StringUtils.convertBytesToReadableSize(nodeRessource.diskUsageCapacity, 1)}
+                                            {KubeSizeConverter.convertBytesToReadableSize(nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved, 1, true)} / {KubeSizeConverter.convertBytesToReadableSize(nodeRessource.diskUsageCapacity, 1)}
                                         </tspan>
                                     </text>
                                 );

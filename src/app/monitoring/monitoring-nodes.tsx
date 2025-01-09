@@ -23,16 +23,21 @@ import {
 } from '@/frontend/states/zustand.states';
 import { useEffect, useState } from 'react';
 import ChartDiskRessources from './disk-chart';
-import { StringUtils } from '@/shared/utils/string.utils';
 import { Actions } from '@/frontend/utils/nextjs-actions.utils';
-import { getNodeResourceUsage } from './actions';
+import { getNodeResourceUsage, getVolumeMonitoringUsage } from './actions';
 import { toast } from 'sonner';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
+import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitoring-usage.model';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
+import AppVolumeMonitoring from './app-volumes-monitoring';
 
 export default function ResourcesNodes({
   resourcesNodes,
+  volumesUsage
 }: {
   resourcesNodes?: NodeResourceModel[];
+  volumesUsage?: AppVolumeMonitoringUsageModel[]
 }) {
 
   const [updatedNodeRessources, setUpdatedResourcesNodes] = useState<NodeResourceModel[] | undefined>(resourcesNodes);
@@ -46,6 +51,7 @@ export default function ResourcesNodes({
       console.error('An error occurred while fetching resources nodes', ex);
     }
   }
+
 
   useEffect(() => {
     const intervalId = setInterval(() => fetchResourcesNodes(), 5000);
@@ -223,7 +229,7 @@ export default function ResourcesNodes({
                                   x={viewBox.cx}
                                   y={(viewBox.cy || 0) + 30}
                                   className="fill-muted-foreground"                                      >
-                                  {(node.ramUsage / (1024 * 1024 * 1024)).toFixed(2)} / {StringUtils.convertBytesToReadableSize(node.ramCapacity)}
+                                  {(node.ramUsage / (1024 * 1024 * 1024)).toFixed(2)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
                                 </tspan>
                               </text>
                             );
@@ -242,6 +248,7 @@ export default function ResourcesNodes({
         </Card>
       </>))
       }
+      <AppVolumeMonitoring volumesUsage={volumesUsage} />
     </div >
   );
 }

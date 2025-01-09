@@ -5,7 +5,7 @@ import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
 import longhornApiAdapter from "../adapter/longhorn-api.adapter";
-import { KubernetesSizeConverter } from "../utils/kubernetes-size-converter.utils";
+import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 
 class ClusterService {
 
@@ -78,8 +78,8 @@ class ClusterService {
                 .map((metric) => {
                     return {
                         timestamp: new Date(metric.timestamp),
-                        cpuUsage: KubernetesSizeConverter.fromNanoCpu(KubernetesSizeConverter.toNanoCpu(metric.usage.cpu)),
-                        ramUsage: KubernetesSizeConverter.toBytes(metric.usage.memory)
+                        cpuUsage: KubeSizeConverter.fromNanoToFullCpu(KubeSizeConverter.fromKubeSizeToNanoCpu(metric.usage.cpu)),
+                        ramUsage: KubeSizeConverter.fromKubeSizeToBytes(metric.usage.memory)
                     }
                 });
 

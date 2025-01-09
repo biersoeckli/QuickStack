@@ -13,7 +13,8 @@ import dataAccess from "../adapter/db.client";
 import podService from "./pod.service";
 import path from "path";
 import { log } from "console";
-import { KubernetesSizeConverter } from "../utils/kubernetes-size-converter.utils";
+import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
+import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
 
 class PvcService {
 
@@ -47,30 +48,13 @@ class PvcService {
         return fileName;
     }
 
-    async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usage: number }>> {
-        const pvcFromApp = await this.getAllPvcForApp(projectId, appId);
-        const pvcUsageData: Array<{ pvcName: string, usage: number }> = [];
-
-        for (const pvc of pvcFromApp) {
-            const pvcName = pvc.metadata?.name;
-            const volumeName = pvc.spec?.volumeName;
-
-            if (pvcName && volumeName) {
-
-                const usage = await longhornApiAdapter.getLonghornVolume(volumeName);
-                pvcUsageData.push({ pvcName, usage });
-            }
-        }
-        return pvcUsageData;
-    }
-
     async doesAppConfigurationIncreaseAnyPvcSize(app: AppExtendedModel) {
         const existingPvcs = await this.getAllPvcForApp(app.projectId, app.id);
 
         for (const appVolume of app.appVolumes) {
             const pvcName = KubeObjectNameUtils.toPvcName(appVolume.id);
             const existingPvc = existingPvcs.find(pvc => pvc.metadata?.name === pvcName);
-            if (existingPvc && existingPvc.spec!.resources!.requests!.storage !== KubernetesSizeConverter.formatSize(appVolume.size)) {
+            if (existingPvc && existingPvc.spec!.resources!.requests!.storage !== KubeSizeConverter.megabytesToKubeFormat(appVolume.size)) {
                 return true;
             }
         }
@@ -81,6 +65,11 @@ class PvcService {
     async getAllPvcForApp(projectId: string, appId: string) {
         const res = await k3s.core.listNamespacedPersistentVolumeClaim(projectId);
         return res.body.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
+    }
+
+    async getAllPvc() {
+        const res = await k3s.core.listPersistentVolumeClaimForAllNamespaces();
+        return res.body.items;
     }
 
     async deleteUnusedPvcOfApp(app: AppExtendedModel) {
@@ -128,7 +117,7 @@ class PvcService {
                     storageClassName: 'longhorn',
                     resources: {
                         requests: {
-                            storage: KubernetesSizeConverter.formatSize(appVolume.size),
+                            storage: KubeSizeConverter.megabytesToKubeFormat(appVolume.size),
                         },
                     },
                 },
@@ -136,13 +125,13 @@ class PvcService {
 
             const existingPvc = existingPvcs.find(pvc => pvc.metadata?.name === pvcName);
             if (existingPvc) {
-                if (existingPvc.spec!.resources!.requests!.storage === KubernetesSizeConverter.formatSize(appVolume.size)) {
+                if (existingPvc.spec!.resources!.requests!.storage === KubeSizeConverter.megabytesToKubeFormat(appVolume.size)) {
                     console.log(`PVC ${pvcName} for app ${app.id} already exists with the same size`);
                     continue;
                 }
                 // Only the Size of PVC can be updated, so we need to delete and recreate the PVC
                 // update PVC size
-                existingPvc.spec!.resources!.requests!.storage = KubernetesSizeConverter.formatSize(appVolume.size);
+                existingPvc.spec!.resources!.requests!.storage = KubeSizeConverter.megabytesToKubeFormat(appVolume.size);
                 await k3s.core.replaceNamespacedPersistentVolumeClaim(pvcName, app.projectId, existingPvc);
                 console.log(`Updated PVC ${pvcName} for app ${app.id}`);
 
@@ -150,7 +139,7 @@ class PvcService {
                 console.log(`Waiting for PV ${existingPvc.spec!.volumeName} to be resized to ${existingPvc.spec!.resources!.requests!.storage}...`);
 
                 await this.waitUntilPvResized(existingPvc.spec!.volumeName!, appVolume.size);
-                console.log(`PV ${existingPvc.spec!.volumeName} resized to ${KubernetesSizeConverter.formatSize(appVolume.size)}`);
+                console.log(`PV ${existingPvc.spec!.volumeName} resized to ${KubeSizeConverter.megabytesToKubeFormat(appVolume.size)}`);
             } else {
                 await k3s.core.createNamespacedPersistentVolumeClaim(app.projectId, pvcDefinition);
                 console.log(`Created PVC ${pvcName} for app ${app.id}`);
@@ -179,10 +168,10 @@ class PvcService {
     private async waitUntilPvResized(persistentVolumeName: string, size: number) {
         let iterationCount = 0;
         let pv = await k3s.core.readPersistentVolume(persistentVolumeName);
-        while (pv.body.spec!.capacity!.storage !== KubernetesSizeConverter.formatSize(size)) {
+        while (pv.body.spec!.capacity!.storage !== KubeSizeConverter.megabytesToKubeFormat(size)) {
             if (iterationCount > 30) {
-                console.error(`Timeout: PV ${persistentVolumeName} not resized to ${KubernetesSizeConverter.formatSize(size)}`);
-                throw new ServiceException(`Timeout: Volume could not be resized to ${KubernetesSizeConverter.formatSize(size)}`);
+                console.error(`Timeout: PV ${persistentVolumeName} not resized to ${KubeSizeConverter.megabytesToKubeFormat(size)}`);
+                throw new ServiceException(`Timeout: Volume could not be resized to ${KubeSizeConverter.megabytesToKubeFormat(size)}`);
             }
             await new Promise(resolve => setTimeout(resolve, 3000)); // wait 5 Seconds, so that the PV is resized
             pv = await k3s.core.readPersistentVolume(persistentVolumeName);
