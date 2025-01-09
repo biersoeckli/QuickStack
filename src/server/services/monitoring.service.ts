@@ -108,9 +108,9 @@ class MonitorService {
         }
     }
 
-    async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usage: number }>> {
+    async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usedBytes: number }>> {
         const pvcFromApp = await pvcService.getAllPvcForApp(projectId, appId);
-        const pvcUsageData: Array<{ pvcName: string, usage: number }> = [];
+        const pvcUsageData: Array<{ pvcName: string, usedBytes: number }> = [];
 
         for (const pvc of pvcFromApp) {
             const pvcName = pvc.metadata?.name;
@@ -118,8 +118,8 @@ class MonitorService {
 
             if (pvcName && volumeName) {
 
-                const usage = await longhornApiAdapter.getLonghornVolume(volumeName);
-                pvcUsageData.push({ pvcName, usage });
+                const usedBytes = await longhornApiAdapter.getLonghornVolume(volumeName);
+                pvcUsageData.push({ pvcName, usedBytes });
             }
         }
         return pvcUsageData;

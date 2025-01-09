@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/tooltip"
 import { Code } from "@/components/custom/code";
 import { Label } from "@/components/ui/label";
+import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
+import { Progress } from "@/components/ui/progress";
 
-type AppVolumeWithCapacity = (AppVolume & { capacity?: string });
+type AppVolumeWithCapacity = (AppVolume & { usedBytes?: number; capacityBytes?: number; usedPercentage?: number });
 
 export default function StorageList({ app }: {
     app: AppExtendedModel
@@ -39,7 +41,9 @@ export default function StorageList({ app }: {
             for (let item of mappedVolumeData) {
                 const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(item.id));
                 if (volume) {
-                    item.capacity = `${volume.usage.toFixed(2)} MB (${(volume.usage / item.size * 100).toFixed(2)}%)`;
+                    item.usedBytes = volume.usedBytes;
+                    item.capacityBytes = KubeSizeConverter.fromMegabytesToBytes(item.size);
+                    item.usedPercentage = Math.round(volume.usedBytes / item.capacityBytes * 100);
                 }
             }
             setVolumesWithStorage(mappedVolumeData);
@@ -154,7 +158,15 @@ export default function StorageList({ app }: {
                             <TableRow key={volume.containerMountPath}>
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
                                 <TableCell className="font-medium">{volume.size} MB</TableCell>
-                                <TableCell className="font-medium">{volume.capacity}</TableCell>
+                                <TableCell className="font-medium space-y-2">
+                                    {volume.usedPercentage && <>
+                                        <Progress value={volume.usedPercentage}
+                                            color={volume.usedPercentage >= 90 ? 'red' : (volume.usedPercentage >= 80 ? 'orange' : undefined)} />
+                                        <div className='text-xs text-slate-500'>
+                                            {KubeSizeConverter.convertBytesToReadableSize(volume.usedBytes!)} used ({volume.usedPercentage}%)
+                                        </div>
+                                    </>}
+                                </TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium flex gap-2">
                                     <TooltipProvider>

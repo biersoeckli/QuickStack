@@ -21,9 +21,9 @@ class LonghornApiAdapter {
 
         const data = await response.json();
 
-        const usedStorage = data.controllers?.[0]?.actualSize;
+        const usedStorageBytes = data.controllers?.[0]?.actualSize;
 
-        return (usedStorage / (1024 * 1024));
+        return usedStorageBytes;
     }
 
     async getAllLonghornVolumes(): Promise<{

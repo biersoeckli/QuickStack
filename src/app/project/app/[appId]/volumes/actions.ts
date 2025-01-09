@@ -66,7 +66,7 @@ export const getPvcUsage = async (appId: string, projectId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
         return monitoringService.getPvcUsageFromApp(appId, projectId);
-    }) as Promise<ServerActionResult<any, { pvcName: string, usage: number }[]>>;
+    }) as Promise<ServerActionResult<any, { pvcName: string, usedBytes: number }[]>>;
 
 export const downloadPvcData = async (volumeId: string) =>
     simpleAction(async () => {

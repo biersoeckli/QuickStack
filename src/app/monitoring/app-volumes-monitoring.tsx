@@ -22,6 +22,9 @@ import { Progress } from "@/components/ui/progress"
 import dataAccess from '@/server/adapter/db.client';
 import { ProgressIndicator } from '@radix-ui/react-progress';
 
+type AppVolumeMonitoringUsageExtendedModel = AppVolumeMonitoringUsageModel & {
+    usedPercentage: number;
+};
 
 export default function AppVolumeMonitoring({
     volumesUsage
@@ -29,26 +32,44 @@ export default function AppVolumeMonitoring({
     volumesUsage?: AppVolumeMonitoringUsageModel[]
 }) {
 
-    const [updatedVolumeUsage, setUpdatedVolumeUsage] = useState<(AppVolumeMonitoringUsageModel & { usedPercentage: number; })[] | undefined>(volumesUsage?.map(item => ({
-        ...item,
-        usedPercentage: Math.round(item.usedBytes / item.capacityBytes * 100)
-    })));
+    const convertToExtendedModel = (input?: AppVolumeMonitoringUsageModel[]): AppVolumeMonitoringUsageExtendedModel[] | undefined => {
+        if (input) {
+            return input.map(item => ({
+                ...item,
+                usedPercentage: Math.round(item.usedBytes / item.capacityBytes * 100)
+            }));
+        }
+        return undefined;
+    }
+
+    const [totalUsedBytes, setTotalUsedBytes] = useState<number | undefined>(undefined);
+    const [totalCapacityBytes, setTotalCapacityBytes] = useState<number | undefined>(undefined);
+
+    const [updatedVolumeUsage, setUpdatedVolumeUsage] = useState<AppVolumeMonitoringUsageExtendedModel[] | undefined>(convertToExtendedModel(volumesUsage));
 
     const fetchVolumeMonitoringUsage = async () => {
         try {
             const data = await Actions.run(() => getVolumeMonitoringUsage());
-            setUpdatedVolumeUsage(data.map(item => ({
-                ...item,
-                usedPercentage: Math.round(item.usedBytes / item.capacityBytes * 100)
-            })));
+            setUpdatedVolumeUsage(convertToExtendedModel(data));
+            setUsedAndCapacityBytes(convertToExtendedModel(data));
         } catch (ex) {
             toast.error('An error occurred while fetching current volume usage');
             console.error('An error occurred while fetching volume nodes', ex);
         }
     }
 
+    const setUsedAndCapacityBytes = (input?: AppVolumeMonitoringUsageExtendedModel[]) => {
+        if (input) {
+            const totalUsed = input.reduce((acc, item) => acc + item.usedBytes, 0);
+            const totalCapacity = input.reduce((acc, item) => acc + item.capacityBytes, 0);
+            setTotalUsedBytes(totalUsed);
+            setTotalCapacityBytes(totalCapacity);
+        }
+    }
+
     useEffect(() => {
         const volumeUsageId = setInterval(() => fetchVolumeMonitoringUsage(), 10000);
+        setUsedAndCapacityBytes(convertToExtendedModel(volumesUsage));
         return () => {
             clearInterval(volumeUsageId);
         }
@@ -69,7 +90,10 @@ export default function AppVolumeMonitoring({
             </CardHeader>
             <CardContent>
                 <Table>
-                    <TableCaption>{updatedVolumeUsage.length} App Volumes</TableCaption>
+                    <TableCaption>{updatedVolumeUsage.length} App Volumes {totalUsedBytes && totalCapacityBytes && <>
+                        <span className='text-slate-500'> | Total used {KubeSizeConverter.convertBytesToReadableSize(totalUsedBytes)} | Total allocated {KubeSizeConverter.convertBytesToReadableSize(totalCapacityBytes)}</span>
+                    </>}
+                    </TableCaption>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Project</TableHead>
