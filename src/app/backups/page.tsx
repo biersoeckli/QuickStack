@@ -35,6 +35,13 @@ export default async function BackupsPage() {
                         {backupsVolumesWithoutActualBackups.map((item) => `${item.volume.app.name} (mount: ${item.volume.containerMountPath})`).join(', ')}
                     </AlertDescription>
                 </Alert>}
+                {backupsVolumesWithoutActualBackups.length === 0 && backupInfoModels.length === 0 && <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No Backups configured</AlertTitle>
+                    <AlertDescription>
+                        No backups are currently stored in the S3 targets. To configure backups for your apps, navigate to the settings of each app and configure a backup schedule in the "Storage" tab.
+                    </AlertDescription>
+                </Alert>}
                 <BackupsTable data={backupInfoModels} />
             </div>
         </div>
