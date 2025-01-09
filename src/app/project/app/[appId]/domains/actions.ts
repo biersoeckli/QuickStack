@@ -15,6 +15,11 @@ const actionAppDomainEditZodModel = appDomainEditZodModel.merge(z.object({
 export const saveDomain = async (prevState: any, inputData: z.infer<typeof actionAppDomainEditZodModel>) =>
     saveFormAction(inputData, actionAppDomainEditZodModel, async (validatedData) => {
         await getAuthUserSession();
+
+        if (validatedData.hostname.includes('://')) {
+            const url = new URL(validatedData.hostname);
+            validatedData.hostname = url.hostname;
+        }
         await appService.saveDomain({
             ...validatedData,
             id: validatedData.id ?? undefined
