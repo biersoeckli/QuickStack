@@ -3,7 +3,7 @@ import { S3Target } from "@prisma/client";
 import s3Adapter from "../adapter/aws-s3.adapter";
 import { createReadStream } from "fs";
 import fsPromises from "fs/promises";
-import { ServiceException } from "@/shared/model/service.exception.model";
+import { ServiceException } from "../../shared/model/service.exception.model";
 
 
 export class S3Service {

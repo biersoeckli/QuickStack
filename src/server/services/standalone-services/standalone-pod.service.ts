@@ -2,7 +2,6 @@ import k3s from "../../adapter/kubernetes-api.adapter";
 import fs from 'fs';
 import stream from 'stream';
 import * as k8s from '@kubernetes/client-node';
-import * as tar from 'tar';
 
 class SetupPodService {
 
