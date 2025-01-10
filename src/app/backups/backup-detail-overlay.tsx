@@ -12,6 +12,10 @@ import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { formatDateTime } from "@/frontend/utils/format.utils";
+import { downloadBackup } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { Toast } from "@/frontend/utils/toast.utils";
 
 export function BackupDetailDialog({
     backupInfo,
@@ -22,6 +26,20 @@ export function BackupDetailDialog({
 }) {
 
     const [isOpen, setIsOpen] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    const asyncDownloadPvcData = async (s3Key: string) => {
+        try {
+            setIsLoading(true);
+            await Toast.fromAction(() => downloadBackup(backupInfo.s3TargetId, s3Key)).then(x => {
+                if (x.status === 'success' && x.data) {
+                    window.open('/api/volume-data-download?fileName=' + x.data);
+                }
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={(isO) => {
@@ -46,6 +64,7 @@ export function BackupDetailDialog({
                             <TableRow>
                                 <TableHead>Time</TableHead>
                                 <TableHead>Size</TableHead>
+                                <TableHead></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -53,6 +72,11 @@ export function BackupDetailDialog({
                                 <TableRow key={index}>
                                     <TableCell>{formatDateTime(item.backupDate, true)}</TableCell>
                                     <TableCell>{item.sizeBytes ? KubeSizeConverter.convertBytesToReadableSize(item.sizeBytes) : 'unknown'}</TableCell>
+                                    <TableCell className="flex justify-end">
+                                        <Button variant="ghost" size="sm" onClick={() => asyncDownloadPvcData(item.key)} disabled={isLoading}>
+                                            <Download />
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

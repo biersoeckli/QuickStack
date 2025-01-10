@@ -6,7 +6,7 @@ import s3Service from "../aws-s3.service";
 import scheduleService from "./schedule.service";
 import standalonePodService from "./standalone-pod.service";
 import { ListUtils } from "../../../shared/utils/list.utils";
-import { S3Target, VolumeBackup } from "@prisma/client";
+import { S3Target } from "@prisma/client";
 import { BackupEntry, BackupInfoModel } from "../../../shared/model/backup-info.model";
 
 const s3BucketPrefix = 'quickstack-backups';
@@ -46,6 +46,28 @@ class BackupService {
         for (const jobName of allJobs) {
             scheduleService.cancelJob(jobName);
         }
+    }
+
+    /**
+     * Downloads a backup from S3, stores it in temporary download folder and returns the filename
+     */
+    async downloadBackupForS3TargetAndKey(s3TargetId: string, key: string) {
+        const s3Target = await dataAccess.client.s3Target.findFirstOrThrow({
+            where: {
+                id: s3TargetId
+            }
+        });
+
+        const fileName = key.split('/').join('-');
+
+        const downloadPath = PathUtils.volumeDownloadZipPath(fileName);
+        await FsUtils.createDirIfNotExistsAsync(PathUtils.tempVolumeDownloadPath, true);
+        await FsUtils.deleteDirIfExistsAsync(downloadPath, true);
+
+        console.log(`Downloading data from S3 ${key} to ${downloadPath}...`);
+        await s3Service.downloadFile(s3Target, key, downloadPath);
+        console.log(`Download to QuickStack Pod successful`);
+        return PathUtils.splitPath(downloadPath).filePath;
     }
 
     async getBackupsForAllS3Targets() {
@@ -104,7 +126,6 @@ class BackupService {
 
             backupEntries.sort((a, b) => b.backupDate.getTime() - a.backupDate.getTime());
 
-
             backupInfoModels.push({
                 projectId: volumeBackup?.volume.app.projectId ?? defaultInfoIfAppWasDeleted,
                 projectName: volumeBackup?.volume.app.project.name ?? defaultInfoIfAppWasDeleted,
@@ -114,7 +135,8 @@ class BackupService {
                 backupRetention: volumeBackup?.retention ?? 0,
                 volumeId: volumeBackup?.id ?? defaultInfoIfAppWasDeleted,
                 mountPath: volumeBackup?.volume.containerMountPath ?? defaultInfoIfAppWasDeleted,
-                backups: backupEntries
+                backups: backupEntries,
+                s3TargetId: s3Target.id
             });
         }
 

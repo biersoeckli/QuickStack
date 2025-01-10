@@ -1,13 +1,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cleanupOldBuildJobs, purgeRegistryImages, updateQuickstack, updateRegistry } from "../server/actions";
+import { cleanupOldBuildJobs, cleanupOldTmpFiles, purgeRegistryImages, updateRegistry } from "../server/actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { LogsDialog } from "@/components/custom/logs-overlay";
 import { Constants } from "@/shared/utils/constants";
-import { Rocket, RotateCcw, SquareTerminal, Trash } from "lucide-react";
+import { RotateCcw, SquareTerminal, Trash } from "lucide-react";
 
 export default function QuickStackMaintenanceSettings({
     qsPodName
@@ -38,12 +38,21 @@ export default function QuickStackMaintenanceSettings({
                     if (await useConfirm.openConfirmDialog({
                         title: 'Cleanup Old Build Jobs',
                         description: 'This action deletes all old build jobs. Use this action to free up disk space.',
-                        okButton: "Cleanup Old Build Jobs"
+                        okButton: "Cleanup"
                     })) {
                         Toast.fromAction(() => cleanupOldBuildJobs());
                     }
                 }}><Trash /> Cleanup Old Build Jobs</Button>
 
+                <Button variant="secondary" onClick={async () => {
+                    if (await useConfirm.openConfirmDialog({
+                        title: 'Cleanup Temp Files',
+                        description: 'This action deletes all temporary files. Use this action to free up disk space.',
+                        okButton: "Cleanup"
+                    })) {
+                        Toast.fromAction(() => cleanupOldTmpFiles());
+                    }
+                }}><Trash /> Cleanup Temp Files</Button>
 
             </CardContent>
         </Card>

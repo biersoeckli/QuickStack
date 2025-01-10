@@ -1,20 +1,15 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
-import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import { V1PersistentVolumeClaim } from "@kubernetes/client-node";
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { AppVolume } from "@prisma/client";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
 import { FsUtils } from "../utils/fs.utils";
 import { PathUtils } from "../utils/path.utils";
-import * as k8s from '@kubernetes/client-node';
 import dataAccess from "../adapter/db.client";
 import podService from "./pod.service";
 import path from "path";
-import { log } from "console";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
-import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
 
 class PvcService {
 

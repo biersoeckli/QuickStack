@@ -1,8 +1,9 @@
-import { DeleteObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { S3Target } from "@prisma/client";
 import s3Adapter from "../adapter/aws-s3.adapter";
-import { randomUUID } from "crypto";
 import { createReadStream } from "fs";
+import fsPromises from "fs/promises";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 
 export class S3Service {
@@ -34,6 +35,22 @@ export class S3Service {
             Key: fileName,
         });
         await client.send(command);
+    }
+
+    async downloadFile(s3Target: S3Target, key: string, outputFilePath: string) {
+        const client = s3Adapter.getS3Client(s3Target);
+        const command = new GetObjectCommand({
+            Bucket: s3Target.bucketName,
+            Key: key,
+        });
+        const response = await client.send(command);
+
+        const fileStream = await response.Body?.transformToByteArray();
+        if (!fileStream) {
+            throw new ServiceException('No file stream found');
+        }
+
+        await fsPromises.writeFile(outputFilePath, fileStream);
     }
 
     async uploadFile(s3Target: S3Target,

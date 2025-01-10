@@ -4,6 +4,7 @@ export interface BackupInfoModel {
     appName: string;
     appId: string;
     backupVolumeId: string;
+    s3TargetId: string;
     volumeId: string;
     mountPath: string;
     backupRetention: number;

@@ -13,6 +13,8 @@ import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/share
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import buildService from "@/server/services/build.service";
+import { PathUtils } from "@/server/utils/path.utils";
+import { FsUtils } from "@/server/utils/fs.utils";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -74,6 +76,16 @@ export const getConfiguredHostname: () => Promise<ServerActionResult<unknown, st
     await getAuthUserSession();
 
     return await paramService.getString(ParamService.QS_SERVER_HOSTNAME);
+  });
+
+
+export const cleanupOldTmpFiles = async () =>
+  simpleAction(async () => {
+    await getAuthUserSession();
+    const tempFilePath = PathUtils.tempDataRoot;
+    await FsUtils.deleteDirIfExistsAsync(tempFilePath, true);
+    await FsUtils.createDirIfNotExistsAsync(tempFilePath);
+    return new SuccessActionResult(undefined, 'Successfully cleaned up temp files.');
   });
 
 export const cleanupOldBuildJobs = async () =>
