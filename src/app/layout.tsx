@@ -22,6 +22,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "QuickStack",
   description: "", // todo
+  icons: [
+    { rel: "favicon", url: "/quickstack-icon-dark.png" },
+    { rel: "icon", url: "/quickstack-icon-dark.png" },
+    { rel: "apple-touch-icon", url: "/quickstack-icon-dark.png" }
+  ],
 };
 
 export default async function RootLayout({
