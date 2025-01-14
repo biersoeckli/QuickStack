@@ -128,7 +128,7 @@ export function SidebarCient({
                     <span>QuickStack Website</span>
                   </DropdownMenuItem>
                 </Link>
-                <Link href="https://docs.quickstack.dev" target="_blank">
+                <Link href="https://quickstack.dev/docs/intro" target="_blank">
                   <DropdownMenuItem>
                     <BookOpen />
                     <span>QuickStack Docs</span>
