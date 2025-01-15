@@ -30,6 +30,7 @@ import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
 import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
+import QuickStackLogo from "@/components/custom/quickstack-logo"
 
 
 const settingsMenu = [
@@ -111,8 +112,8 @@ export function SidebarCient({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Boxes className="size-4" />
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-qs-500 text-sidebar-primary-foreground">
+                    <QuickStackLogo className="size-5"  color="light-all" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight my-4">
                     <span className="truncate font-semibold">QuickStack</span>

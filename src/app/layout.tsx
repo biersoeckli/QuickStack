@@ -67,15 +67,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
-/*
-<main className="flex w-full flex-col items-center">
-          <div className="w-full max-w-8xl px-4 lg:px-8">
-            <div className="p-4 flex-col md:flex">
-              <Suspense fallback={<FullLoadingSpinner />}>
-                {children}
-              </Suspense>
-            </div>
-          </div>
-        </main>
-*/
