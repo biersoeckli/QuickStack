@@ -1,5 +1,7 @@
 FROM node:18-alpine AS base
 
+ARG VERSION_ARG
+
 RUN apk add --no-cache openssl
 
 # Install dependencies only when needed
@@ -60,6 +62,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 USER nextjs
 
 ENV PORT=3000
+ENV QS_VERSION=$VERSION_ARG
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output

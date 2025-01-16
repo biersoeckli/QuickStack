@@ -15,6 +15,10 @@ class QuickStackService {
     private readonly QUICKSTACK_SERVICEACCOUNT_NAME = 'qs-service-account';
     private readonly CLUSTER_ISSUER_NAME = 'letsencrypt-production';
 
+    async getVersionOfCurrentQuickstackInstance() {
+        return process.env.QS_VERSION || undefined;
+    }
+
     async updateQuickStack(useCanaryChannel = false) {
         const existingDeployment = await this.getExistingDeployment();
         await this.createOrUpdateDeployment(existingDeployment.nextAuthSecret, useCanaryChannel ? 'canary' : 'latest');

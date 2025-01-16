@@ -9,6 +9,7 @@ import s3TargetService from "@/server/services/s3-target.service";
 import QuickStackVersionInfo from "./qs-version-info";
 import QuickStackMaintenanceSettings from "./qs-maintenance-settings";
 import BreadcrumbSetter from "@/components/breadcrumbs-setter";
+import quickStackService from "@/server/services/qs.service";
 
 export default async function MaintenancePage() {
 
@@ -16,6 +17,7 @@ export default async function MaintenancePage() {
     const useCanaryChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
     const qsPodInfos = await podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME);
     const qsPodInfo = qsPodInfos.find(p => !!p);
+    const currentVersion = await quickStackService.getVersionOfCurrentQuickstackInstance();
 
     return (
         <div className="flex-1 space-y-4 pt-6">
@@ -32,7 +34,7 @@ export default async function MaintenancePage() {
                 },
             ]} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><QuickStackVersionInfo useCanaryChannel={useCanaryChannel!} /></div>
+                <div><QuickStackVersionInfo currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} /></div>
                 <div><QuickStackMaintenanceSettings qsPodName={qsPodInfo?.podName} /></div>
             </div>
         </div>

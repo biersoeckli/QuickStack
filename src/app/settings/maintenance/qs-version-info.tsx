@@ -14,8 +14,10 @@ import React from "react";
 
 export default function QuickStackVersionInfo({
     useCanaryChannel,
+    currentVersion
 }: {
-    useCanaryChannel: boolean
+    useCanaryChannel: boolean;
+    currentVersion: string;
 }) {
 
     const useConfirm = useConfirmDialog();

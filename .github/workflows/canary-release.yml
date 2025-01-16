@@ -54,6 +54,6 @@ jobs:
           push: true
           platforms: linux/amd64
           build-args: |
-            VERSION_ARG=canary
+            VERSION_ARG=canary-${{ github.run_number }}
           tags: |
             quickstack/quickstack:canary

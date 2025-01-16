@@ -57,4 +57,4 @@ jobs:
             VERSION_ARG=${{ github.ref_name }}
           tags: |
             quickstack/quickstack:latest
-#            quickstack/quickstack:${{ github.ref_name }}
+            quickstack/quickstack:${{ github.ref_name }}
