@@ -1,9 +1,5 @@
-# QuickStack
 
-<img  src="/public/quick-stack-logo-light.png" alt="QuickStack Logo" width="300" style="
-    display: 'block',
-    margin: 'auto',
-    marginBottom: '20px'" />
+<img  src="/public/quick-stack-logo-light.png" alt="QuickStack Logo" width="300" style="display: block; margin: auto; margin-bottom: 20px;" />
 
 QuickStack is a open source self-hosted Platform-as-a-Service (PaaS) solution designed to simplify the management of containerized applications on Virtual Private Server (VPS) infrastructures.
 Developed as part of a student project at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/), QuickStack provides a scalable and cost-effective alternative to commercial cloud PaaS offerings like Vercel, Digital Ocean App Platform or Azure App Service.
