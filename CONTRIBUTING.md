@@ -41,7 +41,9 @@ The `type` should be one of the following:
 - `chore`: Changes to the build process or auxiliary tools.
 
 The `description` should be a short, descriptive summary of the changes.
+
 The `body` is optional and should provide more detailed information about the changes.
+
 The `footer` is optional and should contain any breaking changes, issues closed, or other relevant information.
 
 Here is an example of a commit message:
@@ -74,7 +76,7 @@ yarn test
 To setup a developement environment, use the provided devcontainer configuration. This will setup a development environment with all necessary dependencies and the correct node version.
 
 Additionally to the devcontainer, you need a running k3s cluster.
-To connect to your own k3s test cluster, provide the kuberentes cretendials in the file `k3s-config.yaml` in the root of the project with the following content.
+To connect to your own k3s test cluster, provide the kuberentes credentials in the file `k3s-config.yaml` in the root of the project with the following content.
 
 #### Install Dependencies
 ```sh
