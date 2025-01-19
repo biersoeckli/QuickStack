@@ -37,6 +37,7 @@ The `type` should be one of the following:
 - `fix`: A bug fix.
 - `style`: Changes that do not affect the meaning of the code (e.g. whitespace, formatting, etc.).
 - `refactor`: Code changes that neither fix a bug nor add a feature.
+- `docs`: Documentation changes.
 - `test`: Adding or updating tests.
 - `chore`: Changes to the build process or auxiliary tools.
 
@@ -76,7 +77,7 @@ yarn test
 To setup a developement environment, use the provided devcontainer configuration. This will setup a development environment with all necessary dependencies and the correct node version.
 
 Additionally to the devcontainer, you need a running k3s cluster.
-To connect to your own k3s test cluster, provide the kuberentes credentials in the file `k3s-config.yaml` in the root of the project with the following content.
+To connect to your own k3s test cluster, provide the kuberentes credentials in the file `k3s-config.yaml` in the root of the project.
 
 #### Install Dependencies
 ```sh
