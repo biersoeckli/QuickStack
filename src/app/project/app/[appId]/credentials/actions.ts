@@ -4,7 +4,7 @@ import appService from "@/server/services/app.service";
 import dbGateService from "@/server/services/db-tool-services/dbgate.service";
 import pgAdminService from "@/server/services/db-tool-services/pgadmin.service";
 import phpMyAdminService from "@/server/services/db-tool-services/phpmyadmin.service";
-import { getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp, isAuthorizedWriteForApp, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { AppTemplateUtils } from "@/server/utils/app-template.utils";
 import { DatabaseTemplateInfoModel } from "@/shared/model/database-template-info.model";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
@@ -20,7 +20,7 @@ const dbToolClasses = new Map([
 
 export const getDatabaseCredentials = async (appId: string) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedReadForApp(appId);
         const app = await appService.getExtendedById(appId);
         const credentials = AppTemplateUtils.getDatabaseModelFromApp(app);
         return new SuccessActionResult(credentials);
@@ -28,7 +28,7 @@ export const getDatabaseCredentials = async (appId: string) =>
 
 export const getIsDbToolActive = async (appId: string, dbTool: DbToolIds) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
         if (!dbToolClasses.has(dbTool)) {
             throw new ServiceException('Unknown db tool');
         }
@@ -38,7 +38,7 @@ export const getIsDbToolActive = async (appId: string, dbTool: DbToolIds) =>
 
 export const deployDbTool = async (appId: string, dbTool: DbToolIds) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
 
         const currentDbTool = dbToolClasses.get(dbTool);
         if (!currentDbTool) {
@@ -51,7 +51,7 @@ export const deployDbTool = async (appId: string, dbTool: DbToolIds) =>
 
 export const getLoginCredentialsForRunningDbTool = async (appId: string, dbTool: DbToolIds) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
 
         const currentDbTool = dbToolClasses.get(dbTool);
         if (!currentDbTool) {
@@ -63,7 +63,7 @@ export const getLoginCredentialsForRunningDbTool = async (appId: string, dbTool:
 
 export const deleteDbToolDeploymentForAppIfExists = async (appId: string, dbTool: DbToolIds) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
 
         const currentDbTool = dbToolClasses.get(dbTool);
         if (!currentDbTool) {
@@ -76,7 +76,7 @@ export const deleteDbToolDeploymentForAppIfExists = async (appId: string, dbTool
 
 export const downloadDbGateFilesForApp = async (appId: string) =>
     simpleAction(async () => {
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
         const url = await dbGateService.downloadDbGateFilesForApp(appId);
         return new SuccessActionResult(url);
     }) as Promise<ServerActionResult<unknown, string>>;

@@ -1,7 +1,7 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import appService from "@/server/services/app.service";
 import deploymentService from "@/server/services/deployment.service";
-import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedReadForApp, simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { Informer, V1Pod } from "@kubernetes/client-node";
 import { z } from "zod";
 import * as k8s from '@kubernetes/client-node';
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
         const input = await request.json();
         const podInfo = zodInputModel.parse(input);
         let { appId } = podInfo;
+        await isAuthorizedReadForApp(appId);
 
         const app = await appService.getById(appId);
         const namespace = app.projectId;

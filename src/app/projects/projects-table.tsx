@@ -10,10 +10,8 @@ import { Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Project } from "@prisma/client";
 import { deleteProject } from "./actions";
-import { useBreadcrumbs, useConfirmDialog } from "@/frontend/states/zustand.states";
-import { useEffect } from "react";
+import {  useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditProjectDialog } from "./edit-project-dialog";
-
 
 
 export default function ProjectsTable({ data }: { data: Project[] }) {

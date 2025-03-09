@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedForBackups } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import backupService from "@/server/services/standalone-services/backup.service";
 import BackupsTable from "./backups-table";
@@ -14,7 +14,7 @@ import {
 
 export default async function BackupsPage() {
 
-    await getAuthUserSession();
+    await isAuthorizedForBackups();
     const {
         backupInfoModels,
         backupsVolumesWithoutActualBackups

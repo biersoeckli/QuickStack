@@ -8,6 +8,7 @@ import appService from "@/server/services/app.service";
 import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
 import CreateProjectActions from "./create-project-actions";
+import { RoleUtils } from "@/shared/utils/role.utils";
 
 export default async function AppsPage({
     searchParams,
@@ -16,7 +17,7 @@ export default async function AppsPage({
     searchParams?: { [key: string]: string | undefined };
     params: { projectId: string }
 }) {
-    await getAuthUserSession();
+    const session = await getAuthUserSession();
 
     const projectId = params?.projectId;
     if (!projectId) {
@@ -24,6 +25,9 @@ export default async function AppsPage({
     }
     const project = await projectService.getById(projectId);
     const data = await appService.getAllAppsByProjectID(projectId);
+    const relevantApps = data.filter((app) =>
+        RoleUtils.sessionHasReadAccessForApp(session, app.id));
+
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
@@ -31,7 +35,7 @@ export default async function AppsPage({
                 subtitle={`All Apps for Project "${project.name}"`}>
                 <CreateProjectActions projectId={projectId} />
             </PageTitle>
-            <AppTable app={data} projectId={project.id} />
+            <AppTable app={relevantApps} projectId={project.id} />
             <ProjectBreadcrumbs project={project} />
         </div>
     )

@@ -1,5 +1,5 @@
 import { Inter } from "next/font/google";
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
 import appService from "@/server/services/app.service";
 import {
   Breadcrumb,
@@ -19,11 +19,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
 
-  await getAuthUserSession();
   const appId = params?.appId;
   if (!appId) {
     return <p>Could not find app with id {appId}</p>
   }
+  const session = await isAuthorizedReadForApp(appId);
   const app = await appService.getExtendedById(appId);
 
   return (
@@ -32,7 +32,7 @@ export default async function RootLayout({
         title={app.name}
         subtitle={`App ID: ${app.id}`}>
       </PageTitle>
-      <AppActionButtons app={app} />
+      <AppActionButtons session={session} app={app} />
       {children}
     </div>
   );

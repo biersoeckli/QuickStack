@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import paramService, { ParamService } from "@/server/services/param.service";
 import { QsIngressSettingsModel, qsIngressSettingsZodModel } from "@/shared/model/qs-settings.model";
 import { QsLetsEncryptSettingsModel, qsLetsEncryptSettingsZodModel } from "@/shared/model/qs-letsencrypt-settings.model";
@@ -20,7 +20,7 @@ import appLogsService from "@/server/services/standalone-services/app-logs.servi
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     const url = new URL(validatedData.serverUrl.includes('://') ? validatedData.serverUrl : `https://${validatedData.serverUrl}`);
 
@@ -41,7 +41,7 @@ export const updateIngressSettings = async (prevState: any, inputData: QsIngress
 
 export const updatePublicIpv4Settings = async (prevState: any, inputData: QsPublicIpv4SettingsModel) =>
   saveFormAction(inputData, qsPublicIpv4SettingsZodModel, async (validatedData) => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     await paramService.save({
       name: ParamService.PUBLIC_IPV4_ADDRESS,
@@ -52,7 +52,7 @@ export const updatePublicIpv4Settings = async (prevState: any, inputData: QsPubl
 
 export const updatePublicIpv4SettingsAutomatically = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     const publicIpv4 = await ipAddressFinderAdapter.getPublicIpOfServer();
     await paramService.save({
@@ -63,7 +63,7 @@ export const updatePublicIpv4SettingsAutomatically = async () =>
 
 export const updateLetsEncryptSettings = async (prevState: any, inputData: QsLetsEncryptSettingsModel) =>
   saveFormAction(inputData, qsLetsEncryptSettingsZodModel, async (validatedData) => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     await paramService.save({
       name: ParamService.LETS_ENCRYPT_MAIL,
@@ -75,7 +75,7 @@ export const updateLetsEncryptSettings = async (prevState: any, inputData: QsLet
 
 export const getConfiguredHostname: () => Promise<ServerActionResult<unknown, string | undefined>> = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     return await paramService.getString(ParamService.QS_SERVER_HOSTNAME);
   });
@@ -83,21 +83,21 @@ export const getConfiguredHostname: () => Promise<ServerActionResult<unknown, st
 
 export const cleanupOldTmpFiles = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await maintenanceService.deleteAllTempFiles();
     return new SuccessActionResult(undefined, 'Successfully cleaned up temp files.');
   });
 
 export const cleanupOldBuildJobs = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await buildService.deleteAllFailedOrSuccededBuilds();
     return new SuccessActionResult(undefined, 'Successfully cleaned up old build jobs.');
   });
 
 export const updateQuickstack = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
     await quickStackService.updateQuickStack(useCaranyChannel);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
@@ -105,7 +105,7 @@ export const updateQuickstack = async () =>
 
 export const updateRegistry = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
     await registryService.deployRegistry(registryLocation!, true);
     return new SuccessActionResult(undefined, 'Registry will be updated, this might take a few seconds.');
@@ -113,35 +113,35 @@ export const updateRegistry = async () =>
 
 export const updateTraefikMeCertificates = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await traefikMeDomainStandaloneService.updateTraefikMeCertificate();
     return new SuccessActionResult(undefined, 'Certificates will be updated, this might take a few seconds.');
   });
 
 export const deleteAllFailedAndSuccededPods = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await standalonePodService.deleteAllFailedAndSuccededPods();
     return new SuccessActionResult(undefined, 'Successfully deleted all failed and succeeded pods.');
   });
 
 export const purgeRegistryImages = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     const deletedSize = await registryService.purgeRegistryImages();
     return new SuccessActionResult(undefined, `Successfully purged ${KubeSizeConverter.convertBytesToReadableSize(deletedSize)} of images.`);
   });
 
 export const deleteOldAppLogs = async () =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await appLogsService.deleteOldAppLogs();
     return new SuccessActionResult(undefined, `Successfully deletes old app logs.`);
   });
 
 export const setCanaryChannel = async (useCanaryChannel: boolean) =>
   simpleAction(async () => {
-    await getAuthUserSession();
+    await getAdminUserSession();
     await paramService.save({
       name: ParamService.USE_CANARY_CHANNEL,
       value: !!useCanaryChannel ? 'true' : 'false'
@@ -151,7 +151,7 @@ export const setCanaryChannel = async (useCanaryChannel: boolean) =>
 
 export const setRegistryStorageLocation = async (prevState: any, inputData: RegistryStorageLocationSettingsModel) =>
   saveFormAction(inputData, registryStorageLocationSettingsZodModel, async (validatedData) => {
-    await getAuthUserSession();
+    await getAdminUserSession();
 
     await registryService.deployRegistry(validatedData.registryStorageLocation, true);
 

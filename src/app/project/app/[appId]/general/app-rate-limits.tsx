@@ -21,12 +21,14 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { cn } from "@/frontend/utils/utils";
 
 
-export default function GeneralAppRateLimits({ app }: {
-    app: AppExtendedModel
+export default function GeneralAppRateLimits({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
     const form = useForm<AppRateLimitsModel>({
         resolver: zodResolver(appRateLimitsZodModel),
-        defaultValues: app
+        defaultValues: app,
+        disabled: readonly
     });
 
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppRateLimitsModel) => saveGeneralAppRateLimits(state, payload, app.id), FormUtils.getInitialFormState<typeof appRateLimitsZodModel>());
@@ -125,10 +127,10 @@ export default function GeneralAppRateLimits({ app }: {
                             />
                         </div>
                     </CardContent>
-                    <CardFooter className="gap-4">
+                    {!readonly && <CardFooter className="gap-4">
                         <SubmitButton>Save</SubmitButton>
                         <p className="text-red-500">{state?.message}</p>
-                    </CardFooter>
+                    </CardFooter>}
                 </form>
             </Form >
         </Card >

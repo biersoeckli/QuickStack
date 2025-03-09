@@ -13,8 +13,9 @@ import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
 
-export default function DomainsList({ app }: {
-    app: AppExtendedModel
+export default function DomainsList({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -61,24 +62,24 @@ export default function DomainsList({ app }: {
                                 <TableCell className="font-medium">{domain.port}</TableCell>
                                 <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
                                 <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
-                                <TableCell className="font-medium flex gap-2">
+                                {!readonly && <TableCell className="font-medium flex gap-2">
                                     <DialogEditDialog appId={app.id} domain={domain}>
                                         <Button variant="ghost"><EditIcon /></Button>
                                     </DialogEditDialog>
                                     <Button variant="ghost" onClick={() => asyncDeleteDomain(domain.id)}>
                                         <TrashIcon />
                                     </Button>
-                                </TableCell>
+                                </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <DialogEditDialog appId={app.id}>
                     <Button><Plus /> Add Domain</Button>
                 </DialogEditDialog>
-            </CardFooter>
+            </CardFooter>}
         </Card >
 
     </>;

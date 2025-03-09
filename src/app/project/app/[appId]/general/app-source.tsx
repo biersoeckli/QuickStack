@@ -18,15 +18,17 @@ import { App } from "@prisma/client";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
-export default function GeneralAppSource({ app }: {
-    app: AppExtendedModel
+export default function GeneralAppSource({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
     const form = useForm<AppSourceInfoInputModel>({
         resolver: zodResolver(appSourceInfoInputZodModel),
         defaultValues: {
             ...app,
             sourceType: app.sourceType as 'GIT' | 'CONTAINER'
-        }
+        },
+        disabled: readonly,
     });
 
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppSourceInfoInputModel) => saveGeneralAppSourceInfo(state, payload, app.id), FormUtils.getInitialFormState<typeof appSourceInfoInputZodModel>());
@@ -197,10 +199,10 @@ export default function GeneralAppSource({ app }: {
                             </TabsContent>
                         </Tabs>
                     </CardContent>
-                    <CardFooter className="gap-4">
+                    {!readonly && <CardFooter className="gap-4">
                         <SubmitButton>Save</SubmitButton>
                         <p className="text-red-500">{state?.message}</p>
-                    </CardFooter>
+                    </CardFooter>}
                 </form>
             </Form >
         </Card >

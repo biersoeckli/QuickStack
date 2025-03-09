@@ -25,6 +25,8 @@ class ProjectService {
             });
         } finally {
             revalidateTag(Tags.projects());
+            revalidateTag(Tags.roles());
+            revalidateTag(Tags.users());
         }
     }
 

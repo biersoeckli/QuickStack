@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import { Prisma, User } from "@prisma/client";
 import dataAccess from "../adapter/db.client";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { Tags } from "../utils/cache-tag-generator.utils";
@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import QRCode from "qrcode";
 import * as OTPAuth from "otpauth";
+import { UserExtended } from "@/shared/model/user-extended.model";
 
 const saltRounds = 10;
 
@@ -33,6 +34,36 @@ export class UserService {
                 data: {
                     password: hashedPassword
                 }
+            });
+        } finally {
+            revalidateTag(Tags.users());
+        }
+    }
+
+    async changePasswordImediately(userMail: string, newPassword: string) {
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            await dataAccess.client.user.update({
+                where: {
+                    email: userMail
+                },
+                data: {
+                    password: hashedPassword
+                }
+            });
+        } finally {
+            revalidateTag(Tags.users());
+        }
+    }
+
+    async updateUser(user: Prisma.UserUncheckedUpdateInput) {
+        try {
+            delete (user as any).password;
+            await dataAccess.client.user.update({
+                where: {
+                    email: user.email as string
+                },
+                data: user
             });
         } finally {
             revalidateTag(Tags.users());
@@ -69,13 +100,14 @@ export class UserService {
         }
     }
 
-    async registerUser(email: string, password: string) {
+    async registerUser(email: string, password: string, roleId: string | null) {
         try {
             const hashedPassword = await bcrypt.hash(password, saltRounds);
             const user = await dataAccess.client.user.create({
                 data: {
                     email,
-                    password: hashedPassword
+                    password: hashedPassword,
+                    roleId
                 }
             });
             return user;
@@ -84,8 +116,17 @@ export class UserService {
         }
     }
 
-    async getAllUsers() {
-        return await unstable_cache(async () => await dataAccess.client.user.findMany(),
+    async getAllUsers(): Promise<UserExtended[]> {
+        return await unstable_cache(async () => await dataAccess.client.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                roleId: true,
+                createdAt: true,
+                updatedAt: true,
+                role: true
+            }
+        }),
             [Tags.users()], {
             tags: [Tags.users()]
         })();
@@ -186,6 +227,22 @@ export class UserService {
                 data: {
                     twoFaSecret: null,
                     twoFaEnabled: false
+                }
+            });
+        } finally {
+            revalidateTag(Tags.users());
+        }
+    }
+
+    async deleteUserById(id: string) {
+        try {
+            const allUsers = await this.getAllUsers();
+            if (allUsers.length <= 1) {
+                throw new ServiceException("You cannot delete the last user");
+            }
+            await dataAccess.client.user.delete({
+                where: {
+                    id
                 }
             });
         } finally {

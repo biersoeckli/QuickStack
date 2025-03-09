@@ -13,11 +13,14 @@ import { Download, Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
 import { LogsDownloadOverlay } from "./logs-download-overlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 
 export default function Logs({
-    app
+    app,
+    role
 }: {
     app: AppExtendedModel;
+    role: RolePermissionEnum;
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
@@ -76,7 +79,7 @@ export default function Logs({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div>
+                    {role === RolePermissionEnum.READWRITE && <div>
                         <TerminalDialog terminalInfo={{
                             podName: selectedPod.podName,
                             containerName: selectedPod.containerName,
@@ -86,7 +89,7 @@ export default function Logs({
                                 <Terminal />  Terminal
                             </Button>
                         </TerminalDialog>
-                    </div>
+                    </div>}
                     <div>
                         <TooltipProvider>
                             <Tooltip delayDuration={300}>

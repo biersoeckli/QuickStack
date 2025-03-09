@@ -7,11 +7,14 @@ import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { ClipboardCopy } from "lucide-react";
 import { toast } from "sonner";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 
 export default function WebhookDeploymentInfo({
-    app
+    app,
+    role
 }: {
     app: AppExtendedModel;
+    role: RolePermissionEnum;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const [webhookUrl, setWebhookUrl] = useState<string | undefined>(undefined);
@@ -52,7 +55,7 @@ export default function WebhookDeploymentInfo({
                     {webhookUrl && <Button className="flex-1 truncate" variant="secondary" onClick={copyWebhookUrl}>
                         <span className="truncate">{webhookUrl}</span> <ClipboardCopy />
                     </Button>}
-                    <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>{webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}</Button>
+                    {role === RolePermissionEnum.READWRITE && <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>{webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}</Button>}
                 </div>
             </CardContent>
         </Card>

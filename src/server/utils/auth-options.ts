@@ -8,6 +8,7 @@ import dataAccess from "@/server/adapter/db.client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import userService from "@/server/services/user.service";
+import roleService from "@/server/services/role.service";
 
 
 const saltRounds = 10;

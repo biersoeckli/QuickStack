@@ -3,7 +3,7 @@ import { FsUtils } from "@/server/utils/fs.utils";
 import { PathUtils } from "@/server/utils/path.utils";
 import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs/promises';
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { z } from "zod";
 import { stringToDate } from "@/shared/utils/zod.utils";
@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
         const appId = requestUrl.searchParams.get('appId');
         const date = requestUrl.searchParams.get('date');
         const validatedData = zodInputModel.parse({ appId, date });
+
+        await isAuthorizedReadForApp(validatedData.appId);
 
         const logsPath = PathUtils.appLogsFile(validatedData.appId, validatedData.date);
         if (!await FsUtils.fileExists(logsPath)) {

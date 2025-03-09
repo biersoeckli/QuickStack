@@ -25,8 +25,9 @@ import { Progress } from "@/components/ui/progress";
 
 type AppVolumeWithCapacity = (AppVolume & { usedBytes?: number; capacityBytes?: number; usedPercentage?: number });
 
-export default function StorageList({ app }: {
-    app: AppExtendedModel
+export default function StorageList({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
 
     const [volumesWithStorage, setVolumesWithStorage] = React.useState<AppVolumeWithCapacity[]>(app.appVolumes);
@@ -181,7 +182,7 @@ export default function StorageList({ app }: {
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
-                                    <TooltipProvider>
+                                    {!readonly && <TooltipProvider>
                                         <Tooltip delayDuration={200}>
                                             <TooltipTrigger>
                                                 <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
@@ -192,7 +193,7 @@ export default function StorageList({ app }: {
                                                 <p>View content of Volume</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
+                                    </TooltipProvider>}
                                     {/*<StorageRestoreDialog app={app} volume={volume}>
                                         <TooltipProvider>
                                             <Tooltip delayDuration={200}>
@@ -207,41 +208,43 @@ export default function StorageList({ app }: {
                                             </Tooltip>
                                         </TooltipProvider>
                                     </StorageRestoreDialog>*/}
-                                    <DialogEditDialog app={app} volume={volume}>
+                                    {!readonly && <>
+                                        <DialogEditDialog app={app} volume={volume}>
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={200}>
+                                                    <TooltipTrigger>
+                                                        <Button variant="ghost" disabled={isLoading}><EditIcon /></Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Edit volume settings</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </DialogEditDialog>
                                         <TooltipProvider>
                                             <Tooltip delayDuration={200}>
                                                 <TooltipTrigger>
-                                                    <Button variant="ghost" disabled={isLoading}><EditIcon /></Button>
+                                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id)} disabled={isLoading}>
+                                                        <TrashIcon />
+                                                    </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>Edit volume settings</p>
+                                                    <p>Delete volume</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
-                                    </DialogEditDialog>
-                                    <TooltipProvider>
-                                        <Tooltip delayDuration={200}>
-                                            <TooltipTrigger>
-                                                <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id)} disabled={isLoading}>
-                                                    <TrashIcon />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Delete volume</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
+                                    </>}
                                 </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <DialogEditDialog app={app}>
                     <Button>Add Volume</Button>
                 </DialogEditDialog>
-            </CardFooter>
+            </CardFooter>}
         </Card >
     </>;
 }

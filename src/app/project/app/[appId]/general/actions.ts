@@ -7,13 +7,13 @@ import { ErrorActionResult, ServerActionResult, SuccessActionResult } from "@/sh
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
 import userService from "@/server/services/user.service";
-import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 
 
 export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSourceInfoInputModel, appId: string) => {
     if (inputData.sourceType === 'GIT') {
         return saveFormAction(inputData, appSourceInfoGitZodModel, async (validatedData) => {
-            await getAuthUserSession();
+            await isAuthorizedWriteForApp(appId);
             const existingApp = await appService.getById(appId);
             await appService.save({
                 ...existingApp,
@@ -24,7 +24,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
         });
     } else if (inputData.sourceType === 'CONTAINER') {
         return saveFormAction(inputData, appSourceInfoContainerZodModel, async (validatedData) => {
-            await getAuthUserSession();
+            await isAuthorizedWriteForApp(appId);
             const existingApp = await appService.getById(appId);
             await appService.save({
                 ...existingApp,
@@ -43,7 +43,7 @@ export const saveGeneralAppRateLimits = async (prevState: any, inputData: AppRat
         if (validatedData.replicas < 1) {
             throw new ServiceException('Replica Count must be at least 1');
         }
-        await getAuthUserSession();
+        await isAuthorizedWriteForApp(appId);
 
         const extendedApp = await appService.getExtendedById(appId);
         if (extendedApp.appVolumes.some(v => v.accessMode === 'ReadWriteOnce') && validatedData.replicas > 1) {

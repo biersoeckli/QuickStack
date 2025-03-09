@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import paramService, { ParamService } from "@/server/services/param.service";
 import podService from "@/server/services/pod.service";
@@ -13,7 +13,7 @@ import quickStackService from "@/server/services/qs.service";
 
 export default async function MaintenancePage() {
 
-    await getAuthUserSession();
+    await getAdminUserSession();
     const useCanaryChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
     const qsPodInfos = await podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME);
     const qsPodInfo = qsPodInfos.find(p => !!p);

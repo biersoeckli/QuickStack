@@ -17,7 +17,6 @@ generator zod {
   // relationModel         = false // Do not generate related model
 
   modelCase = "PascalCase" // (default) Output models using pascal case (ex. UserModel, PostModel)
-  // modelCase             = "camelCase" // Output models using camel case (ex. userModel, postModel)
 
   modelSuffix = "Model" // (default) Suffix to apply to your prisma models when naming Zod schemas
 
@@ -70,14 +69,18 @@ model Session {
 }
 
 model User {
-  id            String          @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String          @unique
+  email         String    @unique
   emailVerified DateTime?
   password      String
   twoFaSecret   String?
-  twoFaEnabled  Boolean         @default(false)
+  twoFaEnabled  Boolean   @default(false)
   image         String?
+
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id])
+
   accounts      Account[]
   sessions      Session[]
   // Optional for WebAuthn support
@@ -113,6 +116,34 @@ model Authenticator {
 }
 
 // *** FROM HERE CUSTOM CLASSES
+
+model Role {
+  id               String  @id @default(uuid())
+  name             String  @unique
+  description      String?
+  canCreateNewApps Boolean @default(false)
+  canAccessBackups Boolean @default(false)
+
+  users              User[]
+  roleAppPermissions RoleAppPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RoleAppPermission {
+  id         String @id @default(uuid())
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId     String
+  app        App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  appId      String
+  permission String // READ, READWRITE
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, appId])
+}
 
 model Project {
   id   String @id @default(uuid())
@@ -151,11 +182,12 @@ model App {
 
   webhookId String?
 
-  appDomains    AppDomain[]
-  appPorts      AppPort[]
-  appVolumes    AppVolume[]
-  appFileMounts AppFileMount[]
-  appBasicAuths AppBasicAuth[]
+  appDomains         AppDomain[]
+  appPorts           AppPort[]
+  appVolumes         AppVolume[]
+  appFileMounts      AppFileMount[]
+  appBasicAuths      AppBasicAuth[]
+  roleAppPermissions RoleAppPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

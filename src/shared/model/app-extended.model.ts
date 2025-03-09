@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel, ProjectModel, VolumeBackupModel } from "./generated-zod";
+import { App, Project } from "@prisma/client";
 
 export const AppExtendedZodModel= z.lazy(() => AppModel.extend({
     project: ProjectModel,
@@ -11,3 +12,7 @@ export const AppExtendedZodModel= z.lazy(() => AppModel.extend({
   }))
 
 export type AppExtendedModel = z.infer<typeof AppExtendedZodModel>;
+
+export type AppWithProjectModel = App & {
+    project: Project;
+}

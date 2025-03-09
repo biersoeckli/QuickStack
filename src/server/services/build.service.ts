@@ -191,6 +191,23 @@ class BuildService {
         }
     }
 
+    async getBuildByName(buildName: string) {
+        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
+        return jobs.body.items.find((job) => job.metadata?.name === buildName);
+    }
+
+    async getAppIdByBuildName(buildName: string) {
+        const job = await this.getBuildByName(buildName);
+        if (!job) {
+            throw new ServiceException(`No build found with name ${buildName}`);
+        }
+        const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+        if (!appId) {
+            throw new ServiceException(`No appId found for build ${buildName}`);
+        }
+        return appId;
+    }
+
     async deleteBuild(buildName: string) {
         await k3s.batch.deleteNamespacedJob(buildName, BUILD_NAMESPACE);
         console.log(`Deleted build job ${buildName}`);

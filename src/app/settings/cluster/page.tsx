@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import clusterService from "@/server/services/node.service";
 import NodeInfo from "./nodeInfo";
@@ -11,7 +11,7 @@ import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function ClusterInfoPage() {
 
-    const session = await getAuthUserSession();
+    const session = await getAdminUserSession();
     const nodeInfo = await clusterService.getNodeInfo();
     const clusterJoinToken = await paramService.getString(ParamService.K3S_JOIN_TOKEN);
     return (

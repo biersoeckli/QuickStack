@@ -17,11 +17,13 @@ import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended
 export default function VolumeBackupList({
     app,
     volumeBackups,
-    s3Targets
+    s3Targets,
+    readonly
 }: {
     app: AppExtendedModel,
     s3Targets: S3Target[],
-    volumeBackups: VolumeBackupExtendedModel[]
+    volumeBackups: VolumeBackupExtendedModel[];
+    readonly: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -79,7 +81,7 @@ export default function VolumeBackupList({
                                 <TableCell className="font-medium">{volumeBackup.retention}</TableCell>
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
-                                <TableCell className="font-medium flex gap-2">
+                                {!readonly && <TableCell className="font-medium flex gap-2">
                                     <Button disabled={isLoading} variant="ghost" onClick={() => asyncRunBackupVolumeSchedule(volumeBackup.id)}>
                                         <Play />
                                     </Button>
@@ -90,17 +92,17 @@ export default function VolumeBackupList({
                                     <Button disabled={isLoading} variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
                                         <TrashIcon />
                                     </Button>
-                                </TableCell>
+                                </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <VolumeBackupEditDialog s3Targets={s3Targets} volumes={app.appVolumes}>
                     <Button>Add Backup Schedule</Button>
                 </VolumeBackupEditDialog>
-            </CardFooter>
+            </CardFooter>}
         </Card >
     </>;
 }

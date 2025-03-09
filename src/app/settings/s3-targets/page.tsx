@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import s3TargetService from "@/server/services/s3-target.service";
 import S3TargetsTable from "./s3-targets-table";
@@ -10,7 +10,7 @@ import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function S3TargetsPage() {
 
-    await getAuthUserSession();
+    await getAdminUserSession();
     const data = await s3TargetService.getAll();
     return (
         <div className="flex-1 space-y-4 pt-6">

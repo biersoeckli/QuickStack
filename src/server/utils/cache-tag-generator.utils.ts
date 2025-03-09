@@ -4,6 +4,10 @@ export class Tags {
         return `users`;
     }
 
+    static roles() {
+        return `roles`;
+    }
+
     static projects() {
         return `projects`;
     }

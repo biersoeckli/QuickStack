@@ -3,7 +3,7 @@ import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { App, AppBasicAuth, AppDomain, AppFileMount, AppPort, AppVolume, Prisma } from "@prisma/client";
 import { DefaultArgs } from "@prisma/client/runtime/library";
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
@@ -63,6 +63,8 @@ class AppService {
             revalidateTag(Tags.apps(existingApp.projectId));
             revalidateTag(Tags.app(existingApp.id));
             revalidateTag(Tags.projects());
+            revalidateTag(Tags.roles());
+            revalidateTag(Tags.users());
         }
     }
 
@@ -206,6 +208,14 @@ class AppService {
             revalidateTag(Tags.app(existingApp.id as string));
         }
         return savedItem;
+    }
+
+    async getDomainById(id: string) {
+        return await dataAccess.client.appDomain.findFirstOrThrow({
+            where: {
+                id
+            }
+        });
     }
 
     async deleteDomainById(id: string) {
@@ -399,6 +409,14 @@ class AppService {
         return savedItem;
     }
 
+    async getPortById(portId: string) {
+        return await dataAccess.client.appPort.findFirstOrThrow({
+            where: {
+                id: portId
+            }
+        });
+    }
+
     async deletePortById(id: string) {
         const existingPort = await dataAccess.client.appPort.findFirst({
             where: {
@@ -467,6 +485,42 @@ class AppService {
             revalidateTag(Tags.app(existingItem.appId));
             revalidateTag(Tags.apps(existingItem.app.projectId));
         }
+    }
+
+    async getBasicAuthById(id: string) {
+        return await dataAccess.client.appBasicAuth.findFirstOrThrow({
+            where: {
+                id
+            }
+        });
+    }
+
+    async getAll() {
+        const apps = await dataAccess.client.app.findMany({
+            orderBy: {
+                name: 'asc'
+            },
+            include: {
+                project: true,
+            }
+        }) as AppWithProjectModel[];
+
+        apps.sort((a, b) => {
+            if (a.project.name.toLocaleLowerCase() < b.project.name.toLocaleLowerCase()) {
+                return -1;
+            }
+            if (a.project.name.toLocaleLowerCase() > b.project.name.toLocaleLowerCase()) {
+                return 1;
+            }
+            if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+                return -1;
+            }
+            if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+                return 1;
+            }
+            return 0;
+        });
+        return apps;
     }
 }
 

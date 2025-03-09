@@ -10,10 +10,11 @@ import monitoringService from "@/server/services/monitoring.service";
 import AppRessourceMonitoring from "./app-monitoring";
 import AppVolumeMonitoring from "./app-volumes-monitoring";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
+import { RoleUtils } from "@/shared/utils/role.utils";
 
 export default async function ResourceNodesInfoPage() {
 
-    await getAuthUserSession();
+    const session = await getAuthUserSession();
     let resourcesNode: NodeResourceModel[] | undefined;
     let volumesUsage: AppVolumeMonitoringUsageModel[] | undefined;
     let updatedNodeRessources: AppMonitoringUsageModel[] | undefined;
@@ -26,6 +27,10 @@ export default async function ResourceNodesInfoPage() {
     } catch (ex) {
         // do nothing --> if an error occurs, the ResourceNodes will show a loading spinner and error message
     }
+
+    // filter by role
+    volumesUsage = volumesUsage?.filter((volume) => RoleUtils.sessionHasReadAccessForApp(session, volume.appId));
+    updatedNodeRessources = updatedNodeRessources?.filter((app) => RoleUtils.sessionHasReadAccessForApp(session, app.appId));
 
     return (
         <div className="flex-1 space-y-4 pt-6">

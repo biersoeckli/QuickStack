@@ -15,8 +15,9 @@ import { EditIcon, Plus, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
-export default function InternalHostnames({ app }: {
-    app: AppExtendedModel
+export default function InternalHostnames({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -34,7 +35,6 @@ export default function InternalHostnames({ app }: {
 
     const internalUrl = KubeObjectNameUtils.toServiceName(app.id);
 
-
     return <>
         <Card>
             <CardHeader>
@@ -42,38 +42,38 @@ export default function InternalHostnames({ app }: {
                 <CardDescription>If you want to connect other apps to this app, you have to configure the internal ports below.</CardDescription>
             </CardHeader>
             <CardContent>
-            <Table>
-                <TableCaption>{app.appPorts.length} Ports</TableCaption>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Port</TableHead>
-                        <TableHead className="w-[100px]">Action</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {app.appPorts.map(port => (
-                        <TableRow key={port.id}>
-                            <TableCell className="font-medium">
-                                {port.port}
-                            </TableCell>
-                            <TableCell className="font-medium  flex gap-2">
-                                <DefaultPortEditDialog appId={app.id} appPort={port}>
-                                    <Button variant="ghost"><EditIcon /></Button>
-                                </DefaultPortEditDialog>
-                                <Button variant="ghost" onClick={() => asyncDeleteDomain(port.id)}>
-                                    <TrashIcon />
-                                </Button>
-                            </TableCell>
+                <Table>
+                    <TableCaption>{app.appPorts.length} Ports</TableCaption>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Port</TableHead>
+                            <TableHead className="w-[100px]">Action</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {app.appPorts.map(port => (
+                            <TableRow key={port.id}>
+                                <TableCell className="font-medium">
+                                    {port.port}
+                                </TableCell>
+                                {!readonly && <TableCell className="font-medium  flex gap-2">
+                                    <DefaultPortEditDialog appId={app.id} appPort={port}>
+                                        <Button variant="ghost"><EditIcon /></Button>
+                                    </DefaultPortEditDialog>
+                                    <Button variant="ghost" onClick={() => asyncDeleteDomain(port.id)}>
+                                        <TrashIcon />
+                                    </Button>
+                                </TableCell>}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <DefaultPortEditDialog appId={app.id}>
                     <Button><Plus /> Add Port</Button>
                 </DefaultPortEditDialog>
-            </CardFooter>
+            </CardFooter>}
         </Card>
 
         <Card>

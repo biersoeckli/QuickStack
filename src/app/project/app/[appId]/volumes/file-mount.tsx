@@ -14,8 +14,9 @@ import FileMountEditDialog from "./file-mount-edit-dialog";
 
 type AppVolumeWithCapacity = (AppVolume & { capacity?: string });
 
-export default function FileMount({ app }: {
-    app: AppExtendedModel
+export default function FileMount({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -50,24 +51,25 @@ export default function FileMount({ app }: {
                         {app.appFileMounts.map(fileMount => (
                             <TableRow key={fileMount.containerMountPath}>
                                 <TableCell className="font-medium">{fileMount.containerMountPath}</TableCell>
-                                <TableCell className="font-medium flex gap-2">
+                                {!readonly && <TableCell className="font-medium flex gap-2">
                                     <FileMountEditDialog app={app} fileMount={fileMount}>
                                         <Button variant="ghost"><EditIcon /></Button>
                                     </FileMountEditDialog>
                                     <Button variant="ghost" onClick={() => asyncDeleteFileMount(fileMount.id)}>
                                         <TrashIcon />
                                     </Button>
-                                </TableCell>
+                                </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <FileMountEditDialog app={app}>
                     <Button>Add File Mount</Button>
                 </FileMountEditDialog>
             </CardFooter>
+            }
         </Card >
     </>;
 }

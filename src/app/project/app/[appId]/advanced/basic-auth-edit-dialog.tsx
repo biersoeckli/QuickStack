@@ -43,7 +43,6 @@ export default function BasicAuthEditDialog({
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-
   const form = useForm<BasicAuthEditModel>({
     resolver: zodResolver(basicAuthEditZodModel.merge(z.object({
       appId: z.string().nullish()

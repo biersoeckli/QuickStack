@@ -16,12 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
 
-export default function EnvEdit({ app }: {
-    app: AppExtendedModel
+export default function EnvEdit({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
     const form = useForm<AppEnvVariablesModel>({
         resolver: zodResolver(appEnvVariablesZodModel),
-        defaultValues: app
+        defaultValues: app,
+        disabled: readonly,
     });
 
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppEnvVariablesModel) => saveEnvVariables(state, payload, app.id), FormUtils.getInitialFormState<typeof appEnvVariablesZodModel>());
@@ -63,9 +65,9 @@ export default function EnvEdit({ app }: {
                             )}
                         />
                     </CardContent>
-                    <CardFooter>
+                    {!readonly && <CardFooter>
                         <SubmitButton>Save</SubmitButton>
-                    </CardFooter>
+                    </CardFooter>}
                 </form>
             </Form >
         </Card >

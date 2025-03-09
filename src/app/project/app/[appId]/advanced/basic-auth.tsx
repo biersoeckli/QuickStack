@@ -13,8 +13,9 @@ import BasicAuthEditDialog from "./basic-auth-edit-dialog";
 import { deleteBasicAuth } from "./actions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function BasicAuth({ app }: {
-    app: AppExtendedModel
+export default function BasicAuth({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -64,24 +65,24 @@ export default function BasicAuth({ app }: {
                                         </Tooltip>
                                     </TooltipProvider>
                                 </TableCell>
-                                <TableCell className="font-medium flex gap-2">
+                                {!readonly && <TableCell className="font-medium flex gap-2">
                                     <BasicAuthEditDialog app={app} basicAuth={basicAuth}>
                                         <Button variant="ghost"><EditIcon /></Button>
                                     </BasicAuthEditDialog>
                                     <Button variant="ghost" onClick={() => asyncDelete(basicAuth.id)}>
                                         <TrashIcon />
                                     </Button>
-                                </TableCell>
+                                </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter>
+            {!readonly && <CardFooter>
                 <FileMountEditDialog app={app}>
                     <Button>Add Auth Credential</Button>
                 </FileMountEditDialog>
-            </CardFooter>
+            </CardFooter>}
         </Card >
     </>;
 }

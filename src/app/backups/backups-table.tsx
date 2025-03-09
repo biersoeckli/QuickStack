@@ -1,17 +1,13 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
-
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { List } from "lucide-react";
 import { BackupInfoModel } from "@/shared/model/backup-info.model";
 import { BackupDetailDialog } from "./backup-detail-overlay";
 
-
-
 export default function BackupsTable({ data }: { data: BackupInfoModel[] }) {
-
 
     return <>
         <SimpleDataTable columns={[

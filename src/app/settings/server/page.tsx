@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import paramService, { ParamService } from "@/server/services/param.service";
 import QuickStackIngressSettings from "./qs-ingress-settings";
@@ -13,7 +13,7 @@ import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function ProjectPage() {
 
-    const session = await getAuthUserSession();
+    const session = await getAdminUserSession();
     const serverUrl = await paramService.getString(ParamService.QS_SERVER_HOSTNAME, '');
     const disableNodePortAccess = await paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false);
     const letsEncryptMail = await paramService.getString(ParamService.LETS_ENCRYPT_MAIL, session.email);

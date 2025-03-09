@@ -12,11 +12,14 @@ import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
 import DeploymentStatusBadge from "./deployment-status-badge";
 import { BuildLogsDialog } from "./build-logs-overlay";
 import ShortCommitHash from "@/components/custom/short-commit-hash";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 
 export default function BuildsTab({
-    app
+    app,
+    role
 }: {
     app: AppExtendedModel;
+    role: RolePermissionEnum;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -89,7 +92,7 @@ export default function BuildsTab({
                                 <div className="flex gap-4">
                                     <div className="flex-1"></div>
                                     {item.deploymentId && <Button variant="secondary" onClick={() => setSelectedDeploymentForLogs(item)}>Show Logs</Button>}
-                                    {item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
+                                    {role === RolePermissionEnum.READWRITE && item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
                                 </div>
                             </>
                         }}
