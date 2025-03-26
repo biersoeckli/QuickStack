@@ -57,9 +57,16 @@ select_network_interface() {
 # Call the function to select the network interface
 select_network_interface
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# THIS MUST BE INSTALLED ON ALL NODES --> https://longhorn.io/docs/1.7.2/deploy/install/#installing-nfsv4-client
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # install nfs-common and open-iscsi
 sudo apt-get update
 sudo apt-get install open-iscsi nfs-common -y
+
+# Disable portmapper services --> https://github.com/biersoeckli/QuickStack/issues/18
+systemctl stop rpcbind.service rpcbind.socket
+systemctl disable rpcbind.service rpcbind.socket
 
 # Installation of k3s
 echo "Installing k3s with --flannel-iface=$selected_iface"
