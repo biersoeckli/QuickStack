@@ -15,7 +15,7 @@ import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import paramService, { ParamService } from "./param.service";
 
-const kanikoImage = "gcr.io/kaniko-project/executor:latest";
+const buildkitImage = "moby/buildkit:master";
 
 class BuildService {
 
@@ -63,17 +63,25 @@ class BuildService {
 
         const contextPaths = PathUtils.splitPath(app.dockerfilePath);
 
-        const kanikoArgs = [
-            `--dockerfile=${contextPaths.filePath}`,
-            `--insecure`,
-            `--log-format=text`,
-            `--context=${app.gitUrl!.replace("https://", "git://")}#refs/heads/${app.gitBranch}`,
-            `--destination=${registryService.createInternalContainerRegistryUrlForAppId(app.id)}`
-        ];
-
-        if (contextPaths.folderPath) {
-            kanikoArgs.push(`--context-sub-path=${contextPaths.folderPath}`);
+        // Prepare Git URL with authentication if needed
+        let gitContextUrl = `${app.gitUrl!}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
+        if (app.gitUsername && app.gitToken) {
+            const authenticatedGitUrl = app.gitUrl!.replace('https://', `https://${app.gitUsername}:${app.gitToken}@`);
+            gitContextUrl = `${authenticatedGitUrl}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
         }
+
+        // BuildKit arguments for buildctl-daemonless.sh
+        const buildkitArgs = [
+            "build",
+            "--frontend",
+            "dockerfile.v0",
+            "--opt",
+            `filename=${contextPaths.filePath}`,
+            "--opt",
+            `context=${gitContextUrl}`,
+            "--output",
+            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(app.id)},push=true,registry.insecure=true`
+        ];
 
         dlog(deploymentId, `Dockerfile context path: ${contextPaths.folderPath ?? 'root directory of Git Repository'}. Dockerfile name: ${contextPaths.filePath}`);
 
@@ -94,11 +102,17 @@ class BuildService {
                 ttlSecondsAfterFinished: 86400, // 1 day
                 template: {
                     spec: {
+                        // Depends on feature gate UserNamespacesSupport (available in k8s 1.25+)
+                        hostUsers: false,
                         containers: [
                             {
                                 name: buildName,
-                                image: kanikoImage,
-                                args: kanikoArgs
+                                image: buildkitImage,
+                                command: ["buildctl-daemonless.sh"],
+                                args: buildkitArgs,
+                                securityContext: {
+                                    privileged: true
+                                }
                             },
                         ],
                         restartPolicy: "Never",
@@ -108,18 +122,6 @@ class BuildService {
                 backoffLimit: 0,
             },
         };
-        if (app.gitUsername && app.gitToken) {
-            jobDefinition.spec!.template.spec!.containers[0].env = [
-                {
-                    name: "GIT_USERNAME",
-                    value: app.gitUsername
-                },
-                {
-                    name: "GIT_PASSWORD",
-                    value: app.gitToken
-                }
-            ];
-        }
         await k3s.batch.createNamespacedJob(BUILD_NAMESPACE, jobDefinition);
 
         await dlog(deploymentId, `Build job ${buildName} started successfully`);
