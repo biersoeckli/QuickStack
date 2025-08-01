@@ -4,16 +4,20 @@ import simpleGit, { SimpleGit } from "simple-git";
 import { PathUtils } from "../utils/path.utils";
 import { FsUtils } from "../utils/fs.utils";
 import path from "path";
+import sshService from "./ssh.service";
 
 
 class GitService {
 
     async openGitContext<T>(app: AppExtendedModel, action: (ctx: InternalGitService) => Promise<T>): Promise<T> {
+        let sshCleanup: (() => Promise<void>) | undefined = undefined;
         try {
             let git: SimpleGit | undefined = undefined;
             let internalGitService: InternalGitService | undefined = undefined;
             try {
-                git = await this.pullLatestChangesFromRepo(app);
+                const result = await this.pullLatestChangesFromRepo(app);
+                git = result.git;
+                sshCleanup = result.sshCleanup;
                 internalGitService = new InternalGitService(git, app);
             } catch (error) {
                 console.error('Error while connecting to the git repository:', error);
@@ -24,6 +28,9 @@ class GitService {
             throw error;
         } finally {
             await this.cleanupLocalGitDataForApp(app);
+            if (sshCleanup) {
+                await sshCleanup();
+            }
         }
     }
 
@@ -32,22 +39,40 @@ class GitService {
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
     }
 
-    private async pullLatestChangesFromRepo(app: AppExtendedModel) {
+    private async pullLatestChangesFromRepo(app: AppExtendedModel): Promise<{ git: SimpleGit, sshCleanup?: () => Promise<void> }> {
         console.log(`Pulling latest source for app ${app.id}...`);
         const gitPath = PathUtils.gitRootPathForApp(app.id);
 
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
         await FsUtils.createDirIfNotExistsAsync(gitPath, true);
 
-        const git = simpleGit(gitPath);
-        const gitUrl = this.getGitUrl(app);
+        let sshCleanup: (() => Promise<void>) | undefined = undefined;
+        let git: SimpleGit;
 
-        // initial clone
-        console.log(await git.clone(gitUrl, gitPath));
+        if (app.gitAuthType === 'SSH' && app.gitSshPrivateKey) {
+            // Setup SSH authentication
+            const { sshConfigPath, cleanupFunction } = await sshService.createTemporarySshConfig(app.id, app.gitSshPrivateKey);
+            sshCleanup = cleanupFunction;
+
+            // Create git instance with SSH config
+            git = simpleGit(gitPath, {
+                config: [`core.sshCommand=ssh -F ${sshConfigPath}`]
+            });
+
+            // Use SSH URL
+            const sshUrl = sshService.convertHttpsToSshUrl(app.gitUrl!);
+            console.log(await git.clone(sshUrl, gitPath));
+        } else {
+            // Use HTTPS authentication (existing logic)
+            git = simpleGit(gitPath);
+            const gitUrl = this.getGitUrl(app);
+            console.log(await git.clone(gitUrl, gitPath));
+        }
+
         console.log(await git.checkout(app.gitBranch ?? 'main'));
         console.log(`Source for app ${app.id} has been cloned successfully.`);
 
-        return git;
+        return { git, sshCleanup };
     }
 
     private getGitUrl(app: AppExtendedModel) {

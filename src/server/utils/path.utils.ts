@@ -44,6 +44,10 @@ export class PathUtils {
         return path.join(PathUtils.gitRootPath, this.convertIdToFolderFriendlyName(appId));
     }
 
+    static tempPathForApp(appId: string): string {
+        return path.join(this.tempDataRoot, 'apps', this.convertIdToFolderFriendlyName(appId));
+    }
+
     static get deploymentLogsPath() {
         return path.join(this.internalDataRoot, 'deployment-logs');
     }

@@ -2,12 +2,14 @@ import { z } from "zod";
 
 export const appSourceTypeZodModel = z.enum(["GIT", "CONTAINER"]);
 export const appTypeZodModel = z.enum(["APP", "POSTGRES", "MYSQL", "MARIADB", "MONGODB"]);
+export const gitAuthTypeZodModel = z.enum(["TOKEN", "SSH"]);
 
 export const appSourceInfoGitZodModel = z.object({
   gitUrl: z.string().trim(),
   gitBranch: z.string().trim(),
   gitUsername: z.string().trim().nullish(),
   gitToken: z.string().trim().nullish(),
+  gitAuthType: gitAuthTypeZodModel.nullish(),
   dockerfilePath: z.string().trim(),
 });
 export type AppSourceInfoGitModel = z.infer<typeof appSourceInfoGitZodModel>;
@@ -29,6 +31,7 @@ export const appSourceInfoInputZodModel = z.object({
   gitBranch: z.string().trim().nullish(),
   gitUsername: z.string().trim().nullish(),
   gitToken: z.string().trim().nullish(),
+  gitAuthType: gitAuthTypeZodModel.nullish(),
   dockerfilePath: z.string().trim().nullish(),
 });
 export type AppSourceInfoInputModel = z.infer<typeof appSourceInfoInputZodModel>;

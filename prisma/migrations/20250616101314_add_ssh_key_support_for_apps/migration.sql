@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "App" ADD COLUMN "gitAuthType" TEXT DEFAULT 'TOKEN';
+ALTER TABLE "App" ADD COLUMN "gitSshPrivateKey" TEXT;
+ALTER TABLE "App" ADD COLUMN "gitSshPublicKey" TEXT;

@@ -189,6 +189,9 @@ model App {
   gitBranch      String?
   gitUsername    String?
   gitToken       String?
+  gitAuthType    String? @default("TOKEN") // TOKEN, SSH
+  gitSshPrivateKey String?
+  gitSshPublicKey  String?
   dockerfilePath String  @default("./Dockerfile")
 
   replicas Int    @default(1)

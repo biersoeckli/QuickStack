@@ -7,6 +7,7 @@ import { ErrorActionResult, ServerActionResult, SuccessActionResult } from "@/sh
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
 import userService from "@/server/services/user.service";
+import sshService from "@/server/services/ssh.service";
 import { getAuthUserSession, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 
 
@@ -15,12 +16,25 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
         return saveFormAction(inputData, appSourceInfoGitZodModel, async (validatedData) => {
             await isAuthorizedWriteForApp(appId);
             const existingApp = await appService.getById(appId);
-            await appService.save({
+
+            let updateData = {
                 ...existingApp,
                 ...validatedData,
                 sourceType: 'GIT',
                 id: appId,
-            });
+            };
+
+            // If switching to SSH authentication and no SSH keys exist, generate them
+            if (validatedData.gitAuthType === 'SSH' && !existingApp.gitSshPrivateKey) {
+                const keyPair = await sshService.generateSshKeyPair(appId);
+                updateData = {
+                    ...updateData,
+                    gitSshPrivateKey: keyPair.privateKey,
+                    gitSshPublicKey: keyPair.publicKey,
+                };
+            }
+
+            await appService.save(updateData);
         });
     } else if (inputData.sourceType === 'CONTAINER') {
         return saveFormAction(inputData, appSourceInfoContainerZodModel, async (validatedData) => {
@@ -36,6 +50,26 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
     } else {
         return simpleAction(async () => new ServerActionResult('error', undefined, 'Invalid Source Type', undefined));
     }
+};
+
+export const regenerateSshKey = async (appId: string) => {
+    return simpleAction(async () => {
+        await isAuthorizedWriteForApp(appId);
+        const existingApp = await appService.getById(appId);
+
+        if (existingApp.sourceType !== 'GIT' || existingApp.gitAuthType !== 'SSH') {
+            throw new ServiceException('SSH key can only be regenerated for Git apps using SSH authentication');
+        }
+
+        const keyPair = await sshService.generateSshKeyPair(appId);
+        await appService.save({
+            ...existingApp,
+            gitSshPrivateKey: keyPair.privateKey,
+            gitSshPublicKey: keyPair.publicKey,
+        });
+
+        return new SuccessActionResult(keyPair.publicKey, 'SSH key regenerated successfully');
+    });
 };
 
 export const saveGeneralAppRateLimits = async (prevState: any, inputData: AppRateLimitsModel, appId: string) =>

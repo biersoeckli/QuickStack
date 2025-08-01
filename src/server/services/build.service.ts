@@ -65,7 +65,13 @@ class BuildService {
 
         // Prepare Git URL with authentication if needed
         let gitContextUrl = `${app.gitUrl!}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
-        if (app.gitUsername && app.gitToken) {
+
+        if (app.gitAuthType === 'SSH' && app.gitSshPrivateKey) {
+            // For SSH authentication, we need to set up SSH keys in the build container
+            const sshUrl = app.gitUrl!.replace('https://', 'git@').replace('.com/', '.com:');
+            gitContextUrl = `${sshUrl}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
+        } else if (app.gitUsername && app.gitToken) {
+            // For token authentication
             const authenticatedGitUrl = app.gitUrl!.replace('https://', `https://${app.gitUsername}:${app.gitToken}@`);
             gitContextUrl = `${authenticatedGitUrl}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
         }
@@ -108,11 +114,21 @@ class BuildService {
                             {
                                 name: buildName,
                                 image: buildkitImage,
-                                command: ["buildctl-daemonless.sh"],
-                                args: buildkitArgs,
+                                command: app.gitAuthType === 'SSH' && app.gitSshPrivateKey ? ["/bin/sh"] : ["buildctl-daemonless.sh"],
+                                args: app.gitAuthType === 'SSH' && app.gitSshPrivateKey ?
+                                    ["-c", this.generateSshBuildScript(buildkitArgs)] :
+                                    buildkitArgs,
                                 securityContext: {
                                     privileged: true
-                                }
+                                },
+                                ...(app.gitAuthType === 'SSH' && app.gitSshPrivateKey ? {
+                                    env: [
+                                        {
+                                            name: "SSH_PRIVATE_KEY",
+                                            value: app.gitSshPrivateKey
+                                        }
+                                    ]
+                                } : {})
                             },
                         ],
                         restartPolicy: "Never",
@@ -132,6 +148,45 @@ class BuildService {
         const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!)
 
         return [buildName, latestRemoteGitHash, buildJobPromise];
+    }
+
+    private generateSshBuildScript(buildkitArgs: string[]): string {
+        const script = `#!/bin/sh
+set -e
+
+# Create .ssh directory and set permissions
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# Write SSH private key
+echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+chmod 600 ~/.ssh/id_rsa
+
+# Disable strict host key checking for git repositories
+cat > ~/.ssh/config << EOF
+Host github.com
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host gitlab.com
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+EOF
+
+chmod 600 ~/.ssh/config
+
+# Start SSH agent and add the key
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa
+
+# Run buildctl with the provided arguments
+buildctl-daemonless.sh ${buildkitArgs.join(' ')}
+`;
+        return script;
     }
 
     async logBuildOutput(deploymentId: string, buildName: string) {
