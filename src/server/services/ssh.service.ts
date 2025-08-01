@@ -18,8 +18,8 @@ class SshService {
      * @returns The SSH key pair (private and public key)
      */
     async generateSshKeyPair(appId: string): Promise<SshKeyPair> {
+        const tempDir = PathUtils.tempPathForApp(appId);
         try {
-            const tempDir = PathUtils.tempPathForApp(appId);
             await FsUtils.deleteDirIfExistsAsync(tempDir, true);
             await FsUtils.createDirIfNotExistsAsync(tempDir, true);
 
@@ -50,6 +50,9 @@ class SshService {
         } catch (error) {
             console.error('Error generating SSH key pair:', error);
             throw new ServiceException('Failed to generate SSH key pair');
+        } finally {
+            // Ensure the temporary directory is cleaned up even if an error occurs
+            await FsUtils.deleteDirIfExistsAsync(tempDir, true);
         }
     }
 
@@ -60,8 +63,10 @@ class SshService {
      * @returns The path to the SSH config file
      */
     async createTemporarySshConfig(appId: string, privateKey: string): Promise<{ sshConfigPath: string, cleanupFunction: () => Promise<void> }> {
+        const tempDir = PathUtils.tempPathForApp(appId);
         try {
-            const tempDir = PathUtils.tempPathForApp(appId);
+
+            await FsUtils.deleteDirIfExistsAsync(tempDir, true);
             await FsUtils.createDirIfNotExistsAsync(tempDir, true);
 
             const keyPath = path.join(tempDir, `id_rsa_${appId}`);
@@ -69,19 +74,51 @@ class SshService {
 
             // Write the private key to a temporary file
             fs.writeFileSync(keyPath, privateKey, { mode: 0o600 });
+            // set the file permissions to read/write for the owner only
+            fs.chmodSync(keyPath, 0o600);
 
-            // Create SSH config file
+            // Create SSH config file with better host patterns
             const sshConfig = `
-Host *
+# SSH config for app ${appId}
+Host github.com
+    HostName github.com
+    User git
     IdentityFile ${keyPath}
+    IdentitiesOnly yes
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
+
+Host gitlab.com
+    HostName gitlab.com
+    User git
+    IdentityFile ${keyPath}
     IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host bitbucket.org
+    HostName bitbucket.org
+    User git
+    IdentityFile ${keyPath}
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+Host *
+    IdentityFile ${keyPath}
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
 `;
-            fs.writeFileSync(sshConfigPath, sshConfig);
+            fs.writeFileSync(sshConfigPath, sshConfig.trim());
 
             const cleanupFunction = async () => {
-                await FsUtils.deleteDirIfExistsAsync(tempDir, true);
+                try {
+                    await FsUtils.deleteDirIfExistsAsync(tempDir, true);
+                } catch (error) {
+                    console.warn(`Failed to cleanup SSH temp directory: ${error}`);
+                }
             };
 
             return { sshConfigPath, cleanupFunction };
@@ -98,22 +135,30 @@ Host *
      */
     convertHttpsToSshUrl(httpsUrl: string): string {
         try {
-            // Convert https://github.com/user/repo.git to git@github.com:user/repo.git
-            // Convert https://gitlab.com/user/repo.git to git@gitlab.com:user/repo.git
-            const url = new URL(httpsUrl);
+            console.log(`Converting HTTPS URL to SSH: ${httpsUrl}`);
+
+            // Handle different URL formats
+            let cleanUrl = httpsUrl.trim();
+
+            // Remove any auth credentials from the URL
+            cleanUrl = cleanUrl.replace(/https:\/\/[^@]*@/, 'https://');
+
+            const url = new URL(cleanUrl);
             const hostname = url.hostname;
-            const pathname = url.pathname;
+            let pathname = url.pathname;
 
             // Remove leading slash and ensure .git extension
-            let repoPath = pathname.startsWith('/') ? pathname.substring(1) : pathname;
-            if (!repoPath.endsWith('.git')) {
-                repoPath += '.git';
+            pathname = pathname.startsWith('/') ? pathname.substring(1) : pathname;
+            if (!pathname.endsWith('.git')) {
+                pathname += '.git';
             }
 
-            return `git@${hostname}:${repoPath}`;
+            const sshUrl = `git@${hostname}:${pathname}`;
+            console.log(`Converted SSH URL: ${sshUrl}`);
+            return sshUrl;
         } catch (error) {
             console.error('Error converting HTTPS URL to SSH:', error);
-            throw new ServiceException('Invalid Git URL format');
+            throw new ServiceException(`Invalid Git URL format: ${httpsUrl}`);
         }
     }
 }

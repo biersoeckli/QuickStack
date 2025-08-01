@@ -14,6 +14,7 @@ import stream from "stream";
 import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import paramService, { ParamService } from "./param.service";
+import sshService from "./ssh.service";
 
 const buildkitImage = "moby/buildkit:master";
 
@@ -67,8 +68,8 @@ class BuildService {
         let gitContextUrl = `${app.gitUrl!}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
 
         if (app.gitAuthType === 'SSH' && app.gitSshPrivateKey) {
-            // For SSH authentication, we need to set up SSH keys in the build container
-            const sshUrl = app.gitUrl!.replace('https://', 'git@').replace('.com/', '.com:');
+            // For SSH authentication, use proper SSH URL conversion
+            const sshUrl = sshService.convertHttpsToSshUrl(app.gitUrl!);
             gitContextUrl = `${sshUrl}#refs/heads/${app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
         } else if (app.gitUsername && app.gitToken) {
             // For token authentication
@@ -154,6 +155,8 @@ class BuildService {
         const script = `#!/bin/sh
 set -e
 
+echo "Setting up SSH environment..."
+
 # Create .ssh directory and set permissions
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -182,6 +185,8 @@ chmod 600 ~/.ssh/config
 # Start SSH agent and add the key
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_rsa
+
+echo "SSH setup complete. Proceeding with build..."
 
 # Run buildctl with the provided arguments
 buildctl-daemonless.sh ${buildkitArgs.join(' ')}

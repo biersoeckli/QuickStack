@@ -15,13 +15,28 @@ class GitService {
             let git: SimpleGit | undefined = undefined;
             let internalGitService: InternalGitService | undefined = undefined;
             try {
+                console.log(`Opening Git context for app ${app.id}, auth type: ${app.gitAuthType || 'TOKEN'}`);
                 const result = await this.pullLatestChangesFromRepo(app);
                 git = result.git;
                 sshCleanup = result.sshCleanup;
                 internalGitService = new InternalGitService(git, app);
             } catch (error) {
                 console.error('Error while connecting to the git repository:', error);
-                throw new ServiceException("Error while connecting to the git repository.");
+
+                // Provide more specific error messages
+                if (error instanceof Error) {
+                    if (error.message.includes('Permission denied')) {
+                        throw new ServiceException("Permission denied. Please check your Git credentials or SSH key.");
+                    } else if (error.message.includes('Host key verification failed')) {
+                        throw new ServiceException("SSH host key verification failed. This should not happen with our configuration.");
+                    } else if (error.message.includes('Repository not found')) {
+                        throw new ServiceException("Git repository not found. Please check the repository URL.");
+                    } else if (error.message.includes('Authentication failed')) {
+                        throw new ServiceException("Git authentication failed. Please check your credentials.");
+                    }
+                }
+
+                throw new ServiceException(`Error while connecting to the git repository: ${error}`);
             }
             return await action(internalGitService);
         } catch (error) {
@@ -37,9 +52,7 @@ class GitService {
     private async cleanupLocalGitDataForApp(app: AppExtendedModel) {
         const gitPath = PathUtils.gitRootPathForApp(app.id);
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
-    }
-
-    private async pullLatestChangesFromRepo(app: AppExtendedModel): Promise<{ git: SimpleGit, sshCleanup?: () => Promise<void> }> {
+    }    private async pullLatestChangesFromRepo(app: AppExtendedModel): Promise<{ git: SimpleGit, sshCleanup?: () => Promise<void> }> {
         console.log(`Pulling latest source for app ${app.id}...`);
         const gitPath = PathUtils.gitRootPathForApp(app.id);
 
@@ -50,28 +63,62 @@ class GitService {
         let git: SimpleGit;
 
         if (app.gitAuthType === 'SSH' && app.gitSshPrivateKey) {
+            console.log('Setting up SSH authentication for Git...');
             // Setup SSH authentication
             const { sshConfigPath, cleanupFunction } = await sshService.createTemporarySshConfig(app.id, app.gitSshPrivateKey);
             sshCleanup = cleanupFunction;
 
             // Create git instance with SSH config
-            git = simpleGit(gitPath, {
-                config: [`core.sshCommand=ssh -F ${sshConfigPath}`]
+            git = simpleGit({
+                baseDir: gitPath,
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+               /* config: [
+                    `core.sshCommand=ssh -F ${sshConfigPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`
+                ]*/
+            }).env({
+                GIT_SSH_COMMAND: `ssh -i ${sshConfigPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`
             });
 
             // Use SSH URL
             const sshUrl = sshService.convertHttpsToSshUrl(app.gitUrl!);
-            console.log(await git.clone(sshUrl, gitPath));
+            console.log(`Cloning SSH repository: ${sshUrl}`);
+
+            try {
+                await git.clone(sshUrl, '.');
+            } catch (error) {
+                console.error('SSH clone failed:', error);
+                throw new ServiceException(`Failed to clone repository via SSH: ${error}`);
+            }
         } else {
+            console.log('Using HTTPS authentication for Git...');
             // Use HTTPS authentication (existing logic)
-            git = simpleGit(gitPath);
+            git = simpleGit({
+                baseDir: gitPath,
+                binary: 'git',
+                maxConcurrentProcesses: 6
+            });
+
             const gitUrl = this.getGitUrl(app);
-            console.log(await git.clone(gitUrl, gitPath));
+            console.log(`Cloning HTTPS repository: ${gitUrl.replace(/(https:\/\/)[^@]*@/, '$1***:***@')}`); // Hide credentials in log
+
+            try {
+                await git.clone(gitUrl, '.');
+            } catch (error) {
+                console.error('HTTPS clone failed:', error);
+                throw new ServiceException(`Failed to clone repository via HTTPS: ${error}`);
+            }
         }
 
-        console.log(await git.checkout(app.gitBranch ?? 'main'));
-        console.log(`Source for app ${app.id} has been cloned successfully.`);
+        try {
+            await git.checkout(app.gitBranch ?? 'main');
+            console.log(`Checked out branch: ${app.gitBranch ?? 'main'}`);
+        } catch (error) {
+            console.error('Branch checkout failed:', error);
+            throw new ServiceException(`Failed to checkout branch ${app.gitBranch ?? 'main'}: ${error}`);
+        }
 
+        console.log(`Source for app ${app.id} has been cloned successfully.`);
         return { git, sshCleanup };
     }
 
