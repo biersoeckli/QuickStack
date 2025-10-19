@@ -88,8 +88,8 @@ sudo apt-get update
 sudo apt-get install open-iscsi nfs-common -y
 
 # Disable portmapper services --> https://github.com/biersoeckli/QuickStack/issues/18
-systemctl stop rpcbind.service rpcbind.socket
-systemctl disable rpcbind.service rpcbind.socket
+sudo systemctl stop rpcbind.service rpcbind.socket
+sudo systemctl disable rpcbind.service rpcbind.socket
 
 # Installation of k3s
 #curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
@@ -168,7 +168,7 @@ spec:
   backoffLimit: 0
 EOF
 sudo kubectl apply -f quickstack-setup-job.yaml
-rm quickstack-setup-job.yaml
+sudo rm quickstack-setup-job.yaml
 wait_until_all_pods_running
 sudo kubectl logs -f job/quickstack-setup-job -n quickstack
 
