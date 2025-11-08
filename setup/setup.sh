@@ -97,7 +97,7 @@ sudo systemctl disable rpcbind.service rpcbind.socket
 echo "Installing k3s with --flannel-iface=$selected_iface"
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
 # Todo: Check for Ready node, takes ~30 seconds
-sudo k3s kubectl get node
+sudo kubectl get node
 
 echo "Waiting for Kubernetes to start..."
 wait_until_all_pods_running
