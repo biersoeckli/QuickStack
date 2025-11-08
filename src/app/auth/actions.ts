@@ -8,7 +8,6 @@ import quickStackService from "@/server/services/qs.service";
 import userService from "@/server/services/user.service";
 import { saveFormAction } from "@/server/utils/action-wrapper.utils";
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
-import traefikMeDomainStandaloneService from "@/server/services/standalone-services/traefik-me-domain-standalone.service";
 import userGroupService from "@/server/services/user-group.service";
 
 
@@ -27,12 +26,6 @@ export const registerUser = async (prevState: any, inputData: RegisterFormInputS
         } catch (e) {
             // ignore
             console.error('Failes to evaluate public ip address', e);
-        }
-        try {
-            await traefikMeDomainStandaloneService.updateTraefikMeCertificate();
-        } catch (e) {
-            // ignore
-            console.error('Failed to update traefik me certificate', e);
         }
         if (validatedData.qsHostname) {
             const url = new URL(validatedData.qsHostname.includes('://') ? validatedData.qsHostname : `https://${validatedData.qsHostname}`);

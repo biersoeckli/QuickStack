@@ -6,7 +6,7 @@ import { SuccessActionResult } from "@/shared/model/server-action-error-return.m
 import appService from "@/server/services/app.service";
 import { getAuthUserSession, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
-import { TraefikMeUtils } from "@/shared/utils/traefik-me.utils";
+import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
 const actionAppDomainEditZodModel = appDomainEditZodModel.merge(z.object({
@@ -23,9 +23,9 @@ export const saveDomain = async (prevState: any, inputData: z.infer<typeof actio
             validatedData.hostname = url.hostname;
         }
 
-        if (TraefikMeUtils.containesTraefikMeDomain(validatedData.hostname)) {
-            if (!TraefikMeUtils.isValidTraefikMeDomain(validatedData.hostname)) {
-                throw new ServiceException('Invalid traefik.me domain. Subdomain of traefik.me cannot contain dots.');
+        if (HostnameDnsProviderUtils.containsDnsProviderHostname(validatedData.hostname)) {
+            if (!HostnameDnsProviderUtils.isValidDnsProviderHostname(validatedData.hostname)) {
+                throw new ServiceException(`Invalid ${HostnameDnsProviderUtils.PROVIDER_HOSTNAME} domain. Subdomain of ${HostnameDnsProviderUtils.PROVIDER_HOSTNAME} cannot contain dots.`);
             }
         }
 

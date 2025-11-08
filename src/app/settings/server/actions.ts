@@ -13,7 +13,6 @@ import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/share
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import buildService from "@/server/services/build.service";
-import traefikMeDomainStandaloneService from "@/server/services/standalone-services/traefik-me-domain-standalone.service";
 import standalonePodService from "@/server/services/standalone-services/standalone-pod.service";
 import maintenanceService from "@/server/services/standalone-services/maintenance.service";
 import appLogsService from "@/server/services/standalone-services/app-logs.service";
@@ -109,13 +108,6 @@ export const updateRegistry = async () =>
     const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
     await registryService.deployRegistry(registryLocation!, true);
     return new SuccessActionResult(undefined, 'Registry will be updated, this might take a few seconds.');
-  });
-
-export const updateTraefikMeCertificates = async () =>
-  simpleAction(async () => {
-    await getAdminUserSession();
-    await traefikMeDomainStandaloneService.updateTraefikMeCertificate();
-    return new SuccessActionResult(undefined, 'Certificates will be updated, this might take a few seconds.');
   });
 
 export const deleteAllFailedAndSuccededPods = async () =>

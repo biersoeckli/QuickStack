@@ -1,6 +1,6 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
 import dataAccess from "../../adapter/db.client";
-import traefikMeDomainService from "../traefik-me-domain.service";
+import hostnameDnsProviderService from "../traefik-me-domain.service";
 import { KubeObjectNameUtils } from "../../utils/kube-object-name.utils";
 import deploymentService from "../deployment.service";
 import { V1Deployment, V1Ingress } from "@kubernetes/client-node";
@@ -60,7 +60,7 @@ export class BaseDbToolService {
         }
 
         const { username, password } = searchFunc(existingDeployment, app);
-        const traefikHostname = await traefikMeDomainService.getDomainForApp(toolAppName);
+        const traefikHostname = await hostnameDnsProviderService.getDomainForApp(toolAppName);
         return { url: `https://${traefikHostname}`, username, password };
     }
 
@@ -75,7 +75,7 @@ export class BaseDbToolService {
         const namespace = app.projectId;
 
         console.log(`Deploying DB Tool ${toolAppName} for app ${appId}`);
-        const traefikHostname = await traefikMeDomainService.getDomainForApp(toolAppName);
+        const hostnameDnsProviderHostname = await hostnameDnsProviderService.getDomainForApp(toolAppName);
 
         console.log(`Creating DB Tool ${toolAppName} deployment for app ${appId}`);
         await this.createOrUpdateDbGateDeployment(app, deplyomentBuilder);
@@ -88,7 +88,7 @@ export class BaseDbToolService {
         }]);
 
         console.log(`Creating ingress for DB Tool ${toolAppName} for app ${appId}`);
-        await this.createOrUpdateIngress(toolAppName, namespace, traefikHostname);
+        await this.createOrUpdateIngress(toolAppName, namespace, hostnameDnsProviderHostname);
 
         const fileBrowserPods = await podService.getPodsForApp(namespace, toolAppName);
         for (const pod of fileBrowserPods) {
@@ -129,24 +129,25 @@ export class BaseDbToolService {
         }
     }
 
-    private async createOrUpdateIngress(dbGateAppName: string, namespace: string, traefikHostname: string) {
+    private async createOrUpdateIngress(dbGateAppName: string, namespace: string, hostname: string) {
         const ingressDefinition: V1Ingress = {
             apiVersion: 'networking.k8s.io/v1',
             kind: 'Ingress',
             metadata: {
                 name: KubeObjectNameUtils.getIngressName(dbGateAppName),
                 namespace: namespace,
-                // dont annotate, because ingress will be deleted after redeployment of app
-                /* annotations: {
-                     [Constants.QS_ANNOTATION_APP_ID]: appId,
-                     [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
-                 },*/
+                annotations: {
+                    // dont annotate, because ingress will be deleted after redeployment of app
+                    // [Constants.QS_ANNOTATION_APP_ID]: appId,
+                    // [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                    ...({ 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }), // --> dont start cert-manager for traefik.me domains
+                }
             },
             spec: {
                 ingressClassName: 'traefik',
                 rules: [
                     {
-                        host: traefikHostname,
+                        host: hostname,
                         http: {
                             paths: [
                                 {
@@ -166,8 +167,8 @@ export class BaseDbToolService {
                     },
                 ],
                 tls: [{
-                    hosts: [traefikHostname],
-                    secretName: Constants.TRAEFIK_ME_SECRET_NAME,
+                    hosts: [hostname],
+                    secretName: `secret-tls-${hostname}`.substring(0, 63)
                 }],
             },
         };

@@ -7,7 +7,7 @@ import { Constants } from "../../shared/utils/constants";
 import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
-import { TraefikMeUtils } from "@/shared/utils/traefik-me.utils";
+import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 
 class IngressService {
 
@@ -68,7 +68,7 @@ class IngressService {
         const hostname = domain.hostname;
         const ingressName = KubeObjectNameUtils.getIngressName(domain.id);
         const existingIngress = await this.getIngressByName(app.projectId, domain.id);
-        const isATraefikMeDomain = TraefikMeUtils.isValidTraefikMeDomain(hostname);
+        const isATraefikMeDomain = HostnameDnsProviderUtils.isValidDnsProviderHostname(hostname);
 
         const middlewares = [
             basicAuthMiddlewareName,
@@ -84,7 +84,7 @@ class IngressService {
                 annotations: {
                     [Constants.QS_ANNOTATION_APP_ID]: app.id,
                     [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
-                    ...(!isATraefikMeDomain && domain.useSsl === true && { 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }),
+                    ...(!isATraefikMeDomain && domain.useSsl === true && { 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }), // for traefik.me domains no cert-manager --> uses default traefik self signed certificate
                     ...(middlewares && { 'traefik.ingress.kubernetes.io/router.middlewares': middlewares }),
                     ...(domain.useSsl === false && { 'traefik.ingress.kubernetes.io/router.entrypoints': 'web' }), // disable requests from https --> only http
                 },
@@ -112,11 +112,11 @@ class IngressService {
                         },
                     },
                 ],
-                ...(domain.useSsl === true && {
+                ...(domain.useSsl === true && !isATraefikMeDomain && {
                     tls: [
                         {
                             hosts: [hostname],
-                            secretName: isATraefikMeDomain ? Constants.TRAEFIK_ME_SECRET_NAME : `secret-tls-${domain.id}`,
+                            secretName: `secret-tls-${domain.id}`,
                         },
                     ],
                 }),
