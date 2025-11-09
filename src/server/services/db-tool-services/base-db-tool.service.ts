@@ -125,7 +125,8 @@ export class BaseDbToolService {
 
         const existingIngress = await ingressService.getIngressByName(projectId, toolAppName);
         if (existingIngress) {
-            await k3s.network.deleteNamespacedIngress(KubeObjectNameUtils.getIngressName(toolAppName), projectId);
+            // do not delete ingress to reduce cert-manager issues --> todo; add cleanup function in maintenance section
+            //await k3s.network.deleteNamespacedIngress(KubeObjectNameUtils.getIngressName(toolAppName), projectId);
         }
     }
 
@@ -168,7 +169,7 @@ export class BaseDbToolService {
                 ],
                 tls: [{
                     hosts: [hostname],
-                    secretName: `secret-tls-${hostname}`.substring(0, 63)
+                    secretName: `sec-tls-${hostname}`
                 }],
             },
         };
