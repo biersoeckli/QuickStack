@@ -2,12 +2,10 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { V1Ingress, V1Secret } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import { AppDomain } from "@prisma/client";
 import { Constants } from "../../shared/utils/constants";
 import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
-import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 
 class IngressService {
 
@@ -68,7 +66,6 @@ class IngressService {
         const hostname = domain.hostname;
         const ingressName = KubeObjectNameUtils.getIngressName(domain.id);
         const existingIngress = await this.getIngressByName(app.projectId, domain.id);
-        const isATraefikMeDomain = HostnameDnsProviderUtils.isValidDnsProviderHostname(hostname);
 
         const middlewares = [
             basicAuthMiddlewareName,
@@ -84,7 +81,7 @@ class IngressService {
                 annotations: {
                     [Constants.QS_ANNOTATION_APP_ID]: app.id,
                     [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
-                    ...(!isATraefikMeDomain && domain.useSsl === true && { 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }), // for traefik.me domains no cert-manager --> uses default traefik self signed certificate
+                    ...(domain.useSsl === true && { 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }),
                     ...(middlewares && { 'traefik.ingress.kubernetes.io/router.middlewares': middlewares }),
                     ...(domain.useSsl === false && { 'traefik.ingress.kubernetes.io/router.entrypoints': 'web' }), // disable requests from https --> only http
                 },
@@ -112,7 +109,7 @@ class IngressService {
                         },
                     },
                 ],
-                ...(domain.useSsl === true && !isATraefikMeDomain && {
+                ...(domain.useSsl === true && {
                     tls: [
                         {
                             hosts: [hostname],

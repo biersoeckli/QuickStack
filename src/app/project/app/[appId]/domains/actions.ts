@@ -8,6 +8,7 @@ import { getAuthUserSession, isAuthorizedWriteForApp, saveFormAction, simpleActi
 import { z } from "zod";
 import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import paramService, { ParamService } from "@/server/services/param.service";
 
 const actionAppDomainEditZodModel = appDomainEditZodModel.merge(z.object({
     appId: z.string(),
@@ -58,3 +59,12 @@ export const deletePort = async (portId: string) =>
         await appService.deletePortById(portId);
         return new SuccessActionResult(undefined, 'Successfully deleted port');
     });
+
+export const getQuickstackDomainSuffix = async () => simpleAction(async () => {
+    await getAuthUserSession();
+    const publicIpv4 = await paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS);
+    if (!publicIpv4) {
+        throw new ServiceException('Please set the main public IPv4 address in the QuickStack settings first.');
+    }
+    return HostnameDnsProviderUtils.getHexHostanmeForIpAddress(publicIpv4);
+});
