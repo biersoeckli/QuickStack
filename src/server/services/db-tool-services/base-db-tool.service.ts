@@ -1,6 +1,6 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
 import dataAccess from "../../adapter/db.client";
-import hostnameDnsProviderService from "../traefik-me-domain.service";
+import hostnameDnsProviderService from "../hostname-dns-provider.service";
 import { KubeObjectNameUtils } from "../../utils/kube-object-name.utils";
 import deploymentService from "../deployment.service";
 import { V1Deployment, V1Ingress } from "@kubernetes/client-node";

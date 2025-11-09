@@ -13,9 +13,9 @@ class HostnameDnsProviderService {
             throw new ServiceException('Please set the main public IPv4 address in the QuickStack settings first.');
         }
         if (prefix) {
-            return `${prefix}-${appId}-${HostnameDnsProviderUtils.getHostnameForIpAdress(publicIpv4)}`;
+            return `${prefix}-${appId}.${HostnameDnsProviderUtils.getHostnameForIpAdress(publicIpv4)}`;
         }
-        return `${appId}-${HostnameDnsProviderUtils.getHostnameForIpAdress(publicIpv4)}`;
+        return `${appId}.${HostnameDnsProviderUtils.getHostnameForIpAdress(publicIpv4)}`;
     }
 }
 

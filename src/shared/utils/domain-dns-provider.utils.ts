@@ -1,11 +1,11 @@
 /**
  * Utils for a provider wich supports domains like xip.io or traefik.me.
  * In first versions of QuickStack traefik.me was used. Due to availability issues with traefik.me,
- * it was replaced with https://sslip.io.
+ * it was replaced with https://sslip.io and custom domain quickstack.me.
  */
 export class HostnameDnsProviderUtils {
 
-    public static readonly PROVIDER_HOSTNAME = 'sslip.io';
+    public static readonly PROVIDER_HOSTNAME = 'quickstack.me';
     private static readonly PROVIDER_HOSTNAME_SUFFIX = `.${this.PROVIDER_HOSTNAME}`;
 
     static getHostnameForIpAdress(ipv4Address: string): string {
@@ -13,8 +13,13 @@ export class HostnameDnsProviderUtils {
         return `${traefikFriendlyIpv4}.${this.PROVIDER_HOSTNAME}`;
     }
 
+    static getHexHostanmeForIpAddress(ipv4Address: string): string {
+        const traefikFriendlyIpv4 = this.ipv4ToHex(ipv4Address)
+        return `${traefikFriendlyIpv4}.${this.PROVIDER_HOSTNAME}`;
+    }
+
     static isValidDnsProviderHostname(domain: string): boolean {
-        return this.containsDnsProviderHostname(domain) && domain.replace(this.PROVIDER_HOSTNAME_SUFFIX, '').includes('.');
+        return this.containsDnsProviderHostname(domain) //&& domain.replace(this.PROVIDER_HOSTNAME_SUFFIX, '').includes('.');
     }
 
     static containsDnsProviderHostname(domain: string): boolean {

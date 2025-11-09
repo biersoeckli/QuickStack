@@ -9,7 +9,7 @@ import svcService from "./svc.service";
 import { randomBytes } from "crypto";
 import podService from "./pod.service";
 import bcrypt from "bcrypt";
-import hostnameDnsProviderService from "./traefik-me-domain.service";
+import hostnameDnsProviderService from "./hostname-dns-provider.service";
 import pvcService from "./pvc.service";
 
 class FileBrowserService {

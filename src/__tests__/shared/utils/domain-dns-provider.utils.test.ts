@@ -1,25 +1,25 @@
 import { HostnameDnsProviderUtils } from '../../../shared/utils/domain-dns-provider.utils';
 
 describe('DomainDnsProviderUtils', () => {
-    describe('isValidTraefikMeDomain', () => {
-        it('should return true for valid sslip.io domain with subdomain', () => {
-            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('sub.example.sslip.io')).toBe(true);
+    describe('isValidDnsProviderHostname', () => {
+        it('should return true for valid quickstack.me domain with subdomain', () => {
+            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('sub.example.quickstack.me')).toBe(true);
         });
 
-        it('should return true for IP-based domain', () => {
-            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('192.168.1.1.sslip.io')).toBe(true);
+        it('should return true for hex IP-based domain', () => {
+            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('c0a80101.quickstack.me')).toBe(true);
         });
 
-        it('should return false for simple domain ending with .sslip.io', () => {
-            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('example.sslip.io')).toBe(false);
+        it('should return true for simple domain ending with .quickstack.me', () => {
+            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('example.quickstack.me')).toBe(true);
         });
 
-        it('should return false for domain not ending with .sslip.io', () => {
+        it('should return false for domain not ending with .quickstack.me', () => {
             expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('example.com')).toBe(false);
         });
 
         it('should return false for domain with only provider domain', () => {
-            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('sslip.io')).toBe(false);
+            expect(HostnameDnsProviderUtils.isValidDnsProviderHostname('quickstack.me')).toBe(false);
         });
 
         it('should return false for empty string', () => {
@@ -27,16 +27,16 @@ describe('DomainDnsProviderUtils', () => {
         });
     });
 
-    describe('containesTraefikMeDomain', () => {
-        it('should return true for domain containing .sslip.io', () => {
-            expect(HostnameDnsProviderUtils.containsDnsProviderHostname('example.sslip.io')).toBe(true);
+    describe('containsDnsProviderHostname', () => {
+        it('should return true for domain containing .quickstack.me', () => {
+            expect(HostnameDnsProviderUtils.containsDnsProviderHostname('example.quickstack.me')).toBe(true);
         });
 
-        it('should return true for subdomain containing .sslip.io', () => {
-            expect(HostnameDnsProviderUtils.containsDnsProviderHostname('sub.example.sslip.io')).toBe(true);
+        it('should return true for subdomain containing .quickstack.me', () => {
+            expect(HostnameDnsProviderUtils.containsDnsProviderHostname('sub.example.quickstack.me')).toBe(true);
         });
 
-        it('should return false for domain not containing .sslip.io', () => {
+        it('should return false for domain not containing .quickstack.me', () => {
             expect(HostnameDnsProviderUtils.containsDnsProviderHostname('example.com')).toBe(false);
         });
 
@@ -45,17 +45,39 @@ describe('DomainDnsProviderUtils', () => {
         });
     });
 
-    describe('getHostnameForIpAdress', () => {
-        it('should convert IP address to hostname with dashes', () => {
-            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('192.168.1.1')).toBe('192-168-1-1.sslip.io');
+    describe('getHostnameForIpAddress', () => {
+        it('should convert IP address to hostname with hex format', () => {
+            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('192.168.1.1')).toBe('c0a80101.quickstack.me');
         });
 
         it('should handle another IP address format', () => {
-            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('10.0.0.1')).toBe('10-0-0-1.sslip.io');
+            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('10.0.0.1')).toBe('0a000001.quickstack.me');
         });
 
         it('should handle localhost IP', () => {
-            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('127.0.0.1')).toBe('127-0-0-1.sslip.io');
+            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('127.0.0.1')).toBe('7f000001.quickstack.me');
+        });
+    });
+
+    describe('getHostnameForIpAdress', () => {
+        it('should convert IP address to hostname with dash-separated format', () => {
+            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('192.168.1.1')).toBe('192-168-1-1.quickstack.me');
+        });
+
+        it('should handle another IP address format', () => {
+            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('10.0.0.1')).toBe('10-0-0-1.quickstack.me');
+        });
+
+        it('should handle localhost IP', () => {
+            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('127.0.0.1')).toBe('127-0-0-1.quickstack.me');
+        });
+
+        it('should handle max values correctly', () => {
+            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('255.255.255.255')).toBe('255-255-255-255.quickstack.me');
+        });
+
+        it('should handle minimum values correctly', () => {
+            expect(HostnameDnsProviderUtils.getHostnameForIpAdress('0.0.0.0')).toBe('0-0-0-0.quickstack.me');
         });
     });
 
