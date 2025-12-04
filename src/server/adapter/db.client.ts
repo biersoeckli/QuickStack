@@ -1,15 +1,23 @@
+import "dotenv/config";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { DefaultArgs } from "@prisma/client/runtime/library";
 import { ListUtils } from "../../shared/utils/list.utils";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { DefaultArgs } from "@prisma/client/runtime/client";
 
 type clientType = keyof PrismaClient<Prisma.PrismaClientOptions, never | undefined>;
 
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+    if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is not defined in environment variables');
+    }
+    const adapter = new PrismaBetterSqlite3({
+        url: process.env.DATABASE_URL,
+    });
+    return new PrismaClient({ adapter });
 }
 
 declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
+    prismaGlobal: ReturnType<typeof prismaClientSingleton>;
 } & typeof global;
 
 const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
@@ -42,7 +50,7 @@ export class DataAccessClient {
                 });
             }));
         }
-      }
+    }
 
     async getById(clientType: clientType, id: any, idKey = 'id') {
         return await (this.client[clientType] as any).findFirstOrThrow({

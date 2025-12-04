@@ -6,6 +6,8 @@ QuickStack is a self-hosted PaaS solution designed to simplify the management of
 
 Developed as part of a student project by [glueh-wyy-huet](https://github.com/glueh-wyy-huet) and [biersoeckli](https://github.com/biersoeckli) at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/), QuickStack provides a scalable and cost-effective alternative to commercial cloud PaaS offerings like Vercel, Digital Ocean App Platform or Azure App Service.
 
+<img src="/github-assets/app-settings-general.png" alt="QuickStack App Settings Image" width="100%" />
+
 ## Key Features
 
 * **One-Command Installation:** Deploy QuickStack on a VPS with a single command.
