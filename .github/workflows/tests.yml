@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+env:
+  # dummy database url for build time --> prisma
+  DATABASE_URL: file:./dev.db
+
 permissions:
   contents: read
 

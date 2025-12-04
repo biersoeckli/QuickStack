@@ -5,6 +5,10 @@ on:
   release:
     types: [released, prereleased]
 
+env:
+  # dummy database url for build time --> prisma
+  DATABASE_URL: file:./dev.db
+
 permissions:
   contents: read
 
