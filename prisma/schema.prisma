@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js" // TODO: Upgrade to use native js client in prisma 7
 }
 
 generator zod {
@@ -32,7 +32,6 @@ generator zod {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:../storage/db/data.db"
 }
 
 // *** The following code is for the default NextAuth.js schema
