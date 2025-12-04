@@ -8,7 +8,6 @@ import dataAccess from './server/adapter/db.client'
 import { FancyConsoleUtils } from './shared/utils/fancy-console.utils'
 import { Constants } from './shared/utils/constants'
 import backupService from './server/services/standalone-services/backup.service'
-import traefikMeDomainStandaloneService from './server/services/standalone-services/traefik-me-domain-standalone.service'
 import maintenanceService from './server/services/standalone-services/maintenance.service'
 import passwordChangeService from './server/services/standalone-services/password-change.service'
 import appLogsService from './server/services/standalone-services/app-logs.service'
@@ -56,7 +55,6 @@ async function initializeNextJs() {
     }
 
     await backupService.registerAllBackups();
-    traefikMeDomainStandaloneService.configureSchedulingForTraefikMeCertificateUpdate();
     maintenanceService.configureMaintenanceCronJobs();
     appLogsService.configureCronJobs();
 

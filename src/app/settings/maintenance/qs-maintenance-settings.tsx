@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteOldAppLogs, purgeRegistryImages, updateRegistry, updateTraefikMeCertificates } from "../server/actions";
+import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteOldAppLogs, purgeRegistryImages, updateRegistry } from "../server/actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -94,18 +94,6 @@ export default function QuickStackMaintenanceSettings({
                         Toast.fromAction(() => updateRegistry());
                     }
                 }}><RotateCcw /> Force Update Registry</Button>
-
-
-                <Button variant="secondary" onClick={async () => {
-                    if (await useConfirm.openConfirmDialog({
-                        title: 'Update Traefik.me SSL Certificates',
-                        description: 'To use SSL with traefik.me domains, wildcard SSL certificates must be provided. Normally, this is done automatically. Use this action to force an update.',
-                        okButton: "Update Certificates"
-                    })) {
-                        Toast.fromAction(() => updateTraefikMeCertificates());
-                    }
-                }}><RotateCcw />Update Traefik.me SSL Certificates</Button>
-
 
             </CardContent>
         </Card>

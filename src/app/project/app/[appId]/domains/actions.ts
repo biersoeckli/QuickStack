@@ -6,8 +6,9 @@ import { SuccessActionResult } from "@/shared/model/server-action-error-return.m
 import appService from "@/server/services/app.service";
 import { getAuthUserSession, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
-import { TraefikMeUtils } from "@/shared/utils/traefik-me.utils";
+import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import paramService, { ParamService } from "@/server/services/param.service";
 
 const actionAppDomainEditZodModel = appDomainEditZodModel.merge(z.object({
     appId: z.string(),
@@ -23,9 +24,9 @@ export const saveDomain = async (prevState: any, inputData: z.infer<typeof actio
             validatedData.hostname = url.hostname;
         }
 
-        if (TraefikMeUtils.containesTraefikMeDomain(validatedData.hostname)) {
-            if (!TraefikMeUtils.isValidTraefikMeDomain(validatedData.hostname)) {
-                throw new ServiceException('Invalid traefik.me domain. Subdomain of traefik.me cannot contain dots.');
+        if (HostnameDnsProviderUtils.containsDnsProviderHostname(validatedData.hostname)) {
+            if (!HostnameDnsProviderUtils.isValidDnsProviderHostname(validatedData.hostname)) {
+                throw new ServiceException(`Invalid ${HostnameDnsProviderUtils.PROVIDER_HOSTNAME} domain. Subdomain of ${HostnameDnsProviderUtils.PROVIDER_HOSTNAME} cannot contain dots.`);
             }
         }
 
@@ -58,3 +59,12 @@ export const deletePort = async (portId: string) =>
         await appService.deletePortById(portId);
         return new SuccessActionResult(undefined, 'Successfully deleted port');
     });
+
+export const getQuickstackDomainSuffix = async () => simpleAction(async () => {
+    await getAuthUserSession();
+    const publicIpv4 = await paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS);
+    if (!publicIpv4) {
+        throw new ServiceException('Please set the main public IPv4 address in the QuickStack settings first.');
+    }
+    return HostnameDnsProviderUtils.getHexHostanmeForIpAddress(publicIpv4);
+});

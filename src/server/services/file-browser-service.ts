@@ -1,6 +1,5 @@
 import { V1Deployment, V1Ingress } from "@kubernetes/client-node";
 import dataAccess from "../adapter/db.client";
-import traefikMeDomainStandaloneService from "./standalone-services/traefik-me-domain-standalone.service";
 import { Constants } from "@/shared/utils/constants";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
@@ -10,7 +9,7 @@ import svcService from "./svc.service";
 import { randomBytes } from "crypto";
 import podService from "./pod.service";
 import bcrypt from "bcrypt";
-import traefikMeDomainService from "./traefik-me-domain.service";
+import hostnameDnsProviderService from "./hostname-dns-provider.service";
 import pvcService from "./pvc.service";
 
 class FileBrowserService {
@@ -37,7 +36,7 @@ class FileBrowserService {
         await pvcService.createPvcForVolumeIfNotExists(volume.app.projectId, volume);
 
         console.log(`Deploying filebrowser for volume ${volumeId}`);
-        const traefikHostname = await traefikMeDomainService.getDomainForApp(volume.id);
+        const traefikHostname = await hostnameDnsProviderService.getDomainForApp(volume.id);
 
         const pvcName = KubeObjectNameUtils.toPvcName(volume.id);
 
