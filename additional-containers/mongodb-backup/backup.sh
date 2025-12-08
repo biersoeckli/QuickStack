@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+echo ""
+echo ""
+echo "*************************************************************"
+echo "QuickStack MongoDB Backup Script Version: ${VERSION:-unknown}"
+echo "*************************************************************"
+echo ""
+echo ""
+
 # Check required env vars
 if [ -z "$MONGODB_URI" ]; then echo "Error: MONGODB_URI is not set"; exit 1; fi
 if [ -z "$S3_ENDPOINT" ]; then echo "Error: S3_ENDPOINT is not set"; exit 1; fi
@@ -51,4 +59,10 @@ aws s3 cp "$ZIP_FILE" "s3://$S3_BUCKET_NAME/$S3_KEY" --endpoint-url "$S3_ENDPOIN
 echo "Cleaning up..."
 rm -rf "$WORK_DIR"
 
+echo ""
+echo ""
+echo "******************************"
 echo "Backup completed successfully."
+echo "******************************"
+echo ""
+echo ""

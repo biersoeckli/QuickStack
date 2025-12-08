@@ -91,5 +91,7 @@ jobs:
           file: ./additional-containers/mongodb-backup/Dockerfile.amd64
           push: true
           platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=canary-${{ github.run_number }}
           tags: |
             quickstack/job-backup-mongodb:canary

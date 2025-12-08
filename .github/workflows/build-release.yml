@@ -91,6 +91,8 @@ jobs:
           file: ./additional-containers/mongodb-backup/Dockerfile.amd64
           push: true
           platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=${{ github.ref_name }}
           tags: |
             quickstack/job-backup-mongodb:latest-amd64
 
@@ -101,6 +103,8 @@ jobs:
           file: ./additional-containers/mongodb-backup/Dockerfile.arm64
           push: true
           platforms: linux/arm64
+          build-args: |
+            VERSION_ARG=${{ github.ref_name }}
           tags: |
             quickstack/job-backup-mongodb:latest-arm64
 

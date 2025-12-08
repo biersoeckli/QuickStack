@@ -1,5 +1,8 @@
 FROM ubuntu:22.04
 
+ARG VERSION_ARG=unknown
+ENV VERSION=${VERSION_ARG}-arm64
+
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
