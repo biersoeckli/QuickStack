@@ -1,0 +1,26 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    zip \
+    awscli \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MongoDB Database Tools
+ENV MONGO_TOOLS_VERSION=100.10.0
+RUN wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-arm64-${MONGO_TOOLS_VERSION}.tgz \
+    && tar -zxvf mongodb-database-tools-ubuntu2204-arm64-${MONGO_TOOLS_VERSION}.tgz \
+    && mv mongodb-database-tools-ubuntu2204-arm64-${MONGO_TOOLS_VERSION}/bin/* /usr/local/bin/ \
+    && rm -rf mongodb-database-tools-ubuntu2204-arm64-${MONGO_TOOLS_VERSION}*
+
+WORKDIR /app
+
+COPY backup.sh .
+RUN chmod +x backup.sh
+
+CMD ["./backup.sh"]
