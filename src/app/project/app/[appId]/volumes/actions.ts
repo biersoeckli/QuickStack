@@ -11,6 +11,7 @@ import { fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/backup-volume-edit.model";
 import volumeBackupService from "@/server/services/volume-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
+import databaseBackupService from "@/server/services/standalone-services/database-backup.service";
 import { volumeUploadZodModel } from "@/shared/model/volume-upload.model";
 import restoreService from "@/server/services/restore.service";
 import fileBrowserService from "@/server/services/file-browser-service";
@@ -122,7 +123,28 @@ export const deleteBackupVolume = async (backupVolumeId: string) =>
 export const runBackupVolumeSchedule = async (backupVolumeId: string) =>
     simpleAction(async () => {
         await validateBackupVolumeWriteAuthorization(backupVolumeId);
-        await backupService.runBackupForVolume(backupVolumeId);
+
+        // Get the backup volume with app info to determine backup method
+        const backupVolume = await dataAccess.client.volumeBackup.findFirstOrThrow({
+            where: {
+                id: backupVolumeId
+            },
+            include: {
+                volume: {
+                    include: {
+                        app: true
+                    }
+                }
+            }
+        });
+
+        // Use database-specific backup if it's a database app AND useDatabaseBackup is true
+        if (backupVolume.volume.app.appType !== 'APP' && backupVolume.useDatabaseBackup) {
+            await databaseBackupService.backupDatabase(backupVolumeId);
+        } else {
+            await backupService.runBackupForVolume(backupVolumeId);
+        }
+
         return new SuccessActionResult(undefined, 'Backup created and uploaded successfully');
     });
 
