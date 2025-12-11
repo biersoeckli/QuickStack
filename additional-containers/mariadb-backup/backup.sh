@@ -38,6 +38,7 @@ mariadb-dump -h "$MYSQL_HOST" \
              --routines \
              --triggers \
              --events \
+             --skip-ssl \
              "$MYSQL_DATABASE" > "$DUMP_FILE"
 
 # Check if dump was successful (file exists and is not empty)
