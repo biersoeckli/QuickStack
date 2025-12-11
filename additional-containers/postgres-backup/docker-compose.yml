@@ -1,16 +1,17 @@
 version: '3.8'
 
 services:
-  # The MongoDB instance to backup
-  mongo:
-    image: mongo:6.0
+  # The PostgreSQL instance to backup
+  postgres:
+    image: postgres:18
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: testdb
     ports:
-      - "27017:27017"
+      - "5432:5432"
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,16 +23,20 @@ services:
       context: .
       dockerfile: Dockerfile.arm64
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
     environment:
-      # Connection string to the mongo service
-      MONGODB_URI: "mongodb://root:password@mongo:27017/?authSource=admin"
+      # Connection parameters to the postgres service
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "testdb"
 
       # S3 Configuration (Example using MinIO or AWS)
       S3_ENDPOINT: "" # or http://minio:9000
       S3_BUCKET_NAME: ""
-      S3_REGION: "us-east-1"
+      S3_REGION: ""
       S3_ACCESS_KEY_ID: ""
       S3_SECRET_KEY: ""
       S3_KEY: "backup-2025-01-01.zip"

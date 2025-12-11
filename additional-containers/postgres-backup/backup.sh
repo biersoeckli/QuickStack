@@ -4,12 +4,16 @@ set -e
 echo ""
 echo ""
 echo "*************************************************************"
-echo "QuickStack MongoDB Backup Script Version: ${VERSION:-unknown}"
+echo "QuickStack PostgreSQL Backup Script Version: ${VERSION:-unknown}"
 echo "*************************************************************"
 echo ""
 
 # Check required env vars
-if [ -z "$MONGODB_URI" ]; then echo "Error: MONGODB_URI is not set"; exit 1; fi
+if [ -z "$POSTGRES_HOST" ]; then echo "Error: POSTGRES_HOST is not set"; exit 1; fi
+if [ -z "$POSTGRES_PORT" ]; then echo "Error: POSTGRES_PORT is not set"; exit 1; fi
+if [ -z "$POSTGRES_USER" ]; then echo "Error: POSTGRES_USER is not set"; exit 1; fi
+if [ -z "$POSTGRES_PASSWORD" ]; then echo "Error: POSTGRES_PASSWORD is not set"; exit 1; fi
+if [ -z "$POSTGRES_DB" ]; then echo "Error: POSTGRES_DB is not set"; exit 1; fi
 if [ -z "$S3_ENDPOINT" ]; then echo "Error: S3_ENDPOINT is not set"; exit 1; fi
 if [ -z "$S3_ACCESS_KEY_ID" ]; then echo "Error: S3_ACCESS_KEY_ID is not set"; exit 1; fi
 if [ -z "$S3_SECRET_KEY" ]; then echo "Error: S3_SECRET_KEY is not set"; exit 1; fi
@@ -21,26 +25,31 @@ echo "Starting backup process..."
 
 # Create a temporary directory for the dump
 WORK_DIR=$(mktemp -d)
-DUMP_DIR="$WORK_DIR/dump"
+DUMP_FILE="$WORK_DIR/backup.sql"
 ZIP_FILE="$WORK_DIR/backup.zip"
 
-# Run mongodump
-echo "Running mongodump..."
-# --forceTableScan might be needed if the user doesn't have administrative privileges but usually for backups they do.
-# We dump to a directory to zip it later as requested.
-mongodump --uri="$MONGODB_URI" --forceTableScan --out="$DUMP_DIR"
+# Set PGPASSWORD for pg_dump
+export PGPASSWORD="$POSTGRES_PASSWORD"
 
-# Check if dump was successful (directory exists and is not empty)
-if [ ! -d "$DUMP_DIR" ] || [ -z "$(ls -A $DUMP_DIR)" ]; then
-    echo "Error: Mongodump failed or produced no output."
+# Run pg_dump
+echo "Running pg_dump..."
+pg_dump -h "$POSTGRES_HOST" \
+        -p "$POSTGRES_PORT" \
+        -U "$POSTGRES_USER" \
+        -d "$POSTGRES_DB" \
+        -F p \
+        -f "$DUMP_FILE"
+
+# Check if dump was successful (file exists and is not empty)
+if [ ! -f "$DUMP_FILE" ] || [ ! -s "$DUMP_FILE" ]; then
+    echo "Error: pg_dump failed or produced no output."
     exit 1
 fi
 
 # Zip the dump
 echo "Zipping dump..."
-cd "$DUMP_DIR"
-zip -r "$ZIP_FILE" .
 cd "$WORK_DIR"
+zip "$ZIP_FILE" "backup.sql"
 
 # Configure AWS CLI environment variables
 export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
