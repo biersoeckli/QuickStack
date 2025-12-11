@@ -45,13 +45,13 @@ class SharedBackupService {
         }
     }
 
-    async logDatabaseBackupOutput(jobName: string) {
-        const pod = await this.getPodForBackupJob(jobName);
-        await podService.waitUntilPodIsRunningFailedOrSucceded(BACKUP_NAMESPACE, pod.podName);
+    async logDatabaseBackupOutput(jobName: string, namespace?: string): Promise<void> {
+        const pod = await this.getPodForBackupJob(jobName, namespace);
+        await podService.waitUntilPodIsRunningFailedOrSucceded(namespace || BACKUP_NAMESPACE, pod.podName);
 
         const logStream = new stream.PassThrough();
 
-        const k3sStreamRequest = await k3s.log.log(BACKUP_NAMESPACE, pod.podName, pod.containerName, logStream, {
+        const k3sStreamRequest = await k3s.log.log(namespace || BACKUP_NAMESPACE, pod.podName, pod.containerName, logStream, {
             follow: true,
             tailLines: undefined,
             timestamps: true,
@@ -73,8 +73,8 @@ class SharedBackupService {
         });
     }
 
-    async getPodForBackupJob(jobName: string): Promise<PodsInfoModel> {
-        const res = await k3s.core.listNamespacedPod(BACKUP_NAMESPACE, undefined, undefined, undefined, undefined, `job-name=${jobName}`);
+    async getPodForBackupJob(jobName: string, namespace?: string): Promise<PodsInfoModel> {
+        const res = await k3s.core.listNamespacedPod(namespace || BACKUP_NAMESPACE, undefined, undefined, undefined, undefined, `job-name=${jobName}`);
         const pods = res.body.items;
         if (pods.length === 0) {
             throw new ServiceException(`No pod found for backup job ${jobName}`);
@@ -86,12 +86,12 @@ class SharedBackupService {
         } as PodsInfoModel;
     }
 
-    async waitForBackupJobCompletion(jobName: string): Promise<void> {
+    async waitForBackupJobCompletion(jobName: string, namespace?: string): Promise<void> {
         const POLL_INTERVAL = 10000; // 10 seconds
         return await new Promise<void>((resolve, reject) => {
             const intervalId = setInterval(async () => {
                 try {
-                    const job = await k3s.batch.readNamespacedJob(jobName, BACKUP_NAMESPACE);
+                    const job = await k3s.batch.readNamespacedJob(jobName, namespace || BACKUP_NAMESPACE);
                     const status = job.body.status;
 
                     if ((status?.succeeded ?? 0) > 0) {

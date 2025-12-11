@@ -14,7 +14,16 @@ class DatabaseBackupService {
             include: {
                 volume: {
                     include: {
-                        app: true
+                        app: {
+                            include: {
+                                project: true,
+                                appDomains: true,
+                                appPorts: true,
+                                appBasicAuths: true,
+                                appVolumes: true,
+                                appFileMounts: true
+                            }
+                        }
                     }
                 },
                 target: true
@@ -30,7 +39,7 @@ class DatabaseBackupService {
 
         // Delegate to database-specific backup service
         if (app.appType === 'MONGODB') {
-            return await mongoDbBackupService.backupMongoDb(backupVolumeId, backupVolume, app);
+            return await mongoDbBackupService.backupMongoDb(backupVolume, app);
         }
 
         throw new ServiceException(`Database backup for ${app.appType} is not yet implemented.`);

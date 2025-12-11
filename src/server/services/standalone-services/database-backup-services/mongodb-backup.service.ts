@@ -4,37 +4,40 @@ import { Constants } from "../../../../shared/utils/constants";
 import { AppTemplateUtils } from "../../../utils/app-template.utils";
 import { KubeObjectNameUtils } from "../../../utils/kube-object-name.utils";
 import namespaceService from "../../namespace.service";
-import sharedBackupService, { BACKUP_NAMESPACE } from "./shared-backup.service";
-
+import sharedBackupService from "./shared-backup.service";
+import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
 class MongoDbBackupService {
 
-    async backupMongoDb(backupVolumeId: string, backupVolume: any, app: any) {
-        await namespaceService.createNamespaceIfNotExists(BACKUP_NAMESPACE);
+    async backupMongoDb(backupVolume: VolumeBackupExtendedModel, app: AppExtendedModel) {
+
+        const backupNamespace = app.projectId; // must run in the same namespace as the app
+
+        await namespaceService.createNamespaceIfNotExists(backupNamespace);
 
         const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-mongodb-${app.id}`);
         console.log(`Creating MongoDB backup job with name: ${jobName}`);
 
-        // Get database credentials
-        const dbInfo = AppTemplateUtils.getDatabaseModelFromApp(app);
+        const dbCredentials = AppTemplateUtils.getDatabaseModelFromApp(app);
+        const mongodbUri = `mongodb://${dbCredentials.username}:${dbCredentials.password}@${dbCredentials.hostname}:${dbCredentials.port}/?authSource=admin`;
 
-        // Build MongoDB connection URI with authentication
-        const mongodbUri = `mongodb://${dbInfo.username}:${dbInfo.password}@${dbInfo.hostname}:${dbInfo.port}/?authSource=admin`;
-
-        // Generate S3 key for backup
         const now = new Date();
         const nowString = now.toISOString();
-        const s3Key = `${sharedBackupService.folderPathForVolumeBackup(app.id, backupVolumeId)}/${nowString}.zip`;
+        const s3Key = `${sharedBackupService.folderPathForVolumeBackup(app.id, backupVolume.id)}/${nowString}.zip`;
 
-        console.log(`MongoDB URI: ${mongodbUri.replace(dbInfo.password, '***')}`);
+        console.log(`MongoDB URI: ${mongodbUri.replace(dbCredentials.password, '***')}`);
         console.log(`S3 Key: ${s3Key}`);
+
+        const endpoint = backupVolume.target.endpoint.includes('http') ? backupVolume.target.endpoint : `https://${backupVolume.target.endpoint}`;
+        console.log(`S3 Endpoint: ${endpoint}`);
 
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
             kind: "Job",
             metadata: {
                 name: jobName,
-                namespace: BACKUP_NAMESPACE,
+                namespace: backupNamespace,
                 annotations: {
                     [Constants.QS_ANNOTATION_APP_ID]: app.id,
                     [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
@@ -47,7 +50,7 @@ class MongoDbBackupService {
                         containers: [
                             {
                                 name: jobName,
-                                image: "quickstack/job-backup-mongodb:canary",
+                                image: "quickstack/job-backup-mongodb:canary", // todo set to latest image once released
                                 env: [
                                     {
                                         name: "MONGODB_URI",
@@ -55,7 +58,7 @@ class MongoDbBackupService {
                                     },
                                     {
                                         name: "S3_ENDPOINT",
-                                        value: backupVolume.target.endpoint
+                                        value: endpoint
                                     },
                                     {
                                         name: "S3_ACCESS_KEY_ID",
@@ -87,19 +90,19 @@ class MongoDbBackupService {
             }
         };
 
-        await k3s.batch.createNamespacedJob(BACKUP_NAMESPACE, jobDefinition);
+        await k3s.batch.createNamespacedJob(backupNamespace, jobDefinition);
         console.log(`MongoDB backup job ${jobName} started successfully`);
 
         // Wait for pod to be created
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Log backup output
-        await sharedBackupService.logDatabaseBackupOutput(jobName);
+        await sharedBackupService.logDatabaseBackupOutput(jobName, backupNamespace);
 
         // Wait for job completion
-        await sharedBackupService.waitForBackupJobCompletion(jobName);
+        await sharedBackupService.waitForBackupJobCompletion(jobName, backupNamespace);
 
-        await sharedBackupService.deleteOldBackupsBasedOnRetention(backupVolume.target, app.id, backupVolumeId, backupVolume.retention, '.zip');
+        await sharedBackupService.deleteOldBackupsBasedOnRetention(backupVolume.target, app.id, backupVolume.id, backupVolume.retention, '.zip');
         console.log(`MongoDB backup finished for volume ${backupVolume.volumeId} and backup ${backupVolume.id}`);
     }
 }
