@@ -24,7 +24,7 @@ class MongoDbBackupService {
 
         const now = new Date();
         const nowString = now.toISOString();
-        const s3Key = `${sharedBackupService.folderPathForVolumeBackup(app.id, backupVolume.id)}/${nowString}.zip`;
+        const s3Key = `${sharedBackupService.folderPathForVolumeBackup(app.id, backupVolume.id)}/${nowString}.tar.gz`;
 
         console.log(`MongoDB URI: ${mongodbUri.replace(dbCredentials.password, '***')}`);
         console.log(`S3 Key: ${s3Key}`);
@@ -102,7 +102,7 @@ class MongoDbBackupService {
         // Wait for job completion
         await sharedBackupService.waitForBackupJobCompletion(jobName, backupNamespace);
 
-        await sharedBackupService.deleteOldBackupsBasedOnRetention(backupVolume.target, app.id, backupVolume.id, backupVolume.retention, '.zip');
+        await sharedBackupService.deleteOldBackupsBasedOnRetention(backupVolume.target, app.id, backupVolume.id, backupVolume.retention, '.tar.gz');
         console.log(`MongoDB backup finished for volume ${backupVolume.volumeId} and backup ${backupVolume.id}`);
     }
 }

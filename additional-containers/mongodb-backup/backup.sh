@@ -22,12 +22,12 @@ echo "Starting backup process..."
 # Create a temporary directory for the dump
 WORK_DIR=$(mktemp -d)
 DUMP_DIR="$WORK_DIR/dump"
-ZIP_FILE="$WORK_DIR/backup.zip"
+TAR_FILE="$WORK_DIR/backup.tar.gz"
 
 # Run mongodump
 echo "Running mongodump..."
 # --forceTableScan might be needed if the user doesn't have administrative privileges but usually for backups they do.
-# We dump to a directory to zip it later as requested.
+# We dump to a directory to compress it later.
 mongodump --uri="$MONGODB_URI" --forceTableScan --out="$DUMP_DIR"
 
 # Check if dump was successful (directory exists and is not empty)
@@ -36,10 +36,10 @@ if [ ! -d "$DUMP_DIR" ] || [ -z "$(ls -A $DUMP_DIR)" ]; then
     exit 1
 fi
 
-# Zip the dump
-echo "Zipping dump..."
+# Create tar.gz archive
+echo "Creating tar.gz archive..."
 cd "$DUMP_DIR"
-zip -r "$ZIP_FILE" .
+tar -czf "$TAR_FILE" .
 cd "$WORK_DIR"
 
 # Configure AWS CLI environment variables
@@ -52,7 +52,7 @@ echo "Uploading to S3..."
 echo "Destination: s3://$S3_BUCKET_NAME/$S3_KEY"
 echo "Endpoint: $S3_ENDPOINT"
 
-aws s3 cp "$ZIP_FILE" "s3://$S3_BUCKET_NAME/$S3_KEY" --endpoint-url "$S3_ENDPOINT"
+aws s3 cp "$TAR_FILE" "s3://$S3_BUCKET_NAME/$S3_KEY" --endpoint-url "$S3_ENDPOINT"
 
 # Cleanup
 echo "Cleaning up..."

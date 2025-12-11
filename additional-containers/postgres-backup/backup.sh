@@ -26,7 +26,7 @@ echo "Starting backup process..."
 # Create a temporary directory for the dump
 WORK_DIR=$(mktemp -d)
 DUMP_FILE="$WORK_DIR/backup.sql"
-ZIP_FILE="$WORK_DIR/backup.zip"
+TAR_FILE="$WORK_DIR/backup.tar.gz"
 
 # Set PGPASSWORD for pg_dump
 export PGPASSWORD="$POSTGRES_PASSWORD"
@@ -46,10 +46,10 @@ if [ ! -f "$DUMP_FILE" ] || [ ! -s "$DUMP_FILE" ]; then
     exit 1
 fi
 
-# Zip the dump
-echo "Zipping dump..."
+# Create tar.gz archive
+echo "Creating tar.gz archive..."
 cd "$WORK_DIR"
-zip "$ZIP_FILE" "backup.sql"
+tar -czf "$TAR_FILE" "backup.sql"
 
 # Configure AWS CLI environment variables
 export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
@@ -61,7 +61,7 @@ echo "Uploading to S3..."
 echo "Destination: s3://$S3_BUCKET_NAME/$S3_KEY"
 echo "Endpoint: $S3_ENDPOINT"
 
-aws s3 cp "$ZIP_FILE" "s3://$S3_BUCKET_NAME/$S3_KEY" --endpoint-url "$S3_ENDPOINT"
+aws s3 cp "$TAR_FILE" "s3://$S3_BUCKET_NAME/$S3_KEY" --endpoint-url "$S3_ENDPOINT"
 
 # Cleanup
 echo "Cleaning up..."
