@@ -25,20 +25,23 @@ echo "Starting backup process..."
 
 # Create a temporary directory for the dump
 WORK_DIR=$(mktemp -d)
-DUMP_FILE="$WORK_DIR/backup.sql"
+DUMP_FILE="$WORK_DIR/backup.dump"
 TAR_FILE="$WORK_DIR/backup.tar.gz"
 
 # Set PGPASSWORD for pg_dump
 export PGPASSWORD="$POSTGRES_PASSWORD"
 
-# Run pg_dump
+# Run pg_dump with custom format
 echo "Running pg_dump..."
-pg_dump -h "$POSTGRES_HOST" \
-        -p "$POSTGRES_PORT" \
-        -U "$POSTGRES_USER" \
-        -d "$POSTGRES_DB" \
-        -F p \
-        -f "$DUMP_FILE"
+pg_dump --file "$DUMP_FILE" \
+        --host "$POSTGRES_HOST" \
+        --port "$POSTGRES_PORT" \
+        --username "$POSTGRES_USER" \
+        --no-password \
+        --format=c \
+        --large-objects \
+        --verbose \
+        "$POSTGRES_DB"
 
 # Check if dump was successful (file exists and is not empty)
 if [ ! -f "$DUMP_FILE" ] || [ ! -s "$DUMP_FILE" ]; then
@@ -49,7 +52,7 @@ fi
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
 cd "$WORK_DIR"
-tar -czf "$TAR_FILE" "backup.sql"
+tar -czf "$TAR_FILE" "backup.dump"
 
 # Configure AWS CLI environment variables
 export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
