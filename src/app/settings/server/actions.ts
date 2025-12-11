@@ -8,6 +8,7 @@ import quickStackService from "@/server/services/qs.service";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import registryService from "@/server/services/registry.service";
 import { RegistryStorageLocationSettingsModel, registryStorageLocationSettingsZodModel } from "@/shared/model/registry-storage-location-settings.model";
+import { SystemBackupLocationSettingsModel, systemBackupLocationSettingsZodModel } from "@/shared/model/system-backup-location-settings.model";
 import { Constants } from "@/shared/utils/constants";
 import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
 import ipAddressFinderAdapter from "@/server/adapter/ip-adress-finder.adapter";
@@ -16,6 +17,8 @@ import buildService from "@/server/services/build.service";
 import standalonePodService from "@/server/services/standalone-services/standalone-pod.service";
 import maintenanceService from "@/server/services/standalone-services/maintenance.service";
 import appLogsService from "@/server/services/standalone-services/app-logs.service";
+import systemBackupService from "@/server/services/standalone-services/system-backup.service";
+import backupService from "@/server/services/standalone-services/backup.service";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -151,4 +154,44 @@ export const setRegistryStorageLocation = async (prevState: any, inputData: Regi
       name: ParamService.REGISTRY_SOTRAGE_LOCATION,
       value: validatedData.registryStorageLocation
     });
+  });
+
+export const setSystemBackupLocation = async (prevState: any, inputData: SystemBackupLocationSettingsModel) =>
+  saveFormAction(inputData, systemBackupLocationSettingsZodModel, async (validatedData) => {
+    await getAdminUserSession();
+
+    await paramService.save({
+      name: ParamService.QS_SYSTEM_BACKUP_LOCATION,
+      value: validatedData.systemBackupLocation
+    });
+  });
+
+export const listSystemBackups = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+
+    if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
+      return new SuccessActionResult([], 'No backup location configured');
+    }
+
+    const backups = await systemBackupService.listSystemBackups(systemBackupLocationId);
+
+    return new SuccessActionResult(backups, 'Backups loaded');
+  }) as Promise<ServerActionResult<any, any[]>>;
+
+export const runSystemBackupNow = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+
+    if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
+      throw new Error('System backup is not configured. Please select an S3 storage target first.');
+    }
+
+    await backupService.runSystemBackup();
+
+    return new SuccessActionResult(undefined, 'System backup started successfully');
   });

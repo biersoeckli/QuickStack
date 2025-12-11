@@ -10,6 +10,7 @@ import { S3Target } from "@prisma/client";
 import { BackupEntry, BackupInfoModel } from "../../../shared/model/backup-info.model";
 import databaseBackupService from "./database-backup.service";
 import sharedBackupService, { s3BucketPrefix } from "./database-backup-services/shared-backup.service";
+import systemBackupService from "./system-backup.service";
 
 
 class BackupService {
@@ -53,6 +54,17 @@ class BackupService {
                 console.log(`Backup for ${volumeBackups.length} volumes finished.`);
             });
         }
+
+        scheduleService.scheduleJob(`backup-quickstack-system-data`, '0 1 * * *', async () => {
+            console.log(`Running backup for QuickStack system data...`);
+            try {
+                await this.runSystemBackup();
+            } catch (e) {
+                console.error(`Error during QuickStack system data backup`);
+                console.error(e);
+            }
+            console.log(`Backup for QuickStack system data finished.`);
+        });
     }
 
     async unregisterAllBackups() {
@@ -254,6 +266,10 @@ class BackupService {
             }
         });
         return s3Service.deleteFile(target, key);
+    }
+
+    async runSystemBackup() {
+        return systemBackupService.runSystemBackup();
     }
 }
 

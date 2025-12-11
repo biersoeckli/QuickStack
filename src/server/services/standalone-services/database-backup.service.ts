@@ -1,6 +1,8 @@
 import dataAccess from "../../adapter/db.client";
 import { ServiceException } from "../../../shared/model/service.exception.model";
 import mongoDbBackupService from "./database-backup-services/mongodb-backup.service";
+import postgresBackupService from "./database-backup-services/postgres-backup.service";
+import mariaDbBackupService from "./database-backup-services/mariadb-backup.service";
 
 class DatabaseBackupService {
 
@@ -40,6 +42,14 @@ class DatabaseBackupService {
         // Delegate to database-specific backup service
         if (app.appType === 'MONGODB') {
             return await mongoDbBackupService.backupMongoDb(backupVolume, app);
+        }
+
+        if (app.appType === 'POSTGRES') {
+            return await postgresBackupService.backupPostgres(backupVolume, app);
+        }
+
+        if (app.appType === 'MARIADB') {
+            return await mariaDbBackupService.backupMariaDb(backupVolume, app);
         }
 
         throw new ServiceException(`Database backup for ${app.appType} is not yet implemented.`);

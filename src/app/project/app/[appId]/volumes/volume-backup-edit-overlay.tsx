@@ -44,7 +44,12 @@ export default function VolumeBackupEditDialog({
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const isDatabaseApp = app.appType !== 'APP';
-  const isDatabaseBackupSupported = ['MONGODB'].includes(app.appType); // Add more as they're implemented
+  const isDatabaseBackupSupported = [
+    'MONGODB',
+    //'MYSQL',
+    'MARIADB',
+    'POSTGRES'
+  ].includes(app.appType);
 
   const form = useForm<VolumeBackupEditModel>({
     resolver: zodResolver(volumeBackupEditZodModel),
@@ -168,8 +173,8 @@ export default function VolumeBackupEditDialog({
                           </FormLabel>
                           <FormDescription>
                             {isDatabaseBackupSupported
-                              ? `Use ${app.appType.toLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
-                              : `Database backup for ${app.appType} is not yet implemented. Volume backup will be used.`}
+                              ? `Use ${app.appType.toLocaleLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
+                              : `Database backup for ${app.appType.toLocaleLowerCase()} is not yet implemented. Volume backup will be used.`}
                           </FormDescription>
                         </div>
                       </FormItem>

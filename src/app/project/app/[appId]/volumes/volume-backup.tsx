@@ -82,8 +82,8 @@ export default function VolumeBackupList({
                                 <TableCell className="font-medium">{volumeBackup.retention}</TableCell>
                                 <TableCell className="font-medium">
                                     {app.appType !== 'APP' && volumeBackup.useDatabaseBackup
-                                        ? `Database (${app.appType})`
-                                        : 'Volume'}
+                                        ? `Database (${app.appType.toLocaleLowerCase()})`
+                                        : 'Archive from Volume'}
                                 </TableCell>
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
