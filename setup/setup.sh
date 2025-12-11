@@ -113,9 +113,10 @@ echo "Waiting for Cert-Manager to start..."
 wait_until_all_pods_running
 sudo kubectl -n cert-manager get pod
 
-# Checking installation of Longhorn
 sudo apt-get install jq -y
-sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | sudo bash
+
+# Use this for checking installation of Longhorn
+# sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | sudo bash
 
 joinTokenForOtherNodes=$(sudo cat /var/lib/rancher/k3s/server/node-token)
 
