@@ -49,7 +49,7 @@ class MariaDbBackupService {
                         containers: [
                             {
                                 name: jobName,
-                                image: "quickstack/job-backup-mysql:canary", // todo set to latest image once released
+                                image: "quickstack/job-backup-mariadb:canary", // todo set to latest image once released
                                 env: [
                                     {
                                         name: "MYSQL_HOST",
