@@ -5,7 +5,6 @@ import { PathUtils } from "@/server/utils/path.utils";
 import s3Service from "../aws-s3.service";
 import dataAccess from "@/server/adapter/db.client";
 import { CommandExecutorUtils } from "@/server/utils/command-executor.utils";
-import paramService, { ParamService } from "../param.service";
 import { Constants } from "@/shared/utils/constants";
 
 const QS_SYSTEM_BACKUP_PREFIX = 'quickstack-system-backup';
@@ -16,7 +15,12 @@ class SystemBackupService {
     async runSystemBackup() {
         console.log('Starting QuickStack system backup...');
 
-        const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+        const param = await dataAccess.client.parameter.findUnique({
+            where: {
+                name: Constants.QS_SYSTEM_BACKUP_LOCATION_PARAM_KEY
+            }
+        });
+        const systemBackupLocationId = param?.value;
 
         if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
             console.log('System backup is deactivated. Skipping backup.');
