@@ -1,7 +1,7 @@
 class LonghornApiAdapter {
 
     get longhornBaseUrl() {
-        return process.env.NODE_ENV === 'production' ? 'http://longhorn-frontend.longhorn-system.svc.cluster.local' : 'http://localhost:4000';
+        return process.env.NODE_ENV === 'production' ? 'http://longhorn-frontend.longhorn-system.svc.cluster.local' : 'http://localhost:8000';
     }
 
     async getLonghornVolume(pvcName: String) {

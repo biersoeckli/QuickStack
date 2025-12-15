@@ -14,6 +14,7 @@ import { BreadcrumbsGenerator } from "../components/custom/breadcrumbs-generator
 import { getUserSession } from "@/server/utils/action-wrapper.utils";
 import { InputDialog } from "@/components/custom/input-dialog";
 import userGroupService from "@/server/services/user-group.service";
+import PodsStatusPollingProvider from "@/frontend/components/pods-status-polling-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -67,6 +68,7 @@ export default async function RootLayout({
         <Toaster />
         <ConfirmDialog />
         <InputDialog />
+        {userIsLoggedIn && <PodsStatusPollingProvider />}
       </body>
     </html>
   );

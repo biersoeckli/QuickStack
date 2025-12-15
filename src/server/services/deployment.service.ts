@@ -29,6 +29,11 @@ class DeploymentService {
         }
     }
 
+    async getAllDeployments() {
+        const allDeployments = await k3s.apps.listDeploymentForAllNamespaces();
+        return allDeployments.body.items;
+    }
+
     async applyDeployment(namespace: string, appName: string, body: V1Deployment) {
         const existingDeployment = await this.getDeployment(namespace, appName);
         if (existingDeployment) {
@@ -283,7 +288,7 @@ class DeploymentService {
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);
     }
 
-    private mapReplicasetToStatus(deployment: V1Deployment | V1ReplicaSet): DeplyomentStatus {
+    mapReplicasetToStatus(deployment: V1Deployment | V1ReplicaSet): DeplyomentStatus {
         /*
         Fields for Status:
             availableReplicas: 1,

@@ -18,6 +18,7 @@ import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AppMonitoringUsageModel } from '@/shared/model/app-monitoring-usage.model';
+import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 
 export default function AppRessourceMonitoring({
     appsRessourceUsage
@@ -66,6 +67,7 @@ export default function AppRessourceMonitoring({
                     <TableCaption>{updatedAppUsage.length} Apps</TableCaption>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>Status</TableHead>
                             <TableHead>Project</TableHead>
                             <TableHead>App</TableHead>
                             <TableHead>CPU</TableHead>
@@ -76,6 +78,9 @@ export default function AppRessourceMonitoring({
                     <TableBody>
                         {updatedAppUsage.map((item, index) => (
                             <TableRow key={item.appId}>
+                                <TableCell>
+                                    <PodStatusIndicator appId={item.appId} showLabel={true} />
+                                </TableCell>
                                 <TableCell>{item.projectName}</TableCell>
                                 <TableCell>{item.appName}</TableCell>
                                 <TableCell>
