@@ -8,4 +8,6 @@ export class Constants {
     static readonly QS_APP_NAME = 'quickstack';
     static readonly INTERNAL_REGISTRY_LOCATION = 'internal-registry-location';
     static readonly TRAEFIK_ME_SECRET_NAME = 'traefik-me-tls';
+    static readonly QS_SYSTEM_BACKUP_DEACTIVATED = 'deactivated';
+    static readonly QS_SYSTEM_BACKUP_LOCATION_PARAM_KEY = 'qsSystemBackupLocation';
 }

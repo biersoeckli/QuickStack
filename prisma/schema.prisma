@@ -287,13 +287,14 @@ model S3Target {
 }
 
 model VolumeBackup {
-  id        String    @id @default(uuid())
-  volumeId  String
-  volume    AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
-  targetId  String
-  target    S3Target  @relation(fields: [targetId], references: [id], onDelete: Cascade)
-  cron      String
-  retention Int
+  id                String    @id @default(uuid())
+  volumeId          String
+  volume            AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
+  targetId          String
+  target            S3Target  @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  cron              String
+  retention         Int
+  useDatabaseBackup Boolean   @default(false) // decides wether backup whole volume or make a dump of the databse (only for database volumes)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -8,17 +8,27 @@ import standalonePodService from "./standalone-pod.service";
 import { ListUtils } from "../../../shared/utils/list.utils";
 import { S3Target } from "@prisma/client";
 import { BackupEntry, BackupInfoModel } from "../../../shared/model/backup-info.model";
+import databaseBackupService from "./database-backup.service";
+import sharedBackupService, { s3BucketPrefix } from "./database-backup-services/shared-backup.service";
+import systemBackupService from "./system-backup.service";
 
-const s3BucketPrefix = 'quickstack-backups';
 
 class BackupService {
 
     folderPathForVolumeBackup(appId: string, backupVolumeId: string) {
-        return `${s3BucketPrefix}/${appId}/${backupVolumeId}`;
+        return sharedBackupService.folderPathForVolumeBackup(appId, backupVolumeId);
     }
 
     async registerAllBackups() {
-        const allVolumeBackups = await dataAccess.client.volumeBackup.findMany();
+        const allVolumeBackups = await dataAccess.client.volumeBackup.findMany({
+            include: {
+                volume: {
+                    include: {
+                        app: true
+                    }
+                }
+            }
+        });
         console.log(`Deregistering existing backup schedules...`);
         this.unregisterAllBackups();
 
@@ -30,7 +40,12 @@ class BackupService {
                 console.log(`Running backup for ${volumeBackups.length} volumes...`);
                 for (const volumeBackup of volumeBackups) {
                     try {
-                        await this.runBackupForVolume(volumeBackup.id);
+                        // Use database-specific backup if it's a database app AND useDatabaseBackup is true
+                        if (volumeBackup.volume.app.appType !== 'APP' && volumeBackup.useDatabaseBackup) {
+                            await databaseBackupService.backupDatabase(volumeBackup.id);
+                        } else {
+                            await this.runBackupForVolume(volumeBackup.id);
+                        }
                     } catch (e) {
                         console.error(`Error during backup for volume ${volumeBackup.volumeId} and backup ${volumeBackup.id}`);
                         console.error(e);
@@ -39,6 +54,17 @@ class BackupService {
                 console.log(`Backup for ${volumeBackups.length} volumes finished.`);
             });
         }
+
+        scheduleService.scheduleJob(`backup-quickstack-system-data`, '0 1 * * *', async () => {
+            console.log(`Running backup for QuickStack system data...`);
+            try {
+                await this.runSystemBackup();
+            } catch (e) {
+                console.error(`Error during QuickStack system data backup`);
+                console.error(e);
+            }
+            console.log(`Backup for QuickStack system data finished.`);
+        });
     }
 
     async unregisterAllBackups() {
@@ -226,25 +252,7 @@ class BackupService {
             await s3Service.uploadFile(backupVolume.target, downloadPath,
                 `${this.folderPathForVolumeBackup(appId, backupVolumeId)}/${nowString}.tar.gz`, 'application/gzip', 'binary');
 
-
-            // delete files wich are nod needed anymore (by retention)
-            console.log(`Deleting old backups`);
-            const files = await s3Service.listFiles(backupVolume.target);
-
-            const filesFromThisBackup = files.filter(f => f.Key?.startsWith(`${this.folderPathForVolumeBackup(appId, backupVolumeId)}/`)).map(f => ({
-                date: new Date((f.Key ?? '')
-                    .replace(`${this.folderPathForVolumeBackup(appId, backupVolumeId)}/`, '')
-                    .replace('.tar.gz', '')),
-                key: f.Key
-            })).filter(f => !isNaN(f.date.getTime()) && !!f.key);
-
-            filesFromThisBackup.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-            const filesToDelete = filesFromThisBackup.slice(0, -backupVolume.retention);
-            for (const file of filesToDelete) {
-                console.log(`Deleting backup ${file.key}`);
-                await s3Service.deleteFile(backupVolume.target, file.key!);
-            }
+            await sharedBackupService.deleteOldBackupsBasedOnRetention(backupVolume.target, appId, backupVolumeId, backupVolume.retention);
             console.log(`Backup finished for volume ${volume.id} and backup ${backupVolume.id}`);
         } finally {
             await FsUtils.deleteFileIfExists(downloadPath);
@@ -258,6 +266,10 @@ class BackupService {
             }
         });
         return s3Service.deleteFile(target, key);
+    }
+
+    async runSystemBackup() {
+        return systemBackupService.runSystemBackup();
     }
 }
 

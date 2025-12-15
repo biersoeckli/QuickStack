@@ -8,6 +8,7 @@ export const VolumeBackupModel = z.object({
   targetId: z.string(),
   cron: z.string(),
   retention: z.number().int(),
+  useDatabaseBackup: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

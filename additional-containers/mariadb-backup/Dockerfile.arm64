@@ -1,0 +1,28 @@
+FROM ubuntu:22.04
+
+ARG VERSION_ARG=unknown
+ENV VERSION=${VERSION_ARG}-arm64
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    awscli \
+    && curl -o /etc/apt/keyrings/mariadb-keyring.pgp 'https://mariadb.org/mariadb_release_signing_key.pgp' \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/etc/apt/keyrings/mariadb-keyring.pgp] https://dlm.mariadb.com/repo/mariadb-server/11.6/repo/ubuntu ${VERSION_CODENAME} main" > /etc/apt/sources.list.d/mariadb.list \
+    && apt-get update \
+    && apt-get install -y mariadb-client \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY backup.sh .
+RUN chmod +x backup.sh
+
+CMD ["./backup.sh"]

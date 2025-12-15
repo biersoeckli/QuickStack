@@ -24,20 +24,32 @@ import { toast } from "sonner"
 import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/backup-volume-edit.model"
 import SelectFormField from "@/components/custom/select-form-field"
 import Link from "next/link"
+import { Checkbox } from "@/components/ui/checkbox"
+import { AppExtendedModel } from "@/shared/model/app-extended.model"
 
 export default function VolumeBackupEditDialog({
   children,
   volumeBackup,
   s3Targets,
-  volumes
+  volumes,
+  app
 }: {
   children: React.ReactNode;
   volumeBackup?: VolumeBackup;
   s3Targets: S3Target[];
   volumes: AppVolume[];
+  app: AppExtendedModel;
 }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  const isDatabaseApp = app.appType !== 'APP';
+  const isDatabaseBackupSupported = [
+    'MONGODB',
+    //'MYSQL',
+    'MARIADB',
+    'POSTGRES'
+  ].includes(app.appType);
 
   const form = useForm<VolumeBackupEditModel>({
     resolver: zodResolver(volumeBackupEditZodModel),
@@ -46,6 +58,7 @@ export default function VolumeBackupEditDialog({
       retention: volumeBackup?.retention || 5,
       targetId: volumeBackup?.targetId || (s3Targets.length === 1 ? s3Targets[0].id : undefined),
       volumeId: volumeBackup?.volumeId || (volumes.length === 1 ? volumes[0].id : undefined),
+      useDatabaseBackup: volumeBackup?.useDatabaseBackup ?? (isDatabaseApp && isDatabaseBackupSupported),
     }
   });
 
@@ -140,6 +153,34 @@ export default function VolumeBackupEditDialog({
                   values={s3Targets.map((target) =>
                     [target.id, `${target.name}`])}
                 />
+
+                {isDatabaseApp && (
+                  <FormField
+                    control={form.control}
+                    name="useDatabaseBackup"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={!isDatabaseBackupSupported}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Use Database Backup
+                          </FormLabel>
+                          <FormDescription>
+                            {isDatabaseBackupSupported
+                              ? `Use ${app.appType.toLocaleLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
+                              : `Database backup for ${app.appType.toLocaleLowerCase()} is not yet implemented. Volume backup will be used.`}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <p className="text-red-500">{state.message}</p>
                 <SubmitButton>Save</SubmitButton>

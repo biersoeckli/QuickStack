@@ -69,6 +69,7 @@ export default function VolumeBackupList({
                         <TableRow>
                             <TableHead>Cron Expression</TableHead>
                             <TableHead>Retention</TableHead>
+                            <TableHead>Backup Method</TableHead>
                             <TableHead>Backup Location</TableHead>
                             <TableHead>Created At</TableHead>
                             <TableHead className="w-[100px]">Action</TableHead>
@@ -79,6 +80,11 @@ export default function VolumeBackupList({
                             <TableRow key={volumeBackup.id}>
                                 <TableCell className="font-medium">{volumeBackup.cron}</TableCell>
                                 <TableCell className="font-medium">{volumeBackup.retention}</TableCell>
+                                <TableCell className="font-medium">
+                                    {app.appType !== 'APP' && volumeBackup.useDatabaseBackup
+                                        ? `Database (${app.appType.toLocaleLowerCase()})`
+                                        : 'Archive of Volume'}
+                                </TableCell>
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
                                 {!readonly && <TableCell className="font-medium flex gap-2">
@@ -86,7 +92,7 @@ export default function VolumeBackupList({
                                         <Play />
                                     </Button>
                                     <VolumeBackupEditDialog volumeBackup={volumeBackup}
-                                        s3Targets={s3Targets} volumes={app.appVolumes}>
+                                        s3Targets={s3Targets} volumes={app.appVolumes} app={app}>
                                         <Button disabled={isLoading} variant="ghost"><EditIcon /></Button>
                                     </VolumeBackupEditDialog>
                                     <Button disabled={isLoading} variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
@@ -99,7 +105,7 @@ export default function VolumeBackupList({
                 </Table>
             </CardContent>
             {!readonly && <CardFooter>
-                <VolumeBackupEditDialog s3Targets={s3Targets} volumes={app.appVolumes}>
+                <VolumeBackupEditDialog s3Targets={s3Targets} volumes={app.appVolumes} app={app}>
                     <Button>Add Backup Schedule</Button>
                 </VolumeBackupEditDialog>
             </CardFooter>}

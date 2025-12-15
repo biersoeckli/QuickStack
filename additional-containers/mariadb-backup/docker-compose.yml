@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # The MariaDB instance to backup
+  mariadb:
+    image: mariadb:11.6
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # The backup job
+  backup-job:
+    build:
+      context: .
+      dockerfile: Dockerfile.arm64
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      # Connection parameters to the mariadb service
+      MYSQL_HOST: "mariadb"
+      MYSQL_PORT: "3306"
+      MYSQL_USER: "dbuser"
+      MYSQL_PASSWORD: "password"
+      MYSQL_DATABASE: "testdb"
+
+      # S3 Configuration (Example using MinIO or AWS)
+      S3_ENDPOINT: " " # or http://minio:9000
+      S3_BUCKET_NAME: " "
+      S3_REGION: "us-east-1"
+      S3_ACCESS_KEY_ID: " "
+      S3_SECRET_KEY: " "
+      S3_KEY: "backup-2025-01-01.zip"

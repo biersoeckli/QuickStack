@@ -62,3 +62,102 @@ jobs:
             VERSION_ARG=canary-${{ github.run_number }}
           tags: |
             quickstack/quickstack:canary
+
+  build-and-push-mongodb-backup:
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and Push MongoDB Backup (amd64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./additional-containers/mongodb-backup
+          file: ./additional-containers/mongodb-backup/Dockerfile.amd64
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=canary-${{ github.run_number }}
+          tags: |
+            quickstack/job-backup-mongodb:canary
+
+  build-and-push-postgres-backup:
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and Push PostgreSQL Backup (amd64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./additional-containers/postgres-backup
+          file: ./additional-containers/postgres-backup/Dockerfile.amd64
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=canary-${{ github.run_number }}
+          tags: |
+            quickstack/job-backup-postgres:canary
+
+  build-and-push-mariadb-backup:
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and Push MariaDB Backup (amd64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./additional-containers/mariadb-backup
+          file: ./additional-containers/mariadb-backup/Dockerfile.amd64
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=canary-${{ github.run_number }}
+          tags: |
+            quickstack/job-backup-mariadb:canary

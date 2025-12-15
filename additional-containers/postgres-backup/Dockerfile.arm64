@@ -1,0 +1,29 @@
+FROM ubuntu:22.04
+
+ARG VERSION_ARG=unknown
+ENV VERSION=${VERSION_ARG}-arm64
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    awscli \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y postgresql-client-18 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY backup.sh .
+RUN chmod +x backup.sh
+
+CMD ["./backup.sh"]
