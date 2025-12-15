@@ -83,7 +83,7 @@ export default function VolumeBackupList({
                                 <TableCell className="font-medium">
                                     {app.appType !== 'APP' && volumeBackup.useDatabaseBackup
                                         ? `Database (${app.appType.toLocaleLowerCase()})`
-                                        : 'Archive from Volume'}
+                                        : 'Archive of Volume'}
                                 </TableCell>
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
