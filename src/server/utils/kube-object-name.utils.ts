@@ -80,4 +80,8 @@ export class KubeObjectNameUtils {
     static toPgAdminId(appId: string): `pga-${string}` {
         return `pga-${appId}`;
     }
+
+    static toNetworkPolicyName(appId: string): string {
+        return `np-${appId}`;
+    }
 }

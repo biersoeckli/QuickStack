@@ -12,6 +12,7 @@ import pvcService from "./pvc.service";
 import svcService from "./svc.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import crypto from "crypto";
+import networkPolicyService from "./network-policy.service";
 
 class AppService {
 
@@ -53,6 +54,7 @@ class AppService {
             await ingressService.deleteAllIngressForApp(existingApp.projectId, existingApp.id);
             await pvcService.deleteAllPvcOfApp(existingApp.projectId, existingApp.id);
             await buildService.deleteAllBuildsOfApp(existingApp.id);
+            await networkPolicyService.deleteNetworkPolicy(existingApp.id, existingApp.projectId);
             await dataAccess.client.app.delete({
                 where: {
                     id
