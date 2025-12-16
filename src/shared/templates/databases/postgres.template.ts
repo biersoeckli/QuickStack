@@ -1,3 +1,4 @@
+import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 
 export const postgreAppTemplate: AppTemplateModel = {
@@ -40,6 +41,8 @@ export const postgreAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
+            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
+            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `PGDATA=/var/lib/qs-postgres/data
 `,
         },

@@ -64,19 +64,19 @@ class NetworkPolicyService {
                     }
                 }
             },
-           /* // Fallback label used in some clusters/charts
-            {
-                namespaceSelector: {
-                    matchLabels: {
-                        'kubernetes.io/metadata.name': 'kube-system'
-                    }
-                },
-                podSelector: {
-                    matchLabels: {
-                        app: 'traefik'
-                    }
-                }
-            }*/
+            /* // Fallback label used in some clusters/charts
+             {
+                 namespaceSelector: {
+                     matchLabels: {
+                         'kubernetes.io/metadata.name': 'kube-system'
+                     }
+                 },
+                 podSelector: {
+                     matchLabels: {
+                         app: 'traefik'
+                     }
+                 }
+             }*/
         ];
 
         const backupPodFrom: V1NetworkPolicyPeer[] = [{

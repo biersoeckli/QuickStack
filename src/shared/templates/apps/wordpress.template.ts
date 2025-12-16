@@ -1,3 +1,4 @@
+import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { mariadbAppTemplate } from "../databases/mariadb.template";
 
@@ -35,6 +36,8 @@ export const wordpressAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
+            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
+            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `MYSQL_DATABASE=wordpress
 MYSQL_USER=wordpress
 `,
@@ -67,6 +70,8 @@ MYSQL_USER=wordpress
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
+            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
+            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `WORDPRESS_DB_HOST={hostname}:{port}
 WORDPRESS_DB_NAME={databaseName}
 WORDPRESS_DB_USER={username}
