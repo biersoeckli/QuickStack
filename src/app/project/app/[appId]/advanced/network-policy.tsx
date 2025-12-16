@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { saveNetworkPolicy } from "./actions";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { HelpCircle } from "lucide-react";
 
 export default function NetworkPolicy({ app, readonly }: {
     app: AppExtendedModel;
@@ -15,6 +17,7 @@ export default function NetworkPolicy({ app, readonly }: {
 }) {
     const [ingressPolicy, setIngressPolicy] = useState(app.ingressNetworkPolicy);
     const [egressPolicy, setEgressPolicy] = useState(app.egressNetworkPolicy);
+    const [showHelp, setShowHelp] = useState(false);
 
     const handleSave = async () => {
         await Toast.fromAction(() => saveNetworkPolicy(app.id, ingressPolicy, egressPolicy));
@@ -77,8 +80,56 @@ export default function NetworkPolicy({ app, readonly }: {
                 </div>
             </CardContent>
             {!readonly && (
-                <CardFooter>
+                <CardFooter className="gap-3">
                     <Button onClick={handleSave}>Save</Button>
+                    <Dialog open={showHelp} onOpenChange={setShowHelp}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <HelpCircle className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                                <DialogTitle>Network Policy Types</DialogTitle>
+                                <DialogDescription>
+                                    Understand how each policy type controls traffic to and from your application.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Allow All (Internet + Project Apps)</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Allows traffic from/to all apps within the same project and the internet.
+                                        External internet traffic reaches your app through the Traefik ingress controller.
+                                        Blocks traffic from/to other projects/namespaces.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Internet Only</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Allows traffic only from/to the internet (via Traefik ingress controller).
+                                        Blocks all direct pod-to-pod communication within the cluster, including same-project apps.
+                                        Useful for public-facing applications that should not communicate with internal services.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Project Apps Only</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Allows traffic only from/to apps within the same project.
+                                        Blocks all internet traffic and traffic from other projects.
+                                        Ideal for internal microservices that should only communicate within your project.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Deny All</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Blocks all incoming or outgoing traffic.
+                                        Use this for maximum isolation when your application should not communicate with any other service.
+                                    </p>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </CardFooter>
             )}
         </Card>
