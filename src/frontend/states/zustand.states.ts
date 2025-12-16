@@ -1,5 +1,6 @@
 import dataAccess from "@/server/adapter/db.client";
 import { create } from "zustand"
+import { AppPodsStatusModel } from "@/app/api/deployment-status/actions";
 
 interface ZustandConfirmDialogProps {
     isDialogOpen: boolean;
@@ -95,4 +96,33 @@ export const useInputDialog = create<ZustandInputDialogProps>((set) => ({
         }
         return { isDialogOpen: false, userInfo: null, resolvePromise: null };
     }),
+}));
+
+/* Pod Status Store */
+interface ZustandPodsStatusProps {
+    podsStatus: Map<string, AppPodsStatusModel>;
+    lastUpdate: Date | null;
+    isLoading: boolean;
+    setPodsStatus: (data: AppPodsStatusModel[]) => void;
+    setLoading: (loading: boolean) => void;
+    getPodsForApp: (appId: string) => AppPodsStatusModel | undefined;
+}
+
+export const usePodsStatus = create<ZustandPodsStatusProps>((set, get) => ({
+    podsStatus: new Map(),
+    lastUpdate: null,
+    isLoading: true,
+    setPodsStatus: (data) => {
+        set({
+            podsStatus: new Map(data.map(app => [app.appId, app])),
+            lastUpdate: new Date(),
+            isLoading: false,
+        });
+    },
+    setLoading: (loading) => {
+        set({ isLoading: loading });
+    },
+    getPodsForApp: (appId) => {
+        return get().podsStatus.get(appId);
+    },
 }));

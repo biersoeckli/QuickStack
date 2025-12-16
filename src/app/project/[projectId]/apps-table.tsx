@@ -15,6 +15,7 @@ import { useEffect } from "react";
 import { EditAppDialog } from "./edit-app-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import PodStatusIndicator from "@/components/custom/pod-status-indicator";
 
 
 export default function AppTable({
@@ -41,6 +42,7 @@ export default function AppTable({
             ['cpuReservation', 'CPU Reservation', false],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
+            ['status', 'Status', true, (item) => <PodStatusIndicator appId={item.id} />],
         ]}
             data={app}
             onItemClickLink={(item) => `/project/app/${item.id}`}
