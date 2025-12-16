@@ -32,6 +32,8 @@ class MongoDbBackupService {
         const endpoint = backupVolume.target.endpoint.includes('http') ? backupVolume.target.endpoint : `https://${backupVolume.target.endpoint}`;
         console.log(`S3 Endpoint: ${endpoint}`);
 
+        const imageTag = process.env.QS_VERSION?.includes('canary') ? 'canary' : 'latest';
+
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
             kind: "Job",
@@ -50,7 +52,7 @@ class MongoDbBackupService {
                         containers: [
                             {
                                 name: jobName,
-                                image: "quickstack/job-backup-mongodb:canary", // todo set to latest image once released
+                                image: "quickstack/job-backup-mongodb:" + imageTag,
                                 env: [
                                     {
                                         name: "MONGODB_URI",

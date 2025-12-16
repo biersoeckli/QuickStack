@@ -33,6 +33,15 @@ export const getAllPodsStatus = async () =>
                     dep.metadata?.name === app.id
                 );
                 if (!deploymentInfo) {
+                    allAppPods.push({
+                        appId: app.id,
+                        appName: app.name,
+                        projectId: project.id,
+                        projectName: project.name,
+                        replicas: undefined,
+                        readyReplicas: undefined,
+                        deploymentStatus: 'SHUTDOWN' // nothing is deployed, so maybe the app is just created in the database and not started yet
+                    });
                     continue;
                 }
                 const deploymentStatus = deploymentService.mapReplicasetToStatus(deploymentInfo);

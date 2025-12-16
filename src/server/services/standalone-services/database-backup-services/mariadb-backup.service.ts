@@ -31,6 +31,8 @@ class MariaDbBackupService {
         const endpoint = backupVolume.target.endpoint.includes('http') ? backupVolume.target.endpoint : `https://${backupVolume.target.endpoint}`;
         console.log(`S3 Endpoint: ${endpoint}`);
 
+        const imageTag = process.env.QS_VERSION?.includes('canary') ? 'canary' : 'latest';
+
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
             kind: "Job",
@@ -49,7 +51,7 @@ class MariaDbBackupService {
                         containers: [
                             {
                                 name: jobName,
-                                image: "quickstack/job-backup-mariadb:canary", // todo set to latest image once released
+                                image: "quickstack/job-backup-mariadb:" + imageTag,
                                 env: [
                                     {
                                         name: "MYSQL_HOST",

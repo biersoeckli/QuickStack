@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import { cn } from "@/frontend/utils/utils"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css";
-import { NavBar } from "./nav-bar";
 import { Suspense } from "react";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { ConfirmDialog } from "@/components/custom/confirm-dialog";
@@ -14,7 +13,7 @@ import { BreadcrumbsGenerator } from "../components/custom/breadcrumbs-generator
 import { getUserSession } from "@/server/utils/action-wrapper.utils";
 import { InputDialog } from "@/components/custom/input-dialog";
 import userGroupService from "@/server/services/user-group.service";
-import PodsStatusPollingProvider from "@/frontend/components/pods-status-polling-provider";
+import PodsStatusPollingProvider from "@/components/custom/pods-status-polling-provider";
 
 const inter = Inter({
   subsets: ["latin"],
