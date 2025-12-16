@@ -44,6 +44,7 @@ export default function NetworkPolicy({ app, readonly }: {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALLOW_ALL">Allow All (Internet + Project Apps)</SelectItem>
+                                <SelectItem value="INTERNET_ONLY">Internet Only</SelectItem>
                                 <SelectItem value="NAMESPACE_ONLY">Project Apps Only</SelectItem>
                                 <SelectItem value="DENY_ALL">Deny All</SelectItem>
                             </SelectContent>
@@ -64,6 +65,7 @@ export default function NetworkPolicy({ app, readonly }: {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALLOW_ALL">Allow All (Internet + Project Apps)</SelectItem>
+                                <SelectItem value="INTERNET_ONLY">Internet Only</SelectItem>
                                 <SelectItem value="NAMESPACE_ONLY">Project Apps Only</SelectItem>
                                 <SelectItem value="DENY_ALL">Deny All</SelectItem>
                             </SelectContent>

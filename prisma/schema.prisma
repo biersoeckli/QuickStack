@@ -200,8 +200,8 @@ model App {
 
   webhookId String?
 
-  ingressNetworkPolicy String @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL
-  egressNetworkPolicy  String @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL
+  ingressNetworkPolicy String @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL, INTERNET_ONLY
+  egressNetworkPolicy  String @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL, INTERNET_ONLY
 
   appDomains         AppDomain[]
   appPorts           AppPort[]

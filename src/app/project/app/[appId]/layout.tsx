@@ -20,7 +20,7 @@ export default async function RootLayout({
   const session = await isAuthorizedReadForApp(appId);
   const app = await appService.getExtendedById(appId);
 
-    const showIngressWarning = app.appDomains.length > 0 && app.ingressNetworkPolicy !== 'ALLOW_ALL';
+  const showIngressWarning = app.appDomains.length > 0 && app.ingressNetworkPolicy !== 'ALLOW_ALL' && app.ingressNetworkPolicy !== 'INTERNET_ONLY';
 
   return (
     <div className="flex-1 space-y-6 pt-6">
@@ -28,16 +28,16 @@ export default async function RootLayout({
         title={app.name}
         subtitle={`App ID: ${app.id}`}>
       </PageTitle>
-            {showIngressWarning && (
-                <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Warning</AlertTitle>
-                    <AlertDescription>
-                        You have configured domains for this app, but the Ingress Network Policy is not set to &quot;Allow All&quot;.
-                        External traffic via the domain might be blocked.
-                    </AlertDescription>
-                </Alert>
-            )}
+      {showIngressWarning && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Warning</AlertTitle>
+          <AlertDescription>
+            You have configured domains for this app, but the Ingress Network Policy is not set to &quot;Allow All&quot; or &quot;Internet Only&quot;.
+            External traffic via the domain might be blocked.
+          </AlertDescription>
+        </Alert>
+      )}
       <AppActionButtons session={session} app={app} />
       {children}
     </div>

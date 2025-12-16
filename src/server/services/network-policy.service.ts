@@ -45,11 +45,73 @@ class NetworkPolicyService {
         if (policyType === 'ALLOW_ALL') {
             // Allow from everywhere
             rules.push({
-                from: [{
-                    ipBlock: {
-                        cidr: '0.0.0.0/0'
+                from: [
+                    {
+                        ipBlock: {
+                            cidr: '0.0.0.0/0',
+                            except: [
+                                '10.0.0.0/8',
+                                '172.16.0.0/12',
+                                '192.168.0.0/16',
+                                '127.0.0.0/8'
+                            ]
+                        }
+                    },
+                    {
+                        // Allow from Traefik ingress controller
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'kube-system'
+                            }
+                        },
+                        podSelector: {
+                            matchLabels: {
+                                'app.kubernetes.io/name': 'traefik'
+                            }
+                        }
+                    },
+                    {
+                        podSelector: {} // Selects all pods in the same namespace
                     }
-                }]
+                ]
+            });
+        } else if (policyType === 'INTERNET_ONLY') {
+            // Allow from internet (external to cluster) and from Traefik ingress controller
+            // Block other internal pod traffic
+            rules.push({
+                from: [
+                    {
+                        ipBlock: {
+                            cidr: '0.0.0.0/0',
+                            except: [
+                                '10.0.0.0/8',
+                                '172.16.0.0/12',
+                                '192.168.0.0/16',
+                                '127.0.0.0/8'
+                            ]
+                        }
+                    },
+                    {
+                        // Allow from Traefik ingress controller
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'kube-system'
+                            }
+                        },
+                        podSelector: {
+                            matchLabels: {
+                                'app.kubernetes.io/name': 'traefik'
+                            }
+                        }
+                    },
+                    {
+                        podSelector: {
+                            matchLabels: {
+                                [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB
+                            }
+                        }
+                    }
+                ]
             });
         } else if (policyType === 'NAMESPACE_ONLY') {
             // Allow only from same namespace
@@ -59,7 +121,16 @@ class NetworkPolicyService {
                 }]
             });
         } else if (policyType === 'DENY_ALL') {
-            // No rules means deny all
+            // No rules means deny all --> except the separate container for database backups
+            rules.push({
+                from: [{
+                    podSelector: {
+                        matchLabels: {
+                            [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB
+                        }
+                    }
+                }]
+            });
         }
 
         return rules;
@@ -84,16 +155,7 @@ class NetworkPolicyService {
                             "k8s-app": "kube-dns"
                         }
                     }
-                },
-                {
-                    ipBlock: {
-                        cidr: '0.0.0.0/0'
-                    }
                 }
-            ],
-            ports: [
-                { protocol: 'UDP', port: 53 as any },
-                { protocol: 'TCP', port: 53 as any }
             ]
         });
 
@@ -115,6 +177,21 @@ class NetworkPolicyService {
                         podSelector: {} // Allow all in same namespace
                     }
                 ]
+            });
+        } else if (policyType === 'INTERNET_ONLY') {
+            // Allow only to internet, block internal cluster traffic
+            rules.push({
+                to: [{
+                    ipBlock: {
+                        cidr: '0.0.0.0/0',
+                        except: [
+                            '10.0.0.0/8',
+                            '172.16.0.0/12',
+                            '192.168.0.0/16',
+                            '127.0.0.0/8'
+                        ]
+                    }
+                }]
             });
         } else if (policyType === 'NAMESPACE_ONLY') {
             // Allow only to same namespace

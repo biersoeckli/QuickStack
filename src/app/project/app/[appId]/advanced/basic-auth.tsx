@@ -39,7 +39,7 @@ export default function BasicAuth({ app, readonly }: {
             </CardHeader>
             <CardContent>
                 <Table>
-                    <TableCaption>{app.appFileMounts.length} Auth Credentials</TableCaption>
+                    <TableCaption>{app.appBasicAuths.length} Auth Credentials</TableCaption>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Username</TableHead>
