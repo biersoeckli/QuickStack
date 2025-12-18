@@ -16,7 +16,7 @@ class MariaDbBackupService {
 
         await namespaceService.createNamespaceIfNotExists(backupNamespace);
 
-        const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-mysql-${app.id}`);
+        const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-mariadb-${app.id}`);
         console.log(`Creating MariaDB/MySQL backup job with name: ${jobName}`);
 
         const dbCredentials = AppTemplateUtils.getDatabaseModelFromApp(app);
@@ -31,7 +31,7 @@ class MariaDbBackupService {
         const endpoint = backupVolume.target.endpoint.includes('http') ? backupVolume.target.endpoint : `https://${backupVolume.target.endpoint}`;
         console.log(`S3 Endpoint: ${endpoint}`);
 
-        const imageTag = process.env.QS_VERSION?.includes('canary') ? 'canary' : 'latest';
+        const imageTag = process.env.QS_VERSION?.includes('canary') || process.env.NODE_ENV !== 'production' ? 'canary' : 'latest';
 
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
@@ -48,6 +48,11 @@ class MariaDbBackupService {
             spec: {
                 ttlSecondsAfterFinished: 86400, // 1 day
                 template: {
+                    metadata: {
+                        labels: {
+                            [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB,
+                        }
+                    },
                     spec: {
                         containers: [
                             {
