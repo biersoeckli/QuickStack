@@ -42,6 +42,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@tanstack/react-table": "^8.20.5",
     "@xterm/xterm": "^5.5.0",
+    "@xyflow/react": "^12.10.0",
     "bcrypt": "^5.1.1",
     "bufferutil": "^4.0.9",
     "class-variance-authority": "^0.7.1",

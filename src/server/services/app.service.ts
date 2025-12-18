@@ -74,6 +74,10 @@ class AppService {
             where: {
                 projectId
             },
+            include: {
+                appPorts: true,
+                appDomains: true
+            },
             orderBy: {
                 name: 'asc'
             }
