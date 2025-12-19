@@ -150,6 +150,7 @@ export default function StorageList({ app, readonly }: {
                             <TableHead>Mount Path</TableHead>
                             <TableHead>Storage Size</TableHead>
                             <TableHead>Storage Used</TableHead>
+                            <TableHead>Storage Class</TableHead>
                             <TableHead>Access Mode</TableHead>
                             <TableHead className="w-[100px]">Action</TableHead>
                         </TableRow>
@@ -168,6 +169,7 @@ export default function StorageList({ app, readonly }: {
                                         </div>
                                     </>}
                                 </TableCell>
+                                <TableCell className="font-medium capitalize">{volume.storageClassName?.replace('-', ' ')}</TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium flex gap-2">
                                     <TooltipProvider>

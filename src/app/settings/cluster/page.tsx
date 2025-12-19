@@ -8,12 +8,15 @@ import AddClusterNodeDialog from "./add-cluster-node-dialog";
 import { Button } from "@/components/ui/button";
 import paramService, { ParamService } from "@/server/services/param.service";
 import BreadcrumbSetter from "@/components/breadcrumbs-setter";
+import TraefikIpPropagationCard from "./traefik-ip-propagation-card";
+import traefikService from "@/server/services/traefik.service";
 
 export default async function ClusterInfoPage() {
 
     const session = await getAdminUserSession();
     const nodeInfo = await clusterService.getNodeInfo();
     const clusterJoinToken = await paramService.getString(ParamService.K3S_JOIN_TOKEN);
+    const traefikStatus = await traefikService.getStatus();
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
@@ -27,6 +30,7 @@ export default async function ClusterInfoPage() {
                 { name: "Settings", url: "/settings/profile" },
                 { name: "Cluster" },
             ]} />
+            <TraefikIpPropagationCard initialStatus={traefikStatus} />
             <NodeInfo nodeInfos={nodeInfo} />
         </div>
     )

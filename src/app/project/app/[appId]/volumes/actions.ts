@@ -53,7 +53,8 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         await appService.saveVolume({
             ...validatedData,
             id: validatedData.id ?? undefined,
-            accessMode: existingVolume?.accessMode ?? validatedData.accessMode as string
+            accessMode: existingVolume?.accessMode ?? validatedData.accessMode as string,
+            storageClassName: existingVolume?.storageClassName ?? validatedData.storageClassName
         });
     });
 

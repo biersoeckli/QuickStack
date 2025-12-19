@@ -45,6 +45,11 @@ const accessModes = [
   { label: "ReadWriteMany", value: "ReadWriteMany" },
 ] as const
 
+const storageClasses = [
+  { label: "Longhorn (HA)", value: "longhorn", description: "Distributed, replicated storage recommended for HA workloads." },
+  { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Ideal for single-node setups." }
+] as const
+
 export default function DialogEditDialog({ children, volume, app }: { children: React.ReactNode; volume?: AppVolume; app: AppExtendedModel; }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -54,7 +59,8 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
       ...volume,
-      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce")
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      storageClassName: volume?.storageClassName ?? "longhorn"
     }
   });
 
@@ -77,7 +83,11 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
   }, [state]);
 
   useEffect(() => {
-    form.reset(volume);
+    form.reset({
+      ...volume,
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      storageClassName: volume?.storageClassName ?? "longhorn"
+    });
   }, [volume]);
 
   return (
@@ -202,6 +212,88 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
                       </Popover>
                       <FormDescription>
                         This cannot be changed after creation.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="storageClassName"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="flex gap-2">
+                        <div>Storage Class</div>
+                        <div className="self-center">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild><QuestionMarkCircledIcon /></TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-[350px]">
+                                  Choose where the volume is provisioned.<br /><br />
+                                  <b>Longhorn</b> keeps data replicated across nodes.<br />
+                                  <b>Local Path</b> stores data on a single node (no HA).
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={!!volume}
+                            >
+                              {field.value
+                                ? storageClasses.find(
+                                  (storageClass) => storageClass.value === field.value
+                                )?.label
+                                : "Select storage class"}
+                              <ChevronsUpDown className="opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[260px] p-0">
+                          <Command>
+                            <CommandList>
+                              <CommandGroup>
+                                {storageClasses.map((storageClass) => (
+                                  <CommandItem
+                                    value={storageClass.label}
+                                    key={storageClass.value}
+                                    onSelect={() => {
+                                      form.setValue("storageClassName", storageClass.value);
+                                    }}
+                                  >
+                                    <div className="flex flex-col gap-1">
+                                      <span>{storageClass.label}</span>
+                                      <span className="text-xs text-muted-foreground">{storageClass.description}</span>
+                                    </div>
+                                    <Check
+                                      className={cn(
+                                        "ml-auto",
+                                        storageClass.value === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        Longhorn is recommended for HA. Local Path is faster to provision on single-node clusters.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

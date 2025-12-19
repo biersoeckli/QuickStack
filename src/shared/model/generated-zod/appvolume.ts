@@ -7,6 +7,7 @@ export const AppVolumeModel = z.object({
   containerMountPath: z.string(),
   size: z.number().int(),
   accessMode: z.string(),
+  storageClassName: z.string(),
   appId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
