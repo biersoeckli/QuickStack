@@ -135,28 +135,36 @@ export default function ProjectNetworkGraph({ apps }: ProjectNetworkGraphProps) 
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
-        const radius = 200;
-        const centerX = 400;
-        const centerY = 300;
+        // Separate apps with domains and without domains
+        const appsWithDomains = apps.filter(app => app.appDomains.length > 0);
+        const appsWithoutDomains = apps.filter(app => app.appDomains.length === 0);
+
+        const nodeSpacing = 250; // Horizontal spacing between nodes
+        const rowSpacing = 150; // Vertical spacing between rows
+        const internetY = 100;
+        const firstRowY = internetY + 200;
+        const secondRowY = firstRowY + rowSpacing;
 
         // Check if we need an Internet node
-        const hasInternetAccess = apps.some(app => app.appDomains.length > 0);
+        const hasInternetAccess = appsWithDomains.length > 0;
+        const internetX = (Math.max(appsWithDomains.length, appsWithoutDomains.length) * nodeSpacing) / 2;
+
         if (hasInternetAccess) {
             nodes.push({
                 id: 'INTERNET',
-                position: { x: centerX, y: centerY - radius - 150 },
+                position: { x: internetX, y: internetY },
                 data: { label: 'Internet' },
                 style: { background: '#e0e0e0', border: '1px solid #777', padding: 10, borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
                 type: 'input', // It's a source only
             });
         }
 
-        apps.forEach((app, index) => {
-            // Circular layout
-            const angle = (index / apps.length) * 2 * Math.PI;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-
+        // First row: Apps with domains (internet accessible)
+        appsWithDomains.forEach((app, index) => {
+            const totalWidth = (appsWithDomains.length - 1) * nodeSpacing;
+            const startX = internetX - (totalWidth / 2);
+            const x = startX + (index * nodeSpacing);
+            const y = firstRowY;
 
             const ports = Array.from(new Set([
                 ...app.appDomains,
@@ -178,20 +186,45 @@ export default function ProjectNetworkGraph({ apps }: ProjectNetworkGraphProps) 
             });
 
             // Edge from Internet to App
-            if (app.appDomains.length > 0) {
-                const hostnames = app.appDomains.map(d => d.hostname).join(', ');
-                edges.push({
-                    id: `INTERNET-${app.id}`,
-                    source: 'INTERNET',
-                    target: app.id,
-                    label: `${hostnames}`,
-                    markerEnd: {
-                        type: MarkerType.ArrowClosed,
-                    },
-                    animated: true,
-                    style: { stroke: '#000' },
-                });
-            }
+            const hostnames = app.appDomains.map(d => d.hostname).join(', ');
+            edges.push({
+                id: `INTERNET-${app.id}`,
+                source: 'INTERNET',
+                target: app.id,
+                label: `${hostnames}`,
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                },
+                animated: true,
+                style: { stroke: '#000' },
+            });
+        });
+
+        // Second row: Apps without domains (not internet accessible)
+        appsWithoutDomains.forEach((app, index) => {
+            const totalWidth = (appsWithoutDomains.length - 1) * nodeSpacing;
+            const startX = internetX - (totalWidth / 2);
+            const x = startX + (index * nodeSpacing);
+            const y = secondRowY;
+
+            const ports = Array.from(new Set([
+                ...app.appDomains,
+                ...app.appPorts
+            ].map(d => d.port))).join(', ');
+
+            nodes.push({
+                id: app.id,
+                position: { x, y },
+                data: {
+                    label: app.name,
+                    ingressPolicy: app.ingressNetworkPolicy,
+                    egressPolicy: app.egressNetworkPolicy,
+                    appId: app.id,
+                    app,
+                    ports
+                },
+                type: 'appNode',
+            });
         });
 
         return { nodes, edges };
