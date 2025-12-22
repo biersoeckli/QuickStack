@@ -26,7 +26,7 @@ export const deleteBasicAuth = async (basicAuthId: string) =>
         return new SuccessActionResult(undefined, 'Successfully deleted item');
     });
 
-export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, egressPolicy: string) =>
+export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, egressPolicy: string, useNetworkPolicy: boolean) =>
     simpleAction(async () => {
         await isAuthorizedWriteForApp(appId);
 
@@ -38,7 +38,8 @@ export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, eg
         await appService.save({
             ...app,
             ingressNetworkPolicy: ingressPolicy,
-            egressNetworkPolicy: egressPolicy
+            egressNetworkPolicy: egressPolicy,
+            useNetworkPolicy: useNetworkPolicy
         });
         return new SuccessActionResult(undefined, 'Network policy saved');
     });

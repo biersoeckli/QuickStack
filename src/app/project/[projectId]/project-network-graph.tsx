@@ -17,7 +17,7 @@ interface ProjectNetworkGraphProps {
     apps: AppWithRelations[];
 }
 
-const PolicyIcon = ({ policy, type, ports }: { policy: string, type: 'ingress' | 'egress', ports: string }) => {
+const PolicyIcon = ({ policy, type, ports, useNetworkPolicy }: { policy: string, type: 'ingress' | 'egress', ports: string, useNetworkPolicy: boolean }) => {
     let Icon = Globe;
     let color = type === 'egress' ? 'text-blue-500' : 'text-green-500';
     let title = policy;
@@ -46,16 +46,11 @@ const PolicyIcon = ({ policy, type, ports }: { policy: string, type: 'ingress' |
 
     return (
         <div className='flex items-center gap-2'>
-            {/*<div className={`p-1 bg-white rounded-full border shadow-sm ${color}`} title={`${type}: ${title}`}>
-                <div className=' flex gap-1 items-center'>
-                    <ArrowDown size={13} className='text-gray-500' />
-                </div>
-            </div>*/}
-            <div className={`p-1 bg-white rounded-full border shadow-sm ${color}`} title={`${type}: ${title}`}>
+            {useNetworkPolicy && <div className={`p-1 bg-white rounded-full border shadow-sm ${color}`} title={`${type}: ${title}`}>
                 <div className=' flex gap-1 items-center'>
                     <Icon size={16} />
                 </div>
-            </div>
+            </div>}
             {ports && type === 'ingress' && <div className={`p-1 px-2 bg-white rounded-full border shadow-sm text-xs text-gray-500`} title={`${type}: ${title}`}>
                 {ports}
             </div>}
@@ -69,7 +64,7 @@ const AppNode = ({ data }: { data: any }) => {
             <Handle type="target" position={Position.Top} className="!bg-transparent !border-0" />
 
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <PolicyIcon policy={data.ingressPolicy} ports={data.ports} type="ingress" />
+                <PolicyIcon policy={data.ingressPolicy} ports={data.ports} useNetworkPolicy={data.app.useNetworkPolicy} type="ingress" />
             </div>
 
             <div className="font-semibold text-sm mt-2 mb-2 flex gap-3 items-center justify-center">
@@ -77,7 +72,7 @@ const AppNode = ({ data }: { data: any }) => {
             </div>
 
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10">
-                <PolicyIcon policy={data.egressPolicy} ports={data.ports} type="egress" />
+                <PolicyIcon policy={data.egressPolicy} ports={data.ports} useNetworkPolicy={data.app.useNetworkPolicy} type="egress" />
             </div>
 
             <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0" />
@@ -176,6 +171,7 @@ export default function ProjectNetworkGraph({ apps }: ProjectNetworkGraphProps) 
                     ingressPolicy: app.ingressNetworkPolicy,
                     egressPolicy: app.egressNetworkPolicy,
                     appId: app.id,
+                    app,
                     ports
                 },
                 type: 'appNode',

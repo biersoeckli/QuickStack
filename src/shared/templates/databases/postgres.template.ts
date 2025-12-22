@@ -45,6 +45,7 @@ export const postgreAppTemplate: AppTemplateModel = {
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `PGDATA=/var/lib/qs-postgres/data
 `,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{

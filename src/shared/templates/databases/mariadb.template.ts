@@ -51,6 +51,7 @@ export const mariadbAppTemplate: AppTemplateModel = {
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             replicas: 1,
             envVars: ``,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{

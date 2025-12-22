@@ -9,7 +9,9 @@ import { useState } from "react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { saveNetworkPolicy } from "./actions";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, AlertTriangle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function NetworkPolicy({ app, readonly }: {
     app: AppExtendedModel;
@@ -17,10 +19,11 @@ export default function NetworkPolicy({ app, readonly }: {
 }) {
     const [ingressPolicy, setIngressPolicy] = useState(app.ingressNetworkPolicy);
     const [egressPolicy, setEgressPolicy] = useState(app.egressNetworkPolicy);
+    const [useNetworkPolicy, setUseNetworkPolicy] = useState(app.useNetworkPolicy);
     const [showHelp, setShowHelp] = useState(false);
 
     const handleSave = async () => {
-        await Toast.fromAction(() => saveNetworkPolicy(app.id, ingressPolicy, egressPolicy));
+        await Toast.fromAction(() => saveNetworkPolicy(app.id, ingressPolicy, egressPolicy, useNetworkPolicy));
     };
 
     return (
@@ -34,11 +37,38 @@ export default function NetworkPolicy({ app, readonly }: {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                    <div className="space-y-0.5">
+                        <Label htmlFor="use-network-policy">Enable Network Policies</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Control whether network policies are applied to this application
+                        </p>
+                    </div>
+                    <Switch
+                        id="use-network-policy"
+                        disabled={readonly}
+                        checked={useNetworkPolicy}
+                        onCheckedChange={setUseNetworkPolicy}
+                    />
+                </div>
+
+                {!useNetworkPolicy && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Warning</AlertTitle>
+                        <AlertDescription>
+                            Disabling network policies removes all network traffic restrictions for this application.
+                            This may expose your application to unauthorized access and security risks.
+                            Only disable this if you fully understand the security implications.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="ingress">Ingress Policy (Incoming Traffic)</Label>
                         <Select
-                            disabled={readonly}
+                            disabled={readonly || !useNetworkPolicy}
                             value={ingressPolicy}
                             onValueChange={setIngressPolicy}
                         >
@@ -59,7 +89,7 @@ export default function NetworkPolicy({ app, readonly }: {
                     <div className="space-y-2">
                         <Label htmlFor="egress">Egress Policy (Outgoing Traffic)</Label>
                         <Select
-                            disabled={readonly}
+                            disabled={readonly || !useNetworkPolicy}
                             value={egressPolicy}
                             onValueChange={setEgressPolicy}
                         >

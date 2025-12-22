@@ -41,6 +41,7 @@ export const wordpressAppTemplate: AppTemplateModel = {
             envVars: `MYSQL_DATABASE=wordpress
 MYSQL_USER=wordpress
 `,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{
@@ -78,6 +79,7 @@ WORDPRESS_DB_USER={username}
 WORDPRESS_DB_PASSWORD={password}
 WORDPRESS_TABLE_PREFIX=wp_
 `,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{

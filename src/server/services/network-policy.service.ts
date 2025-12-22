@@ -11,6 +11,12 @@ class NetworkPolicyService {
         const policyName = KubeObjectNameUtils.toNetworkPolicyName(app.id);
         const namespace = app.projectId;
 
+        // If network policies are disabled, delete existing policy if any and return
+        if (!app.useNetworkPolicy) {
+            await this.deleteNetworkPolicy(app.id, app.projectId);
+            return;
+        }
+
         const ingressPolicy = this.normalizePolicy(app.ingressNetworkPolicy);
         const egressPolicy = this.normalizePolicy(app.egressNetworkPolicy);
 
