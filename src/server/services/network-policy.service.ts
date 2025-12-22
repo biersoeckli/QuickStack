@@ -45,7 +45,6 @@ class NetworkPolicyService {
                 egress: this.getEgressRules(egressPolicy)
             }
         };
-        console.log(JSON.stringify(policy, null, 2));
         await this.applyNetworkPolicy(namespace, policyName, policy);
     }
 
@@ -93,6 +92,14 @@ class NetworkPolicyService {
             }
         }];
 
+        const dbToolPod: V1NetworkPolicyPeer[] = [{
+            podSelector: {
+                matchLabels: {
+                    [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL
+                }
+            }
+        }];
+
         if (policyType === 'ALLOW_ALL') {
             // Allow from same namespace and from Traefik (internet traffic comes through Traefik)
             rules.push({
@@ -109,7 +116,8 @@ class NetworkPolicyService {
             rules.push({
                 from: [
                     ...traefikFrom,
-                    ...backupPodFrom
+                    ...backupPodFrom,
+                    ...dbToolPod
                 ]
             });
         } else if (policyType === 'NAMESPACE_ONLY') {
@@ -123,7 +131,8 @@ class NetworkPolicyService {
             // No rules means deny all --> except the separate container for database backups
             rules.push({
                 from: [
-                    ...backupPodFrom
+                    ...backupPodFrom,
+                    ...dbToolPod
                 ]
             });
         }
@@ -239,6 +248,138 @@ class NetworkPolicyService {
     private async getExistingNetworkPolicy(namespace: string, policyName: string) {
         const allPolicies = await k3s.network.listNamespacedNetworkPolicy(namespace);
         return allPolicies.body.items.find(np => np.metadata?.name === policyName);
+    }
+
+    async reconcileDbToolNetworkPolicy(dbToolAppName: string, dbAppId: string, projectId: string) {
+        const policyName = KubeObjectNameUtils.toNetworkPolicyName(dbToolAppName);
+        const namespace = projectId;
+
+        const policy: V1NetworkPolicy = {
+            apiVersion: "networking.k8s.io/v1",
+            kind: "NetworkPolicy",
+            metadata: {
+                name: policyName,
+                namespace: namespace,
+                labels: {
+                    app: dbToolAppName,
+                    'db-tool': 'true'
+                },
+                annotations: {
+                    [Constants.QS_ANNOTATION_APP_ID]: dbAppId,
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                }
+            },
+            spec: {
+                podSelector: {
+                    matchLabels: {
+                        app: dbToolAppName
+                    }
+                },
+                policyTypes: ["Ingress", "Egress"],
+                ingress: [
+                    {
+                        // Allow from Traefik (internet traffic)
+                        from: [
+                            {
+                                namespaceSelector: {
+                                    matchLabels: {
+                                        'kubernetes.io/metadata.name': 'kube-system'
+                                    }
+                                },
+                                podSelector: {
+                                    matchLabels: {
+                                        'app.kubernetes.io/name': 'traefik'
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ],
+                egress: [
+                    {
+                        // Allow DNS
+                        to: [
+                            {
+                                namespaceSelector: {
+                                    matchLabels: {
+                                        "kubernetes.io/metadata.name": "kube-system"
+                                    }
+                                },
+                                podSelector: {
+                                    matchLabels: {
+                                        "k8s-app": "kube-dns"
+                                    }
+                                }
+                            },
+                            {
+                                namespaceSelector: {
+                                    matchLabels: {
+                                        "kubernetes.io/metadata.name": "kube-system"
+                                    }
+                                },
+                                podSelector: {
+                                    matchLabels: {
+                                        "k8s-app": "coredns"
+                                    }
+                                }
+                            }
+                        ],
+                        ports: [
+                            { protocol: 'UDP', port: 53 as any },
+                            { protocol: 'TCP', port: 53 as any }
+                        ]
+                    },
+                    {
+                        // Allow only to database pod in same namespace
+                        to: [
+                            {
+                                podSelector: {
+                                    matchLabels: {
+                                        app: dbAppId
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+        console.log('Creating DB Tool Network Policy:', JSON.stringify(policy, null, 2));
+        await this.applyNetworkPolicy(namespace, policyName, policy);
+    }
+
+    async deleteDbToolNetworkPolicy(dbToolAppName: string, projectId: string) {
+        const policyName = KubeObjectNameUtils.toNetworkPolicyName(dbToolAppName);
+        const existingNetworkPolicy = await this.getExistingNetworkPolicy(projectId, policyName);
+        if (!existingNetworkPolicy) {
+            return;
+        }
+        await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
+    }
+
+    async deleteAllNetworkPolicies() {
+        const namespaces = await k3s.core.listNamespace();
+        let deletedCount = 0;
+
+        for (const ns of namespaces.body.items) {
+            const namespace = ns.metadata?.name;
+            if (!namespace) continue;
+
+            try {
+                const policies = await k3s.network.listNamespacedNetworkPolicy(namespace);
+                for (const policy of policies.body.items) {
+                    const policyName = policy.metadata?.name;
+                    if (policyName) {
+                        await k3s.network.deleteNamespacedNetworkPolicy(policyName, namespace);
+                        deletedCount++;
+                    }
+                }
+            } catch (error) {
+                console.error(`Error deleting network policies in namespace ${namespace}:`, error);
+            }
+        }
+
+        return deletedCount;
     }
 }
 

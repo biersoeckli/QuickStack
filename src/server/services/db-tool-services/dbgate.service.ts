@@ -108,7 +108,8 @@ class DbGateService extends BaseDbToolService {
                     template: {
                         metadata: {
                             labels: {
-                                app: dbGateAppName
+                                app: dbGateAppName,
+                                [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL
                             },
                             annotations: {
                                 [Constants.QS_ANNOTATION_APP_ID]: app.id,

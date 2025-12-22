@@ -1,13 +1,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteOldAppLogs, purgeRegistryImages, updateRegistry } from "../server/actions";
+import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, updateRegistry } from "../server/actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { LogsDialog } from "@/components/custom/logs-overlay";
 import { Constants } from "@/shared/utils/constants";
-import { RotateCcw, SquareTerminal, Trash } from "lucide-react";
+import { RotateCcw, SquareTerminal, Trash, ShieldOff } from "lucide-react";
 
 export default function QuickStackMaintenanceSettings({
     qsPodName
@@ -94,6 +94,24 @@ export default function QuickStackMaintenanceSettings({
                         Toast.fromAction(() => updateRegistry());
                     }
                 }}><RotateCcw /> Force Update Registry</Button>
+
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Network Policies</CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-4 flex-wrap">
+
+                <Button variant="destructive" onClick={async () => {
+                    if (await useConfirm.openConfirmDialog({
+                        title: '⚠️ Delete All Network Policies',
+                        description: 'WARNING: This is a bad idea! This action will delete ALL network policies across all namespaces. Your applications will lose all network security restrictions. Only use this for troubleshooting or emergency situations. Are you absolutely sure?',
+                        okButton: "Yes, Delete All Policies",
+                    })) {
+                        Toast.fromAction(() => deleteAllNetworkPolicies());
+                    }
+                }}><ShieldOff /> Delete All Network Policies</Button>
 
             </CardContent>
         </Card>
