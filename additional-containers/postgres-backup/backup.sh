@@ -21,6 +21,10 @@ if [ -z "$S3_BUCKET_NAME" ]; then echo "Error: S3_BUCKET_NAME is not set"; exit 
 if [ -z "$S3_KEY" ]; then echo "Error: S3_KEY is not set"; exit 1; fi
 if [ -z "$S3_REGION" ]; then echo "Error: S3_REGION is not set"; exit 1; fi
 
+# Insert a sleep timeout so that the network policy is fully applied before attempting to connect to the database
+echo "Waiting for network policies to take effect..."
+sleep 4
+
 echo "Starting backup process..."
 
 # Create a temporary directory for the dump

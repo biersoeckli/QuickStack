@@ -1,3 +1,4 @@
+import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 
 export const mongodbAppTemplate: AppTemplateModel = {
@@ -39,8 +40,11 @@ export const mongodbAppTemplate: AppTemplateModel = {
             appType: 'MONGODB',
             sourceType: 'CONTAINER',
             containerImageSource: "",
+            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
+            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             replicas: 1,
             envVars: ``,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{

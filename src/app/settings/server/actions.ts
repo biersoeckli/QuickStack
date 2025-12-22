@@ -19,6 +19,7 @@ import maintenanceService from "@/server/services/standalone-services/maintenanc
 import appLogsService from "@/server/services/standalone-services/app-logs.service";
 import systemBackupService from "@/server/services/standalone-services/system-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
+import networkPolicyService from "@/server/services/network-policy.service";
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -194,4 +195,13 @@ export const runSystemBackupNow = async () =>
     await backupService.runSystemBackup();
 
     return new SuccessActionResult(undefined, 'System backup started successfully');
+  });
+
+export const deleteAllNetworkPolicies = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    const deletedCount = await networkPolicyService.deleteAllNetworkPolicies();
+
+    return new SuccessActionResult(undefined, `Successfully deleted all (${deletedCount}) network policies.`);
   });

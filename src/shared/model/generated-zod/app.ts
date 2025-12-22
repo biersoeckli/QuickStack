@@ -23,6 +23,9 @@ export const AppModel = z.object({
   cpuReservation: z.number().int().nullish(),
   cpuLimit: z.number().int().nullish(),
   webhookId: z.string().nullish(),
+  ingressNetworkPolicy: z.string(),
+  egressNetworkPolicy: z.string(),
+  useNetworkPolicy: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

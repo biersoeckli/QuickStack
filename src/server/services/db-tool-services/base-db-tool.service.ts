@@ -11,6 +11,7 @@ import svcService from "../svc.service";
 import podService from "../pod.service";
 import appService from "../app.service";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import networkPolicyService from "../network-policy.service";
 
 export class BaseDbToolService {
 
@@ -78,7 +79,7 @@ export class BaseDbToolService {
         const hostnameDnsProviderHostname = await hostnameDnsProviderService.getDomainForApp(toolAppName);
 
         console.log(`Creating DB Tool ${toolAppName} deployment for app ${appId}`);
-        await this.createOrUpdateDbGateDeployment(app, deplyomentBuilder);
+        await this.createOrUpdateDbToolDeplyoment(app, deplyomentBuilder);
 
         console.log(`Creating service for DB Tool ${toolAppName} for app ${appId}`);
         await svcService.createOrUpdateService(namespace, toolAppName, [{
@@ -90,6 +91,9 @@ export class BaseDbToolService {
         console.log(`Creating ingress for DB Tool ${toolAppName} for app ${appId}`);
         await this.createOrUpdateIngress(toolAppName, namespace, hostnameDnsProviderHostname);
 
+        console.log(`Creating network policy for DB Tool ${toolAppName} for app ${appId}`);
+        await networkPolicyService.reconcileDbToolNetworkPolicy(toolAppName, appId, namespace);
+
         const fileBrowserPods = await podService.getPodsForApp(namespace, toolAppName);
         for (const pod of fileBrowserPods) {
             await podService.waitUntilPodIsRunningFailedOrSucceded(namespace, pod.podName);
@@ -97,7 +101,7 @@ export class BaseDbToolService {
     }
 
 
-    private async createOrUpdateDbGateDeployment(app: AppExtendedModel, deplyomentBuilder: (app: AppExtendedModel) => V1Deployment | Promise<V1Deployment>) {
+    private async createOrUpdateDbToolDeplyoment(app: AppExtendedModel, deplyomentBuilder: (app: AppExtendedModel) => V1Deployment | Promise<V1Deployment>) {
         const body = await deplyomentBuilder(app);
         const toolAppName = this.appIdToToolNameConverter(app.id);
         await deploymentService.applyDeployment(app.projectId, toolAppName, body);
@@ -128,6 +132,8 @@ export class BaseDbToolService {
             // do not delete ingress to reduce cert-manager issues --> todo; add cleanup function in maintenance section
             //await k3s.network.deleteNamespacedIngress(KubeObjectNameUtils.getIngressName(toolAppName), projectId);
         }
+
+        await networkPolicyService.deleteDbToolNetworkPolicy(toolAppName, projectId);
     }
 
     private async createOrUpdateIngress(dbGateAppName: string, namespace: string, hostname: string) {

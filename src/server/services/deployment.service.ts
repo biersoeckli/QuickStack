@@ -18,6 +18,7 @@ import configMapService from "./config-map.service";
 import secretService from "./secret.service";
 import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
+import networkPolicyService from "./network-policy.service";
 
 class DeploymentService {
 
@@ -91,6 +92,9 @@ class DeploymentService {
 
         const envVars = EnvVarUtils.parseEnvVariables(app);
         dlog(deploymentId, `Configured ${envVars.length} Env Variables.`);
+
+        await networkPolicyService.reconcileNetworkPolicy(app);
+        dlog(deploymentId, `Configured Network Policy.`);
 
         const existingDeployment = await this.getDeployment(app.projectId, app.id);
         const body: V1Deployment = {

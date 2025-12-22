@@ -3,7 +3,7 @@
 
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import projectService from "@/server/services/project.service";
-import AppTable from "./apps-table";
+import ProjectOverview from "./project-overview";
 import appService from "@/server/services/app.service";
 import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
@@ -36,7 +36,7 @@ export default async function AppsPage({
                 {UserGroupUtils.sessionCanCreateNewAppsForProject(session, params.projectId) &&
                     <CreateProjectActions projectId={projectId} />}
             </PageTitle>
-            <AppTable session={session} app={relevantApps} projectId={project.id} />
+            <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />
             <ProjectBreadcrumbs project={project} />
         </div>
     )

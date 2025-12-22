@@ -11,6 +11,7 @@ import podService from "./pod.service";
 import bcrypt from "bcrypt";
 import hostnameDnsProviderService from "./hostname-dns-provider.service";
 import pvcService from "./pvc.service";
+import networkPolicyService from "./network-policy.service";
 
 class FileBrowserService {
 
@@ -55,6 +56,9 @@ class FileBrowserService {
         console.log(`Creating ingress for filebrowser for volume ${volumeId}`);
         await this.createOrUpdateIngress(kubeAppName, namespace, appId, projectId, traefikHostname);
 
+        console.log(`Creating network policy for filebrowser for volume ${volumeId}`);
+        await networkPolicyService.reconcileFileBrowserNetworkPolicy(kubeAppName, projectId);
+
         const fileBrowserPods = await podService.getPodsForApp(projectId, kubeAppName);
         for (const pod of fileBrowserPods) {
             await podService.waitUntilPodIsRunningFailedOrSucceded(projectId, pod.podName);
@@ -92,6 +96,8 @@ class FileBrowserService {
         if (existingIngress) {
             await k3s.network.deleteNamespacedIngress(KubeObjectNameUtils.getIngressName(kubeAppName), projectId);
         }
+
+        await networkPolicyService.deleteFileBrowserNetworkPolicy(kubeAppName, projectId);
     }
 
     private async createOrUpdateIngress(kubeAppName: string, namespace: string, appId: string, projectId: string, traefikHostname: string) {

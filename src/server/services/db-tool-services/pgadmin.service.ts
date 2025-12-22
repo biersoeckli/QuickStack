@@ -62,7 +62,8 @@ class PgAdminService extends BaseDbToolService {
                     template: {
                         metadata: {
                             labels: {
-                                app: appName
+                                app: appName,
+                                [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL
                             },
                             annotations: {
                                 [Constants.QS_ANNOTATION_APP_ID]: app.id,

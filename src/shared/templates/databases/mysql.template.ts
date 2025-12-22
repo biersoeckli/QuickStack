@@ -1,3 +1,4 @@
+import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 
 export const mysqlAppTemplate: AppTemplateModel = {
@@ -48,6 +49,9 @@ export const mysqlAppTemplate: AppTemplateModel = {
             containerImageSource: "",
             replicas: 1,
             envVars: ``,
+            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
+            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
+            useNetworkPolicy: true,
         },
         appDomains: [],
         appVolumes: [{
