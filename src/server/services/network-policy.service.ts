@@ -357,6 +357,66 @@ class NetworkPolicyService {
         await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
     }
 
+    async reconcileFileBrowserNetworkPolicy(fileBrowserAppName: string, projectId: string) {
+        const policyName = KubeObjectNameUtils.toNetworkPolicyName(fileBrowserAppName);
+        const namespace = projectId;
+
+        const policy: V1NetworkPolicy = {
+            apiVersion: "networking.k8s.io/v1",
+            kind: "NetworkPolicy",
+            metadata: {
+                name: policyName,
+                namespace: namespace,
+                labels: {
+                    app: fileBrowserAppName,
+                    'file-browser': 'true'
+                },
+                annotations: {
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                }
+            },
+            spec: {
+                podSelector: {
+                    matchLabels: {
+                        app: fileBrowserAppName
+                    }
+                },
+                policyTypes: ["Ingress", "Egress"],
+                ingress: [
+                    {
+                        // Allow from Traefik (internet traffic)
+                        from: [
+                            {
+                                namespaceSelector: {
+                                    matchLabels: {
+                                        'kubernetes.io/metadata.name': 'kube-system'
+                                    }
+                                },
+                                podSelector: {
+                                    matchLabels: {
+                                        'app.kubernetes.io/name': 'traefik'
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ],
+                egress: [] // Deny all outgoing traffic
+            }
+        };
+        console.log('Creating FileBrowser Network Policy:', JSON.stringify(policy, null, 2));
+        await this.applyNetworkPolicy(namespace, policyName, policy);
+    }
+
+    async deleteFileBrowserNetworkPolicy(fileBrowserAppName: string, projectId: string) {
+        const policyName = KubeObjectNameUtils.toNetworkPolicyName(fileBrowserAppName);
+        const existingNetworkPolicy = await this.getExistingNetworkPolicy(projectId, policyName);
+        if (!existingNetworkPolicy) {
+            return;
+        }
+        await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
+    }
+
     async deleteAllNetworkPolicies() {
         const namespaces = await k3s.core.listNamespace();
         let deletedCount = 0;
