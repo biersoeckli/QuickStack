@@ -6,6 +6,9 @@ import s3Service from "../aws-s3.service";
 import dataAccess from "@/server/adapter/db.client";
 import { CommandExecutorUtils } from "@/server/utils/command-executor.utils";
 import { Constants } from "@/shared/utils/constants";
+import util from 'util';
+import child_process from 'child_process';
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 const QS_SYSTEM_BACKUP_PREFIX = 'quickstack-system-backup';
 const QS_DEFAULT_RETENTION_DAYS = 30;
@@ -161,6 +164,91 @@ class SystemBackupService {
             .sort((a: any, b: any) => b!.date.getTime() - a!.date.getTime()); // Newest first
 
         return systemBackups;
+    }
+
+    /**
+     * Download a system backup from S3 to temp volume download path
+     * Returns just the filename for use with the volume-data-download route
+     */
+    async downloadSystemBackup(s3TargetId: string, backupKey: string): Promise<string> {
+        const s3Target = await dataAccess.client.s3Target.findFirstOrThrow({
+            where: {
+                id: s3TargetId
+            }
+        });
+
+        const fileName = backupKey.split('/').join('-');
+        const downloadPath = PathUtils.volumeDownloadZipPath(fileName);
+
+        await FsUtils.createDirIfNotExistsAsync(PathUtils.tempVolumeDownloadPath, true);
+        await FsUtils.deleteDirIfExistsAsync(downloadPath, true);
+
+        console.log(`Downloading system backup from S3: ${backupKey} to ${downloadPath}...`);
+        await s3Service.downloadFile(s3Target, backupKey, downloadPath);
+        console.log(`System backup downloaded successfully`);
+
+        return PathUtils.splitPath(downloadPath).filePath;
+    }
+
+    /**
+     * Restore system backup from an uploaded tar.gz file
+     * Searches for data.db in the archive and replaces the current database
+     */
+    async restoreSystemBackup(backupFilePath: string): Promise<void> {
+        const restoreDir = PathUtils.tempBackupResotreFolder;
+        await FsUtils.createDirIfNotExistsAsync(restoreDir, true);
+
+        const extractPath = `${restoreDir}/extract-${Date.now()}`;
+        await FsUtils.createDirIfNotExistsAsync(extractPath, true);
+
+        try {
+            console.log(`Extracting backup archive to ${extractPath}...`);
+
+            // Extract the tar.gz archive
+            await CommandExecutorUtils.runCommand(
+                `tar -xzf "${backupFilePath}" -C "${extractPath}"`
+            );
+
+            // Search for data.db file in the extracted content
+            const exec = util.promisify(child_process.exec);
+            const { stdout } = await exec(`find "${extractPath}" -name "data.db" -type f`);
+
+            const dataDbPath = stdout.trim().split('\n')[0];
+
+            if (!dataDbPath || !(await FsUtils.fileExists(dataDbPath))) {
+                throw new ServiceException('data.db file not found in the backup archive. Cannot restore backup.');
+            }
+
+            console.log(`Found data.db at: ${dataDbPath}`);
+
+            // Determine the current database path
+            const dbPath = process.env.DATABASE_URL?.replace('file:', '');
+
+            // Create backup of current database before replacing
+            const backupCurrentDb = `${dbPath}.backup-${Date.now()}`;
+            console.log(`Creating backup of current database: ${backupCurrentDb}`);
+            await CommandExecutorUtils.runCommand(
+                `cp "${dbPath}" "${backupCurrentDb}"`
+            );
+
+            // Replace the current database with the one from the backup
+            console.log(`Replacing database with backup...`);
+            await CommandExecutorUtils.runCommand(
+                `cp "${dataDbPath}" "${dbPath}"`
+            );
+
+            console.log(`Database restored successfully from backup.`);
+            console.log(`Previous database backed up to: ${backupCurrentDb}`);
+
+        } finally {
+            // Clean up extracted files
+            if (await FsUtils.fileExists(extractPath)) {
+                await CommandExecutorUtils.runCommand(
+                    `rm -rf "${extractPath}"`
+                );
+                console.log(`Cleaned up temporary extraction directory: ${extractPath}`);
+            }
+        }
     }
 }
 
