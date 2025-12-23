@@ -7,7 +7,7 @@ import { useState, useTransition } from "react";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
 import { applyTraefikIpPropagation } from "./actions";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "lucide-react";
 
 export default function TraefikIpPropagationCard({ initialStatus }: { initialStatus: TraefikIpPropagationStatus }) {
     const [status, setStatus] = useState<TraefikIpPropagationStatus>(initialStatus);
@@ -46,12 +46,6 @@ export default function TraefikIpPropagationCard({ initialStatus }: { initialSta
             </CardHeader>
             <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Current policy:</span>
-                        <Badge variant={currentEnabled ? "default" : "secondary"}>
-                            {currentEnabled ? 'Local' : 'Cluster'}
-                        </Badge>
-                    </div>
                     <div className="text-sm text-muted-foreground">{readinessText}</div>
                     <div className="text-xs text-muted-foreground">Last restart: {lastRestart}</div>
                     <div className="text-xs text-muted-foreground">

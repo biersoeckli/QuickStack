@@ -20,9 +20,11 @@ import appLogsService from "@/server/services/standalone-services/app-logs.servi
 import systemBackupService from "@/server/services/standalone-services/system-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
 import networkPolicyService from "@/server/services/network-policy.service";
+import traefikService from "@/server/services/traefik.service";
 import { PathUtils } from "@/server/utils/path.utils";
 import { FsUtils } from "@/server/utils/fs.utils";
 import fs from "fs";
+import { z } from "zod";
 
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
@@ -250,3 +252,12 @@ export const downloadSystemBackup = async (backupKey: string) =>
 
     return new SuccessActionResult(fileName, 'Starting download...');
   }) as Promise<ServerActionResult<any, string>>;
+
+export const setTraefikIpPropagation = async (prevState: any, inputData: { enableIpPreservation: boolean }) =>
+  saveFormAction(inputData, z.object({ enableIpPreservation: z.boolean() }), async (validatedData) => {
+    await getAdminUserSession();
+
+    await traefikService.applyExternalTrafficPolicy(validatedData.enableIpPreservation);
+
+    return new SuccessActionResult(undefined, `Traefik externalTrafficPolicy set to ${validatedData.enableIpPreservation ? 'Local' : 'Cluster'}.`);
+  });

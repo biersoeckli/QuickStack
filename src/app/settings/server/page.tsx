@@ -10,7 +10,9 @@ import QuickStackRegistrySettings from "./qs-registry-settings";
 import s3TargetService from "@/server/services/s3-target.service";
 import QuickStackPublicIpSettings from "./qs-public-ip-settings";
 import QuickStackSystemBackupSettings from "./qs-system-backup-settings";
+import QuickStackTraefikSettings from "./qs-traefik-settings";
 import BreadcrumbSetter from "@/components/breadcrumbs-setter";
+import traefikService from "@/server/services/traefik.service";
 
 export default async function ProjectPage() {
 
@@ -22,6 +24,7 @@ export default async function ProjectPage() {
     const ipv4Address = await paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS);
     const systemBackupLocation = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
     const s3Targets = await s3TargetService.getAll();
+    const traefikStatus = await traefikService.getStatus();
 
     return (
         <div className="flex-1 space-y-4 pt-6">
@@ -37,6 +40,7 @@ export default async function ProjectPage() {
                 <div><QuickStackIngressSettings disableNodePortAccess={disableNodePortAccess!} serverUrl={serverUrl!} /></div>
                 <div><QuickStackLetsEncryptSettings letsEncryptMail={letsEncryptMail!} /></div>
                 <div><QuickStackPublicIpSettings publicIpv4={ipv4Address} /></div>
+                <div><QuickStackTraefikSettings initialStatus={traefikStatus} /></div>
                 <div><QuickStackSystemBackupSettings systemBackupLocation={systemBackupLocation!} s3Targets={s3Targets} /></div>
                 <div><QuickStackRegistrySettings registryStorageLocation={regitryStorageLocation!} s3Targets={s3Targets} /></div>
             </div>
