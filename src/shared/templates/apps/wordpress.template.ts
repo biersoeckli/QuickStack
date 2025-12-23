@@ -47,7 +47,8 @@ MYSQL_USER=wordpress
         appVolumes: [{
             size: 500,
             containerMountPath: '/var/lib/mysql',
-            accessMode: 'ReadWriteOnce'
+            accessMode: 'ReadWriteOnce',
+            storageClassName: 'longhorn',
         }],
         appFileMounts: [],
         appPorts: [{
@@ -85,7 +86,8 @@ WORDPRESS_TABLE_PREFIX=wp_
         appVolumes: [{
             size: 500,
             containerMountPath: '/var/www/html',
-            accessMode: 'ReadWriteMany'
+            accessMode: 'ReadWriteMany',
+            storageClassName: 'longhorn'
         }],
         appFileMounts: [{
             containerMountPath: '/usr/local/etc/php/conf.d/custom.ini',

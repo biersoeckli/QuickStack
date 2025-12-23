@@ -57,7 +57,8 @@ export const mariadbAppTemplate: AppTemplateModel = {
         appVolumes: [{
             size: 400,
             containerMountPath: '/var/lib/mysql',
-            accessMode: 'ReadWriteOnce'
+            accessMode: 'ReadWriteOnce',
+            storageClassName: 'longhorn',
         }],
         appFileMounts: [],
         appPorts: [{

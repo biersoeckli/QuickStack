@@ -50,7 +50,8 @@ export const mongodbAppTemplate: AppTemplateModel = {
         appVolumes: [{
             size: 500,
             containerMountPath: '/data/db',
-            accessMode: 'ReadWriteOnce'
+            accessMode: 'ReadWriteOnce',
+            storageClassName: 'longhorn',
         }],
         appFileMounts: [],
         appPorts: [{
