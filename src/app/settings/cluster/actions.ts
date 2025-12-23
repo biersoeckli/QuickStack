@@ -14,7 +14,7 @@ export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
   });
 
 export const applyTraefikIpPropagation = async (enableIpPreservation: boolean) =>
-  simpleAction<TraefikIpPropagationStatus, TraefikIpPropagationStatus>(async () => {
+  simpleAction(async () => {
     await getAdminUserSession();
     const updatedStatus = await traefikService.applyExternalTrafficPolicy(enableIpPreservation);
     return new SuccessActionResult<TraefikIpPropagationStatus>(

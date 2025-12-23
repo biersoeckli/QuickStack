@@ -3,7 +3,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppTable from "./apps-table";
 import ProjectNetworkGraph from "./project-network-graph";
-import { App } from "@prisma/client";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Table, Network } from "lucide-react";
