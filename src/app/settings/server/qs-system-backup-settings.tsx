@@ -25,6 +25,7 @@ import { Constants } from "@/shared/utils/constants";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { Separator } from "@/components/ui/separator";
 
 const DEACTIVATED_VALUE = Constants.QS_SYSTEM_BACKUP_DEACTIVATED;
 
@@ -147,59 +148,64 @@ export default function QuickStackSystemBackupSettings({
                     Select an S3 storage target to enable automatic system backups, or deactivate to disable system backups.
                 </CardDescription>
             </CardHeader>
-            <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
-                    return formAction(data);
-                })()}>
-                    <CardContent className="space-y-4">
-
-                        <SelectFormField
-                            form={form}
-                            name="systemBackupLocation"
-                            label="System Backup Location"
-                            formDescription={<>
-                                S3 Storage Locations can be configured <span className="underline"><Link href="/settings/s3-targets">here</Link></span>.
-                            </>}
-                            values={[
-                                [DEACTIVATED_VALUE, Constants.QS_SYSTEM_BACKUP_DEACTIVATED],
-                                ...s3Targets.map((target) =>
-                                    [target.id, `S3: ${target.name}`])
-                            ] as [string, string][]}
-                        />
-
-                        <div className="flex gap-2 pt-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleViewBackups}
-                                disabled={systemBackupLocation === DEACTIVATED_VALUE || !systemBackupLocation}
-                            >
-                                <FileArchive className="mr-2 h-4 w-4" />
-                                View Backups
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleRunBackup}
-                                disabled={systemBackupLocation === DEACTIVATED_VALUE || !systemBackupLocation || runningBackup}
-                            >
-                                {runningBackup ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Play className="mr-2 h-4 w-4" />
-                                )}
-                                Run Backup Now
-                            </Button>
+            <CardContent className="space-y-6">
+                <Form {...form}>
+                    <form action={(e) => form.handleSubmit((data) => {
+                        return formAction(data);
+                    })()}>
+                        <div className="space-y-4">
+                            <SelectFormField
+                                form={form}
+                                name="systemBackupLocation"
+                                label="System Backup Location"
+                                formDescription={<>
+                                    S3 Storage Locations can be configured <span className="underline"><Link href="/settings/s3-targets">here</Link></span>.
+                                </>}
+                                values={[
+                                    [DEACTIVATED_VALUE, Constants.QS_SYSTEM_BACKUP_DEACTIVATED],
+                                    ...s3Targets.map((target) =>
+                                        [target.id, `S3: ${target.name}`])
+                                ] as [string, string][]}
+                            />
+                            <div className="flex items-center gap-4">
+                                <SubmitButton>Save Settings</SubmitButton>
+                                {state?.message && <p className="text-red-500 text-sm">{state.message}</p>}
+                            </div>
                         </div>
+                    </form>
+                </Form>
 
-                    </CardContent>
-                    <CardFooter className="gap-4">
-                        <SubmitButton>Save</SubmitButton>
-                        <p className="text-red-500">{state?.message}</p>
-                    </CardFooter>
-                </form>
-            </Form >
-        </Card >
+                <Separator />
+
+                <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Backup Operations</h4>
+                    <div className="flex flex-wrap gap-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleViewBackups}
+                            disabled={systemBackupLocation === DEACTIVATED_VALUE || !systemBackupLocation}
+                        >
+                            <FileArchive className="mr-2 h-4 w-4" />
+                            View & Restore Backups
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleRunBackup}
+                            disabled={systemBackupLocation === DEACTIVATED_VALUE || !systemBackupLocation || runningBackup}
+                        >
+                            {runningBackup ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Play className="mr-2 h-4 w-4" />
+                            )}
+                            Run Backup Now
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
 
         <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">

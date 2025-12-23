@@ -53,18 +53,13 @@ const settingsMenu = [
     adminOnly: true,
   },
   {
-    title: "QuickStack Settings",
-    url: "/settings/server",
-    adminOnly: true,
-  },
-  {
     title: "Cluster",
     url: "/settings/cluster",
     adminOnly: true,
   },
   {
-    title: "Maintenance",
-    url: "/settings/maintenance",
+    title: "QuickStack Settings",
+    url: "/settings/server",
     adminOnly: true,
   },
 ]

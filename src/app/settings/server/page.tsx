@@ -13,8 +13,20 @@ import QuickStackSystemBackupSettings from "./qs-system-backup-settings";
 import QuickStackTraefikSettings from "./qs-traefik-settings";
 import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 import traefikService from "@/server/services/traefik.service";
+import { Separator } from "@/components/ui/separator";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QuickStackVersionInfo from "./qs-version-info";
+import QuickStackMaintenanceSettings from "./qs-maintenance-settings";
+import podService from "@/server/services/pod.service";
+import quickStackService from "@/server/services/qs.service";
+import { ServerSettingsTabs } from "./server-settings-tabs";
+import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 
-export default async function ProjectPage() {
+export default async function ProjectPage({
+    searchParams
+}: {
+    searchParams: { [key: string]: string | string[] | undefined }
+}) {
 
     const session = await getAdminUserSession();
     const serverUrl = await paramService.getString(ParamService.QS_SERVER_HOSTNAME, '');
@@ -25,25 +37,68 @@ export default async function ProjectPage() {
     const systemBackupLocation = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
     const s3Targets = await s3TargetService.getAll();
     const traefikStatus = await traefikService.getStatus();
+    const useCanaryChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
+    const qsPodInfos = await podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME);
+    const qsPodInfo = qsPodInfos.find(p => !!p);
+    const currentVersion = await quickStackService.getVersionOfCurrentQuickstackInstance();
+    const defaultTab = typeof searchParams?.tab === 'string' ? searchParams.tab : 'general';
 
     return (
-        <div className="flex-1 space-y-4 pt-6">
-            <PageTitle
-                title={'Server Settings'}
-                subtitle={`View or edit Server Settings`}>
-            </PageTitle>
+        <div className="flex-1 space-y-6 pt-6  pb-16">
+            <div className="space-y-0.5">
+                <PageTitle
+                    title={'Server Settings'}
+                    subtitle={`View or edit Server Settings`}>
+                </PageTitle>
+            </div>
             <BreadcrumbSetter items={[
                 { name: "Settings", url: "/settings/profile" },
                 { name: "QuickStack Server" },
             ]} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><QuickStackIngressSettings disableNodePortAccess={disableNodePortAccess!} serverUrl={serverUrl!} /></div>
-                <div><QuickStackLetsEncryptSettings letsEncryptMail={letsEncryptMail!} /></div>
-                <div><QuickStackPublicIpSettings publicIpv4={ipv4Address} /></div>
-                <div><QuickStackTraefikSettings initialStatus={traefikStatus} /></div>
-                <div><QuickStackSystemBackupSettings systemBackupLocation={systemBackupLocation!} s3Targets={s3Targets} /></div>
-                <div><QuickStackRegistrySettings registryStorageLocation={regitryStorageLocation!} s3Targets={s3Targets} /></div>
-            </div>
+
+            <Separator className="my-6" />
+
+            <ServerSettingsTabs defaultTab={defaultTab}>
+                <TabsList>
+                    <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
+                    <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
+                    <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
+                    <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates</TabsTrigger>
+                    <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="general" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QuickStackIngressSettings disableNodePortAccess={disableNodePortAccess!} serverUrl={serverUrl!} />
+                        <QuickStackPublicIpSettings publicIpv4={ipv4Address} />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="networking" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QuickStackLetsEncryptSettings letsEncryptMail={letsEncryptMail!} />
+                        <QuickStackTraefikSettings initialStatus={traefikStatus} />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="storage" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QuickStackRegistrySettings registryStorageLocation={regitryStorageLocation!} s3Targets={s3Targets} />
+                        <QuickStackSystemBackupSettings systemBackupLocation={systemBackupLocation!} s3Targets={s3Targets} />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="updates" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QuickStackVersionInfo currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} />
+                    </div>
+                </TabsContent>
+                <TabsContent value="maintenance" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QuickStackMaintenanceSettings qsPodName={qsPodInfo?.podName} />
+                    </div>
+                </TabsContent>
+            </ServerSettingsTabs>
         </div>
     )
 }

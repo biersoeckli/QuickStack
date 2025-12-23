@@ -24,6 +24,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
+import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 
 export default function AppTabs({
     app,
@@ -50,13 +51,13 @@ export default function AppTabs({
         <Tabs defaultValue="general" value={tabName} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
             <ScrollArea>
                 <TabsList>
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    {app.appType !== 'APP' && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="environment">Environment</TabsTrigger>
-                    <TabsTrigger value="domains">Domains</TabsTrigger>
-                    <TabsTrigger value="storage">Storage</TabsTrigger>
-                    <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                    <TabsTrigger value="overview"><Eye className="mr-2 h-4 w-4" />Overview</TabsTrigger>
+                    {app.appType !== 'APP' && <TabsTrigger value="credentials"><Key className="mr-2 h-4 w-4" />Credentials</TabsTrigger>}
+                    <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
+                    <TabsTrigger value="environment"><Zap className="mr-2 h-4 w-4" />Environment</TabsTrigger>
+                    <TabsTrigger value="domains"><Globe className="mr-2 h-4 w-4" />Domains</TabsTrigger>
+                    <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage</TabsTrigger>
+                    <TabsTrigger value="advanced"><Cog className="mr-2 h-4 w-4" />Advanced</TabsTrigger>
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>

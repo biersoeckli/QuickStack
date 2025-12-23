@@ -56,10 +56,7 @@ export default function QuickStackTraefikSettings({
             <CardHeader>
                 <CardTitle>Preserve Client IP</CardTitle>
                 <CardDescription>
-                    Toggle Traefik externalTrafficPolicy to <b>Local</b> to keep the original client IP on incoming requests.
-                    Local policy exposes real client IPs but may limit load-balancing flexibility. Only activate this on a single-node cluster.
-                    Kube-proxy only proxies proxy requests to local endpoints, and does not forward traffic to other nodes.
-                    For further details, refer to the <a href="https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-type-nodeport" target="_blank" className="underline underline-offset-2">Kubernetes documentation</a>.
+                    Configure how Traefik handles incoming traffic and client IP preservation.
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
@@ -82,9 +79,15 @@ export default function QuickStackTraefikSettings({
                             />
                         </div>
 
-                        <p className="text-xs text-muted-foreground">
-                            Local policy keeps traffic on a single node; deactivate if you rely on cross-node load-balancing.
-                        </p>
+                        <div className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                                Setting <b>externalTrafficPolicy</b> to <b>Local</b> preserves the original client IP but may limit load-balancing flexibility.
+                                Only activate this on a single-node cluster.
+                            </p>
+                            <p>
+                                For further details, refer to the <a href="https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-type-nodeport" target="_blank" className="underline underline-offset-2">Kubernetes documentation</a>.
+                            </p>
+                        </div>
                     </CardContent>
                     <CardFooter className="gap-4">
                         <SubmitButton>Save</SubmitButton>
