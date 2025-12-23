@@ -23,19 +23,22 @@ import NetworkPolicy from "./advanced/network-policy";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { NodeInfoModel } from "@/shared/model/node-info.model";
 
 export default function AppTabs({
     app,
     role,
     tabName,
     s3Targets,
-    volumeBackups
+    volumeBackups,
+    nodesInfo
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
     tabName: string;
-    s3Targets: S3Target[],
-    volumeBackups: VolumeBackupExtendedModel[]
+    s3Targets: S3Target[];
+    volumeBackups: VolumeBackupExtendedModel[];
+    nodesInfo: NodeInfoModel[];
 }) {
     const router = useRouter();
     const readonly = role !== RolePermissionEnum.READWRITE;
@@ -79,7 +82,7 @@ export default function AppTabs({
                 <InternalHostnames readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
-                <StorageList readonly={readonly} app={app} />
+                <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
                 <FileMount readonly={readonly} app={app} />
                 <VolumeBackupList
                     readonly={readonly}
