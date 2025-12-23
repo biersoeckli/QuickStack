@@ -6,6 +6,7 @@ import ProjectNetworkGraph from "./project-network-graph";
 import { App } from "@prisma/client";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Table, Network } from "lucide-react";
 
 interface ProjectOverviewProps {
     apps: any[]; // Using any to avoid complex type imports, as we know the data structure is correct
@@ -25,8 +26,8 @@ export default function ProjectOverview({ apps, session, projectId }: ProjectOve
     return (
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
             <TabsList>
-                <TabsTrigger value="table">Table View</TabsTrigger>
-                <TabsTrigger value="graph">Network Graph</TabsTrigger>
+                <TabsTrigger value="table"><Table className="mr-2 h-4 w-4" />Table View</TabsTrigger>
+                <TabsTrigger value="graph"><Network className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
             </TabsList>
             <TabsContent value="table">
                 <AppTable session={session} app={apps} projectId={projectId} />

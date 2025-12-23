@@ -22,11 +22,13 @@ import { Code } from "@/components/custom/code";
 import { Label } from "@/components/ui/label";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { Progress } from "@/components/ui/progress";
+import { NodeInfoModel } from "@/shared/model/node-info.model";
 
 type AppVolumeWithCapacity = (AppVolume & { usedBytes?: number; capacityBytes?: number; usedPercentage?: number });
 
-export default function StorageList({ app, readonly }: {
+export default function StorageList({ app, readonly, nodesInfo }: {
     app: AppExtendedModel;
+    nodesInfo: NodeInfoModel[];
     readonly: boolean;
 }) {
 
@@ -150,6 +152,7 @@ export default function StorageList({ app, readonly }: {
                             <TableHead>Mount Path</TableHead>
                             <TableHead>Storage Size</TableHead>
                             <TableHead>Storage Used</TableHead>
+                            <TableHead>Storage Class</TableHead>
                             <TableHead>Access Mode</TableHead>
                             <TableHead className="w-[100px]">Action</TableHead>
                         </TableRow>
@@ -168,6 +171,7 @@ export default function StorageList({ app, readonly }: {
                                         </div>
                                     </>}
                                 </TableCell>
+                                <TableCell className="font-medium capitalize">{volume.storageClassName?.replace('-', ' ')}</TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium flex gap-2">
                                     <TooltipProvider>
@@ -209,7 +213,7 @@ export default function StorageList({ app, readonly }: {
                                         </TooltipProvider>
                                     </StorageRestoreDialog>*/}
                                     {!readonly && <>
-                                        <DialogEditDialog app={app} volume={volume}>
+                                        <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo}>
                                             <TooltipProvider>
                                                 <Tooltip delayDuration={200}>
                                                     <TooltipTrigger>
@@ -241,7 +245,7 @@ export default function StorageList({ app, readonly }: {
                 </Table>
             </CardContent>
             {!readonly && <CardFooter>
-                <DialogEditDialog app={app}>
+                <DialogEditDialog app={app} nodesInfo={nodesInfo}>
                     <Button>Add Volume</Button>
                 </DialogEditDialog>
             </CardFooter>}

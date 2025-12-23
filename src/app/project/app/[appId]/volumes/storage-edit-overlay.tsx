@@ -39,13 +39,24 @@ import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
+import { NodeInfoModel } from "@/shared/model/node-info.model"
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
   { label: "ReadWriteMany", value: "ReadWriteMany" },
 ] as const
 
-export default function DialogEditDialog({ children, volume, app }: { children: React.ReactNode; volume?: AppVolume; app: AppExtendedModel; }) {
+const storageClasses = [
+  { label: "Longhorn (Default)", value: "longhorn", description: "Distributed, replicated storage recommended workloads in a cluster of multiple nodes." },
+  { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Data is stored on the master node. Only works in a single node setup." }
+] as const
+
+export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
+  children: React.ReactNode;
+  volume?: AppVolume;
+  app: AppExtendedModel;
+  nodesInfo: NodeInfoModel[];
+}) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -54,7 +65,8 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
       ...volume,
-      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce")
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
     }
   });
 
@@ -77,7 +89,11 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
   }, [state]);
 
   useEffect(() => {
-    form.reset(volume);
+    form.reset({
+      ...volume,
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+    });
   }, [volume]);
 
   return (
@@ -207,6 +223,88 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
                     </FormItem>
                   )}
                 />
+                {nodesInfo.length === 1 &&
+                  <FormField
+                    control={form.control}
+                    name="storageClassName"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel className="flex gap-2">
+                          <div>Storage Class</div>
+                          <div className="self-center">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild><QuestionMarkCircledIcon /></TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[350px]">
+                                    Choose where the volume is provisioned.<br /><br />
+                                    <b>Longhorn</b> keeps data replicated across nodes.<br />
+                                    <b>Local Path</b> stores data on a the master node and works only in single-node clusters.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={!!volume}
+                              >
+                                {field.value
+                                  ? storageClasses.find(
+                                    (storageClass) => storageClass.value === field.value
+                                  )?.label
+                                  : "Select storage class"}
+                                <ChevronsUpDown className="opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="max-w-[280px] p-0">
+                            <Command>
+                              <CommandList>
+                                <CommandGroup>
+                                  {storageClasses.map((storageClass) => (
+                                    <CommandItem
+                                      value={storageClass.label}
+                                      key={storageClass.value}
+                                      onSelect={() => {
+                                        form.setValue("storageClassName", storageClass.value);
+                                      }}
+                                    >
+                                      <div className="flex flex-col gap-1">
+                                        <span>{storageClass.label}</span>
+                                        <span className="text-xs text-muted-foreground">{storageClass.description}</span>
+                                      </div>
+                                      <Check
+                                        className={cn(
+                                          "ml-auto",
+                                          storageClass.value === field.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormDescription>
+                          This cannot be changed after creation.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />}
                 <p className="text-red-500">{state.message}</p>
                 <SubmitButton>Save</SubmitButton>
               </div>
@@ -216,7 +314,4 @@ export default function DialogEditDialog({ children, volume, app }: { children: 
       </Dialog>
     </>
   )
-
-
-
 }

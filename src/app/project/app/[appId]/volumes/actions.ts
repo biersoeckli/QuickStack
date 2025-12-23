@@ -47,13 +47,20 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         if (existingVolume && existingVolume.size > validatedData.size) {
             throw new ServiceException('Volume size cannot be decreased');
         }
+        if (existingVolume && existingVolume.storageClassName !== validatedData.storageClassName) {
+            throw new ServiceException('Storage class cannot be changed for existing volumes');
+        }
         if (existingApp.replicas > 1 && validatedData.accessMode === 'ReadWriteOnce') {
             throw new ServiceException('Volume access mode must be ReadWriteMany because your app has more than one replica configured.');
+        }
+        if (validatedData.accessMode === 'ReadWriteMany' && validatedData.storageClassName === 'local-path') {
+            throw new ServiceException('The Local Path storage class does not support ReadWriteMany access mode. Please choose another storage class / access mode.');
         }
         await appService.saveVolume({
             ...validatedData,
             id: validatedData.id ?? undefined,
-            accessMode: existingVolume?.accessMode ?? validatedData.accessMode as string
+            accessMode: existingVolume?.accessMode ?? validatedData.accessMode as string,
+            storageClassName: existingVolume?.storageClassName ?? validatedData.storageClassName
         });
     });
 

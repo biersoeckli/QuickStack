@@ -14,6 +14,7 @@ export default async function ClusterInfoPage() {
     const session = await getAdminUserSession();
     const nodeInfo = await clusterService.getNodeInfo();
     const clusterJoinToken = await paramService.getString(ParamService.K3S_JOIN_TOKEN);
+
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle

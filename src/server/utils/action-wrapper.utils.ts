@@ -169,6 +169,53 @@ export async function simpleAction<ReturnType, ValidationCallbackType>(
     } as ServerActionResult<ValidationCallbackType, ReturnType>;
 }
 
+/**
+ * Wrapper for server actions that handle file uploads via FormData
+ * Extracts file from FormData and passes it to the handler function
+ */
+export async function fileUploadAction<ReturnType>(
+    formData: FormData,
+    fileFieldName: string,
+    func: (file: File) => Promise<ReturnType>,
+    redirectOnSuccessPath?: string) {
+    let funcResult: ReturnType;
+    try {
+        const file = formData.get(fileFieldName) as File;
+        if (!file || !file.size) {
+            throw new ServiceException('No file uploaded or file is empty.');
+        }
+        funcResult = await func(file);
+    } catch (ex) {
+        if (ex instanceof ServiceException) {
+            return {
+                status: 'error',
+                message: ex.message
+            } as ServerActionResult<any, ReturnType>;
+        } else {
+            console.error(ex);
+            return {
+                status: 'error',
+                message: 'An unknown error occurred during file upload.'
+            } as ServerActionResult<any, ReturnType>;
+        }
+    }
+    if (redirectOnSuccessPath) redirect(redirectOnSuccessPath);
+
+    if (funcResult instanceof ServerActionResult) {
+        return {
+            status: funcResult.status,
+            message: funcResult.message,
+            errors: funcResult.errors,
+            data: funcResult.data
+        } as ServerActionResult<any, typeof funcResult.data>;
+    }
+    return {
+        status: 'success',
+        data: funcResult ?? undefined
+    } as ServerActionResult<any, ReturnType>;
+}
+
+
 
 export async function simpleRoute<ReturnType>(
     func: () => Promise<ReturnType>) {

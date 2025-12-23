@@ -232,6 +232,11 @@ class QuickStackService {
 
     private async createOrUpdatePvc() {
         const pvcName = KubeObjectNameUtils.toPvcName(this.QUICKSTACK_DEPLOYMENT_NAME);
+        const allPvcs = await k3s.core.listNamespacedPersistentVolumeClaim(this.QUICKSTACK_NAMESPACE);
+        const existingPvc = allPvcs.body.items.find(p => p.metadata!.name === pvcName);
+
+        const storageClassName = existingPvc?.spec?.storageClassName || 'longhorn';
+
         const pvc = {
             apiVersion: 'v1',
             kind: 'PersistentVolumeClaim',
@@ -241,7 +246,7 @@ class QuickStackService {
             },
             spec: {
                 accessModes: ['ReadWriteOnce'],
-                storageClassName: 'longhorn',
+                storageClassName,
                 resources: {
                     requests: {
                         storage: '1Gi'
@@ -249,8 +254,6 @@ class QuickStackService {
                 }
             }
         };
-        const allPvcs = await k3s.core.listNamespacedPersistentVolumeClaim(this.QUICKSTACK_NAMESPACE);
-        const existingPvc = allPvcs.body.items.find(p => p.metadata!.name === pvcName);
         if (existingPvc) {
             if (existingPvc.spec!.resources!.requests!.storage === pvc.spec!.resources!.requests!.storage) {
                 console.log(`PVC already exists with the same size, no changes`);

@@ -245,6 +245,7 @@ model AppVolume {
   containerMountPath String
   size               Int
   accessMode         String         @default("rwo")
+  storageClassName   String         @default("longhorn")
   appId              String
   app                App            @relation(fields: [appId], references: [id], onDelete: Cascade)
   volumeBackups      VolumeBackup[]

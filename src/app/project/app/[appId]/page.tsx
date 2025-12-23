@@ -5,6 +5,7 @@ import AppBreadcrumbs from "./app-breadcrumbs";
 import s3TargetService from "@/server/services/s3-target.service";
 import volumeBackupService from "@/server/services/volume-backup.service";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import clusterService from "@/server/services/node.service";
 
 export default async function AppPage({
     searchParams,
@@ -19,10 +20,11 @@ export default async function AppPage({
     }
     const session = await isAuthorizedReadForApp(appId);
     const role = UserGroupUtils.getRolePermissionForApp(session, appId);
-    const [app, s3Targets, volumeBackups] = await Promise.all([
+    const [app, s3Targets, volumeBackups, nodesInfo] = await Promise.all([
         appService.getExtendedById(appId),
         s3TargetService.getAll(),
-        volumeBackupService.getForApp(appId)
+        volumeBackupService.getForApp(appId),
+        clusterService.getNodeInfo()
     ]);
 
     return (<>
@@ -31,6 +33,7 @@ export default async function AppPage({
             volumeBackups={volumeBackups}
             s3Targets={s3Targets}
             app={app}
+            nodesInfo={nodesInfo}
             tabName={searchParams?.tabName ?? 'overview'} />
         <AppBreadcrumbs app={app} />
     </>

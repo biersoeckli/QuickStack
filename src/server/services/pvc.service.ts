@@ -115,9 +115,13 @@ class PvcService {
         for (const appVolume of app.appVolumes) {
             const pvcName = KubeObjectNameUtils.toPvcName(appVolume.id);
             const pvcDefinition = this.mapVolumeToPvcDefinition(app.projectId, appVolume);
+            const desiredStorageClassName = appVolume.storageClassName ?? 'longhorn';
 
             const existingPvc = existingPvcs.find(pvc => pvc.metadata?.name === pvcName);
             if (existingPvc) {
+                if (existingPvc.spec?.storageClassName && existingPvc.spec.storageClassName !== desiredStorageClassName) {
+                    console.warn(`PVC ${pvcName} storageClassName differs from requested value (${existingPvc.spec.storageClassName} vs ${desiredStorageClassName}). Storage class changes are not applied automatically.`);
+                }
                 if (existingPvc.spec!.resources!.requests!.storage === KubeSizeConverter.megabytesToKubeFormat(appVolume.size)) {
                     console.log(`PVC ${pvcName} for app ${app.id} already exists with the same size`);
                     continue;
@@ -159,6 +163,7 @@ class PvcService {
     }
 
     private mapVolumeToPvcDefinition(projectId: string, appVolume: AppVolume): V1PersistentVolumeClaim {
+        const storageClassName = appVolume.storageClassName ?? 'longhorn';
         return {
             apiVersion: 'v1',
             kind: 'PersistentVolumeClaim',
@@ -173,7 +178,7 @@ class PvcService {
             },
             spec: {
                 accessModes: [appVolume.accessMode],
-                storageClassName: 'longhorn',
+                storageClassName,
                 resources: {
                     requests: {
                         storage: KubeSizeConverter.megabytesToKubeFormat(appVolume.size),

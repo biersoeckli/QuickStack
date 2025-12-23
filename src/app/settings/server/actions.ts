@@ -1,6 +1,6 @@
 'use server'
 
-import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction, fileUploadAction } from "@/server/utils/action-wrapper.utils";
 import paramService, { ParamService } from "@/server/services/param.service";
 import { QsIngressSettingsModel, qsIngressSettingsZodModel } from "@/shared/model/qs-settings.model";
 import { QsLetsEncryptSettingsModel, qsLetsEncryptSettingsZodModel } from "@/shared/model/qs-letsencrypt-settings.model";
@@ -20,6 +20,12 @@ import appLogsService from "@/server/services/standalone-services/app-logs.servi
 import systemBackupService from "@/server/services/standalone-services/system-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
 import networkPolicyService from "@/server/services/network-policy.service";
+import traefikService from "@/server/services/traefik.service";
+import { PathUtils } from "@/server/utils/path.utils";
+import { FsUtils } from "@/server/utils/fs.utils";
+import fs from "fs";
+import { z } from "zod";
+
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
   saveFormAction(inputData, qsIngressSettingsZodModel, async (validatedData) => {
@@ -204,4 +210,54 @@ export const deleteAllNetworkPolicies = async () =>
     const deletedCount = await networkPolicyService.deleteAllNetworkPolicies();
 
     return new SuccessActionResult(undefined, `Successfully deleted all (${deletedCount}) network policies.`);
+  });
+
+export const uploadAndRestoreSystemBackup = async (formData: FormData) =>
+  fileUploadAction(formData, 'backupFile', async (file: File) => {
+    await getAdminUserSession();
+
+    const backupTempDir = PathUtils.tempBackupDataFolder;
+    await FsUtils.createDirIfNotExistsAsync(backupTempDir, true);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const uploadPath = `${backupTempDir}/uploaded-backup-${timestamp}.tar.gz`;
+
+    // Write uploaded file to disk
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await fs.promises.writeFile(uploadPath, buffer);
+
+    try {
+      // Restore the backup
+      await systemBackupService.restoreSystemBackup(uploadPath);
+
+      return new SuccessActionResult(undefined, 'System backup restored successfully. Please restart QuickStack for changes to take effect.');
+    } finally {
+      // Clean up uploaded file
+      await FsUtils.deleteFileIfExists(uploadPath);
+    }
+  }) as Promise<ServerActionResult<any, void>>;
+
+export const downloadSystemBackup = async (backupKey: string) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+
+    if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
+      throw new Error('System backup is not configured. Please select an S3 storage target first.');
+    }
+
+    const fileName = await systemBackupService.downloadSystemBackup(systemBackupLocationId, backupKey);
+
+    return new SuccessActionResult(fileName, 'Starting download...');
+  }) as Promise<ServerActionResult<any, string>>;
+
+export const setTraefikIpPropagation = async (prevState: any, inputData: { enableIpPreservation: boolean }) =>
+  saveFormAction(inputData, z.object({ enableIpPreservation: z.boolean() }), async (validatedData) => {
+    await getAdminUserSession();
+
+    await traefikService.applyExternalTrafficPolicy(validatedData.enableIpPreservation);
+
+    return new SuccessActionResult(undefined, `Traefik externalTrafficPolicy set to ${validatedData.enableIpPreservation ? 'Local' : 'Cluster'}.`);
   });
