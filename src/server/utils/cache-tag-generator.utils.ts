@@ -39,4 +39,8 @@ export class Tags {
     static nodeInfos() {
         return `node-infos`;
     }
+
+    static quickStackVersionInfo() {
+        return `quickstack-version-info`;
+    }
 }
