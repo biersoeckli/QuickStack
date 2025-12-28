@@ -15,7 +15,7 @@ class QuickStackService {
     private readonly QUICKSTACK_SERVICEACCOUNT_NAME = 'qs-service-account';
     private readonly CLUSTER_ISSUER_NAME = 'letsencrypt-production';
 
-    async getVersionOfCurrentQuickstackInstance() {
+    getVersionOfCurrentQuickstackInstance() {
         return process.env.QS_VERSION || undefined;
     }
 

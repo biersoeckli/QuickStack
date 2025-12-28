@@ -25,6 +25,8 @@ import { PathUtils } from "@/server/utils/path.utils";
 import { FsUtils } from "@/server/utils/fs.utils";
 import fs from "fs";
 import { z } from "zod";
+import { revalidateTag } from "next/cache";
+import { Tags } from "@/server/utils/cache-tag-generator.utils";
 
 
 export const updateIngressSettings = async (prevState: any, inputData: QsIngressSettingsModel) =>
@@ -108,6 +110,7 @@ export const updateQuickstack = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
     const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
+    revalidateTag(Tags.quickStackVersionInfo());
     await quickStackService.updateQuickStack(useCaranyChannel);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
   });

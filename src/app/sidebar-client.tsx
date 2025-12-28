@@ -32,50 +32,52 @@ import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
-
-
-const settingsMenu = [
-  {
-    title: "Profile",
-    url: "/settings/profile",
-    icon: User,
-  },
-  {
-    title: "Users & Groups",
-    url: "/settings/users",
-    icon: User2,
-    adminOnly: true,
-  },
-  {
-    title: "S3 Targets",
-    url: "/settings/s3-targets",
-    icon: Settings,
-    adminOnly: true,
-  },
-  {
-    title: "Cluster",
-    url: "/settings/cluster",
-    adminOnly: true,
-  },
-  {
-    title: "QuickStack Settings",
-    url: "/settings/server",
-    adminOnly: true,
-  },
-]
+import { GithubReleaseInfo } from "@/server/adapter/github.adapter"
 
 export function SidebarCient({
   projects,
-  session
+  session,
+  newVersionInfo
 }: {
   projects: (Project & { apps: App[] })[];
   session: UserSession;
+  newVersionInfo?: GithubReleaseInfo;
 }) {
 
   const path = usePathname();
 
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
+
+  const settingsMenu = [
+    {
+      title: "Profile",
+      url: "/settings/profile",
+      icon: User,
+    },
+    {
+      title: "Users & Groups",
+      url: "/settings/users",
+      icon: User2,
+      adminOnly: true,
+    },
+    {
+      title: "S3 Targets",
+      url: "/settings/s3-targets",
+      icon: Settings,
+      adminOnly: true,
+    },
+    {
+      title: "Cluster",
+      url: "/settings/cluster",
+      adminOnly: true,
+    },
+    {
+      title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
+      url: "/settings/server",
+      adminOnly: true,
+    },
+  ]
 
   useEffect(() => {
     if (path.startsWith('/project/app/')) {
@@ -265,7 +267,7 @@ export function SidebarCient({
                 <SidebarMenuSub>
                   {(UserGroupUtils.isAdmin(session) ? settingsMenu :
                     settingsMenu.filter(x => !x.adminOnly)).map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
+                      <SidebarMenuSubItem key={item.url}>
                         <SidebarMenuButton asChild>
                           <Link href={item.url}>
                             <span>{item.title}</span>
