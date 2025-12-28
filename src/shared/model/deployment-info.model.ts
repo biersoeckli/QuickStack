@@ -20,6 +20,6 @@ export const deploymentInfoZodModel = z.object({
 });
 
 export type DeploymentInfoModel = z.infer<typeof deploymentInfoZodModel>;
-export type DeplyomentStatus = z.infer<typeof deploymentStatusEnumZod>;
+export type DeploymentStatus = z.infer<typeof deploymentStatusEnumZod>;
 
 

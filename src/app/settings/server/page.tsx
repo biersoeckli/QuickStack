@@ -22,6 +22,7 @@ import quickStackService from "@/server/services/qs.service";
 import { ServerSettingsTabs } from "./server-settings-tabs";
 import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 import quickStackUpdateService from "@/server/services/qs-update.service";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export default async function ProjectPage({
     searchParams
@@ -82,14 +83,16 @@ export default async function ProjectPage({
             <Separator className="my-6" />
 
             <ServerSettingsTabs defaultTab={defaultTab}>
-                <TabsList>
-                    <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
-                    <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
-                    <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
-                    <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
-                    <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
-                </TabsList>
-
+                <ScrollArea>
+                    <TabsList>
+                        <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
+                        <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
+                        <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
+                        <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
+                        <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
                 <TabsContent value="general" className="space-y-4">
                     <div className="grid gap-6">
                         <QuickStackIngressSettings disableNodePortAccess={disableNodePortAccess!} serverUrl={serverUrl!} />

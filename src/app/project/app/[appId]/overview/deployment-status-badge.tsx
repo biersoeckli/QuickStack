@@ -1,13 +1,13 @@
 'use client'
 
-import { DeplyomentStatus } from "@/shared/model/deployment-info.model";
+import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 
 
 export default function DeploymentStatusBadge(
     {
         children
     }: {
-        children: DeplyomentStatus
+        children: DeploymentStatus
     }
 ) {
 
@@ -16,7 +16,7 @@ export default function DeploymentStatusBadge(
     </>)
 }
 
-function getTextForStatus(status: DeplyomentStatus) {
+function getTextForStatus(status: DeploymentStatus) {
     switch (status) {
         case 'SHUTDOWN':
             return 'Shutdown';
@@ -33,7 +33,7 @@ function getTextForStatus(status: DeplyomentStatus) {
     }
 }
 
-function getBackgroundColorForStatus(status: DeplyomentStatus) {
+function getBackgroundColorForStatus(status: DeploymentStatus) {
     switch (status) {
 
         case 'SHUTDOWN':
@@ -51,7 +51,7 @@ function getBackgroundColorForStatus(status: DeplyomentStatus) {
     }
 }
 
-function getTextColorForStatus(status: DeplyomentStatus) {
+function getTextColorForStatus(status: DeploymentStatus) {
     switch (status) {
 
         case 'SHUTDOWN':

@@ -3,7 +3,7 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import { V1Deployment, V1ReplicaSet } from "@kubernetes/client-node";
 import buildService from "./build.service";
 import { ListUtils } from "../../shared/utils/list.utils";
-import { DeploymentInfoModel, DeplyomentStatus } from "@/shared/model/deployment-info.model";
+import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { BuildJobStatus } from "@/shared/model/build-job";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import pvcService from "./pvc.service";
@@ -259,7 +259,7 @@ class DeploymentService {
     }
 
     mapBuildStatusToDeploymentStatus(buildJobStatus?: BuildJobStatus) {
-        const map = new Map<BuildJobStatus, DeplyomentStatus>([
+        const map = new Map<BuildJobStatus, DeploymentStatus>([
             ['UNKNOWN', 'UNKNOWN'],
             ['RUNNING', 'BUILDING'],
             ['FAILED', 'ERROR']
@@ -292,7 +292,7 @@ class DeploymentService {
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);
     }
 
-    mapReplicasetToStatus(deployment: V1Deployment | V1ReplicaSet): DeplyomentStatus {
+    mapReplicasetToStatus(deployment: V1Deployment | V1ReplicaSet): DeploymentStatus {
         /*
         Fields for Status:
             availableReplicas: 1,
@@ -302,7 +302,7 @@ class DeploymentService {
             readyReplicas: 1,
             replicas: 1
         */
-        let status: DeplyomentStatus = 'UNKNOWN';
+        let status: DeploymentStatus = 'UNKNOWN';
         if (deployment.status?.replicas === undefined) {
             return 'SHUTDOWN';
         }
