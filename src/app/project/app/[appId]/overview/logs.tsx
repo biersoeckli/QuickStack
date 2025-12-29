@@ -25,7 +25,7 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
-    const { subscribeToStatusChanges } = usePodsStatus();
+    const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
 
     const updateBuilds = async () => {
         try {
@@ -48,6 +48,11 @@ export default function Logs({
             if (changedAppIds.includes(app.id)) {
                 setTimeout(() =>
                     updateBuilds(), 500); // slight delay to ensure data is updated
+
+                // Update also after 10 Seconds --> for examaple when app stopped or redeployed to get final state of old container
+                setTimeout(() =>
+                    updateBuilds(), 10000);
+
             }
         });
         return () => unsubscribe();
