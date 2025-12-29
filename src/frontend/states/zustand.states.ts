@@ -1,4 +1,3 @@
-import dataAccess from "@/server/adapter/db.client";
 import { AppPodsStatusModel } from "@/shared/model/app-pod-status.model";
 import { create } from "zustand"
 
@@ -103,22 +102,26 @@ interface ZustandPodsStatusProps {
     podsStatus: Map<string, AppPodsStatusModel>;
     lastUpdate: Date | null;
     isLoading: boolean;
+    listeners: Set<(changedAppIds: string[]) => void>;
     setPodsStatus: (data: AppPodsStatusModel[]) => void;
     updatePodStatus: (data: AppPodsStatusModel) => void;
     setLoading: (loading: boolean) => void;
     getPodsForApp: (appId: string) => AppPodsStatusModel | undefined;
+    subscribeToStatusChanges: (callback: (changedAppIds: string[]) => void) => () => void;
 }
 
 export const usePodsStatus = create<ZustandPodsStatusProps>((set, get) => ({
     podsStatus: new Map(),
     lastUpdate: null,
     isLoading: true,
+    listeners: new Set(),
     setPodsStatus: (data) => {
         set({
             podsStatus: new Map(data.map(app => [app.appId, app])),
             lastUpdate: new Date(),
             isLoading: false,
         });
+        get().listeners.forEach(listener => listener(data.map(d => d.appId)));
     },
     updatePodStatus: (data) => {
         set((state) => {
@@ -129,6 +132,7 @@ export const usePodsStatus = create<ZustandPodsStatusProps>((set, get) => ({
                 lastUpdate: new Date(),
             };
         });
+        get().listeners.forEach(listener => listener([data.appId]));
     },
     setLoading: (loading) => {
         set({ isLoading: loading });
@@ -136,4 +140,18 @@ export const usePodsStatus = create<ZustandPodsStatusProps>((set, get) => ({
     getPodsForApp: (appId) => {
         return get().podsStatus.get(appId);
     },
+    subscribeToStatusChanges: (callback) => {
+        set((state) => {
+            const newListeners = new Set(state.listeners);
+            newListeners.add(callback);
+            return { listeners: newListeners };
+        });
+        return () => {
+            set((state) => {
+                const newListeners = new Set(state.listeners);
+                newListeners.delete(callback);
+                return { listeners: newListeners };
+            });
+        };
+    }
 }));
