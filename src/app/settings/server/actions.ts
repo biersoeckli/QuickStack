@@ -106,11 +106,15 @@ export const cleanupOldBuildJobs = async () =>
     return new SuccessActionResult(undefined, 'Successfully cleaned up old build jobs.');
   });
 
+export const revalidateQuickStackVersionCache = async () =>
+  simpleAction(async () => {
+    revalidateTag(Tags.quickStackVersionInfo()); // separated because updateFunction restarts backend wich results in error
+  });
+
 export const updateQuickstack = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
     const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
-    revalidateTag(Tags.quickStackVersionInfo());
     await quickStackService.updateQuickStack(useCaranyChannel);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
   });

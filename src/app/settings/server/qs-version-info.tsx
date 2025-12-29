@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { setCanaryChannel, updateQuickstack } from "./actions";
+import { revalidateQuickStackVersionCache, setCanaryChannel, updateQuickstack } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -31,7 +31,8 @@ export default function QuickStackVersionInfo({
             description: 'This action will restart the QuickStack service and installs the latest version. It may take a few minutes to complete.',
             okButton: "Update QuickStack",
         })) {
-            Toast.fromAction(() => updateQuickstack());
+            await revalidateQuickStackVersionCache(); // separated because updateFunction restarts backend wich results in error
+            await Toast.fromAction(() => updateQuickstack());
         }
     };
 
