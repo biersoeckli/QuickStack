@@ -46,7 +46,8 @@ export default function Logs({
         updateBuilds();
         const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
             if (changedAppIds.includes(app.id)) {
-                updateBuilds();
+                setTimeout(() =>
+                    updateBuilds(), 500); // slight delay to ensure data is updated
             }
         });
         return () => unsubscribe();
