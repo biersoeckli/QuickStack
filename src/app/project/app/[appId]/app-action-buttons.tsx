@@ -27,6 +27,9 @@ export default function AppActionButtons({
     const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
 
     useEffect(() => {
+        const pods = getPodsForApp(app.id);
+        setDeploaymentStatus(pods?.deploymentStatus ?? 'UNKNOWN');
+
         const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
             if (changedAppIds.includes(app.id)) {
                 const pods = getPodsForApp(app.id);
