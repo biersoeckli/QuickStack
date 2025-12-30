@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AppMonitoringUsageModel } from '@/shared/model/app-monitoring-usage.model';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function AppRessourceMonitoring({
     appsRessourceUsage
@@ -84,7 +85,16 @@ export default function AppRessourceMonitoring({
                                 <TableCell>{item.projectName}</TableCell>
                                 <TableCell>{item.appName}</TableCell>
                                 <TableCell>
-                                    <span className='font-semibold'>{item.cpuUsagePercent.toFixed(3)}%</span> / {item.cpuUsage.toFixed(5)} Cores
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className='font-semibold'>{item.cpuUsagePercent.toFixed(3)}%</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{item.cpuUsage.toFixed(5)} Cores</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </TableCell>
                                 <TableCell>{KubeSizeConverter.convertBytesToReadableSize(item.ramUsageBytes)}</TableCell>
                                 <TableCell>

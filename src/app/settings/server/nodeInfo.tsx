@@ -4,13 +4,14 @@ import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Code } from "@/components/custom/code";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { setNodeStatus } from "./actions";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumbs, useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect } from "react";
+import { setNodeStatus } from "./actions";
+import AddClusterNodeDialog from "./add-cluster-node-dialog";
 
-export default async function NodeInfo({ nodeInfos }: { nodeInfos: NodeInfoModel[] }) {
+export default function NodeInfo({ nodeInfos, clusterJoinToken }: { nodeInfos: NodeInfoModel[]; clusterJoinToken?: string; }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
 
@@ -28,9 +29,16 @@ export default async function NodeInfo({ nodeInfos }: { nodeInfos: NodeInfoModel
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Nodes</CardTitle>
-                <CardDescription>Overview of all Nodes in your Cluster</CardDescription>
+            <CardHeader className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                    <CardTitle>Nodes</CardTitle>
+                    <CardDescription>Overview of all Nodes in your Cluster</CardDescription>
+                </div>
+                <div className="flex justify-end">
+                    <AddClusterNodeDialog clusterJoinToken={clusterJoinToken}>
+                        <Button>Add Cluster Node</Button>
+                    </AddClusterNodeDialog>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -93,6 +101,7 @@ export default async function NodeInfo({ nodeInfos }: { nodeInfos: NodeInfoModel
                                     <span className="font-semibold">IP:</span> <Code>{nodeInfo.ip}</Code>
                                 </div>
                                 <div className="text-xs text-slate-500 pt-2">
+                                    <span className="font-semibold">Master Node:</span> {nodeInfo.isMasterNode ? 'Yes' : 'No'}<br />
                                     <span className="font-semibold">Spec:</span> {nodeInfo.cpuCapacity} CPU Cores, {nodeInfo.ramCapacity} Memory<br />
                                     <span className="font-semibold">OS:</span> {nodeInfo.os} | {nodeInfo.architecture}<br />
                                     <span className="font-semibold">Kernel Version:</span> {nodeInfo.kernelVersion}<br />

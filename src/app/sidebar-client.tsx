@@ -68,11 +68,6 @@ export function SidebarCient({
       adminOnly: true,
     },
     {
-      title: "Cluster",
-      url: "/settings/cluster",
-      adminOnly: true,
-    },
-    {
       title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
       url: "/settings/server",
       adminOnly: true,

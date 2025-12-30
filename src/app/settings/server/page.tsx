@@ -23,6 +23,8 @@ import { ServerSettingsTabs } from "./server-settings-tabs";
 import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 import quickStackUpdateService from "@/server/services/qs-update.service";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import clusterService from "@/server/services/node.service";
+import NodeInfo from "./nodeInfo";
 
 export default async function ProjectPage({
     searchParams
@@ -39,7 +41,8 @@ export default async function ProjectPage({
         regitryStorageLocation,
         ipv4Address,
         systemBackupLocation,
-        useCanaryChannel
+        useCanaryChannel,
+        clusterJoinToken
     ] = await Promise.all([
         paramService.getString(ParamService.QS_SERVER_HOSTNAME, ''),
         paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false),
@@ -47,7 +50,8 @@ export default async function ProjectPage({
         paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
         paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS),
         paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false)
+        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false),
+        paramService.getString(ParamService.K3S_JOIN_TOKEN)
     ]);
 
     const [
@@ -55,13 +59,15 @@ export default async function ProjectPage({
         traefikStatus,
         qsPodInfos,
         currentVersion,
-        newVersionInfo
+        newVersionInfo,
+        nodeInfo
     ] = await Promise.all([
         s3TargetService.getAll(),
         traefikService.getStatus(),
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
         quickStackService.getVersionOfCurrentQuickstackInstance(),
-        quickStackUpdateService.getNewVersionInfo()
+        quickStackUpdateService.getNewVersionInfo(),
+        clusterService.getNodeInfo()
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);
@@ -71,7 +77,7 @@ export default async function ProjectPage({
         <div className="flex-1 space-y-6 pt-6  pb-16">
             <div className="space-y-0.5">
                 <PageTitle
-                    title={'Server Settings'}
+                    title={'QuickStack Settings'}
                     subtitle={`View or edit Server Settings`}>
                 </PageTitle>
             </div>
@@ -88,6 +94,7 @@ export default async function ProjectPage({
                         <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
                         <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
                         <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
+                        <TabsTrigger value="cluster"><Network className="mr-2 h-4 w-4" />Cluster</TabsTrigger>
                         <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
                         <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
                     </TabsList>
@@ -114,6 +121,9 @@ export default async function ProjectPage({
                     </div>
                 </TabsContent>
 
+                <TabsContent value="cluster" className="space-y-4">
+                    <NodeInfo nodeInfos={nodeInfo} clusterJoinToken={clusterJoinToken} />
+                </TabsContent>
                 <TabsContent value="updates" className="space-y-4">
                     <div className="grid gap-6">
                         <QuickStackVersionInfo newVersionInfo={newVersionInfo} currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} />
