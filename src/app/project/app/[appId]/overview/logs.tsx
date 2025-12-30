@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useEffect, useState } from "react";
 import LogsStreamed from "../../../../../components/custom/logs-streamed";
-import { getPodsForApp } from "./actions";
+import { getPodsForApp as getPodsForAppAction } from "./actions";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
@@ -14,6 +14,7 @@ import { TerminalDialog } from "./terminal-overlay";
 import { LogsDownloadOverlay } from "./logs-download-overlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { usePodsStatus } from "@/frontend/states/zustand.states";
 
 export default function Logs({
     app,
@@ -24,10 +25,11 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
+    const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
 
     const updateBuilds = async () => {
         try {
-            const response = await getPodsForApp(app.id);
+            const response = await getPodsForAppAction(app.id);
             if (response.status === 'success' && response.data) {
                 setAppPods(response.data);
             } else {
@@ -41,10 +43,20 @@ export default function Logs({
     }
 
     useEffect(() => {
-        updateBuilds()
-        const intervalId = setInterval(updateBuilds, 10000);
-        return () => clearInterval(intervalId);
-    }, [app]);
+        updateBuilds();
+        const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
+            if (changedAppIds.includes(app.id)) {
+                setTimeout(() =>
+                    updateBuilds(), 500); // slight delay to ensure data is updated
+
+                // Update also after 10 Seconds --> for examaple when app stopped or redeployed to get final state of old container
+                setTimeout(() =>
+                    updateBuilds(), 10000);
+
+            }
+        });
+        return () => unsubscribe();
+    }, [app.id]);
 
     useEffect(() => {
         if (appPods && selectedPod && !appPods.find(p => p.podName === selectedPod.podName)) {

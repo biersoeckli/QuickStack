@@ -3,7 +3,7 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import { V1Deployment, V1Ingress, V1PersistentVolumeClaim } from "@kubernetes/client-node";
 import buildService from "./build.service";
 import { ListUtils } from "../../shared/utils/list.utils";
-import { DeploymentInfoModel, DeplyomentStatus } from "@/shared/model/deployment-info.model";
+import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { BuildJobStatus } from "@/shared/model/build-job";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";

@@ -14,6 +14,7 @@ import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditProjectDialog } from "./edit-project-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import ProjectStatusIndicator from "@/components/custom/project-status-indicator";
 
 
 export default function ProjectsTable({ data, session }: { data: Project[]; session: UserSession; }) {
@@ -35,6 +36,7 @@ export default function ProjectsTable({ data, session }: { data: Project[]; sess
         <SimpleDataTable columns={[
             ['id', 'ID', false],
             ['name', 'Name', true],
+            ['status', 'Status', true, (item) => <ProjectStatusIndicator projectId={item.id} />],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}

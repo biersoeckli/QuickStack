@@ -5,9 +5,9 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
-import { applyTraefikIpPropagation } from "./actions";
 import { toast } from "sonner";
-import { Badge } from "lucide-react";
+
+import { applyTraefikIpPropagation } from "./actions";
 
 export default function TraefikIpPropagationCard({ initialStatus }: { initialStatus: TraefikIpPropagationStatus }) {
     const [status, setStatus] = useState<TraefikIpPropagationStatus>(initialStatus);
@@ -55,7 +55,7 @@ export default function TraefikIpPropagationCard({ initialStatus }: { initialSta
                 <div className="flex flex-col gap-2 sm:items-end">
                     <div className="flex items-center gap-3">
                         <Switch disabled={isPending} checked={enabled} onCheckedChange={setEnabled} />
-                        <span className="text-sm">{enabled ? 'Enable Local policy' : 'Use Cluster policy'}</span>
+                        <span className="text-sm">{enabled ? 'Local policy enabled' : 'Cluster policy enabled'}</span>
                     </div>
                     <Button onClick={handleApply} disabled={isPending}>
                         Apply
