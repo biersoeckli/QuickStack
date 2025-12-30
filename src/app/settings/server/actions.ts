@@ -292,3 +292,18 @@ export const setTraefikIpPropagation = async (prevState: any, inputData: { enabl
 
     return new SuccessActionResult(undefined, `Traefik externalTrafficPolicy set to ${validatedData.enableIpPreservation ? 'Local' : 'Cluster'}.`);
   });
+
+export const checkK3sUpgradeControllerStatus = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const k3sUpdateService = (await import('@/server/services/k3s-update.service')).default;
+    return await k3sUpdateService.isSystemUpgradeControllerPresent();
+  });
+
+export const installK3sUpgradeController = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const k3sUpdateService = (await import('@/server/services/k3s-update.service')).default;
+    await k3sUpdateService.installSystemUpgradeController();
+    return new SuccessActionResult(undefined, 'K3s System Upgrade Controller has been installed successfully.');
+  });

@@ -22,9 +22,11 @@ import quickStackService from "@/server/services/qs.service";
 import { ServerSettingsTabs } from "./server-settings-tabs";
 import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 import quickStackUpdateService from "@/server/services/qs-update.service";
+import k3sUpdateService from "@/server/services/k3s-update.service";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import clusterService from "@/server/services/node.service";
 import NodeInfo from "./nodeInfo";
+import K3sUpdateInfo from "./k3s-update-info";
 
 export default async function ProjectPage({
     searchParams
@@ -60,14 +62,16 @@ export default async function ProjectPage({
         qsPodInfos,
         currentVersion,
         newVersionInfo,
-        nodeInfo
+        nodeInfo,
+        k3sControllerStatus
     ] = await Promise.all([
         s3TargetService.getAll(),
         traefikService.getStatus(),
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
         quickStackService.getVersionOfCurrentQuickstackInstance(),
         quickStackUpdateService.getNewVersionInfo(),
-        clusterService.getNodeInfo()
+        clusterService.getNodeInfo(),
+        k3sUpdateService.isSystemUpgradeControllerPresent()
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);
@@ -127,6 +131,7 @@ export default async function ProjectPage({
                 <TabsContent value="updates" className="space-y-4">
                     <div className="grid gap-6">
                         <QuickStackVersionInfo newVersionInfo={newVersionInfo} currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} />
+                        <K3sUpdateInfo initialControllerStatus={k3sControllerStatus} />
                     </div>
                 </TabsContent>
                 <TabsContent value="maintenance" className="space-y-4">
