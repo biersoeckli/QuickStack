@@ -68,7 +68,7 @@ export default function ResourcesNodes({
     if (!updatedNodeRessources) return {
       cpuUsage: 0, cpuCapacity: 1,
       ramUsage: 0, ramCapacity: 1,
-      diskUsage: 0, diskCapacity: 1
+      diskUsageAbsolut: 0, diskUsageReserved: 0, diskCapacity: 1
     };
 
     return updatedNodeRessources.reduce((acc, node) => ({
@@ -76,12 +76,13 @@ export default function ResourcesNodes({
       cpuCapacity: acc.cpuCapacity + node.cpuCapacity,
       ramUsage: acc.ramUsage + node.ramUsage,
       ramCapacity: acc.ramCapacity + node.ramCapacity,
-      diskUsage: acc.diskUsage + node.diskUsageAbsolut + node.diskUsageReserved,
+      diskUsageAbsolut: acc.diskUsageAbsolut + node.diskUsageAbsolut,
+      diskUsageReserved: acc.diskUsageReserved + node.diskUsageReserved,
       diskCapacity: acc.diskCapacity + node.diskUsageCapacity,
     }), {
       cpuUsage: 0, cpuCapacity: 0,
       ramUsage: 0, ramCapacity: 0,
-      diskUsage: 0, diskCapacity: 0
+      diskUsageAbsolut: 0, diskUsageReserved: 0, diskCapacity: 0
     });
   }, [updatedNodeRessources]);
 
@@ -102,11 +103,34 @@ export default function ResourcesNodes({
     },
   } satisfies ChartConfig;
 
+  const storagePieChartConfig = {
+    used: {
+      label: "Used",
+      color: "hsl(var(--chart-1))",
+    },
+    reserved: {
+      label: "Reserved",
+      color: "hsl(var(--chart-2))",
+    },
+    free: {
+      label: "Free",
+      color: "hsl(var(--muted))",
+    },
+  } satisfies ChartConfig;
+
   const getChartData = (used: number, capacity: number) => {
     const percentage = capacity > 0 ? (used / capacity) * 100 : 0;
     return [
       { status: 'used', value: used, fill: getUsageColor(percentage) },
       { status: 'free', value: Math.max(0, capacity - used), fill: 'var(--color-free)' },
+    ];
+  };
+
+  const getStorageChartData = (used: number, reserved: number, capacity: number) => {
+    return [
+      { status: 'used', value: used, fill: "hsl(var(--chart-1))" },
+      { status: 'reserved', value: reserved, fill: "hsl(var(--chart-2))" },
+      { status: 'free', value: Math.max(0, capacity - used - reserved), fill: 'var(--color-free)' },
     ];
   };
 
@@ -186,16 +210,24 @@ export default function ResourcesNodes({
             <CardDescription>Total Disk Usage</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
+            <ChartContainer config={storagePieChartConfig} className="mx-auto aspect-square max-h-[250px]">
               <PieChart>
-                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => KubeSizeConverter.convertBytesToReadableSize(value as number)} />} />
-                <Pie data={getChartData(clusterStats.diskUsage, clusterStats.diskCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
+                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => {
+                  if (value === clusterStats.diskUsageAbsolut) {
+                    return KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageAbsolut) + ' (Used)';
+                  }
+                  if (value === clusterStats.diskUsageReserved) {
+                    return KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageReserved) + ' (Free but unusable)';
+                  }
+                  return KubeSizeConverter.convertBytesToReadableSize(value as number) + ' (Free)';
+                }} />} />
+                <Pie data={getStorageChartData(clusterStats.diskUsageAbsolut, clusterStats.diskUsageReserved, clusterStats.diskCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
                   <Label content={({ viewBox }) => {
                     if (viewBox && "cx" in viewBox && "cy" in viewBox) {
                       return (
                         <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                           <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                            {((clusterStats.diskUsage / clusterStats.diskCapacity) * 100).toFixed(0)}%
+                            {(((clusterStats.diskUsageAbsolut + clusterStats.diskUsageReserved) / clusterStats.diskCapacity) * 100).toFixed(0)}%
                           </tspan>
                           <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
                             Used
@@ -467,7 +499,7 @@ function NodeDetailsSheet({ node }: { node: NodeResourceModel }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-               <ChartDiskRessources nodeRessource={node} />
+              <ChartDiskRessources nodeRessource={node} />
             </CardContent>
           </Card>
         </div>
