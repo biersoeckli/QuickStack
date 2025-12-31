@@ -1,7 +1,7 @@
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import standalonePodService from "./standalone-services/standalone-pod.service";
-import clusterService from "./node.service";
+import clusterService from "./cluster.service";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";

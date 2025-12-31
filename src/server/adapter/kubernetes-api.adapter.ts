@@ -1,3 +1,4 @@
+import { ServiceException } from '@/shared/model/service.exception.model';
 import * as k8s from '@kubernetes/client-node';
 
 class K3sApiAdapter {
@@ -68,6 +69,45 @@ class K3sApiAdapter {
 
     getMetricsApiClient = () => {
         return new k8s.Metrics(this.getKubeConfig());
+    }
+
+    /**
+    * Applies a single Kubernetes resource to the cluster
+    * @param kc KubeConfig instance
+    * @param spec Resource specification
+    */
+    public async applyResource(spec: any, namespace: string): Promise<void> {
+        if (!spec || !spec.kind) {
+            console.error('Invalid resource specification:', spec);
+            throw new Error('Invalid resource specification');
+        }
+
+        namespace = spec.metadata.namespace || namespace;
+
+        if (!namespace) {
+            throw new ServiceException('Namespace is required in resource metadata in method applyResource');
+        }
+
+        const name = spec.metadata?.name;
+
+        console.log(`Applying ${spec.kind}/${name} to namespace ${namespace}`);
+
+        try {
+            const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
+
+            try {
+                await client.read(spec);
+                // If it exists, patch it
+                await client.patch(spec);
+                console.log(`Updated ${spec.kind}/${name}`);
+            } catch (error) {
+                await client.create(spec);
+                console.log(`Created ${spec.kind}/${name}`);
+            }
+        } catch (error) {
+            console.error(`Failed to apply ${spec.kind}/${name}:`, error);
+            throw error;
+        }
     }
 }
 
