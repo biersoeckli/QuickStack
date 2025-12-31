@@ -5,7 +5,7 @@ import AppBreadcrumbs from "./app-breadcrumbs";
 import s3TargetService from "@/server/services/s3-target.service";
 import volumeBackupService from "@/server/services/volume-backup.service";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import clusterService from "@/server/services/node.service";
+import clusterService from "@/server/services/cluster.service";
 
 export default async function AppPage({
     searchParams,

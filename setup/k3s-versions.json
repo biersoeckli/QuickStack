@@ -1,0 +1,22 @@
+{
+    "prod": [
+        {
+            "version": "v1.31",
+            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.31"
+        }
+    ],
+    "canary": [
+        {
+            "version": "v1.31",
+            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.31"
+        },
+        {
+            "version": "v1.32",
+            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.32"
+        },
+        {
+            "version": "v1.33",
+            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.33"
+        }
+    ]
+}
