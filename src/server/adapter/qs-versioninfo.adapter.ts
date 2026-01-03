@@ -1,3 +1,4 @@
+import { K3sReleaseResponseSchema, LonghornReleaseResponseSchema } from "@/shared/model/generated-zod/k3s-longhorn-release-schemas";
 
 export interface K3sReleaseInfo {
     version: string;
@@ -9,14 +10,17 @@ export interface LonghornReleaseInfo {
     yamlUrl: string;
 }
 
-interface K3sReleaseResponse {
-    latestStableVersion: string;
+interface ReleaseResponse {
+    prodInstallVersion: string;
+    canaryInstallVersion: string;
+}
+
+interface K3sReleaseResponse extends ReleaseResponse {
     prod: K3sReleaseInfo[];
     canary: K3sReleaseInfo[];
 }
 
-interface LonghornReleaseResponse {
-    latestStableVersion: string;
+interface LonghornReleaseResponse extends ReleaseResponse {
     prod: LonghornReleaseInfo[];
     canary: LonghornReleaseInfo[];
 }
@@ -60,7 +64,8 @@ class QsVersionInfoAdapter {
         if (!response.ok) {
             throw new Error(`Failed to fetch latest QuickStack K3s Prod version from API: HTTP ${response.status} ${response.statusText}`);
         }
-        return await response.json() as K3sReleaseResponse;
+        const reponseJson = await response.json();
+        return K3sReleaseResponseSchema.parse(reponseJson);
     }
 
     private async getLonghornVersioninfo(): Promise<LonghornReleaseResponse> {
@@ -102,7 +107,8 @@ class QsVersionInfoAdapter {
         if (!response.ok) {
             throw new Error(`Failed to fetch Longhorn version info from API: HTTP ${response.status} ${response.statusText}`);
         }
-        return await response.json() as LonghornReleaseResponse;
+        const responseJson = await response.json();
+        return LonghornReleaseResponseSchema.parse(responseJson);
     }
 
     public async getProdK3sReleaseInfo(): Promise<K3sReleaseInfo[]> {
