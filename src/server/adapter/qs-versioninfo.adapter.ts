@@ -4,9 +4,21 @@ export interface K3sReleaseInfo {
     channelUrl: string;
 }
 
+export interface LonghornReleaseInfo {
+    version: string;
+    yamlUrl: string;
+}
+
 interface K3sReleaseResponse {
+    latestStableVersion: string;
     prod: K3sReleaseInfo[];
     canary: K3sReleaseInfo[];
+}
+
+interface LonghornReleaseResponse {
+    latestStableVersion: string;
+    prod: LonghornReleaseInfo[];
+    canary: LonghornReleaseInfo[];
 }
 
 class QsVersionInfoAdapter {
@@ -51,6 +63,48 @@ class QsVersionInfoAdapter {
         return await response.json() as K3sReleaseResponse;
     }
 
+    private async getLonghornVersioninfo(): Promise<LonghornReleaseResponse> {
+        // TODO: Replace with actual API call when deployed
+        return JSON.parse(`{
+    "prod": [
+        {
+            "version": "v1.7.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
+        }
+    ],
+    "canary": [
+        {
+            "version": "v1.7.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.8.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.8.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.9.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.9.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.10.1",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.10.1/deploy/longhorn.yaml"
+        }
+    ]
+}`);
+        const response = await fetch(`${this.API_BASE_URL}/longhorn-versions.json`, {
+            cache: 'no-cache',
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to fetch Longhorn version info from API: HTTP ${response.status} ${response.statusText}`);
+        }
+        return await response.json() as LonghornReleaseResponse;
+    }
+
     public async getProdK3sReleaseInfo(): Promise<K3sReleaseInfo[]> {
         const releaseInfo = await this.getK3sVersioninfo();
         return releaseInfo.prod;
@@ -58,6 +112,16 @@ class QsVersionInfoAdapter {
 
     public async getCanaryK3sReleaseInfo(): Promise<K3sReleaseInfo[]> {
         const releaseInfo = await this.getK3sVersioninfo();
+        return releaseInfo.canary;
+    }
+
+    public async getProdLonghornReleaseInfo(): Promise<LonghornReleaseInfo[]> {
+        const releaseInfo = await this.getLonghornVersioninfo();
+        return releaseInfo.prod;
+    }
+
+    public async getCanaryLonghornReleaseInfo(): Promise<LonghornReleaseInfo[]> {
+        const releaseInfo = await this.getLonghornVersioninfo();
         return releaseInfo.canary;
     }
 }

@@ -29,7 +29,8 @@ import { revalidateTag } from "next/cache";
 import { Tags } from "@/server/utils/cache-tag-generator.utils";
 import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
-import k3sUpdateService from "@/server/services/k3s-update.service";
+import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
+import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
   simpleAction(async () => {
@@ -311,4 +312,11 @@ export const startK3sUpgrade = async () =>
     await getAdminUserSession();
     await k3sUpdateService.createUpgradePlans();
     return new SuccessActionResult(undefined, 'The upgrade process has started.');
+  });
+
+export const startLonghornUpgrade = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await longhornUpdateService.upgrade();
+    return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
   });
