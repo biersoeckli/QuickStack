@@ -22,7 +22,6 @@ import quickStackService from "@/server/services/qs.service";
 import { ServerSettingsTabs } from "./server-settings-tabs";
 import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 import quickStackUpdateService from "@/server/services/qs-update.service";
-import k3sUpdateService from "@/server/services/k3s-update.service";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import clusterService from "@/server/services/cluster.service";
 import NodeInfo from "./nodeInfo";

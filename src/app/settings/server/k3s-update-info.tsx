@@ -217,6 +217,7 @@ export default function K3sUpdateInfo({
 
                         {upgradeInProgress ? <>
                             <Alert className="text-orange-600 border-orange-400">
+                                <RefreshCw className="h-4 w-4 animate-spin" />
                                 <AlertDescription>
                                     An upgrade is currently in progress.
                                     You can monitor the progress in the "Cluster" settings tab.

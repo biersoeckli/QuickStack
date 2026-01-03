@@ -1,15 +1,15 @@
 import { unstable_cache } from "next/cache";
-import quickStackService from "./qs.service";
-import { githubAdapter } from "../adapter/github.adapter";
-import { Tags } from "../utils/cache-tag-generator.utils";
-import k3s from "../adapter/kubernetes-api.adapter";
-import namespaceService from "./namespace.service";
+import quickStackService from "../qs.service";
+import { githubAdapter } from "../../adapter/github.adapter";
+import { Tags } from "../../utils/cache-tag-generator.utils";
+import k3s from "../../adapter/kubernetes-api.adapter";
+import namespaceService from "../namespace.service";
 import * as k8s from '@kubernetes/client-node';
 import { ServiceException } from "@/shared/model/service.exception.model";
-import clusterService from "./cluster.service";
+import clusterService from "../cluster.service";
 import { K3sVersionUtils } from '@/server/utils/k3s-version.utils';
-import { qsVersionInfoAdapter } from "../adapter/qs-versioninfo.adapter";
-import paramService, { ParamService } from "./param.service";
+import { qsVersionInfoAdapter } from "../../adapter/qs-versioninfo.adapter";
+import paramService, { ParamService } from "../param.service";
 
 class K3sUpdateService {
 
@@ -47,14 +47,11 @@ class K3sUpdateService {
             throw new ServiceException('System Upgrade Controller is already installed.');
         }
 
-        // Create the system-upgrade namespace if it doesn't exist
         await namespaceService.createNamespaceIfNotExists(this.SYSTEM_UPGRADE_NAMESPACE);
 
-        // Fetch and apply the CRD manifest
         console.log('Fetching and applying CRD manifest...');
         await this.applyManifestFromUrl(this.SYSTEM_UPGRADE_CRD_URL);
 
-        // Fetch and apply the system-upgrade-controller manifest
         console.log('Fetching and applying system-upgrade-controller manifest...');
         await this.applyManifestFromUrl(this.SYSTEM_UPGRADE_CONTROLLER_URL);
     }
@@ -80,7 +77,7 @@ class K3sUpdateService {
 
     async getCurrentK3sMinorVersion() {
         const nodes = await clusterService.getNodeInfo();
-        // check if all k3s versions are the same
+        // check if all k3s versions are the same --> otherwise upgrade may be in progress or cluster is in inconsistent state
         const uniqueVersions = Array.from(new Set(nodes.map(n => n.kubeletVersion)));
         if (uniqueVersions.length !== 1) {
             throw new ServiceException('Not all nodes have the same K3s version installed. Maybe a update is currently in progress. Cannot perform any upgrade operations.');

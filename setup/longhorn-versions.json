@@ -1,6 +1,5 @@
 {
-    "prodInstallVersion": "v1.7.2",
-    "canaryInstallVersion": "v1.10.1",
+    "latestStableVersion": "v1.7.2",
     "prod": [
         {
             "version": "v1.7.2",
