@@ -5,6 +5,7 @@ import appService from "@/server/services/app.service";
 import { isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model";
 import { appNetworkPolicy } from "@/shared/model/network-policy.model";
+import { HealthCheckModel, healthCheckZodModel } from "./health-check.model";
 
 
 export const saveBasicAuth = async (prevState: any, inputData: BasicAuthEditModel) =>
@@ -42,4 +43,44 @@ export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, eg
             useNetworkPolicy: useNetworkPolicy
         });
         return new SuccessActionResult(undefined, 'Network policy saved');
+    });
+
+export const saveHealthCheck = async (prevState: any, inputData: HealthCheckModel) =>
+    saveFormAction(inputData, healthCheckZodModel, async (validatedData) => {
+        await isAuthorizedWriteForApp(validatedData.appId);
+
+        const app = await appService.getById(validatedData.appId);
+
+        // Prepare update data
+        let updateData: Partial<typeof app> = {
+            healthCheckPeriodSeconds: validatedData.periodSeconds ?? 10,
+            healthCheckTimeoutSeconds: validatedData.timeoutSeconds ?? 5,
+        };
+
+        if (validatedData.enabled) {
+            updateData = {
+                ...updateData,
+                healthChechHttpGetPath: validatedData.path || null,
+                healthCheckHttpPort: validatedData.port || null,
+                healthCheckHttpScheme: validatedData.scheme || null,
+                healthCheckHttpHeadersJson: validatedData.headers && validatedData.headers.length > 0
+                    ? JSON.stringify(validatedData.headers)
+                    : null
+            };
+        } else {
+            updateData = {
+                ...updateData,
+                healthChechHttpGetPath: null,
+                healthCheckHttpPort: null,
+                healthCheckHttpScheme: null,
+                healthCheckHttpHeadersJson: null
+            };
+        }
+
+        await appService.save({
+            ...app,
+            ...updateData
+        });
+
+        return new SuccessActionResult(undefined, 'Health check settings saved');
     });

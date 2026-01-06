@@ -204,6 +204,14 @@ model App {
   egressNetworkPolicy  String  @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL, INTERNET_ONLY
   useNetworkPolicy     Boolean @default(true)
 
+  // healthCheck startupProbe, readinessProbe, livenessProbe
+  healthChechHttpGetPath     String?
+  healthCheckHttpScheme      String? // HTTP, HTTPS
+  healthCheckHttpHeadersJson String? // JSON stringified key-value pairs
+  healthCheckHttpPort        Int?
+  healthCheckPeriodSeconds   Int     @default(10)
+  healthCheckTimeoutSeconds  Int     @default(5)
+
   appDomains         AppDomain[]
   appPorts           AppPort[]
   appVolumes         AppVolume[]

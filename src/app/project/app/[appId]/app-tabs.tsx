@@ -20,6 +20,7 @@ import VolumeBackupList from "./volumes/volume-backup";
 import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
 import BasicAuth from "./advanced/basic-auth";
 import NetworkPolicy from "./advanced/network-policy";
+import HealthCheckSettings from "./advanced/health-check-settings";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
@@ -94,6 +95,7 @@ export default function AppTabs({
             <TabsContent value="advanced" className="space-y-4">
                 <BasicAuth readonly={readonly} app={app} />
                 <NetworkPolicy readonly={readonly} app={app} />
+                <HealthCheckSettings readonly={readonly} app={app} />
             </TabsContent>
         </Tabs>
     )

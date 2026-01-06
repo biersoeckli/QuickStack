@@ -1,6 +1,6 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
-import { V1Deployment, V1ReplicaSet } from "@kubernetes/client-node";
+import { V1Deployment, V1ReplicaSet, V1Probe } from "@kubernetes/client-node";
 import buildService from "./build.service";
 import { ListUtils } from "../../shared/utils/list.utils";
 import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment-info.model";
@@ -180,6 +180,26 @@ class DeploymentService {
             if (app.memoryReservation) {
                 body.spec!.template!.spec!.containers[0].resources!.requests!.memory! = `${app.memoryReservation}M`;
             }
+        }
+
+        if (app.healthChechHttpGetPath) {
+            const probe: V1Probe = {
+                httpGet: {
+                    path: app.healthChechHttpGetPath,
+                    port: app.healthCheckHttpPort ?? 80,
+                    scheme: app.healthCheckHttpScheme ?? undefined,
+                    ...(app.healthCheckHttpHeadersJson ? { httpHeaders: JSON.parse(app.healthCheckHttpHeadersJson) } : {})
+                },
+                periodSeconds: app.healthCheckPeriodSeconds,
+                timeoutSeconds: app.healthCheckTimeoutSeconds
+            };
+            // waits until pod is started and before that the other probes are not startet
+            body.spec!.template!.spec!.containers[0].startupProbe = { ...probe, failureThreshold: 20 }; // allow failures before marking pod as failed --> back off
+            // checks if traffic can be routed to this pod or not
+            body.spec!.template!.spec!.containers[0].readinessProbe = { ...probe };
+            // checks if pod is still alive and if not restarts it
+            body.spec!.template!.spec!.containers[0].livenessProbe = { ...probe };
+            dlog(deploymentId, `Configured Health Checks.`);
         }
 
         const dockerPullSecretName = await secretService.createOrUpdateDockerPullSecret(app);

@@ -26,6 +26,12 @@ export const AppModel = z.object({
   ingressNetworkPolicy: z.string(),
   egressNetworkPolicy: z.string(),
   useNetworkPolicy: z.boolean(),
+  healthChechHttpGetPath: z.string().nullish(),
+  healthCheckHttpScheme: z.string().nullish(),
+  healthCheckHttpHeadersJson: z.string().nullish(),
+  healthCheckHttpPort: z.number().int().nullish(),
+  healthCheckPeriodSeconds: z.number().int(),
+  healthCheckTimeoutSeconds: z.number().int(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
