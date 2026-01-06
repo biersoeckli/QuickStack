@@ -46,6 +46,8 @@ export const postgreAppTemplate: AppTemplateModel = {
             envVars: `PGDATA=/var/lib/qs-postgres/data
 `,
             useNetworkPolicy: true,
+            healthCheckPeriodSeconds: 15,
+            healthCheckTimeoutSeconds: 5,
         },
         appDomains: [],
         appVolumes: [{

@@ -52,6 +52,8 @@ export const mariadbAppTemplate: AppTemplateModel = {
             replicas: 1,
             envVars: ``,
             useNetworkPolicy: true,
+            healthCheckPeriodSeconds: 15,
+            healthCheckTimeoutSeconds: 5,
         },
         appDomains: [],
         appVolumes: [{

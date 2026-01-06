@@ -42,6 +42,8 @@ export const wordpressAppTemplate: AppTemplateModel = {
 MYSQL_USER=wordpress
 `,
             useNetworkPolicy: true,
+            healthCheckPeriodSeconds: 15,
+            healthCheckTimeoutSeconds: 5,
         },
         appDomains: [],
         appVolumes: [{
@@ -81,6 +83,8 @@ WORDPRESS_DB_PASSWORD={password}
 WORDPRESS_TABLE_PREFIX=wp_
 `,
             useNetworkPolicy: true,
+            healthCheckPeriodSeconds: 15,
+            healthCheckTimeoutSeconds: 5,
         },
         appDomains: [],
         appVolumes: [{
