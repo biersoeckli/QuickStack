@@ -194,7 +194,13 @@ class DeploymentService {
                 timeoutSeconds: app.healthCheckTimeoutSeconds
             };
             // waits until pod is started and before that the other probes are not startet
-            body.spec!.template!.spec!.containers[0].startupProbe = { ...probe, failureThreshold: 20 }; // allow failures before marking pod as failed --> back off
+            body.spec!.template!.spec!.containers[0].startupProbe = {
+                ...probe,
+                periodSeconds: 10,
+                failureThreshold: 30,
+                timeoutSeconds: 3,
+            }; // checking 5 minutes long if app is starting, after 5 minutes --> restart
+
             // checks if traffic can be routed to this pod or not
             body.spec!.template!.spec!.containers[0].readinessProbe = { ...probe };
             // checks if pod is still alive and if not restarts it
