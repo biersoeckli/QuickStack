@@ -242,7 +242,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
                                         name="periodSeconds"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabelWithQuestion hint="How often (in seconds) to perform the healthcheck. For example eventy 10 seconds. Minimum value is 1.">
+                                                <FormLabelWithQuestion hint="How often (in seconds) to perform the healthcheck. For example every 10 seconds. Minimum value is 1.">
                                                     Check Interval (periodSeconds)
                                                 </FormLabelWithQuestion>
                                                 <FormControl>
