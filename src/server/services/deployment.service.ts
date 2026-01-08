@@ -182,17 +182,40 @@ class DeploymentService {
             }
         }
 
-        if (app.healthChechHttpGetPath) {
-            const probe: V1Probe = {
-                httpGet: {
-                    path: app.healthChechHttpGetPath,
-                    port: app.healthCheckHttpPort ?? 80,
-                    scheme: app.healthCheckHttpScheme ?? undefined,
-                    ...(app.healthCheckHttpHeadersJson ? { httpHeaders: JSON.parse(app.healthCheckHttpHeadersJson) } : {})
-                },
-                periodSeconds: app.healthCheckPeriodSeconds,
-                timeoutSeconds: app.healthCheckTimeoutSeconds
-            };
+        if (!!app.healthChechHttpGetPath || !!app.healthCheckTcpPort) {
+            let probe: V1Probe;
+
+            // check if both probes are configured --> should not happen, but just in case
+            if (!!app.healthChechHttpGetPath && !!app.healthCheckTcpPort) {
+                dlog(deploymentId, `Warning: Both HTTP and TCP health checks are configured. Defaulting to HTTP health check.`);
+                throw new ServiceException("Both HTTP and TCP health checks are configured. Please configure only one type of health check.");
+            }
+
+            if (app.healthChechHttpGetPath) {
+                // HTTP probe
+                probe = {
+                    httpGet: {
+                        path: app.healthChechHttpGetPath,
+                        port: app.healthCheckHttpPort ?? 80,
+                        scheme: app.healthCheckHttpScheme ?? undefined,
+                        ...(app.healthCheckHttpHeadersJson ? { httpHeaders: JSON.parse(app.healthCheckHttpHeadersJson) } : {})
+                    },
+                    periodSeconds: app.healthCheckPeriodSeconds,
+                    timeoutSeconds: app.healthCheckTimeoutSeconds
+                };
+                dlog(deploymentId, `Configured HTTP Health Checks.`);
+            } else {
+                // TCP probe
+                probe = {
+                    tcpSocket: {
+                        port: app.healthCheckTcpPort!
+                    },
+                    periodSeconds: app.healthCheckPeriodSeconds,
+                    timeoutSeconds: app.healthCheckTimeoutSeconds
+                };
+                dlog(deploymentId, `Configured TCP Health Checks.`);
+            }
+
             // waits until pod is started and before that the other probes are not startet
             body.spec!.template!.spec!.containers[0].startupProbe = {
                 ...probe,

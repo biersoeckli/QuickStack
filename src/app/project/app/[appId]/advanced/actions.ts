@@ -58,22 +58,37 @@ export const saveHealthCheck = async (prevState: any, inputData: HealthCheckMode
         };
 
         if (validatedData.enabled) {
-            updateData = {
-                ...updateData,
-                healthChechHttpGetPath: validatedData.path || null,
-                healthCheckHttpPort: validatedData.port || null,
-                healthCheckHttpScheme: validatedData.scheme || null,
-                healthCheckHttpHeadersJson: validatedData.headers && validatedData.headers.length > 0
-                    ? JSON.stringify(validatedData.headers)
-                    : null
-            };
+            if (validatedData.probeType === 'HTTP') {
+                updateData = {
+                    ...updateData,
+                    healthChechHttpGetPath: validatedData.path || null,
+                    healthCheckHttpPort: validatedData.httpPort || null,
+                    healthCheckHttpScheme: validatedData.scheme || null,
+                    healthCheckHttpHeadersJson: validatedData.headers && validatedData.headers.length > 0
+                        ? JSON.stringify(validatedData.headers)
+                        : null,
+                    healthCheckTcpPort: null // Clear TCP when using HTTP
+                };
+            } else if (validatedData.probeType === 'TCP') {
+                updateData = {
+                    ...updateData,
+                    healthCheckTcpPort: validatedData.tcpPort || null,
+                    // Clear HTTP fields when using TCP
+                    healthChechHttpGetPath: null,
+                    healthCheckHttpPort: null,
+                    healthCheckHttpScheme: null,
+                    healthCheckHttpHeadersJson: null
+                };
+            }
         } else {
+            // Clear all probe fields when disabled
             updateData = {
                 ...updateData,
                 healthChechHttpGetPath: null,
                 healthCheckHttpPort: null,
                 healthCheckHttpScheme: null,
-                healthCheckHttpHeadersJson: null
+                healthCheckHttpHeadersJson: null,
+                healthCheckTcpPort: null
             };
         }
 

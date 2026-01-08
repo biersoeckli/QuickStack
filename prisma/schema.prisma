@@ -212,6 +212,8 @@ model App {
   healthCheckPeriodSeconds   Int     @default(10)
   healthCheckTimeoutSeconds  Int     @default(5)
 
+  healthCheckTcpPort Int?
+
   appDomains         AppDomain[]
   appPorts           AppPort[]
   appVolumes         AppVolume[]
