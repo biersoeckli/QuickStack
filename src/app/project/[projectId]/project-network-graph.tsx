@@ -59,14 +59,16 @@ const PolicyIcon = ({ policy, type, ports, useNetworkPolicy }: { policy: string,
     );
 };
 
-const AppNode = ({ data }: { data: {
-    label: string;
-    ingressPolicy: string;
-    egressPolicy: string;
-    appId: string;
-    app: AppWithRelations;
-    ports: string;
-} }) => {
+const AppNode = ({ data }: {
+    data: {
+        label: string;
+        ingressPolicy: string;
+        egressPolicy: string;
+        appId: string;
+        app: AppWithRelations;
+        ports: string;
+    }
+}) => {
     return (
         <div className="relative bg-white border border-slate-300 rounded-md p-4 min-w-[150px] shadow-sm text-center cursor-pointer hover:border-slate-400 transition-colors">
             <Handle type="target" position={Position.Top} className="!bg-transparent !border-0" />
@@ -77,16 +79,16 @@ const AppNode = ({ data }: { data: {
 
             <div className="font-semibold text-sm mt-2 mb-2 flex gap-2 items-center justify-center">
                 <PodStatusIndicator appId={data.appId} /> <p>{data.label}</p>
-                {data.app.healthChechHttpGetPath &&   <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <HeartPulse size={16} className="text-blue-500" />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Healthchecks enabled for this App</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>}
+                {(!!data.app.healthChechHttpGetPath || !!data.app.healthCheckTcpPort) && <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <HeartPulse size={16} className="text-blue-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Healthchecks enabled for this App</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>}
             </div>
 
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10">
