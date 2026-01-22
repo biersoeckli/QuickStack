@@ -49,6 +49,10 @@ select_network_interface() {
             echo "Invalid selection. Exiting."
             exit 1
         fi
+    else
+        selected_iface="$INSTALL_K3S_INTERFACE"
+        selected_ip=$(ip -o -4 addr show "$selected_iface" | awk '{print $4}' | cut -d'/' -f1)
+        echo "Using provided network interface: $selected_iface ($selected_ip)"
     fi
 
     echo "Using network interface: $selected_iface with IP address: $selected_ip"
