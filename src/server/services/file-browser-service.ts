@@ -39,7 +39,8 @@ class FileBrowserService {
         console.log(`Deploying filebrowser for volume ${volumeId}`);
         const traefikHostname = await hostnameDnsProviderService.getDomainForApp(volume.id);
 
-        const pvcName = KubeObjectNameUtils.toPvcName(volume.id);
+        const sharedVolumeId = (volume as { sharedVolumeId?: string | null }).sharedVolumeId;
+        const pvcName = KubeObjectNameUtils.toPvcName(sharedVolumeId ?? volume.id);
 
         console.log(`Creating filebrowser deployment for volume ${volumeId}`);
 

@@ -24,7 +24,8 @@ import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.util
 import { Progress } from "@/components/ui/progress";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
 
-type AppVolumeWithCapacity = (AppVolume & { usedBytes?: number; capacityBytes?: number; usedPercentage?: number });
+type AppVolumeWithSharing = AppVolume & { sharedVolumeId?: string | null; shareWithOtherApps?: boolean };
+type AppVolumeWithCapacity = (AppVolumeWithSharing & { usedBytes?: number; capacityBytes?: number; usedPercentage?: number });
 
 export default function StorageList({ app, readonly, nodesInfo }: {
     app: AppExtendedModel;
@@ -42,7 +43,8 @@ export default function StorageList({ app, readonly, nodesInfo }: {
         if (response.status === 'success' && response.data) {
             const mappedVolumeData = [...app.appVolumes] as AppVolumeWithCapacity[];
             for (let item of mappedVolumeData) {
-                const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(item.id));
+                const pvcVolumeId = item.sharedVolumeId ?? item.id;
+                const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(pvcVolumeId));
                 if (volume) {
                     item.usedBytes = volume.usedBytes;
                     item.capacityBytes = KubeSizeConverter.fromMegabytesToBytes(item.size);

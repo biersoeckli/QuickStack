@@ -267,6 +267,28 @@ class AppService {
         });
     }
 
+    async getShareableVolumesByProjectId(projectId: string, appId: string) {
+        return await dataAccess.client.appVolume.findMany({
+            where: {
+                app: {
+                    projectId
+                },
+                appId: {
+                    not: appId
+                },
+                shareWithOtherApps: true,
+                accessMode: 'ReadWriteMany',
+                sharedVolumeId: null
+            },
+            include: {
+                app: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+    }
+
     async saveVolume(volumeToBeSaved: Prisma.AppVolumeUncheckedCreateInput | Prisma.AppVolumeUncheckedUpdateInput) {
         let savedItem: AppVolume;
         const existingApp = await this.getExtendedById(volumeToBeSaved.appId as string);

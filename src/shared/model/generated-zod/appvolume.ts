@@ -8,6 +8,8 @@ export const AppVolumeModel = z.object({
   size: z.number().int(),
   accessMode: z.string(),
   storageClassName: z.string(),
+  shareWithOtherApps: z.boolean(),
+  sharedVolumeId: z.string().nullish(),
   appId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),

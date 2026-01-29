@@ -57,8 +57,16 @@ class RestoreService {
     }
 
     async startAplineImageInNamespace(namespace: string, volumeId: string) {
+        const volume = await dataAccess.client.appVolume.findFirstOrThrow({
+            where: {
+                id: volumeId
+            },
+            select: {
+                sharedVolumeId: true
+            }
+        });
         const name = KubeObjectNameUtils.toRestorePodName(volumeId);
-        const pvcName = KubeObjectNameUtils.toPvcName(volumeId);
+        const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId ?? volumeId);
 
         const existingPods = await k3s.core.listNamespacedPod(namespace);
         const pod = existingPods.body.items.find((item) => item.metadata?.labels?.app === name);
