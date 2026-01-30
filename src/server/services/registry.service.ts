@@ -174,7 +174,7 @@ class RegistryService {
 
         const deploymentName = 'registry';
 
-        const masterNode = await clusterService.getMasterNode();
+        const masterNode = await clusterService.getFirstMasterNode();
         if (useLocalStorage && !masterNode) {
             throw new ServiceException("Cannot deploy registry with local storage, because could not evaluate master node.");
         }

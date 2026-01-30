@@ -52,6 +52,9 @@ export const mysqlAppTemplate: AppTemplateModel = {
             ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             useNetworkPolicy: true,
+            healthCheckPeriodSeconds: 15,
+            healthCheckTimeoutSeconds: 5,
+            healthCheckFailureThreshold: 3,
         },
         appDomains: [],
         appVolumes: [{

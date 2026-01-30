@@ -4,9 +4,10 @@ import React, { useMemo } from 'react';
 import { ReactFlow, Background, Controls, Node, Edge, MarkerType, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { App, AppDomain, AppPort } from '@prisma/client';
-import { Globe, Network, Lock, Cloud, Shield, ArrowDown } from 'lucide-react';
+import { Globe, Network, Lock, Cloud, Shield, ArrowDown, HeartPulse } from 'lucide-react';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { useRouter } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AppWithRelations extends App {
     appPorts: AppPort[];
@@ -58,7 +59,16 @@ const PolicyIcon = ({ policy, type, ports, useNetworkPolicy }: { policy: string,
     );
 };
 
-const AppNode = ({ data }: { data: any }) => {
+const AppNode = ({ data }: {
+    data: {
+        label: string;
+        ingressPolicy: string;
+        egressPolicy: string;
+        appId: string;
+        app: AppWithRelations;
+        ports: string;
+    }
+}) => {
     return (
         <div className="relative bg-white border border-slate-300 rounded-md p-4 min-w-[150px] shadow-sm text-center cursor-pointer hover:border-slate-400 transition-colors">
             <Handle type="target" position={Position.Top} className="!bg-transparent !border-0" />
@@ -67,8 +77,18 @@ const AppNode = ({ data }: { data: any }) => {
                 <PolicyIcon policy={data.ingressPolicy} ports={data.ports} useNetworkPolicy={data.app.useNetworkPolicy} type="ingress" />
             </div>
 
-            <div className="font-semibold text-sm mt-2 mb-2 flex gap-3 items-center justify-center">
+            <div className="font-semibold text-sm mt-2 mb-2 flex gap-2 items-center justify-center">
                 <PodStatusIndicator appId={data.appId} /> <p>{data.label}</p>
+                {(!!data.app.healthChechHttpGetPath || !!data.app.healthCheckTcpPort) && <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <HeartPulse size={16} className="text-blue-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Healthchecks enabled for this App</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>}
             </div>
 
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10">

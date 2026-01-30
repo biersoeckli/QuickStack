@@ -43,9 +43,10 @@ class ClusterService {
         })();
     }
 
-    async getMasterNode(): Promise<NodeInfoModel> {
+    async getFirstMasterNode(): Promise<NodeInfoModel> {
         const nodes = await this.getNodeInfo();
-        return nodes.find(node => node.isMasterNode)!;
+        nodes.sort((a, b) => a.name.localeCompare(b.name));
+        return nodes.find(node => node.isMasterNode)!; // even on HA Cluster, only one node is returned
     }
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {

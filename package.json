@@ -54,7 +54,7 @@
     "dotenv": "^17.2.3",
     "lucide-react": "^0.465.0",
     "moment": "^2.30.1",
-    "next": "14.2.15",
+    "next": "14.2.35",
     "next-auth": "^4.24.8",
     "next-themes": "^0.3.0",
     "node-schedule": "^2.1.1",
