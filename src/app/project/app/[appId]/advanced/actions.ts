@@ -53,8 +53,9 @@ export const saveHealthCheck = async (prevState: any, inputData: HealthCheckMode
 
         // Prepare update data
         let updateData: Partial<typeof app> = {
-            healthCheckPeriodSeconds: validatedData.periodSeconds ?? 10,
-            healthCheckTimeoutSeconds: validatedData.timeoutSeconds ?? 5,
+            healthCheckPeriodSeconds: validatedData.periodSeconds,
+            healthCheckTimeoutSeconds: validatedData.timeoutSeconds,
+            healthCheckFailureThreshold: validatedData.failureThreshold,
         };
 
         if (validatedData.enabled) {

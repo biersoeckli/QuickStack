@@ -201,7 +201,8 @@ class DeploymentService {
                         ...(app.healthCheckHttpHeadersJson ? { httpHeaders: JSON.parse(app.healthCheckHttpHeadersJson) } : {})
                     },
                     periodSeconds: app.healthCheckPeriodSeconds,
-                    timeoutSeconds: app.healthCheckTimeoutSeconds
+                    timeoutSeconds: app.healthCheckTimeoutSeconds,
+                    failureThreshold: app.healthCheckFailureThreshold
                 };
                 dlog(deploymentId, `Configured HTTP Health Checks.`);
             } else {
@@ -211,7 +212,8 @@ class DeploymentService {
                         port: app.healthCheckTcpPort!
                     },
                     periodSeconds: app.healthCheckPeriodSeconds,
-                    timeoutSeconds: app.healthCheckTimeoutSeconds
+                    timeoutSeconds: app.healthCheckTimeoutSeconds,
+                    failureThreshold: app.healthCheckFailureThreshold
                 };
                 dlog(deploymentId, `Configured TCP Health Checks.`);
             }

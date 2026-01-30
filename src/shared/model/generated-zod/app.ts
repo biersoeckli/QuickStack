@@ -32,6 +32,7 @@ export const AppModel = z.object({
   healthCheckHttpPort: z.number().int().nullish(),
   healthCheckPeriodSeconds: z.number().int(),
   healthCheckTimeoutSeconds: z.number().int(),
+  healthCheckFailureThreshold: z.number().int(),
   healthCheckTcpPort: z.number().int().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),

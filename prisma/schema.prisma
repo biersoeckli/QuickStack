@@ -205,12 +205,13 @@ model App {
   useNetworkPolicy     Boolean @default(true)
 
   // healthCheck startupProbe, readinessProbe, livenessProbe
-  healthChechHttpGetPath     String?
-  healthCheckHttpScheme      String? // HTTP, HTTPS
-  healthCheckHttpHeadersJson String? // JSON stringified key-value pairs
-  healthCheckHttpPort        Int?
-  healthCheckPeriodSeconds   Int     @default(10)
-  healthCheckTimeoutSeconds  Int     @default(5)
+  healthChechHttpGetPath      String?
+  healthCheckHttpScheme       String? // HTTP, HTTPS
+  healthCheckHttpHeadersJson  String? // JSON stringified key-value pairs
+  healthCheckHttpPort         Int?
+  healthCheckPeriodSeconds    Int     @default(15)
+  healthCheckTimeoutSeconds   Int     @default(5)
+  healthCheckFailureThreshold Int     @default(3)
 
   healthCheckTcpPort Int?
 

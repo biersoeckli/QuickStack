@@ -39,6 +39,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
         scheme: (app.healthCheckHttpScheme as "HTTP" | "HTTPS") || "HTTP",
         periodSeconds: app.healthCheckPeriodSeconds ?? 15,
         timeoutSeconds: app.healthCheckTimeoutSeconds ?? 5,
+        failureThreshold: app.healthCheckFailureThreshold ?? 3,
         headers: defaultHeaders,
         tcpPort: app.healthCheckTcpPort || undefined,
     };
@@ -294,6 +295,21 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
                                                     </div>
                                                 }>
                                                     Check Timeout (timeoutSeconds)
+                                                </FormLabelWithQuestion>
+                                                <FormControl>
+                                                    <Input type="number" {...field} onChange={e => field.onChange(e.target.value)} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="failureThreshold"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabelWithQuestion hint="Number of consecutive failures required to mark the container as unhealthy. Minimum value is 1. Example: interval is set to 15 seconds and failureThreshold is set to 4, the container will be marked as unhealthy after 1 minute (15s x 4).">
+                                                    Failure Threshold
                                                 </FormLabelWithQuestion>
                                                 <FormControl>
                                                     <Input type="number" {...field} onChange={e => field.onChange(e.target.value)} />

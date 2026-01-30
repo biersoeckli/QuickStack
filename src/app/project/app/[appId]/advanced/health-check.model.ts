@@ -15,8 +15,9 @@ export const healthCheckZodModel = z.object({
     // TCP probe fields
     tcpPort: z.coerce.number().int().min(1).max(65535).optional(),
     // Common fields
-    periodSeconds: z.coerce.number().int().min(1).default(10),
+    periodSeconds: z.coerce.number().int().min(1).default(15),
     timeoutSeconds: z.coerce.number().int().min(1).default(5),
+    failureThreshold: z.coerce.number().int().min(1).default(3),
 });
 
 export type HealthCheckModel = z.infer<typeof healthCheckZodModel>;
