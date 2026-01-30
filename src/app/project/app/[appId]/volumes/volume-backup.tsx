@@ -13,6 +13,7 @@ import React from "react";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import VolumeBackupEditDialog from "./volume-backup-edit-overlay";
 import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
+import { AppVolume } from "@prisma/client";
 
 export default function VolumeBackupList({
     app,
@@ -28,6 +29,9 @@ export default function VolumeBackupList({
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
     const [isLoading, setIsLoading] = React.useState(false);
+
+    // Filter out shared volumes (volumes that are mounted from other apps)
+    const ownVolumes = app.appVolumes.filter(volume => !volume.sharedVolumeId) as AppVolume[];
 
     const asyncDeleteBackupVolume = async (volumeId: string) => {
         const confirm = await openDialog({
@@ -92,7 +96,7 @@ export default function VolumeBackupList({
                                         <Play />
                                     </Button>
                                     <VolumeBackupEditDialog volumeBackup={volumeBackup}
-                                        s3Targets={s3Targets} volumes={app.appVolumes} app={app}>
+                                        s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
                                         <Button disabled={isLoading} variant="ghost"><EditIcon /></Button>
                                     </VolumeBackupEditDialog>
                                     <Button disabled={isLoading} variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
@@ -105,7 +109,7 @@ export default function VolumeBackupList({
                 </Table>
             </CardContent>
             {!readonly && <CardFooter>
-                <VolumeBackupEditDialog s3Targets={s3Targets} volumes={app.appVolumes} app={app}>
+                <VolumeBackupEditDialog s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
                     <Button>Add Backup Schedule</Button>
                 </VolumeBackupEditDialog>
             </CardFooter>}

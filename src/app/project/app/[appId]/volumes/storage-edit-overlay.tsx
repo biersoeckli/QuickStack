@@ -28,19 +28,19 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { useFormState } from 'react-dom'
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume } from "@prisma/client"
 import { AppVolumeEditModel, appVolumeEditZodModel } from "@/shared/model/volume-edit.model"
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
-import { getShareableVolumes, saveVolume } from "./actions"
+import { saveVolume } from "./actions"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { NodeInfoModel } from "@/shared/model/node-info.model"
-import { Checkbox } from "@/components/ui/checkbox"
+import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
@@ -52,35 +52,33 @@ const storageClasses = [
   { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Data is stored on the master node. Only works in a single node setup." }
 ] as const
 
-type AppVolumeWithSharing = AppVolume & { sharedVolumeId?: string | null; shareWithOtherApps?: boolean };
-
-export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
+export default function StorageEditDialog({ children, volume, app, nodesInfo }: {
   children: React.ReactNode;
-  volume?: AppVolumeWithSharing;
+  volume?: AppVolume;
   app: AppExtendedModel;
   nodesInfo: NodeInfoModel[];
 }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [useExistingVolume, setUseExistingVolume] = useState(false);
-  const [shareableVolumes, setShareableVolumes] = useState<{ id: string; containerMountPath: string; size: number; storageClassName: string; accessMode: string; app: { name: string } }[]>([]);
-
 
   const form = useForm<AppVolumeEditModel>({
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
-      ...volume,
+      containerMountPath: volume?.containerMountPath ?? '',
+      size: volume?.size ?? 0,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
       storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
-      sharedVolumeId: volume?.sharedVolumeId ?? null,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     }
   });
 
-  const selectedAccessMode = form.watch("accessMode");
-  const selectedSharedVolumeId = form.watch("sharedVolumeId");
-  const selectedSharedVolume = useMemo(() => shareableVolumes.find(item => item.id === selectedSharedVolumeId), [shareableVolumes, selectedSharedVolumeId]);
-  const hasShareableVolumes = shareableVolumes.length > 0;
+  // Watch accessMode to conditionally show shareWithOtherApps checkbox
+  const watchedAccessMode = form.watch("accessMode");
+  const watchedStorageClassName = form.watch("storageClassName");
+  const canBeShared = (!!volume ? volume.accessMode : watchedAccessMode === "ReadWriteMany") &&
+    watchedStorageClassName !== "local-path" &&
+    !volume?.sharedVolumeId;
 
   const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
     saveVolume(state, {
@@ -106,47 +104,9 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
       storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
-      sharedVolumeId: volume?.sharedVolumeId ?? null,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     });
-    setUseExistingVolume(false);
   }, [volume]);
-
-  useEffect(() => {
-    if (!isOpen || volume) {
-      return;
-    }
-    const loadShareableVolumes = async () => {
-      const response = await getShareableVolumes(app.id);
-      if (response.status === 'success' && response.data) {
-        setShareableVolumes(response.data);
-      } else {
-        setShareableVolumes([]);
-      }
-    };
-    loadShareableVolumes();
-  }, [app.id, isOpen, volume]);
-
-  useEffect(() => {
-    if (!useExistingVolume) {
-      form.setValue("sharedVolumeId", null);
-      return;
-    }
-    if (selectedSharedVolume) {
-      form.setValue("size", selectedSharedVolume.size);
-      form.setValue("accessMode", selectedSharedVolume.accessMode);
-      form.setValue("storageClassName", selectedSharedVolume.storageClassName as 'longhorn' | 'local-path');
-      form.setValue("shareWithOtherApps", false);
-    }
-  }, [form, selectedSharedVolume, useExistingVolume]);
-
-  useEffect(() => {
-    if (!useExistingVolume || selectedSharedVolumeId) {
-      return;
-    }
-    if (shareableVolumes.length > 0) {
-      form.setValue("sharedVolumeId", shareableVolumes[0].id);
-    }
-  }, [form, selectedSharedVolumeId, shareableVolumes, useExistingVolume]);
 
   return (
     <>
@@ -166,86 +126,6 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
               return formAction(data);
             })()}>
               <div className="space-y-4">
-                {!volume && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="use-existing-volume"
-                      checked={useExistingVolume}
-                      onCheckedChange={(checked) => setUseExistingVolume(!!checked)}
-                      disabled={!hasShareableVolumes}
-                    />
-                    <FormLabel htmlFor="use-existing-volume">Use existing shared volume</FormLabel>
-                  </div>
-                )}
-                {!volume && !hasShareableVolumes && (
-                  <p className="text-xs text-muted-foreground">
-                    No shared volumes are available from other apps in this project.
-                  </p>
-                )}
-                {!volume && useExistingVolume && (
-                  <FormField
-                    control={form.control}
-                    name="sharedVolumeId"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Shared Volume</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {selectedSharedVolume
-                                  ? `${selectedSharedVolume.app.name} · ${selectedSharedVolume.containerMountPath}`
-                                  : "Select a shared volume"}
-                                <ChevronsUpDown className="opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="max-w-[320px] p-0">
-                            <Command>
-                              <CommandList>
-                                <CommandGroup>
-                                  {shareableVolumes.map((shareableVolume) => (
-                                    <CommandItem
-                                      value={`${shareableVolume.app.name}-${shareableVolume.containerMountPath}`}
-                                      key={shareableVolume.id}
-                                      onSelect={() => {
-                                        form.setValue("sharedVolumeId", shareableVolume.id);
-                                      }}
-                                    >
-                                      <div className="flex flex-col gap-1">
-                                        <span>{shareableVolume.app.name}</span>
-                                        <span className="text-xs text-muted-foreground">{shareableVolume.containerMountPath} · {shareableVolume.size} MB</span>
-                                      </div>
-                                      <Check
-                                        className={cn(
-                                          "ml-auto",
-                                          shareableVolume.id === field.value
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                      />
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormDescription>
-                          Select a ReadWriteMany volume shared by another app in this project.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
                 <FormField
                   control={form.control}
                   name="containerMountPath"
@@ -267,7 +147,7 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                     <FormItem>
                       <FormLabel>Size in MB</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="ex. 20" {...field} disabled={useExistingVolume || !!volume?.sharedVolumeId} />
+                        <Input type="number" placeholder="ex. 20" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -277,7 +157,7 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                 <FormField
                   control={form.control}
                   name="accessMode"
-                  disabled={!!volume || useExistingVolume || !!volume?.sharedVolumeId}
+                  disabled={!!volume}
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel className="flex gap-2">
@@ -355,29 +235,6 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                     </FormItem>
                   )}
                 />
-                {!useExistingVolume && !volume?.sharedVolumeId && selectedAccessMode === 'ReadWriteMany' && (
-                  <FormField
-                    control={form.control}
-                    name="shareWithOtherApps"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value ?? false}
-                              onCheckedChange={(checked) => field.onChange(!!checked)}
-                            />
-                          </FormControl>
-                          <FormLabel>Share with other apps in project</FormLabel>
-                        </div>
-                        <FormDescription>
-                          Allow other apps in this project to mount this volume at their own paths.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
                 {nodesInfo.length === 1 &&
                   <FormField
                     control={form.control}
@@ -411,7 +268,7 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                                   "w-full justify-between",
                                   !field.value && "text-muted-foreground"
                                 )}
-                                disabled={!!volume || useExistingVolume || !!volume?.sharedVolumeId}
+                                disabled={!!volume}
                               >
                                 {field.value
                                   ? storageClasses.find(
@@ -460,6 +317,13 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                       </FormItem>
                     )}
                   />}
+                {canBeShared && (
+                  <CheckboxFormField
+                    form={form}
+                    name="shareWithOtherApps"
+                    label="Allow other apps to attach this volume"
+                  />
+                )}
                 <p className="text-red-500">{state.message}</p>
                 <SubmitButton>Save</SubmitButton>
               </div>

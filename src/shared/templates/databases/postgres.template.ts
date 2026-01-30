@@ -56,6 +56,7 @@ export const postgreAppTemplate: AppTemplateModel = {
             containerMountPath: '/var/lib/qs-postgres',
             accessMode: 'ReadWriteOnce',
             storageClassName: 'longhorn',
+            shareWithOtherApps: false,
         }],
         appFileMounts: [],
         appPorts: [{

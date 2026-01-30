@@ -62,6 +62,7 @@ export const mysqlAppTemplate: AppTemplateModel = {
             containerMountPath: '/var/lib/mysql',
             accessMode: 'ReadWriteOnce',
             storageClassName: 'longhorn',
+            shareWithOtherApps: false,
         }],
         appFileMounts: [],
         appPorts: [{

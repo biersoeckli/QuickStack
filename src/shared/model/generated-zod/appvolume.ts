@@ -18,6 +18,8 @@ export const AppVolumeModel = z.object({
 export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
   app: CompleteApp
   volumeBackups: CompleteVolumeBackup[]
+  sharedVolume?: CompleteAppVolume | null
+  sharedVolumes: CompleteAppVolume[]
 }
 
 /**
@@ -28,4 +30,6 @@ export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
 export const RelatedAppVolumeModel: z.ZodSchema<CompleteAppVolume> = z.lazy(() => AppVolumeModel.extend({
   app: RelatedAppModel,
   volumeBackups: RelatedVolumeBackupModel.array(),
+  sharedVolume: RelatedAppVolumeModel.nullish(),
+  sharedVolumes: RelatedAppVolumeModel.array(),
 }))

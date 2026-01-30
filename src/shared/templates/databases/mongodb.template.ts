@@ -55,6 +55,7 @@ export const mongodbAppTemplate: AppTemplateModel = {
             containerMountPath: '/data/db',
             accessMode: 'ReadWriteOnce',
             storageClassName: 'longhorn',
+            shareWithOtherApps: false,
         }],
         appFileMounts: [],
         appPorts: [{

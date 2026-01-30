@@ -1,0 +1,23 @@
+-- RedefineTables
+PRAGMA defer_foreign_keys=ON;
+PRAGMA foreign_keys=OFF;
+CREATE TABLE "new_AppVolume" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "containerMountPath" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "accessMode" TEXT NOT NULL DEFAULT 'rwo',
+    "storageClassName" TEXT NOT NULL DEFAULT 'longhorn',
+    "shareWithOtherApps" BOOLEAN NOT NULL DEFAULT false,
+    "sharedVolumeId" TEXT,
+    "appId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "AppVolume_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "AppVolume_sharedVolumeId_fkey" FOREIGN KEY ("sharedVolumeId") REFERENCES "AppVolume" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+INSERT INTO "new_AppVolume" ("accessMode", "appId", "containerMountPath", "createdAt", "id", "size", "storageClassName", "updatedAt") SELECT "accessMode", "appId", "containerMountPath", "createdAt", "id", "size", "storageClassName", "updatedAt" FROM "AppVolume";
+DROP TABLE "AppVolume";
+ALTER TABLE "new_AppVolume" RENAME TO "AppVolume";
+CREATE UNIQUE INDEX "AppVolume_appId_containerMountPath_key" ON "AppVolume"("appId", "containerMountPath");
+PRAGMA foreign_keys=ON;
+PRAGMA defer_foreign_keys=OFF;

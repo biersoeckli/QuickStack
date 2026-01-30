@@ -93,7 +93,7 @@ export default function VolumeBackupEditDialog({
           <DialogHeader>
             <DialogTitle>Edit Backup Configuration</DialogTitle>
             <DialogDescription>
-              Configure your custom volume for this container.
+              Configure the backup settings for this volume.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
