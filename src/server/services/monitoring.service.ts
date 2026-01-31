@@ -9,7 +9,6 @@ import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import dataAccess from "../adapter/db.client";
 import pvcService from "./pvc.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import appService from "./app.service";
 import projectService from "./project.service";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 
@@ -34,10 +33,13 @@ class MonitorService {
         ]);
 
         const appVolumesWithUsage: AppVolumeMonitoringUsageModel[] = [];
+        const volumeMap = new Map(appVolumes.map(volume => [volume.id, volume]));
 
         for (const appVolume of appVolumes) {
-
-            const pvc = pvcs.find(pvc => pvc.metadata?.name === KubeObjectNameUtils.toPvcName(appVolume.id));
+            const sharedVolumeId = (appVolume as { sharedVolumeId?: string | null }).sharedVolumeId;
+            const baseVolumeId = sharedVolumeId ?? appVolume.id;
+            const baseVolume = volumeMap.get(baseVolumeId);
+            const pvc = pvcs.find(pvc => pvc.metadata?.name === KubeObjectNameUtils.toPvcName(baseVolumeId));
             if (!pvc) {
                 continue;
             }
@@ -54,7 +56,8 @@ class MonitorService {
                 appId: appVolume.appId,
                 mountPath: appVolume.containerMountPath,
                 usedBytes: longhornVolume.actualSizeBytes,
-                capacityBytes: KubeSizeConverter.fromMegabytesToBytes(appVolume.size),
+                capacityBytes: KubeSizeConverter.fromMegabytesToBytes(baseVolume?.size ?? appVolume.size),
+                isBaseVolume: !sharedVolumeId
             });
         }
 
@@ -156,15 +159,28 @@ class MonitorService {
     }
 
     async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usedBytes: number }>> {
-        const pvcFromApp = await pvcService.getAllPvcForApp(projectId, appId);
+        const appVolumes = await dataAccess.client.appVolume.findMany({
+            where: {
+                appId
+            },
+            select: {
+                id: true,
+                sharedVolumeId: true
+            }
+        });
+        if (appVolumes.length === 0) {
+            return [];
+        }
+        const baseVolumeIds = Array.from(new Set(appVolumes.map(volume => (volume as { sharedVolumeId?: string | null }).sharedVolumeId || volume.id)));
+        const pvcNames = new Set(baseVolumeIds.map(id => KubeObjectNameUtils.toPvcName(id)));
+        const pvcFromProject = await k3s.core.listNamespacedPersistentVolumeClaim(projectId);
         const pvcUsageData: Array<{ pvcName: string, usedBytes: number }> = [];
 
-        for (const pvc of pvcFromApp) {
+        for (const pvc of pvcFromProject.body.items) {
             const pvcName = pvc.metadata?.name;
             const volumeName = pvc.spec?.volumeName;
 
-            if (pvcName && volumeName) {
-
+            if (pvcName && volumeName && pvcNames.has(pvcName as `pvc-${string}`)) {
                 const usedBytes = await longhornApiAdapter.getLonghornVolume(volumeName);
                 pvcUsageData.push({ pvcName, usedBytes });
             }

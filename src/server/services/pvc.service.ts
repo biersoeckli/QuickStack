@@ -12,6 +12,8 @@ import path from "path";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 import { AppVolume } from "@prisma/client";
 
+type AppVolumeWithSharing = AppVolume & { sharedVolumeId?: string | null };
+
 class PvcService {
 
     static readonly SHARED_PVC_NAME = 'qs-shared-pvc';
@@ -45,9 +47,11 @@ class PvcService {
     }
 
     async doesAppConfigurationIncreaseAnyPvcSize(app: AppExtendedModel) {
-        const existingPvcs = await this.getAllPvcForApp(app.projectId, app.id);
+        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim(app.projectId);
+        const existingPvcs = existingPvcsResponse.body.items;
+        const baseVolumes = await this.getBaseVolumes(app);
 
-        for (const appVolume of app.appVolumes) {
+        for (const appVolume of baseVolumes) {
             const pvcName = KubeObjectNameUtils.toPvcName(appVolume.id);
             const existingPvc = existingPvcs.find(pvc => pvc.metadata?.name === pvcName);
             if (existingPvc && existingPvc.spec!.resources!.requests!.storage !== KubeSizeConverter.megabytesToKubeFormat(appVolume.size)) {
@@ -95,24 +99,31 @@ class PvcService {
         }
     }
 
-    async createPvcForVolumeIfNotExists(projectId: string, app: AppVolume) {
-        const pvcName = KubeObjectNameUtils.toPvcName(app.id);
-        const existingPvc = await this.getExistingPvcByVolumeId(projectId, app.id);
+    async createPvcForVolumeIfNotExists(projectId: string, app: AppVolumeWithSharing) {
+        const baseVolume = app.sharedVolumeId ? await dataAccess.client.appVolume.findFirstOrThrow({
+            where: {
+                id: app.sharedVolumeId
+            }
+        }) : app;
+        const pvcName = KubeObjectNameUtils.toPvcName(baseVolume.id);
+        const existingPvc = await this.getExistingPvcByVolumeId(projectId, baseVolume.id);
 
         if (existingPvc) {
             console.log(`PVC ${pvcName} for app ${app.id} already exists, no need to create it`);
             return;
         }
 
-        const pvcDefinition = this.mapVolumeToPvcDefinition(projectId, app);
+        const pvcDefinition = this.mapVolumeToPvcDefinition(projectId, baseVolume);
         await k3s.core.createNamespacedPersistentVolumeClaim(projectId, pvcDefinition);
         console.log(`Created PVC ${pvcName} for app ${app.id}`);
     }
 
     async createOrUpdatePvc(app: AppExtendedModel) {
-        const existingPvcs = await this.getAllPvcForApp(app.projectId, app.id);
+        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim(app.projectId);
+        const existingPvcs = existingPvcsResponse.body.items;
+        const baseVolumes = await this.getBaseVolumes(app);
 
-        for (const appVolume of app.appVolumes) {
+        for (const appVolume of baseVolumes) {
             const pvcName = KubeObjectNameUtils.toPvcName(appVolume.id);
             const pvcDefinition = this.mapVolumeToPvcDefinition(app.projectId, appVolume);
             const desiredStorageClassName = appVolume.storageClassName ?? 'longhorn';
@@ -143,21 +154,24 @@ class PvcService {
             }
         }
 
-        const volumes = app.appVolumes
-            .filter(pvcObj => pvcObj.appId === app.id)
-            .map(pvcObj => ({
-                name: KubeObjectNameUtils.toPvcName(pvcObj.id),
-                persistentVolumeClaim: {
-                    claimName: KubeObjectNameUtils.toPvcName(pvcObj.id)
-                },
-            }));
+        const volumesMap = new Map<string, { name: string; persistentVolumeClaim: { claimName: string } }>();
+        for (const pvcObj of app.appVolumes) {
+            const baseVolumeId = pvcObj.sharedVolumeId ?? pvcObj.id;
+            if (!volumesMap.has(baseVolumeId)) {
+                volumesMap.set(baseVolumeId, {
+                    name: KubeObjectNameUtils.toPvcName(baseVolumeId),
+                    persistentVolumeClaim: {
+                        claimName: KubeObjectNameUtils.toPvcName(baseVolumeId)
+                    },
+                });
+            }
+        }
+        const volumes = Array.from(volumesMap.values());
 
-        const volumeMounts = app.appVolumes
-            .filter(pvcObj => pvcObj.appId === app.id)
-            .map(pvcObj => ({
-                name: KubeObjectNameUtils.toPvcName(pvcObj.id),
-                mountPath: pvcObj.containerMountPath,
-            }));
+        const volumeMounts = app.appVolumes.map(pvcObj => ({
+            name: KubeObjectNameUtils.toPvcName(pvcObj.sharedVolumeId ?? pvcObj.id),
+            mountPath: pvcObj.containerMountPath,
+        }));
 
         return { volumes, volumeMounts };
     }
@@ -200,6 +214,20 @@ class PvcService {
             pv = await k3s.core.readPersistentVolume(persistentVolumeName);
             iterationCount++;
         }
+    }
+
+    private async getBaseVolumes(app: AppExtendedModel): Promise<AppVolume[]> {
+        const baseVolumeIds = Array.from(new Set(app.appVolumes.map(volume => volume.sharedVolumeId ?? volume.id)));
+        if (baseVolumeIds.length === 0) {
+            return [];
+        }
+        return await dataAccess.client.appVolume.findMany({
+            where: {
+                id: {
+                    in: baseVolumeIds
+                }
+            }
+        });
     }
 }
 

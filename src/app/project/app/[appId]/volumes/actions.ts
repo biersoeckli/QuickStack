@@ -44,6 +44,39 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         await isAuthorizedWriteForApp(validatedData.appId);
         const existingApp = await appService.getExtendedById(validatedData.appId);
         const existingVolume = validatedData.id ? await appService.getVolumeById(validatedData.id) : undefined;
+        const sharedVolumeId = existingVolume?.sharedVolumeId ?? validatedData.sharedVolumeId ?? undefined;
+
+        if (sharedVolumeId) {
+            const sharedVolume = await dataAccess.client.appVolume.findFirstOrThrow({
+                where: {
+                    id: sharedVolumeId
+                },
+                include: {
+                    app: true
+                }
+            });
+            if (sharedVolume.app.projectId !== existingApp.projectId) {
+                throw new ServiceException('Shared volumes must belong to the same project.');
+            }
+            if (sharedVolume.appId === validatedData.appId) {
+                throw new ServiceException('Shared volumes must belong to a different app.');
+            }
+            if (!sharedVolume.shareWithOtherApps || sharedVolume.accessMode !== 'ReadWriteMany') {
+                throw new ServiceException('This volume is not available for sharing.');
+            }
+            await appService.saveVolume({
+                appId: validatedData.appId,
+                id: validatedData.id ?? undefined,
+                containerMountPath: validatedData.containerMountPath,
+                size: sharedVolume.size,
+                accessMode: sharedVolume.accessMode,
+                storageClassName: sharedVolume.storageClassName,
+                shareWithOtherApps: false,
+                sharedVolumeId: sharedVolume.id
+            });
+            return;
+        }
+
         if (existingVolume && existingVolume.size > validatedData.size) {
             throw new ServiceException('Volume size cannot be decreased');
         }
@@ -56,11 +89,16 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         if (validatedData.accessMode === 'ReadWriteMany' && validatedData.storageClassName === 'local-path') {
             throw new ServiceException('The Local Path storage class does not support ReadWriteMany access mode. Please choose another storage class / access mode.');
         }
+        if (validatedData.shareWithOtherApps && (existingVolume?.accessMode ?? validatedData.accessMode) !== 'ReadWriteMany') {
+            throw new ServiceException('Only ReadWriteMany volumes can be shared with other apps.');
+        }
         await appService.saveVolume({
             ...validatedData,
             id: validatedData.id ?? undefined,
             accessMode: existingVolume?.accessMode ?? validatedData.accessMode as string,
-            storageClassName: existingVolume?.storageClassName ?? validatedData.storageClassName
+            storageClassName: existingVolume?.storageClassName ?? validatedData.storageClassName,
+            shareWithOtherApps: validatedData.shareWithOtherApps ?? false,
+            sharedVolumeId: null
         });
     });
 
@@ -76,6 +114,14 @@ export const getPvcUsage = async (appId: string, projectId: string) =>
         await isAuthorizedReadForApp(appId);
         return monitoringService.getPvcUsageFromApp(appId, projectId);
     }) as Promise<ServerActionResult<any, { pvcName: string, usedBytes: number }[]>>;
+
+export const getShareableVolumes = async (appId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForApp(appId);
+        const app = await appService.getExtendedById(appId);
+        const volumes = await appService.getShareableVolumesByProjectId(app.projectId, appId);
+        return new SuccessActionResult(volumes);
+    }) as Promise<ServerActionResult<any, { id: string; containerMountPath: string; size: number; storageClassName: string; accessMode: string; app: { name: string } }[]>>;
 
 export const downloadPvcData = async (volumeId: string) =>
     simpleAction(async () => {

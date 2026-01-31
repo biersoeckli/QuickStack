@@ -40,6 +40,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { NodeInfoModel } from "@/shared/model/node-info.model"
+import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
@@ -51,7 +52,7 @@ const storageClasses = [
   { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Data is stored on the master node. Only works in a single node setup." }
 ] as const
 
-export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
+export default function StorageEditDialog({ children, volume, app, nodesInfo }: {
   children: React.ReactNode;
   volume?: AppVolume;
   app: AppExtendedModel;
@@ -60,15 +61,24 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-
   const form = useForm<AppVolumeEditModel>({
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
-      ...volume,
+      containerMountPath: volume?.containerMountPath ?? '',
+      size: volume?.size ?? 0,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
       storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      shareWithOtherApps: volume?.shareWithOtherApps ?? false,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     }
   });
+
+  // Watch accessMode to conditionally show shareWithOtherApps checkbox
+  const watchedAccessMode = form.watch("accessMode");
+  const watchedStorageClassName = form.watch("storageClassName");
+  const canBeShared = (!!volume ? volume.accessMode : watchedAccessMode === "ReadWriteMany") &&
+    watchedStorageClassName !== "local-path" &&
+    !volume?.sharedVolumeId;
 
   const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
     saveVolume(state, {
@@ -93,8 +103,12 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
       ...volume,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
       storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      shareWithOtherApps: volume?.shareWithOtherApps ?? false,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     });
   }, [volume]);
+
+  const values = form.watch();
 
   return (
     <>
@@ -141,6 +155,12 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                     </FormItem>
                   )}
                 />
+
+                {volume && volume.size !== values.size && volume.shareWithOtherApps && <>
+                  <p className="text-sm text-yellow-600">
+                    When changing the size of a shared volume, ensure that all apps using this volume are shut down before deploying the changes.
+                  </p>
+                </>}
 
                 <FormField
                   control={form.control}
@@ -305,6 +325,13 @@ export default function DialogEditDialog({ children, volume, app, nodesInfo }: {
                       </FormItem>
                     )}
                   />}
+                {canBeShared && (
+                  <CheckboxFormField
+                    form={form}
+                    name="shareWithOtherApps"
+                    label="Allow other apps to attach this volume"
+                  />
+                )}
                 <p className="text-red-500">{state.message}</p>
                 <SubmitButton>Save</SubmitButton>
               </div>

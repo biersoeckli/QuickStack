@@ -9,6 +9,8 @@ export const appVolumeEditZodModel = z.object({
   size: stringToNumber,
   accessMode: appVolumeTypeZodModel.nullish().or(z.string().nullish()),
   storageClassName: storageClassNameZodModel.default("longhorn"),
+  shareWithOtherApps: z.boolean().optional().default(false),
+  sharedVolumeId: z.string().nullish(),
 });
 
 export type AppVolumeEditModel = z.infer<typeof appVolumeEditZodModel>;

@@ -30,6 +30,8 @@ export default async function ResourceNodesInfoPage() {
 
     // filter by role
     volumesUsage = volumesUsage?.filter((volume) => UserGroupUtils.sessionHasReadAccessForApp(session, volume.appId));
+    // only base volumes, no shared volumes
+    volumesUsage = volumesUsage?.filter((volume) => !!volume.isBaseVolume);
     updatedNodeRessources = updatedNodeRessources?.filter((app) => UserGroupUtils.sessionHasReadAccessForApp(session, app.appId));
 
     return (

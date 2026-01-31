@@ -5,5 +5,6 @@ export interface AppVolumeMonitoringUsageModel {
     appId: string,
     mountPath: string,
     usedBytes: number,
-    capacityBytes: number
+    capacityBytes: number,
+    isBaseVolume: boolean
 }
