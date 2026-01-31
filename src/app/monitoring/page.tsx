@@ -2,7 +2,7 @@
 
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
-import clusterService from "@/server/services/node.service";
+import clusterService from "@/server/services/cluster.service";
 import ResourceNodes from "./monitoring-nodes";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";

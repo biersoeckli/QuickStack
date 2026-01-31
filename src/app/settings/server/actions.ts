@@ -27,8 +27,10 @@ import fs from "fs";
 import { z } from "zod";
 import { revalidateTag } from "next/cache";
 import { Tags } from "@/server/utils/cache-tag-generator.utils";
-import clusterService from "@/server/services/node.service";
+import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
+import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
+import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
   simpleAction(async () => {
@@ -287,8 +289,34 @@ export const downloadSystemBackup = async (backupKey: string) =>
 export const setTraefikIpPropagation = async (prevState: any, inputData: { enableIpPreservation: boolean }) =>
   saveFormAction(inputData, z.object({ enableIpPreservation: z.boolean() }), async (validatedData) => {
     await getAdminUserSession();
-
     await traefikService.applyExternalTrafficPolicy(validatedData.enableIpPreservation);
-
     return new SuccessActionResult(undefined, `Traefik externalTrafficPolicy set to ${validatedData.enableIpPreservation ? 'Local' : 'Cluster'}.`);
+  });
+
+export const checkK3sUpgradeControllerStatus = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    return await k3sUpdateService.isSystemUpgradeControllerPresent();
+  });
+
+export const installK3sUpgradeController = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await k3sUpdateService.getCurrentK3sMinorVersion(); // if this succeds alls nodes have the same version and cluster is ready for upgrades
+    await k3sUpdateService.installSystemUpgradeController();
+    return new SuccessActionResult(undefined, 'K3s System Upgrade Controller has been installed successfully.');
+  });
+
+export const startK3sUpgrade = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await k3sUpdateService.createUpgradePlans();
+    return new SuccessActionResult(undefined, 'The upgrade process has started.');
+  });
+
+export const startLonghornUpgrade = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await longhornUpdateService.upgrade();
+    return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
   });

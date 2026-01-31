@@ -64,9 +64,13 @@ select_network_interface
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # THIS MUST BE INSTALLED ON ALL NODES --> https://longhorn.io/docs/1.7.2/deploy/install/#installing-nfsv4-client
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# install nfs-common and open-iscsi
+# install nfs-common, open-iscsi and jq
 sudo apt-get update
-sudo apt-get install open-iscsi nfs-common -y
+sudo apt-get install open-iscsi nfs-common jq -y
+
+echo "Fetching version information..."
+K3S_VERSION=$(curl -s https://get.quickstack.dev/k3s-versions.json | jq -r '.prodInstallVersion')
+echo "Using K3s version: $K3S_VERSION"
 
 # Disable portmapper services --> https://github.com/biersoeckli/QuickStack/issues/18
 sudo systemctl stop rpcbind.service rpcbind.socket
@@ -74,7 +78,7 @@ sudo systemctl disable rpcbind.service rpcbind.socket
 
 # Installation of k3s
 echo "Installing k3s with --flannel-iface=$selected_iface"
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="v1.31.3+k3s1" K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="$K3S_VERSION" K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
 
 echo ""
 echo "-----------------------------------------------------------------------------------------------------------"

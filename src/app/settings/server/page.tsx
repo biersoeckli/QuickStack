@@ -23,8 +23,10 @@ import { ServerSettingsTabs } from "./server-settings-tabs";
 import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
 import quickStackUpdateService from "@/server/services/qs-update.service";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import clusterService from "@/server/services/node.service";
+import clusterService from "@/server/services/cluster.service";
 import NodeInfo from "./nodeInfo";
+import K3sUpdateInfo from "./k3s-update-info";
+import UpdateInfoPage from "./update-info";
 
 export default async function ProjectPage({
     searchParams
@@ -41,7 +43,6 @@ export default async function ProjectPage({
         regitryStorageLocation,
         ipv4Address,
         systemBackupLocation,
-        useCanaryChannel,
         clusterJoinToken
     ] = await Promise.all([
         paramService.getString(ParamService.QS_SERVER_HOSTNAME, ''),
@@ -50,7 +51,6 @@ export default async function ProjectPage({
         paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
         paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS),
         paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false),
         paramService.getString(ParamService.K3S_JOIN_TOKEN)
     ]);
 
@@ -58,14 +58,12 @@ export default async function ProjectPage({
         s3Targets,
         traefikStatus,
         qsPodInfos,
-        currentVersion,
         newVersionInfo,
         nodeInfo
     ] = await Promise.all([
         s3TargetService.getAll(),
         traefikService.getStatus(),
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
-        quickStackService.getVersionOfCurrentQuickstackInstance(),
         quickStackUpdateService.getNewVersionInfo(),
         clusterService.getNodeInfo()
     ]);
@@ -125,9 +123,7 @@ export default async function ProjectPage({
                     <NodeInfo nodeInfos={nodeInfo} clusterJoinToken={clusterJoinToken} />
                 </TabsContent>
                 <TabsContent value="updates" className="space-y-4">
-                    <div className="grid gap-6">
-                        <QuickStackVersionInfo newVersionInfo={newVersionInfo} currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} />
-                    </div>
+                    <UpdateInfoPage />
                 </TabsContent>
                 <TabsContent value="maintenance" className="space-y-4">
                     <div className="grid gap-6">
