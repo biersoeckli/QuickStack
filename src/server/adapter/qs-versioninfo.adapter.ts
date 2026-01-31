@@ -30,29 +30,6 @@ class QsVersionInfoAdapter {
     private readonly API_BASE_URL = 'https://get.quickstack.dev';
 
     private async getK3sVersioninfo(): Promise<K3sReleaseResponse> {
-
-        return JSON.parse(`{
-    "prod": [
-        {
-            "version": "v1.31",
-            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.31"
-        }
-    ],
-    "canary": [
-        {
-            "version": "v1.31",
-            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.31"
-        },
-        {
-            "version": "v1.32",
-            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.32"
-        },
-        {
-            "version": "v1.33",
-            "channelUrl": "https://update.k3s.io/v1-release/channels/v1.33"
-        }
-    ]
-}`);
         const response = await fetch(`${this.API_BASE_URL}/k3s-versions.json`, {
             cache: 'no-cache',
             method: 'GET',
@@ -69,33 +46,6 @@ class QsVersionInfoAdapter {
     }
 
     private async getLonghornVersioninfo(): Promise<LonghornReleaseResponse> {
-        // TODO: Replace with actual API call when deployed
-        return JSON.parse(`{
-    "prod": [
-        {
-            "version": "v1.7.2",
-            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
-        }
-    ],
-    "canary": [
-        {
-            "version": "v1.7.2",
-            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
-        },
-        {
-            "version": "v1.8.2",
-            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.8.2/deploy/longhorn.yaml"
-        },
-        {
-            "version": "v1.9.2",
-            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.9.2/deploy/longhorn.yaml"
-        },
-        {
-            "version": "v1.10.1",
-            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.10.1/deploy/longhorn.yaml"
-        }
-    ]
-}`);
         const response = await fetch(`${this.API_BASE_URL}/longhorn-versions.json`, {
             cache: 'no-cache',
             method: 'GET',
