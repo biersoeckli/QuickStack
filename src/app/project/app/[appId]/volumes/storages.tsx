@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, Folder, TrashIcon, Share2 } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink2, Unlink } from "lucide-react";
 import DialogEditDialog from "./storage-edit-overlay";
 import SharedStorageEditDialog from "./shared-storage-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -47,7 +47,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
         if (response.status === 'success' && response.data) {
             const mappedVolumeData = [...app.appVolumes] as AppVolumeWithCapacity[];
             for (let item of mappedVolumeData) {
-                const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(item.id));
+                const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(item.sharedVolumeId || item.id));
                 if (volume) {
                     item.usedBytes = volume.usedBytes;
                     item.capacityBytes = KubeSizeConverter.fromMegabytesToBytes(item.size);
@@ -62,16 +62,17 @@ export default function StorageList({ app, readonly, nodesInfo }: {
 
     React.useEffect(() => {
         loadAndMapStorageData();
-    }, [app.appVolumes]);
+    }, [app.appVolumes, app]);
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
 
-    const asyncDeleteVolume = async (volumeId: string) => {
+    const asyncDeleteVolume = async (volumeId: string, isBaseVolume: boolean) => {
         try {
             const confirm = await openDialog({
-                title: "Delete Volume",
-                description: "The volume will be removed and the Data will be lost. The changes will take effect, after you deploy the app. Are you sure you want to remove this volume?",
-                okButton: "Delete Volume"
+                title: isBaseVolume ? "Delete Volume" : "Detach Volume",
+                description: isBaseVolume ? "The volume will be removed and the Data will be lost. The changes will take effect, after you deploy the app. Are you sure you want to remove this volume?" :
+                    "The volume will be detached from the app. The data will remain on the cluster and can be re-attached later. The changes will take effect, after you deploy the app. Are you sure you want to detach this volume?",
+                okButton: isBaseVolume ? "Delete Volume" : "Detach Volume"
             });
             if (confirm) {
                 setIsLoading(true);
@@ -281,12 +282,12 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                                         <TooltipProvider>
                                             <Tooltip delayDuration={200}>
                                                 <TooltipTrigger>
-                                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id)} disabled={isLoading}>
-                                                        <TrashIcon />
+                                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
+                                                        {volume.sharedVolumeId ? <Unlink /> : <TrashIcon />}
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>Delete volume</p>
+                                                    <p>{volume.sharedVolumeId ? 'Detach Volume' : 'Delete Volume'}</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>

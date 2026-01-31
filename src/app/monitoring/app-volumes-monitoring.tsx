@@ -47,7 +47,8 @@ export default function AppVolumeMonitoring({
 
     const fetchVolumeMonitoringUsage = async () => {
         try {
-            const data = await Actions.run(() => getVolumeMonitoringUsage());
+            let data = await Actions.run(() => getVolumeMonitoringUsage());
+            data  = data?.filter((volume) => !!volume.isBaseVolume);
             setUpdatedVolumeUsage(convertToExtendedModel(data));
             setUsedAndCapacityBytes(convertToExtendedModel(data));
         } catch (ex) {

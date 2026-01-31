@@ -9,7 +9,6 @@ import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import dataAccess from "../adapter/db.client";
 import pvcService from "./pvc.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import appService from "./app.service";
 import projectService from "./project.service";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 
@@ -58,6 +57,7 @@ class MonitorService {
                 mountPath: appVolume.containerMountPath,
                 usedBytes: longhornVolume.actualSizeBytes,
                 capacityBytes: KubeSizeConverter.fromMegabytesToBytes(baseVolume?.size ?? appVolume.size),
+                isBaseVolume: !sharedVolumeId
             });
         }
 

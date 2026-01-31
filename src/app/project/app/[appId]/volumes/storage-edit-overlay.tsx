@@ -108,6 +108,8 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
     });
   }, [volume]);
 
+  const values = form.watch();
+
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
@@ -153,6 +155,12 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                     </FormItem>
                   )}
                 />
+
+                {volume && volume.size !== values.size && volume.shareWithOtherApps && <>
+                  <p className="text-sm text-yellow-600">
+                    When changing the size of a shared volume, ensure that all apps using this volume are shut down before deploying the changes.
+                  </p>
+                </>}
 
                 <FormField
                   control={form.control}

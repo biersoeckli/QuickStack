@@ -100,13 +100,11 @@ class PvcService {
     }
 
     async createPvcForVolumeIfNotExists(projectId: string, app: AppVolumeWithSharing) {
-        const baseVolume = app.sharedVolumeId
-            ? await dataAccess.client.appVolume.findFirstOrThrow({
-                where: {
-                    id: app.sharedVolumeId
-                }
-            })
-            : app;
+        const baseVolume = app.sharedVolumeId ? await dataAccess.client.appVolume.findFirstOrThrow({
+            where: {
+                id: app.sharedVolumeId
+            }
+        }) : app;
         const pvcName = KubeObjectNameUtils.toPvcName(baseVolume.id);
         const existingPvc = await this.getExistingPvcByVolumeId(projectId, baseVolume.id);
 

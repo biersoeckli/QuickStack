@@ -67,9 +67,13 @@ export default function SharedStorageEditDialog({ children, app }: {
             setIsLoadingVolumes(true);
             getShareableVolumes(app.id).then(result => {
                 if (result.status === 'success' && result.data) {
-                    setShareableVolumes(result.data);
+                    const alreadyAddedSharedVolumes = app.appVolumes
+                        .filter(v => !!v.sharedVolumeId)
+                        .map(v => v.sharedVolumeId);
+                    setShareableVolumes(result.data.filter(v => !alreadyAddedSharedVolumes.includes(v.id)));
                 } else {
                     setShareableVolumes([]);
+                    toast.error('An error occurred while fetching shareable volumes');
                 }
                 setIsLoadingVolumes(false);
             });

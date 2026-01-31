@@ -298,7 +298,8 @@ class AppService {
             }
         });
 
-        if (existingAppWithSameVolumeMountPath.filter(x => x.id !== volumeToBeSaved.id)
+        if (existingAppWithSameVolumeMountPath
+            .filter(x => x.id !== volumeToBeSaved.id)
             .some(x => x.containerMountPath === volumeToBeSaved.containerMountPath)) {
             throw new ServiceException("Mount Path is already configured within the same app.");
         }
@@ -329,12 +330,16 @@ class AppService {
             where: {
                 id
             }, include: {
-                app: true
+                app: true,
+                sharedVolumes: true
             }
         });
         if (!existingVolume) {
             return;
         }
+
+        // get ids of all apps that use this volume as shared volume --> to reset cache
+        let additionalAppIds = existingVolume.sharedVolumes.map(v => v.appId);
         try {
             await dataAccess.client.appVolume.delete({
                 where: {
@@ -344,6 +349,9 @@ class AppService {
         } finally {
             revalidateTag(Tags.app(existingVolume.appId));
             revalidateTag(Tags.apps(existingVolume.app.projectId));
+            for (const appId of additionalAppIds) {
+                revalidateTag(Tags.app(appId));
+            }
         }
     }
 
