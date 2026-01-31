@@ -1,0 +1,28 @@
+{
+    "prodInstallVersion": "v1.7.2",
+    "canaryInstallVersion": "v1.10.1",
+    "prod": [
+        {
+            "version": "v1.7.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
+        }
+    ],
+    "canary": [
+        {
+            "version": "v1.7.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.8.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.8.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.9.2",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.9.2/deploy/longhorn.yaml"
+        },
+        {
+            "version": "v1.10.1",
+            "yamlUrl": "https://raw.githubusercontent.com/longhorn/longhorn/v1.10.1/deploy/longhorn.yaml"
+        }
+    ]
+}
