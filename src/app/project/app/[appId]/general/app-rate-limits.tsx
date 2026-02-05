@@ -4,17 +4,13 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
-import { AppSourceInfoInputModel, appSourceInfoInputZodModel } from "@/shared/model/app-source-info.model";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { saveGeneralAppRateLimits, saveGeneralAppSourceInfo } from "./actions";
+import { saveGeneralAppRateLimits } from "./actions";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { App } from "@prisma/client";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
@@ -44,7 +40,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
     return <>
         <Card>
             <CardHeader>
-                <CardTitle>Container Configuration</CardTitle>
+                <CardTitle>Container Rate Limits</CardTitle>
                 <CardDescription>Provide optional rate Limits per running container instance.</CardDescription>
             </CardHeader>
             <Form {...form}>

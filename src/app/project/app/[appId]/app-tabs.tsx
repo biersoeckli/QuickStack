@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import GeneralAppRateLimits from "./general/app-rate-limits";
 import GeneralAppSource from "./general/app-source";
+import GeneralAppContainerConfig from "./general/app-container-config";
 import EnvEdit from "./environment/env-edit";
 import { S3Target } from "@prisma/client";
 import DomainsList from "./domains/domains";
@@ -75,6 +76,7 @@ export default function AppTabs({
             <TabsContent value="general" className="space-y-4">
                 <GeneralAppSource readonly={readonly} app={app} />
                 <GeneralAppRateLimits readonly={readonly} app={app} />
+                <GeneralAppContainerConfig readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="environment" className="space-y-4">
                 <EnvEdit readonly={readonly} app={app} />
