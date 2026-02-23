@@ -1,10 +1,14 @@
 import { Constants } from "@/shared/utils/constants";
-import { AppTemplateModel } from "../../model/app-template.model";
+import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 
-export const mysqlAppTemplate: AppTemplateModel = {
-    name: "MySQL",
-    iconName: 'mysql.svg',
-    templates: [{
+export function getMysqlAppTemplate(config?: {
+    appName?: string,
+    dbName?: string,
+    dbUsername?: string,
+    dbPassword?: string,
+    rootPassword?: string
+}): AppTemplateContentModel {
+    return {
         inputSettings: [
             {
                 key: "containerImageSource",
@@ -16,34 +20,34 @@ export const mysqlAppTemplate: AppTemplateModel = {
             {
                 key: "MYSQL_DATABASE",
                 label: "Database Name",
-                value: "mysqldb",
+                value: config?.dbName || "mysqldb",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MYSQL_USER",
                 label: "Database User",
-                value: "mysqluser",
+                value: config?.dbUsername || "mysqluser",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MYSQL_PASSWORD",
                 label: "Database Password",
-                value: "",
+                value: config?.dbPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
             {
                 key: "MYSQL_ROOT_PASSWORD",
                 label: "Root Password",
-                value: "",
+                value: config?.rootPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
         ],
         appModel: {
-            name: "MySQL",
+            name: config?.appName || "MySQL",
             appType: 'MYSQL',
             sourceType: 'CONTAINER',
             containerImageSource: "",
@@ -52,9 +56,9 @@ export const mysqlAppTemplate: AppTemplateModel = {
             ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             useNetworkPolicy: true,
-            healthCheckPeriodSeconds: 15,
+            healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: 5,
-            healthCheckFailureThreshold: 3,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
         },
         appDomains: [],
         appVolumes: [{
@@ -68,5 +72,13 @@ export const mysqlAppTemplate: AppTemplateModel = {
         appPorts: [{
             port: 3306,
         }]
-    }]
+    };
 }
+
+export const mysqlAppTemplate: AppTemplateModel = {
+    name: "MySQL",
+    iconName: 'mysql.svg',
+    templates: [
+        getMysqlAppTemplate()
+    ]
+};

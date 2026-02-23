@@ -44,7 +44,7 @@ MYSQL_USER=wordpress
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
-            healthCheckFailureThreshold: 3,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
         },
         appDomains: [],
         appVolumes: [{
@@ -85,9 +85,9 @@ WORDPRESS_DB_PASSWORD={password}
 WORDPRESS_TABLE_PREFIX=wp_
 `,
             useNetworkPolicy: true,
-            healthCheckPeriodSeconds: 30,
-            healthCheckTimeoutSeconds: 10,
-            healthCheckFailureThreshold: 3,
+            healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
+            healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
         },
         appDomains: [],
         appVolumes: [{

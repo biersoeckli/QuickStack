@@ -9,6 +9,10 @@ export default function DbToolsCard({
     app: AppExtendedModel;
 }) {
 
+    if (app.appType === 'REDIS') {
+        return <></>;
+    }
+
     return <>
         <Card>
             <CardHeader>

@@ -1,10 +1,13 @@
 import { Constants } from "@/shared/utils/constants";
-import { AppTemplateModel } from "../../model/app-template.model";
+import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 
-export const mongodbAppTemplate: AppTemplateModel = {
-    name: "MongoDB",
-    iconName: 'mongodb.svg',
-    templates: [{
+export function getMongodbAppTemplate(config?: {
+    appName?: string,
+    dbName?: string,
+    dbUsername?: string,
+    dbPassword?: string
+}): AppTemplateContentModel {
+    return {
         inputSettings: [
             {
                 key: "containerImageSource",
@@ -16,38 +19,38 @@ export const mongodbAppTemplate: AppTemplateModel = {
             {
                 key: "MONGO_INITDB_DATABASE",
                 label: "Database Name",
-                value: "mongodb",
+                value: config?.dbName || "mongodb",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MONGO_INITDB_ROOT_USERNAME",
                 label: "Username",
-                value: "mongodbuser",
+                value: config?.dbUsername || "mongodbuser",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MONGO_INITDB_ROOT_PASSWORD",
                 label: "Password",
-                value: "",
+                value: config?.dbPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
         ],
         appModel: {
-            name: "MongoDB",
+            name: config?.appName || "MongoDB",
             appType: 'MONGODB',
             sourceType: 'CONTAINER',
             containerImageSource: "",
             ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
             replicas: 1,
             envVars: ``,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
-            healthCheckFailureThreshold: 3,
         },
         appDomains: [],
         appVolumes: [{
@@ -61,5 +64,13 @@ export const mongodbAppTemplate: AppTemplateModel = {
         appPorts: [{
             port: 27017,
         }]
-    }],
+    };
+}
+
+export const mongodbAppTemplate: AppTemplateModel = {
+    name: "MongoDB",
+    iconName: 'mongodb.svg',
+    templates: [
+        getMongodbAppTemplate()
+    ],
 };
