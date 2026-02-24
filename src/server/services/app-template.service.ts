@@ -1,11 +1,12 @@
 import { AppTemplateContentModel, AppTemplateInputSettingsModel, AppTemplateModel } from "@/shared/model/app-template.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "./app.service";
-import { allTemplates } from "@/shared/templates/all.templates";
+import { allTemplates, postCreateTemplateFunctions } from "@/shared/templates/all.templates";
 import { AppTemplateUtils } from "../utils/app-template.utils";
 import { DatabaseTemplateInfoModel } from "@/shared/model/database-template-info.model";
-import { revalidateTag } from "next/cache";
-import { Tags } from "../utils/cache-tag-generator.utils";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import dataAccess from "../adapter/db.client";
+import { Prisma } from "@prisma/client";
 
 class AppTemplateService {
 
@@ -14,62 +15,78 @@ class AppTemplateService {
             throw new ServiceException(`Template with name '${template.name}' not found.`);
         }
 
-        let databaseInfo: DatabaseTemplateInfoModel | undefined;
+        return await dataAccess.client.$transaction(async (tx) => {
+            let databaseInfo: DatabaseTemplateInfoModel | undefined;
 
-        for (const tmpl of template.templates) {
-            const createdAppId = await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings);
-            const extendedApp = await appService.getExtendedById(createdAppId, false);
+            const createdTemplates: AppExtendedModel[] = [];
 
-            // used for templates with multiple apps and a database
-            if (databaseInfo) {
-                AppTemplateUtils.replacePlaceholdersInEnvVariablesWithDatabaseInfo(extendedApp, databaseInfo);
-                await appService.save({
-                    id: createdAppId,
-                    envVars: extendedApp.envVars
-                });
+            for (const tmpl of template.templates) {
+                const createdAppId = await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings, tx);
+                let extendedApp = await appService.getExtendedById(createdAppId, false, tx);
+
+                // used for templates with multiple apps and a database
+                if (databaseInfo) {
+                    AppTemplateUtils.replacePlaceholdersInEnvVariablesWithDatabaseInfo(extendedApp, databaseInfo);
+                    await appService.save({
+                        id: createdAppId,
+                        envVars: extendedApp.envVars
+                    }, false, tx);
+                    extendedApp = await appService.getExtendedById(createdAppId, false, tx);
+                }
+                if (extendedApp.appType !== 'APP') {
+                    databaseInfo = AppTemplateUtils.getDatabaseModelFromApp(extendedApp);
+                }
+                createdTemplates.push(extendedApp);
             }
-            if (extendedApp.appType !== 'APP') {
-                databaseInfo = AppTemplateUtils.getDatabaseModelFromApp(extendedApp);
+
+            // run post create function if exists for this template
+            const postFunctionForTempalte = postCreateTemplateFunctions.get(template.name);
+            if (postFunctionForTempalte) {
+                const updatedApps = await postFunctionForTempalte(createdTemplates);
+                // save updated apps todo
+                for (const app of updatedApps) {
+                    await appService.saveAppExtendedModel(app, tx);
+                }
             }
-        }
+        });
     }
 
     private async createAppFromTemplateContent(projectId: string, template: AppTemplateContentModel,
-        inputValues: AppTemplateInputSettingsModel[]) {
+        inputValues: AppTemplateInputSettingsModel[], tx: Prisma.TransactionClient) {
 
         const mappedApp = AppTemplateUtils.mapTemplateInputValuesToApp(template, inputValues);
         const createdApp = await appService.save({
             ...mappedApp,
             projectId
-        }, false);
+        }, false, tx);
 
-        const savedDomains = await Promise.all(template.appDomains.map(async x => {
-            return await appService.saveDomain({
-                ...x,
+        for (const domain of template.appDomains) {
+            await appService.saveDomain({
+                ...domain,
                 appId: createdApp.id
-            });
-        }));
+            }, tx);
+        }
 
-        const savedVolumes = await Promise.all(template.appVolumes.map(async x => {
-            return await appService.saveVolume({
-                ...x,
+        for (const volume of template.appVolumes) {
+            await appService.saveVolume({
+                ...volume,
                 appId: createdApp.id
-            });
-        }));
+            }, tx);
+        }
 
-        const savedFileMounts = await Promise.all(template.appFileMounts.map(async x => {
-            return await appService.saveFileMount({
-                ...x,
+        for (const fileMount of template.appFileMounts) {
+            await appService.saveFileMount({
+                ...fileMount,
                 appId: createdApp.id
-            });
-        }));
+            }, tx);
+        }
 
-        const savedPorts = await Promise.all(template.appPorts.map(async x => {
-            return await appService.savePort({
-                ...x,
+        for (const port of template.appPorts) {
+            await appService.savePort({
+                ...port,
                 appId: createdApp.id
-            });
-        }));
+            }, tx);
+        }
 
         return createdApp.id;
     }

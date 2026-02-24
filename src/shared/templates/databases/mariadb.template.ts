@@ -1,10 +1,14 @@
 import { Constants } from "@/shared/utils/constants";
-import { AppTemplateModel } from "../../model/app-template.model";
+import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 
-export const mariadbAppTemplate: AppTemplateModel = {
-    name: "MariaDB",
-    iconName: 'mariadb.svg',
-    templates: [{
+export function getMariadbAppTemplate(config?: {
+    appName?: string,
+    dbName?: string,
+    dbUsername?: string,
+    dbPassword?: string,
+    rootPassword?: string
+}): AppTemplateContentModel {
+    return {
         inputSettings: [
             {
                 key: "containerImageSource",
@@ -16,34 +20,34 @@ export const mariadbAppTemplate: AppTemplateModel = {
             {
                 key: "MYSQL_DATABASE",
                 label: "Database Name",
-                value: "mariadb",
+                value: config?.dbName || "mariadb",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MYSQL_USER",
                 label: "Database User",
-                value: "mariadbuser",
+                value: config?.dbUsername || "mariadbuser",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "MYSQL_PASSWORD",
                 label: "Database Passwort",
-                value: "",
+                value: config?.dbPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
             {
                 key: "MYSQL_ROOT_PASSWORD",
                 label: "Root Password",
-                value: "",
+                value: config?.rootPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
         ],
         appModel: {
-            name: "MariaDb",
+            name: config?.appName || "MariaDB",
             appType: 'MARIADB',
             sourceType: 'CONTAINER',
             containerImageSource: "",
@@ -54,7 +58,7 @@ export const mariadbAppTemplate: AppTemplateModel = {
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
-            healthCheckFailureThreshold: 3,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
         },
         appDomains: [],
         appVolumes: [{
@@ -68,5 +72,13 @@ export const mariadbAppTemplate: AppTemplateModel = {
         appPorts: [{
             port: 3306,
         }]
-    }]
+    };
 }
+
+export const mariadbAppTemplate: AppTemplateModel = {
+    name: "MariaDB",
+    iconName: 'mariadb.svg',
+    templates: [
+        getMariadbAppTemplate()
+    ]
+};

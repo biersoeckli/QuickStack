@@ -43,7 +43,7 @@ export const createAppFromTemplate = async (prevState: any, inputData: AppTempla
             throw new ServiceException('Please fill out all required fields.');
         }
         await appTemplateService.createAppFromTemplate(projectId, validatedData);
-        return new SuccessActionResult(undefined, "App created successfully.");
+        return new SuccessActionResult(undefined, "");
     });
 
 export const deleteApp = async (appId: string) =>

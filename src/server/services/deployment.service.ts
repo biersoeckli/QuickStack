@@ -19,6 +19,7 @@ import secretService from "./secret.service";
 import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
 import networkPolicyService from "./network-policy.service";
+import { z } from "zod";
 
 class DeploymentService {
 
@@ -57,6 +58,15 @@ class DeploymentService {
     async validateDeployment(app: AppExtendedModel) {
         if (app.replicas > 1 && app.appVolumes.length > 0 && app.appVolumes.every(vol => vol.accessMode === 'ReadWriteOnce')) {
             throw new ServiceException("Deployment with more than one replica is not possible if access mode of one volume is ReadWriteOnce.");
+        }
+
+        // Validate containerArgs is valid JSON array if provided
+        if (app.containerArgs) {
+            const parsed = JSON.parse(app.containerArgs);
+            const validatedData = z.array(z.string()).safeParse(parsed);
+            if (!validatedData.success) {
+                throw new ServiceException("Container arguments must be a valid JSON array, e.g., [\"arg1\", \"arg2\"]");
+            }
         }
     }
 
@@ -127,6 +137,8 @@ class DeploymentService {
                                 name: app.id,
                                 image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
+                                ...(app.containerCommand ? { command: [app.containerCommand] } : {}),
+                                ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
                                 ...(envVars.length > 0 ? { env: envVars } : {}),
                                 ...(allVolumeMounts.length > 0 ? { volumeMounts: allVolumeMounts } : {}),
                             }

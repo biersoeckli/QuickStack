@@ -13,6 +13,8 @@ import svcService from "./svc.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import crypto from "crypto";
 import networkPolicyService from "./network-policy.service";
+import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
+import { z } from "zod";
 
 class AppService {
 
@@ -87,7 +89,7 @@ class AppService {
         })(projectId as string);
     }
 
-    async getExtendedById(appId: string, cached = true): Promise<AppExtendedModel> {
+    async getExtendedById(appId: string, cached = true, tx?: Prisma.TransactionClient): Promise<AppExtendedModel> {
         const include = {
             project: true,
             appDomains: true,
@@ -97,8 +99,9 @@ class AppService {
             appBasicAuths: true
         };
 
+        const client = tx || dataAccess.client;
         if (cached) {
-            return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
+            return await unstable_cache(async (id: string) => await client.app.findFirstOrThrow({
                 where: {
                     id
                 },
@@ -108,7 +111,7 @@ class AppService {
                 tags: [Tags.app(appId)]
             })(appId);
         } else {
-            return await dataAccess.client.app.findFirstOrThrow({
+            return await client.app.findFirstOrThrow({
                 where: {
                     id: appId
                 }, include
@@ -135,11 +138,12 @@ class AppService {
         });
     }
 
-    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, createDefaultPort = true) {
+    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, createDefaultPort = true, tx?: Prisma.TransactionClient) {
         let savedItem: App;
+        const client = tx || dataAccess.client;
         try {
             if (item.id) {
-                savedItem = await dataAccess.client.app.update({
+                savedItem = await client.app.update({
                     where: {
                         id: item.id as string
                     },
@@ -147,12 +151,12 @@ class AppService {
                 });
             } else {
                 item.id = KubeObjectNameUtils.toAppId(item.name as string);
-                savedItem = await dataAccess.client.app.create({
+                savedItem = await client.app.create({
                     data: item as Prisma.AppUncheckedCreateInput
                 });
                 if (createDefaultPort) {
                     // add default port 80
-                    await dataAccess.client.appPort.create({
+                    await client.appPort.create({
                         data: {
                             appId: savedItem.id,
                             port: 80
@@ -170,6 +174,62 @@ class AppService {
         return savedItem;
     }
 
+    async saveAppExtendedModel(app: AppExtendedModel, tx?: Prisma.TransactionClient) {
+
+        const parsedAppModel = AppModel.parse(app);
+        await this.save({
+            ...parsedAppModel,
+            id: app.id
+        }, false, tx);
+
+        // for new objects, make sure some params are optional, wich will be created by prisma
+        const optionalParam = z.object({
+            id: z.string().optional(),
+            createdAt: z.date().optional(),
+            updatedAt: z.date().optional(),
+        });
+
+        const parsedDomains = AppDomainModel.merge(optionalParam).array().parse(app.appDomains);
+        for (const domain of parsedDomains) {
+            await this.saveDomain({
+                ...domain,
+                appId: app.id
+            }, tx);
+        }
+
+        const parsedVolumes = AppVolumeModel.merge(optionalParam).array().parse(app.appVolumes);
+        for (const volume of parsedVolumes) {
+            await this.saveVolume({
+                ...volume,
+                appId: app.id
+            }, tx);
+        }
+
+        const parsedFileMounts = AppFileMountModel.merge(optionalParam).array().parse(app.appFileMounts);
+        for (const fileMount of parsedFileMounts) {
+            await this.saveFileMount({
+                ...fileMount,
+                appId: app.id
+            }, tx);
+        }
+
+        const parsedPorts = AppPortModel.merge(optionalParam).array().parse(app.appPorts);
+        for (const port of parsedPorts) {
+            await this.savePort({
+                ...port,
+                appId: app.id
+            }, tx);
+        }
+
+        const parsedBasicAuths = AppBasicAuthModel.merge(optionalParam).array().parse(app.appBasicAuths);
+        for (const basicAuth of parsedBasicAuths) {
+            await this.saveBasicAuth({
+                ...basicAuth,
+                appId: app.id
+            }, tx);
+        }
+    }
+
     async regenerateWebhookId(appId: string) {
         const existingApp = await this.getById(appId);
 
@@ -180,10 +240,11 @@ class AppService {
         });
     }
 
-    async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput) {
+    async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppDomain;
+        const client = tx || dataAccess.client;
         const existingApp = await this.getExtendedById(domainToBeSaved.appId as string);
-        const existingDomainWithSameHostname = await dataAccess.client.appDomain.findFirst({
+        const existingDomainWithSameHostname = await client.appDomain.findFirst({
             where: {
                 hostname: domainToBeSaved.hostname as string,
             }
@@ -195,7 +256,7 @@ class AppService {
                     domainToBeSaved.id !== existingDomainWithSameHostname?.id) {
                     throw new ServiceException("Hostname is already in use by this or another app.");
                 }
-                savedItem = await dataAccess.client.appDomain.update({
+                savedItem = await client.appDomain.update({
                     where: {
                         id: domainToBeSaved.id as string
                     },
@@ -205,7 +266,7 @@ class AppService {
                 if (existingDomainWithSameHostname) {
                     throw new ServiceException("Hostname is already in use by this or another app.");
                 }
-                savedItem = await dataAccess.client.appDomain.create({
+                savedItem = await client.appDomain.create({
                     data: domainToBeSaved as Prisma.AppDomainUncheckedCreateInput
                 });
             }
@@ -289,10 +350,11 @@ class AppService {
         });
     }
 
-    async saveVolume(volumeToBeSaved: Prisma.AppVolumeUncheckedCreateInput | Prisma.AppVolumeUncheckedUpdateInput) {
+    async saveVolume(volumeToBeSaved: Prisma.AppVolumeUncheckedCreateInput | Prisma.AppVolumeUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppVolume;
-        const existingApp = await this.getExtendedById(volumeToBeSaved.appId as string);
-        const existingAppWithSameVolumeMountPath = await dataAccess.client.appVolume.findMany({
+        const client = tx || dataAccess.client;
+        const existingApp = await this.getExtendedById(volumeToBeSaved.appId as string, false, client);
+        const existingAppWithSameVolumeMountPath = await client.appVolume.findMany({
             where: {
                 appId: volumeToBeSaved.appId as string,
             }
@@ -306,14 +368,14 @@ class AppService {
 
         try {
             if (volumeToBeSaved.id) {
-                savedItem = await dataAccess.client.appVolume.update({
+                savedItem = await client.appVolume.update({
                     where: {
                         id: volumeToBeSaved.id as string
                     },
                     data: volumeToBeSaved
                 });
             } else {
-                savedItem = await dataAccess.client.appVolume.create({
+                savedItem = await client.appVolume.create({
                     data: volumeToBeSaved as Prisma.AppVolumeUncheckedCreateInput
                 });
             }
@@ -355,10 +417,11 @@ class AppService {
         }
     }
 
-    async saveFileMount(fileMountToBeSaved: Prisma.AppFileMountUncheckedCreateInput | Prisma.AppFileMountUncheckedUpdateInput) {
+    async saveFileMount(fileMountToBeSaved: Prisma.AppFileMountUncheckedCreateInput | Prisma.AppFileMountUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppFileMount;
-        const existingApp = await this.getExtendedById(fileMountToBeSaved.appId as string);
-        const existingAppWithSameVolumeMountPath = await dataAccess.client.appFileMount.findMany({
+        const client = tx || dataAccess.client;
+        const existingApp = await this.getExtendedById(fileMountToBeSaved.appId as string, false, client);
+        const existingAppWithSameVolumeMountPath = await client.appFileMount.findMany({
             where: {
                 appId: fileMountToBeSaved.appId as string,
             }
@@ -371,14 +434,14 @@ class AppService {
 
         try {
             if (fileMountToBeSaved.id) {
-                savedItem = await dataAccess.client.appFileMount.update({
+                savedItem = await client.appFileMount.update({
                     where: {
                         id: fileMountToBeSaved.id as string
                     },
                     data: fileMountToBeSaved
                 });
             } else {
-                savedItem = await dataAccess.client.appFileMount.create({
+                savedItem = await client.appFileMount.create({
                     data: fileMountToBeSaved as Prisma.AppFileMountUncheckedCreateInput
                 });
             }
@@ -413,10 +476,11 @@ class AppService {
         }
     }
 
-    async savePort(portToBeSaved: Prisma.AppPortUncheckedCreateInput | Prisma.AppPortUncheckedUpdateInput) {
+    async savePort(portToBeSaved: Prisma.AppPortUncheckedCreateInput | Prisma.AppPortUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppPort;
-        const existingApp = await this.getExtendedById(portToBeSaved.appId as string);
-        const allPortsOfApp = await dataAccess.client.appPort.findMany({
+        const client = tx || dataAccess.client;
+        const existingApp = await this.getExtendedById(portToBeSaved.appId as string, false, client);
+        const allPortsOfApp = await client.appPort.findMany({
             where: {
                 appId: portToBeSaved.appId as string,
             }
@@ -427,14 +491,14 @@ class AppService {
         }
         try {
             if (portToBeSaved.id) {
-                savedItem = await dataAccess.client.appPort.update({
+                savedItem = await client.appPort.update({
                     where: {
                         id: portToBeSaved.id as string
                     },
                     data: portToBeSaved
                 });
             } else {
-                savedItem = await dataAccess.client.appPort.create({
+                savedItem = await client.appPort.create({
                     data: portToBeSaved as Prisma.AppPortUncheckedCreateInput
                 });
             }
@@ -477,19 +541,20 @@ class AppService {
         }
     }
 
-    async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput) {
+    async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppBasicAuth;
-        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string);
+        const client = tx || dataAccess.client;
+        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, tx);
         try {
             if (itemToBeSaved.id) {
-                savedItem = await dataAccess.client.appBasicAuth.update({
+                savedItem = await client.appBasicAuth.update({
                     where: {
                         id: itemToBeSaved.id as string
                     },
                     data: itemToBeSaved
                 });
             } else {
-                savedItem = await dataAccess.client.appBasicAuth.create({
+                savedItem = await client.appBasicAuth.create({
                     data: itemToBeSaved as Prisma.AppBasicAuthUncheckedCreateInput
                 });
             }

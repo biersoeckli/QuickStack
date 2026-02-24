@@ -183,6 +183,8 @@ model App {
   containerImageSource      String?
   containerRegistryUsername String?
   containerRegistryPassword String?
+  containerCommand          String? // Custom command to override container ENTRYPOINT
+  containerArgs             String? // Custom args to override container CMD (JSON array string)
 
   gitUrl         String?
   gitBranch      String?

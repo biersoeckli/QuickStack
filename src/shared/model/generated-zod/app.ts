@@ -11,6 +11,8 @@ export const AppModel = z.object({
   containerImageSource: z.string().nullish(),
   containerRegistryUsername: z.string().nullish(),
   containerRegistryPassword: z.string().nullish(),
+  containerCommand: z.string().nullish(),
+  containerArgs: z.string().nullish(),
   gitUrl: z.string().nullish(),
   gitBranch: z.string().nullish(),
   gitUsername: z.string().nullish(),

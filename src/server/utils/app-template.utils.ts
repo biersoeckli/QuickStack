@@ -54,6 +54,48 @@ export class AppTemplateUtils {
         }
     }
 
+    static getRandomKey(hexCharsCount = 32): string {
+        return crypto.randomBytes(hexCharsCount / 2).toString('hex');
+    }
+
+    /**
+     * Generates a strong password that contains at least
+     * one uppercase letter, one lowercase letter, one number, and one special character.
+     * Valid length range: 10-72 characters.
+     */
+    static generateStrongPasswort(length = 25): string {
+        if (length < 10 || length > 72) {
+            throw new ServiceException('Password must be 10-72 characters long');
+        }
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const numbers = '0123456789';
+        const special = '!$%*()-_+[]{};,.';
+        const all = uppercase + lowercase + numbers + special;
+
+        // Guarantee at least one character from each required category
+        const required = [
+            uppercase[crypto.randomInt(uppercase.length)],
+            lowercase[crypto.randomInt(lowercase.length)],
+            numbers[crypto.randomInt(numbers.length)],
+            special[crypto.randomInt(special.length)],
+        ];
+
+        const remaining = Array.from({ length: length - required.length }, () =>
+            all[crypto.randomInt(all.length)]
+        );
+
+        const combined = [...required, ...remaining];
+
+        // Fisher-Yates shuffle to avoid predictable positions
+        for (let i = combined.length - 1; i > 0; i--) {
+            const j = crypto.randomInt(i + 1);
+            [combined[i], combined[j]] = [combined[j], combined[i]];
+        }
+
+        return combined.join('');
+    }
+
     static getDatabaseModelFromApp(app: AppExtendedModel): DatabaseTemplateInfoModel {
         if (app.appType === 'APP') {
             throw new ServiceException('Cannot retreive database infos from app');
@@ -97,6 +139,24 @@ export class AppTemplateUtils {
                 port,
                 hostname,
                 internalConnectionUrl: `mariadb://${envVars.find(x => x.name === 'MYSQL_USER')?.value!}:${envVars.find(x => x.name === 'MYSQL_PASSWORD')?.value!}@${hostname}:${port}/${envVars.find(x => x.name === 'MYSQL_DATABASE')?.value!}`,
+            };
+        } else if (app.appType === 'REDIS') {
+            let password = '';
+            if (app.containerArgs) {
+                try {
+                    const args = JSON.parse(app.containerArgs);
+                    password = args.find((x: string) => x === '--requirepass') ? args[args.findIndex((x: string) => x === '--requirepass') + 1] : '';
+                } catch (e) {
+                    console.error('Error parsing container args for redis password', e);
+                }
+            }
+            returnVal = {
+                databaseName: '',
+                username: '',
+                password,
+                port,
+                hostname,
+                internalConnectionUrl: password ? `redis://:${password}@${hostname}:${port}` : `redis://${hostname}:${port}`,
             };
         } else {
             throw new ServiceException('Unknown database type, could not load database information.');

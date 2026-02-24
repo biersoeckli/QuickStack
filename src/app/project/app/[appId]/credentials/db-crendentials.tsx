@@ -37,21 +37,21 @@ export default function DbCredentials({
             <CardContent>
                 {!databaseCredentials ? <FullLoadingSpinner /> : <>
                     <div className="grid grid-cols-2 gap-4">
-                        <CopyInputField
+                        {!!databaseCredentials?.databaseName && <>   <CopyInputField
                             label="Database Name"
                             value={databaseCredentials?.databaseName || ''} />
 
-                        <div></div>
+                            <div></div>
+                        </>}
 
-                        <CopyInputField
+                        {!!databaseCredentials?.username && <CopyInputField
                             label="Username"
-                            value={databaseCredentials?.username || ''} />
+                            value={databaseCredentials?.username || ''} />}
 
-                        <CopyInputField
+                        {!!databaseCredentials?.password && <CopyInputField
                             label="Password"
                             secret={true}
-                            value={databaseCredentials?.password || ''} />
-
+                            value={databaseCredentials?.password || ''} />}
 
                         <CopyInputField
                             label="Internal Hostname"

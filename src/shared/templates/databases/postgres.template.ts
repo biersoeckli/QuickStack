@@ -1,42 +1,45 @@
 import { Constants } from "@/shared/utils/constants";
-import { AppTemplateModel } from "../../model/app-template.model";
+import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 
-export const postgreAppTemplate: AppTemplateModel = {
-    name: "PostgreSQL",
-    iconName: 'postgres.svg',
-    templates: [{
+export function getPostgresAppTemplate(config?: {
+    appName?: string,
+    dbName?: string,
+    dbUsername?: string,
+    dbPassword?: string
+}): AppTemplateContentModel {
+    return {
         inputSettings: [
             {
                 key: "containerImageSource",
                 label: "Container Image",
-                value: "postgres:17",
+                value: "postgres:18-alpine",
                 isEnvVar: false,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "POSTGRES_DB",
                 label: "Database Name",
-                value: "postgresdb",
+                value: config?.dbName || "postgresdb",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "POSTGRES_USER",
                 label: "Database User",
-                value: "postgresuser",
+                value: config?.dbUsername || "postgresuser",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: false,
             },
             {
                 key: "POSTGRES_PASSWORD",
                 label: "Database Password",
-                value: "",
+                value: config?.dbPassword || "",
                 isEnvVar: true,
                 randomGeneratedIfEmpty: true,
             },
         ],
         appModel: {
-            name: "PostgreSQL",
+            name: config?.appName || "PostgreSQL",
             appType: 'POSTGRES',
             sourceType: 'CONTAINER',
             containerImageSource: "",
@@ -46,9 +49,9 @@ export const postgreAppTemplate: AppTemplateModel = {
             envVars: `PGDATA=/var/lib/qs-postgres/data
 `,
             useNetworkPolicy: true,
-            healthCheckPeriodSeconds: 15,
+            healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: 5,
-            healthCheckFailureThreshold: 3,
+            healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
         },
         appDomains: [],
         appVolumes: [{
@@ -62,5 +65,13 @@ export const postgreAppTemplate: AppTemplateModel = {
         appPorts: [{
             port: 5432,
         }]
-    }],
+    };
+}
+
+export const postgreAppTemplate: AppTemplateModel = {
+    name: "PostgreSQL",
+    iconName: 'postgres.svg',
+    templates: [
+        getPostgresAppTemplate()
+    ]
 };
