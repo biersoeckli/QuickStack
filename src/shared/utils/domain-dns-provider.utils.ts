@@ -13,7 +13,7 @@ export class HostnameDnsProviderUtils {
         return `${traefikFriendlyIpv4}.${this.PROVIDER_HOSTNAME}`;
     }
 
-    static getHexHostanmeForIpAddress(ipv4Address: string): string {
+    static getHexHostnameForIpAddress(ipv4Address: string): string {
         const traefikFriendlyIpv4 = this.ipv4ToHex(ipv4Address)
         return `${traefikFriendlyIpv4}.${this.PROVIDER_HOSTNAME}`;
     }

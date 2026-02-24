@@ -31,6 +31,7 @@ import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
 import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
+import longhornUiService from "@/server/services/longhorn-ui.service";
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
   simpleAction(async () => {
@@ -319,4 +320,32 @@ export const startLonghornUpgrade = async () =>
     await getAdminUserSession();
     await longhornUpdateService.upgrade();
     return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
+  });
+
+export const getLonghornUiIngressStatus = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const active = await longhornUiService.isIngressActive();
+    return new SuccessActionResult(active);
+  }) as Promise<ServerActionResult<unknown, boolean>>;
+
+export const enableLonghornUiIngress = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const credentials = await longhornUiService.enable();
+    return new SuccessActionResult(credentials, 'Longhorn UI is now accessible.');
+  }) as Promise<ServerActionResult<unknown, { url: string; username: string; password: string }>>;
+
+export const getLonghornUiCredentials = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const credentials = await longhornUiService.getCredentials();
+    return new SuccessActionResult(credentials);
+  }) as Promise<ServerActionResult<unknown, { url: string; username: string; password: string } | undefined>>;
+
+export const disableLonghornUiIngress = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await longhornUiService.disable();
+    return new SuccessActionResult(undefined, 'Longhorn UI access has been disabled.');
   });
