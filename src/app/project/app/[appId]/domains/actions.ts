@@ -66,5 +66,5 @@ export const getQuickstackDomainSuffix = async () => simpleAction(async () => {
     if (!publicIpv4) {
         throw new ServiceException('Please set the main public IPv4 address in the QuickStack settings first.');
     }
-    return HostnameDnsProviderUtils.getHexHostanmeForIpAddress(publicIpv4);
+    return HostnameDnsProviderUtils.getHexHostnameForIpAddress(publicIpv4);
 });

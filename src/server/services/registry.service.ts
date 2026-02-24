@@ -7,7 +7,7 @@ import paramService, { ParamService } from "./param.service";
 import { Constants } from "@/shared/utils/constants";
 import { S3Target } from "@prisma/client";
 import s3TargetService from "./s3-target.service";
-import clusterService from "./node.service";
+import clusterService from "./cluster.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
 const REGISTRY_NODE_PORT = 30100;

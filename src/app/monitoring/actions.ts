@@ -1,7 +1,7 @@
 'use server'
 
 import monitoringService from "@/server/services/monitoring.service";
-import clusterService from "@/server/services/node.service";
+import clusterService from "@/server/services/cluster.service";
 import { getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";

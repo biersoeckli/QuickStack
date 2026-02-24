@@ -87,9 +87,15 @@ select_network_interface
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # THIS MUST BE INSTALLED ON ALL NODES --> https://longhorn.io/docs/1.7.2/deploy/install/#installing-nfsv4-client
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-echo "Installing nfs-common..."
+echo "Installing nfs-common and jq..."
 sudo apt-get update
-sudo apt-get install open-iscsi nfs-common -y
+sudo apt-get install open-iscsi nfs-common jq -y
+
+echo "Fetching version information..."
+K3S_VERSION=$(curl -s https://get.quickstack.dev/k3s-versions.json | jq -r '.prodInstallVersion')
+LONGHORN_VERSION=$(curl -s https://get.quickstack.dev/longhorn-versions.json | jq -r '.prodInstallVersion')
+echo "Using K3s version: $K3S_VERSION"
+echo "Using Longhorn version: $LONGHORN_VERSION"
 
 # Disable portmapper services --> https://github.com/biersoeckli/QuickStack/issues/18
 sudo systemctl stop rpcbind.service rpcbind.socket
@@ -99,7 +105,7 @@ sudo systemctl disable rpcbind.service rpcbind.socket
 #curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
 
 echo "Installing k3s with --flannel-iface=$selected_iface"
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="$K3S_VERSION" sh -
 # Todo: Check for Ready node, takes ~30 seconds
 sudo k3s kubectl get node
 
@@ -107,7 +113,7 @@ echo "Waiting for Kubernetes to start..."
 wait_until_all_pods_running
 
 # Installation of Longhorn
-sudo kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml
+sudo kubectl apply -f "https://raw.githubusercontent.com/longhorn/longhorn/${LONGHORN_VERSION}/deploy/longhorn.yaml"
 echo "Waiting for Longhorn to start..."
 wait_until_all_pods_running
 
@@ -116,8 +122,6 @@ sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/down
 echo "Waiting for Cert-Manager to start..."
 wait_until_all_pods_running
 sudo kubectl -n cert-manager get pod
-
-sudo apt-get install jq -y
 
 # Use this for checking installation of Longhorn
 # sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | sudo bash

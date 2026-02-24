@@ -47,15 +47,15 @@ describe('DomainDnsProviderUtils', () => {
 
     describe('getHostnameForIpAddress', () => {
         it('should convert IP address to hostname with hex format', () => {
-            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('192.168.1.1')).toBe('c0a80101.quickstack.me');
+            expect(HostnameDnsProviderUtils.getHexHostnameForIpAddress('192.168.1.1')).toBe('c0a80101.quickstack.me');
         });
 
         it('should handle another IP address format', () => {
-            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('10.0.0.1')).toBe('0a000001.quickstack.me');
+            expect(HostnameDnsProviderUtils.getHexHostnameForIpAddress('10.0.0.1')).toBe('0a000001.quickstack.me');
         });
 
         it('should handle localhost IP', () => {
-            expect(HostnameDnsProviderUtils.getHexHostanmeForIpAddress('127.0.0.1')).toBe('7f000001.quickstack.me');
+            expect(HostnameDnsProviderUtils.getHexHostnameForIpAddress('127.0.0.1')).toBe('7f000001.quickstack.me');
         });
     });
 

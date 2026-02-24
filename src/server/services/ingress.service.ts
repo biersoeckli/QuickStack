@@ -6,6 +6,7 @@ import { Constants } from "../../shared/utils/constants";
 import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
+import { CryptoUtils } from "../utils/crypto.utils";
 
 class IngressService {
 
@@ -159,20 +160,46 @@ class IngressService {
             await k3s.customObjects.deleteNamespacedCustomObject('traefik.io', 'v1alpha1', namespace, 'middlewares', middlewareName);
         }
 
-        // delete secret
+        // delete traefik basic auth secret
         const secretName = `bas-${basicAuthId}`;
         const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
         const existingSecret = existingSecrets.body.items.find((item) => item.metadata?.name === secretName);
         if (existingSecret) {
             await k3s.core.deleteNamespacedSecret(secretName, namespace);
         }
+
+        // delete plaintext credentials secret
+        const plaintextSecretName = `bas-plain-${basicAuthId}`;
+        const existingPlaintextSecret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+        if (existingPlaintextSecret) {
+            await k3s.core.deleteNamespacedSecret(plaintextSecretName, namespace);
+        }
+    }
+
+    /**
+     * Reads plaintext credentials from a separate bas-plain-{id} secret created alongside the basic auth middleware.
+     * @returns { username, password } or undefined if not present
+     */
+    async getPlaintextCredentialsFromSecret(namespace: string, basicAuthId: string): Promise<{ username: string; password: string } | undefined> {
+        const plaintextSecretName = `bas-plain-${basicAuthId}`;
+        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
+        const secret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+        if (!secret?.data) return undefined;
+        const usernameB64 = secret.data['username'];
+        const passwordB64 = secret.data['password'];
+        if (!usernameB64 || !passwordB64) return undefined;
+        return {
+            username: Buffer.from(usernameB64, 'base64').toString('utf-8'),
+            password: CryptoUtils.decrypt(Buffer.from(passwordB64, 'base64').toString('utf-8')),
+        };
     }
 
     /**
      * Configures a basic auth middleware in a namespace.
+     * @param storeCredentialsSeparately When true, also stores plainUsername and encryptet plainPassword in the secret for later retrieval.
      * @returns middleware name for annotation in ingress controller
      */
-    async configureBasicAuthMiddleware(namespace: string, basicAuthId: string, usernamePassword: [string, string][]) {
+    async configureBasicAuthMiddleware(namespace: string, basicAuthId: string, usernamePassword: [string, string][], storeCredentialsSeparately = false) {
 
         const basicAuthNameMiddlewareName = `ba-${basicAuthId}`; // basic auth middleware
         const basicAuthSecretName = `bas-${basicAuthId}`; // basic auth secret
@@ -186,6 +213,7 @@ class IngressService {
 
         const usernameAndSha1PasswordStrings = usernamePassword.map(([username, password]) => `${username}:{SHA}${createHash('sha1').update(password).digest('base64')}`);
 
+        // Traefik requires the secret to contain only the `users` field
         const secretManifest: V1Secret = {
             apiVersion: 'v1',
             kind: 'Secret',
@@ -205,6 +233,28 @@ class IngressService {
             secretNamespace,       // namespace
             secretManifest          // object manifest
         );
+
+        // Store plaintext credentials in a separate secret so they can be displayed to the user
+        if (storeCredentialsSeparately && usernamePassword.length > 0) {
+            const plaintextSecretName = `bas-plain-${basicAuthId}`;
+            const existingPlaintextSecret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+            const plaintextSecretManifest: V1Secret = {
+                apiVersion: 'v1',
+                kind: 'Secret',
+                metadata: {
+                    name: plaintextSecretName,
+                    namespace: secretNamespace,
+                },
+                data: {
+                    username: Buffer.from(usernamePassword[0][0]).toString('base64'),
+                    password: Buffer.from(CryptoUtils.encrypt(usernamePassword[0][1])).toString('base64')
+                }
+            };
+            if (existingPlaintextSecret) {
+                await k3s.core.deleteNamespacedSecret(plaintextSecretName, secretNamespace);
+            }
+            await k3s.core.createNamespacedSecret(secretNamespace, plaintextSecretManifest);
+        }
 
         // Create a middleware with basic auth
         const existingBasicAuthMiddlewares = await k3s.customObjects.listNamespacedCustomObject('traefik.io',            // group
@@ -234,7 +284,7 @@ class IngressService {
         await k3s.customObjects.createNamespacedCustomObject(
             'traefik.io',           // group
             'v1alpha1',             // version
-            middlewareNamespace,       // namespace
+            middlewareNamespace,    // namespace
             'middlewares',          // plural name of the custom resource
             middlewareManifest      // object manifest
         );
