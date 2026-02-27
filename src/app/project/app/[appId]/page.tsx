@@ -20,11 +20,12 @@ export default async function AppPage({
     }
     const session = await isAuthorizedReadForApp(appId);
     const role = UserGroupUtils.getRolePermissionForApp(session, appId);
-    const [app, s3Targets, volumeBackups, nodesInfo] = await Promise.all([
+    const [app, s3Targets, volumeBackups, nodesInfo, storageClasses] = await Promise.all([
         appService.getExtendedById(appId),
         s3TargetService.getAll(),
         volumeBackupService.getForApp(appId),
-        clusterService.getNodeInfo()
+        clusterService.getNodeInfo(),
+        clusterService.getStorageClasses()
     ]);
 
     return (<>
@@ -34,6 +35,7 @@ export default async function AppPage({
             s3Targets={s3Targets}
             app={app}
             nodesInfo={nodesInfo}
+            storageClasses={storageClasses}
             tabName={searchParams?.tabName ?? 'overview'} />
         <AppBreadcrumbs app={app} />
     </>

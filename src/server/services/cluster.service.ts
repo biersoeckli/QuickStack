@@ -2,6 +2,7 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
+import { StorageClassInfoModel } from "@/shared/model/storage-class-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
 import longhornApiAdapter from "../adapter/longhorn-api.adapter";
@@ -47,6 +48,26 @@ class ClusterService {
         const nodes = await this.getNodeInfo();
         nodes.sort((a, b) => a.name.localeCompare(b.name));
         return nodes.find(node => node.isMasterNode)!; // even on HA Cluster, only one node is returned
+    }
+
+    async getStorageClasses(): Promise<StorageClassInfoModel[]> {
+        return await unstable_cache(async () => {
+            const result = await k3s.storage.listStorageClass();
+            const storageClassInfoModel = result.body.items
+                .filter(sc => sc.metadata && sc.metadata.name)
+                .map((sc) => ({
+                    name: sc.metadata!.name!,
+                    isDefault: sc.metadata?.annotations?.['storageclass.kubernetes.io/is-default-class'] === 'true',
+                }));
+            // filter out other storage classes that are not relevant for users to choose from
+            return storageClassInfoModel.filter(sc => ![
+                'longhorn-static'
+            ].includes(sc.name!));
+        },
+            [Tags.storageClasses()], {
+            revalidate: 30,
+            tags: [Tags.storageClasses()]
+        })();
     }
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {

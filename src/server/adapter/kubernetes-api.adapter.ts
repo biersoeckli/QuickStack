@@ -10,6 +10,7 @@ class K3sApiAdapter {
     network: k8s.NetworkingV1Api;
     customObjects: k8s.CustomObjectsApi;
     metrics: k8s.Metrics;
+    storage: k8s.StorageV1Api;
 
     constructor() {
         this.core = this.getK8sCoreApiClient();
@@ -19,6 +20,7 @@ class K3sApiAdapter {
         this.network = this.getK8sNetworkApiClient();
         this.customObjects = this.getK8sCustomObjectsApiClient();
         this.metrics = this.getMetricsApiClient();
+        this.storage = this.getK8sStorageApiClient();
     }
 
     getKubeConfig = () => {
@@ -69,6 +71,11 @@ class K3sApiAdapter {
 
     getMetricsApiClient = () => {
         return new k8s.Metrics(this.getKubeConfig());
+    }
+
+    getK8sStorageApiClient = () => {
+        const kc = this.getKubeConfig();
+        return kc.makeApiClient(k8s.StorageV1Api);
     }
 
     /**

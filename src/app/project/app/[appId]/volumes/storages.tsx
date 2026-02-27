@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { Progress } from "@/components/ui/progress";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
+import { StorageClassInfoModel } from "@/shared/model/storage-class-info.model";
 
 type AppVolumeWithCapacity = (AppVolume & {
     usedBytes?: number;
@@ -31,9 +32,10 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedPercentage?: number;
 });
 
-export default function StorageList({ app, readonly, nodesInfo }: {
+export default function StorageList({ app, readonly, nodesInfo, storageClasses }: {
     app: AppExtendedModel;
     nodesInfo: NodeInfoModel[];
+    storageClasses: StorageClassInfoModel[];
     readonly: boolean;
 }) {
 
@@ -266,7 +268,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                                                 </Tooltip>
                                             </TooltipProvider>
                                         ) : (
-                                            <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo}>
+                                            <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo} storageClasses={storageClasses}>
                                                 <TooltipProvider>
                                                     <Tooltip delayDuration={200}>
                                                         <TooltipTrigger>
@@ -299,7 +301,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                 </Table>
             </CardContent>
             {!readonly && <CardFooter className="flex gap-2">
-                <DialogEditDialog app={app} nodesInfo={nodesInfo}>
+                <DialogEditDialog app={app} nodesInfo={nodesInfo} storageClasses={storageClasses}>
                     <Button>Add Volume</Button>
                 </DialogEditDialog>
                 <SharedStorageEditDialog app={app}>

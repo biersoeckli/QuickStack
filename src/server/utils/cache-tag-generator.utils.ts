@@ -40,6 +40,10 @@ export class Tags {
         return `node-infos`;
     }
 
+    static storageClasses() {
+        return `storage-classes`;
+    }
+
     static quickStackVersionInfo() {
         return `quickstack-version-info`;
     }

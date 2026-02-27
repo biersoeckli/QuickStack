@@ -86,8 +86,8 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         if (existingApp.replicas > 1 && validatedData.accessMode === 'ReadWriteOnce') {
             throw new ServiceException('Volume access mode must be ReadWriteMany because your app has more than one replica configured.');
         }
-        if (validatedData.accessMode === 'ReadWriteMany' && validatedData.storageClassName === 'local-path') {
-            throw new ServiceException('The Local Path storage class does not support ReadWriteMany access mode. Please choose another storage class / access mode.');
+        if (validatedData.accessMode === 'ReadWriteMany' && validatedData.storageClassName !== 'longhorn') {
+            throw new ServiceException('ReadWriteMany access mode is only supported by the Longhorn storage class. Please choose Longhorn as storage class or use ReadWriteOnce.');
         }
         if (validatedData.shareWithOtherApps && (existingVolume?.accessMode ?? validatedData.accessMode) !== 'ReadWriteMany') {
             throw new ServiceException('Only ReadWriteMany volumes can be shared with other apps.');

@@ -40,6 +40,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { NodeInfoModel } from "@/shared/model/node-info.model"
+import { StorageClassInfoModel } from "@/shared/model/storage-class-info.model"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
 const accessModes = [
@@ -47,19 +48,27 @@ const accessModes = [
   { label: "ReadWriteMany", value: "ReadWriteMany" },
 ] as const
 
-const storageClasses = [
-  { label: "Longhorn (Default)", value: "longhorn", description: "Distributed, replicated storage recommended workloads in a cluster of multiple nodes." },
-  { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Data is stored on the master node. Only works in a single node setup." }
-] as const
-
-export default function StorageEditDialog({ children, volume, app, nodesInfo }: {
+export default function StorageEditDialog({ children, volume, app, nodesInfo, storageClasses }: {
   children: React.ReactNode;
   volume?: AppVolume;
   app: AppExtendedModel;
   nodesInfo: NodeInfoModel[];
+  storageClasses: StorageClassInfoModel[];
 }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  // Filter out local-path in multi-node clusters; on single-node all classes are available
+  const availableStorageClasses = nodesInfo.length > 1
+    ? storageClasses.filter(sc => sc.name !== 'local-path')
+    : storageClasses;
+
+  const resolveDefaultStorageClass = () => {
+    if (availableStorageClasses.find(sc => sc.name === 'longhorn')) return 'longhorn';
+    const defaultSc = availableStorageClasses.find(sc => sc.isDefault);
+    if (defaultSc) return defaultSc.name;
+    return availableStorageClasses[0]?.name ?? 'longhorn';
+  };
 
   const form = useForm<AppVolumeEditModel>({
     resolver: zodResolver(appVolumeEditZodModel),
@@ -67,7 +76,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
       containerMountPath: volume?.containerMountPath ?? '',
       size: volume?.size ?? 0,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
-      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      storageClassName: (volume?.storageClassName ?? resolveDefaultStorageClass()) as string,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
       sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     }
@@ -76,9 +85,17 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
   // Watch accessMode to conditionally show shareWithOtherApps checkbox
   const watchedAccessMode = form.watch("accessMode");
   const watchedStorageClassName = form.watch("storageClassName");
+  const supportsRWX = watchedStorageClassName === 'longhorn';
   const canBeShared = (!!volume ? volume.accessMode : watchedAccessMode === "ReadWriteMany") &&
-    watchedStorageClassName !== "local-path" &&
+    supportsRWX &&
     !volume?.sharedVolumeId;
+
+  // Auto-switch ReadWriteMany → ReadWriteOnce when selected class doesn't support it
+  useEffect(() => {
+    if (!supportsRWX && watchedAccessMode === 'ReadWriteMany') {
+      form.setValue('accessMode', 'ReadWriteOnce');
+    }
+  }, [watchedStorageClassName]);
 
   const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
     saveVolume(state, {
@@ -102,7 +119,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
     form.reset({
       ...volume,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
-      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      storageClassName: (volume?.storageClassName ?? resolveDefaultStorageClass()) as string,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
       sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     });
@@ -180,6 +197,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                                   This means that the volume can be mounted only by a single container instance.<br /><br />
                                   If you want to run multiple instances/replicas of the same container, you will need to use ReadWriteMany.
                                   This will allow multiple container instances to use the same storage on the same volume.<br /><br />
+                                  ReadWriteMany is only supported by the <b>Longhorn</b> storage class.<br /><br />
                                   After creation the access mode cannot be changed.
                                 </p>
                               </TooltipContent>
@@ -216,6 +234,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                                   <CommandItem
                                     value={accessMode.label}
                                     key={accessMode.value}
+                                    disabled={accessMode.value === 'ReadWriteMany' && !supportsRWX}
                                     onSelect={() => {
                                       form.setValue("accessMode", accessMode.value)
                                     }}
@@ -243,8 +262,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                     </FormItem>
                   )}
                 />
-                {nodesInfo.length === 1 &&
-                  <FormField
+                <FormField
                     control={form.control}
                     name="storageClassName"
                     render={({ field }) => (
@@ -258,8 +276,9 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                                 <TooltipContent>
                                   <p className="max-w-[350px]">
                                     Choose where the volume is provisioned.<br /><br />
-                                    <b>Longhorn</b> keeps data replicated across nodes.<br />
-                                    <b>Local Path</b> stores data on a the master node and works only in single-node clusters.
+                                    <b>Longhorn</b> keeps data replicated across nodes and supports ReadWriteMany.<br />
+                                    <b>Local Path</b> stores data on the master node and works only in single-node clusters.<br /><br />
+                                    Only <b>Longhorn</b> supports the ReadWriteMany access mode.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -279,9 +298,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                                 disabled={!!volume}
                               >
                                 {field.value
-                                  ? storageClasses.find(
-                                    (storageClass) => storageClass.value === field.value
-                                  )?.label
+                                  ? (field.value) + (availableStorageClasses.find(sc => sc.name === field.value)?.isDefault ? ' (Default)' : '')
                                   : "Select storage class"}
                                 <ChevronsUpDown className="opacity-50" />
                               </Button>
@@ -291,22 +308,21 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                             <Command>
                               <CommandList>
                                 <CommandGroup>
-                                  {storageClasses.map((storageClass) => (
+                                  {availableStorageClasses.map((sc) => (
                                     <CommandItem
-                                      value={storageClass.label}
-                                      key={storageClass.value}
+                                      value={sc.name}
+                                      key={sc.name}
                                       onSelect={() => {
-                                        form.setValue("storageClassName", storageClass.value);
+                                        form.setValue("storageClassName", sc.name);
                                       }}
                                     >
                                       <div className="flex flex-col gap-1">
-                                        <span>{storageClass.label}</span>
-                                        <span className="text-xs text-muted-foreground">{storageClass.description}</span>
+                                        <span>{sc.name}{sc.isDefault ? ' (Default)' : ''}</span>
                                       </div>
                                       <Check
                                         className={cn(
                                           "ml-auto",
-                                          storageClass.value === field.value
+                                          sc.name === field.value
                                             ? "opacity-100"
                                             : "opacity-0"
                                         )}
@@ -324,7 +340,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                         <FormMessage />
                       </FormItem>
                     )}
-                  />}
+                  />
                 {canBeShared && (
                   <CheckboxFormField
                     form={form}

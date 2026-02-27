@@ -2,7 +2,7 @@ import { stringToNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const appVolumeTypeZodModel = z.enum(["ReadWriteOnce", "ReadWriteMany"]);
-export const storageClassNameZodModel = z.enum(["longhorn", "local-path"]);
+export const storageClassNameZodModel = z.string().min(1);
 
 export const appVolumeEditZodModel = z.object({
   containerMountPath: z.string().trim().min(1),

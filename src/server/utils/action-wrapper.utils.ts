@@ -8,7 +8,6 @@ import { FormValidationException } from "@/shared/model/form-validation-exceptio
 import { authOptions } from "@/server/utils/auth-options";
 import { NextResponse } from "next/server";
 import userGroupService from "../services/user-group.service";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { UserGroupUtils } from "../../shared/utils/role.utils";
 
 /**

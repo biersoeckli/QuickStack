@@ -26,6 +26,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
+import { StorageClassInfoModel } from "@/shared/model/storage-class-info.model";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 
 export default function AppTabs({
@@ -34,7 +35,8 @@ export default function AppTabs({
     tabName,
     s3Targets,
     volumeBackups,
-    nodesInfo
+    nodesInfo,
+    storageClasses
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
@@ -42,6 +44,7 @@ export default function AppTabs({
     s3Targets: S3Target[];
     volumeBackups: VolumeBackupExtendedModel[];
     nodesInfo: NodeInfoModel[];
+    storageClasses: StorageClassInfoModel[];
 }) {
     const router = useRouter();
     const readonly = role !== RolePermissionEnum.READWRITE;
@@ -86,7 +89,7 @@ export default function AppTabs({
                 <InternalHostnames readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
-                <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
+                <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} storageClasses={storageClasses} />
                 <FileMount readonly={readonly} app={app} />
                 <VolumeBackupList
                     readonly={readonly}
