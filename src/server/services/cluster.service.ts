@@ -61,7 +61,7 @@ class ClusterService {
                 }));
             // filter out other storage classes that are not relevant for users to choose from
             return storageClassInfoModel.filter(sc => ![
-                'longhorn-static'
+              ''  //'longhorn-static'
             ].includes(sc.name!));
         },
             [Tags.storageClasses()], {

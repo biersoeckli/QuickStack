@@ -57,6 +57,10 @@ export class KubeObjectNameUtils {
         return `restore-${volumeId}`;
     }
 
+    static toMigrationJobName(volumeId: string): `migrate-${string}` {
+        return `migrate-${volumeId}`;
+    }
+
     static getIngressName(domainId: string): `ingress-${string}` {
         return `ingress-${domainId}`;
     }

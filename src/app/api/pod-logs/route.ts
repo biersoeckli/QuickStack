@@ -1,4 +1,5 @@
 import buildService from "@/server/services/build.service";
+import pvcMigrationService from "@/server/services/pvc-migration.service";
 import { z } from "zod";
 import stream from "stream";
 import k3s from "@/server/adapter/kubernetes-api.adapter";
@@ -13,6 +14,8 @@ const zodInputModel = z.object({
     namespace: z.string().optional(),
     podName: z.string().optional(),
     buildJobName: z.string().optional(),
+    migrationJobName: z.string().optional(),
+    migrationJobNamespace: z.string().optional(),
     linesCount: z.number().optional().default(100),
 });
 
@@ -21,7 +24,7 @@ export async function POST(request: Request) {
         const input = await request.json();
 
         const podInfo = zodInputModel.parse(input);
-        let { namespace, podName, buildJobName, linesCount } = podInfo;
+        let { namespace, podName, buildJobName, migrationJobName, migrationJobNamespace, linesCount } = podInfo;
         let pod;
         let streamKey;
         if (namespace && podName) {
@@ -32,6 +35,11 @@ export async function POST(request: Request) {
             namespace = BUILD_NAMESPACE;
             pod = await buildService.getPodForJob(buildJobName);
             streamKey = `${buildJobName}`;
+
+        } else if (migrationJobName && migrationJobNamespace) {
+            namespace = migrationJobNamespace;
+            pod = await pvcMigrationService.getPodForMigrationJob(migrationJobNamespace, migrationJobName);
+            streamKey = `migration_${migrationJobName}`;
 
         } else {
             console.error('Invalid pod info for streaming logs', podInfo);

@@ -4,11 +4,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink2, Unlink } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink, ArrowRightLeft, MoreHorizontal, ScrollText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MigrationLogsStreamed from "@/components/custom/migration-logs-streamed";
 import DialogEditDialog from "./storage-edit-overlay";
 import SharedStorageEditDialog from "./shared-storage-edit-overlay";
+import StorageMigrationDialog from "./storage-migration-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteVolume, downloadPvcData, getPvcUsage, openFileBrowserForVolume } from "./actions";
+import { deleteVolume, downloadPvcData, getPvcUsage, getVolumeMigrationStatus, openFileBrowserForVolume } from "./actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { AppVolume } from "@prisma/client";
 import React from "react";
@@ -25,6 +29,7 @@ import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.util
 import { Progress } from "@/components/ui/progress";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { StorageClassInfoModel } from "@/shared/model/storage-class-info.model";
+import { MigrationStatusResult } from "@/server/services/pvc-migration.service";
 
 type AppVolumeWithCapacity = (AppVolume & {
     usedBytes?: number;
@@ -41,6 +46,36 @@ export default function StorageList({ app, readonly, nodesInfo, storageClasses }
 
     const [volumesWithStorage, setVolumesWithStorage] = React.useState<AppVolumeWithCapacity[]>(app.appVolumes as AppVolumeWithCapacity[]);
     const [isLoading, setIsLoading] = React.useState(false);
+    const [migrationStatuses, setMigrationStatuses] = React.useState<Record<string, MigrationStatusResult>>({});
+    const [activeMigrationVolumeId, setActiveMigrationVolumeId] = React.useState<string | null>(null);
+    const [activeLogsVolumeId, setActiveLogsVolumeId] = React.useState<string | null>(null);
+
+    // Build a default not-found status for a volume
+    const defaultMigrationStatus = (volumeId: string): MigrationStatusResult => ({
+        status: 'not-found',
+        jobName: KubeObjectNameUtils.toMigrationJobName(volumeId),
+        namespace: app.projectId,
+    });
+
+    // Poll migration status for all base volumes every 10s
+    React.useEffect(() => {
+        const baseVolumes = app.appVolumes.filter(v => !v.sharedVolumeId);
+        if (baseVolumes.length === 0) return;
+
+        const poll = async () => {
+            const results = await Promise.all(
+                baseVolumes.map(async (v) => {
+                    const res = await getVolumeMigrationStatus(v.id);
+                    return { id: v.id, result: res.status === 'success' && res.data ? res.data : defaultMigrationStatus(v.id) };
+                })
+            );
+            setMigrationStatuses(Object.fromEntries(results.map(r => [r.id, r.result])));
+        };
+
+        poll();
+        const interval = setInterval(poll, 10_000);
+        return () => clearInterval(interval);
+    }, [app.appVolumes, app]);
 
     const loadAndMapStorageData = async () => {
 
@@ -180,7 +215,26 @@ export default function StorageList({ app, readonly, nodesInfo, storageClasses }
                                         </div>
                                     </>}
                                 </TableCell>
-                                <TableCell className="font-medium capitalize">{volume.storageClassName?.replace('-', ' ')}</TableCell>
+                                <TableCell className="font-medium">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="capitalize">{volume.storageClassName?.replace('-', ' ')}</span>
+                                        {!volume.sharedVolumeId && migrationStatuses[volume.id]?.status === 'active' && (
+                                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 inline-flex items-center gap-1 animate-pulse">
+                                                <ArrowRightLeft className="h-3 w-3" />Migrating...
+                                            </span>
+                                        )}
+                                        {!volume.sharedVolumeId && migrationStatuses[volume.id]?.status === 'succeeded' && (
+                                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 inline-flex items-center gap-1">
+                                                <ArrowRightLeft className="h-3 w-3" />Migration Done
+                                            </span>
+                                        )}
+                                        {!volume.sharedVolumeId && migrationStatuses[volume.id]?.status === 'failed' && (
+                                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 inline-flex items-center gap-1">
+                                                <ArrowRightLeft className="h-3 w-3" />Migration Failed
+                                            </span>
+                                        )}
+                                    </div>
+                                </TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium">
                                     {volume.shareWithOtherApps && (
@@ -214,86 +268,88 @@ export default function StorageList({ app, readonly, nodesInfo, storageClasses }
                                         </TooltipProvider>
                                     )}
                                 </TableCell>
-                                <TableCell className="font-medium flex gap-2">
-                                    {!volume.sharedVolumeId && <>
-                                        <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
-                                                    <Button variant="ghost" onClick={() => asyncDownloadPvcData(volume.id)} disabled={isLoading}>
-                                                        <Download />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Download volume content</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        {!readonly && <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
-                                                    <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
-                                                        <Folder />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>View content of Volume</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>}
-                                    </>}
-                                    {/*<StorageRestoreDialog app={app} volume={volume}>
-                                        <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
-                                                    <Button variant="ghost" disabled={isLoading}>
-                                                        <Upload />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Restore backup from zip</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </StorageRestoreDialog>*/}
-                                    {!readonly && <>
-                                        {volume.sharedVolumeId ? (
-                                            <TooltipProvider>
-                                                <Tooltip delayDuration={200}>
-                                                    <TooltipTrigger>
-                                                        <Button variant="ghost" disabled={true}><EditIcon /></Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Shared volumes cannot be edited (size and storage class are inherited)</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        ) : (
-                                            <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo} storageClasses={storageClasses}>
+                                <TableCell className="font-medium">
+                                    <div className="flex gap-1 items-center">
+                                        {/* Edit — direct icon */}
+                                        {!readonly && (
+                                            volume.sharedVolumeId ? (
                                                 <TooltipProvider>
                                                     <Tooltip delayDuration={200}>
-                                                        <TooltipTrigger>
-                                                            <Button variant="ghost" disabled={isLoading}><EditIcon /></Button>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" disabled={true}><EditIcon className="h-4 w-4" /></Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            <p>Edit volume settings</p>
+                                                            <p>Shared volumes cannot be edited (size and storage class are inherited)</p>
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
-                                            </DialogEditDialog>
+                                            ) : (
+                                                <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo} storageClasses={storageClasses}>
+                                                    <TooltipProvider>
+                                                        <Tooltip delayDuration={200}>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" disabled={isLoading}><EditIcon className="h-4 w-4" /></Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Edit volume settings</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </DialogEditDialog>
+                                            )
                                         )}
-                                        <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
-                                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
-                                                        {volume.sharedVolumeId ? <Unlink /> : <TrashIcon />}
+                                        {/* Delete / Detach — direct icon */}
+                                        {!readonly && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={200}>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
+                                                            {volume.sharedVolumeId ? <Unlink className="h-4 w-4" /> : <TrashIcon className="h-4 w-4" />}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{volume.sharedVolumeId ? 'Detach Volume' : 'Delete Volume'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                        {/* More actions dropdown (base volumes only) */}
+                                        {!volume.sharedVolumeId && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{volume.sharedVolumeId ? 'Detach Volume' : 'Delete Volume'}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </>}
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => asyncDownloadPvcData(volume.id)} disabled={isLoading}>
+                                                        <Download className="h-4 w-4 mr-2" />Download
+                                                    </DropdownMenuItem>
+                                                    {!readonly && (
+                                                        <DropdownMenuItem onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
+                                                            <Folder className="h-4 w-4 mr-2" />Browse Files
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {((!readonly && storageClasses.length > 1) || (migrationStatuses[volume.id] && migrationStatuses[volume.id].status !== 'not-found')) && (
+                                                        <DropdownMenuSeparator />
+                                                    )}
+                                                    {!readonly && storageClasses.length > 1 && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => setActiveMigrationVolumeId(volume.id)}
+                                                            disabled={isLoading || migrationStatuses[volume.id]?.status === 'active'}
+                                                        >
+                                                            <ArrowRightLeft className="h-4 w-4 mr-2" />Migrate Storage Class
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {migrationStatuses[volume.id]?.status && migrationStatuses[volume.id].status !== 'not-found' && (
+                                                        <DropdownMenuItem onClick={() => setActiveLogsVolumeId(volume.id)}>
+                                                            <ScrollText className="h-4 w-4 mr-2" />View Migration Logs
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -309,5 +365,45 @@ export default function StorageList({ app, readonly, nodesInfo, storageClasses }
                 </SharedStorageEditDialog>
             </CardFooter>}
         </Card >
+
+        {/* Controlled migration dialog */}
+        {activeMigrationVolumeId && (() => {
+            const activeVolume = volumesWithStorage.find(v => v.id === activeMigrationVolumeId);
+            if (!activeVolume) return null;
+            return (
+                <StorageMigrationDialog
+                    open={true}
+                    onOpenChange={(o) => { if (!o) setActiveMigrationVolumeId(null); }}
+                    volume={activeVolume}
+                    app={app}
+                    storageClasses={storageClasses}
+                    nodesInfo={nodesInfo}
+                    migrationStatus={migrationStatuses[activeMigrationVolumeId] ?? defaultMigrationStatus(activeMigrationVolumeId)}
+                />
+            );
+        })()}
+
+        {/* Controlled migration logs dialog */}
+        {activeLogsVolumeId && (() => {
+            const activeVolume = volumesWithStorage.find(v => v.id === activeLogsVolumeId);
+            if (!activeVolume) return null;
+            const status = migrationStatuses[activeLogsVolumeId] ?? defaultMigrationStatus(activeLogsVolumeId);
+            return (
+                <Dialog open={true} onOpenChange={(o) => { if (!o) setActiveLogsVolumeId(null); }}>
+                    <DialogContent className="sm:max-w-[700px]">
+                        <DialogHeader>
+                            <DialogTitle>Migration Logs — {activeVolume.containerMountPath}</DialogTitle>
+                            <DialogDescription>
+                                Live rsync output from the migration job.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <MigrationLogsStreamed
+                            migrationJobName={status.jobName}
+                            migrationJobNamespace={status.namespace}
+                        />
+                    </DialogContent>
+                </Dialog>
+            );
+        })()}
     </>;
 }

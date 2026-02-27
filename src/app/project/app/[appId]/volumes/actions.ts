@@ -17,6 +17,7 @@ import restoreService from "@/server/services/restore.service";
 import fileBrowserService from "@/server/services/file-browser-service";
 import monitoringService from "@/server/services/monitoring.service";
 import dataAccess from "@/server/adapter/db.client";
+import pvcMigrationService, { MigrationStatusResult } from "@/server/services/pvc-migration.service";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -262,3 +263,25 @@ async function validateBackupVolumeWriteAuthorization(backupVolumeId: string) {
     });
     await isAuthorizedWriteForApp(volumeAppId?.volume.appId);
 }
+
+export const migrateVolumeStorageClass = async (volumeId: string, targetStorageClassName: string) =>
+    simpleAction(async () => {
+        const volume = await dataAccess.client.appVolume.findFirstOrThrow({
+            where: { id: volumeId },
+            select: { appId: true }
+        });
+        await isAuthorizedWriteForApp(volume.appId);
+        await pvcMigrationService.migrateStorageClass(volumeId, targetStorageClassName);
+        return new SuccessActionResult(undefined, 'Storage class migration completed successfully.');
+    }) as Promise<ServerActionResult<any, void>>;
+
+export const getVolumeMigrationStatus = async (volumeId: string) =>
+    simpleAction(async () => {
+        const volume = await dataAccess.client.appVolume.findFirstOrThrow({
+            where: { id: volumeId },
+            include: { app: true }
+        });
+        await isAuthorizedReadForApp(volume.appId);
+        const result = await pvcMigrationService.getMigrationJobStatus(volumeId, volume.app.projectId);
+        return new SuccessActionResult(result);
+    }) as Promise<ServerActionResult<any, MigrationStatusResult>>;
