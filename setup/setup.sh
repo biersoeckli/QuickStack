@@ -89,7 +89,7 @@ select_network_interface
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 echo "Installing nfs-common and jq..."
 sudo apt-get update
-sudo apt-get install open-iscsi nfs-common jq -y
+sudo apt-get install open-iscsi curl nfs-common jq -y
 
 echo "Fetching version information..."
 K3S_VERSION=$(curl -s https://get.quickstack.dev/k3s-versions.json | jq -r '.prodInstallVersion')

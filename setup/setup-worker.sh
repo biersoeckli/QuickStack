@@ -66,7 +66,7 @@ select_network_interface
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # install nfs-common, open-iscsi and jq
 sudo apt-get update
-sudo apt-get install open-iscsi nfs-common jq -y
+sudo apt-get install open-iscsi curl nfs-common jq -y
 
 echo "Fetching version information..."
 K3S_VERSION=$(curl -s https://get.quickstack.dev/k3s-versions.json | jq -r '.prodInstallVersion')
@@ -79,6 +79,9 @@ sudo systemctl disable rpcbind.service rpcbind.socket
 # Installation of k3s
 echo "Installing k3s with --flannel-iface=$selected_iface"
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="$K3S_VERSION" K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -
+
+# For HA Configuration
+# curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.33.8+k3s1" K3S_TOKEN= sh -s - server --server https://<IP-ADDRESS>:6443 --flannel-iface=<IFACE>
 
 echo ""
 echo "-----------------------------------------------------------------------------------------------------------"
