@@ -73,21 +73,22 @@ class RegistryService {
     }
 
     async deployRegistry(registryLocation: string, forceDeploy = false) {
+        const useLocalStorage = registryLocation === Constants.INTERNAL_REGISTRY_LOCATION;
+        const s3Target = useLocalStorage ? undefined : await s3TargetService.getById(registryLocation!);
+
+        console.log("Ensuring namespace is created...");
+        await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
+
+        // Always update the ConfigMap so storage settings are never stale
+        await this.createOrUpdateRegistryConfigMap(s3Target);
+
         const deployments = await k3s.apps.listNamespacedDeployment(BUILD_NAMESPACE);
         if (deployments.body.items.length > 0 && !forceDeploy) {
             return;
         }
 
-        const useLocalStorage = registryLocation === Constants.INTERNAL_REGISTRY_LOCATION;
-        const s3Target = useLocalStorage ? undefined : await s3TargetService.getById(registryLocation!);
-
-
         console.log("(Re)deploying registry because it is not deployed or forced...");
         console.log(`Registry storage location is set to ${registryLocation}.`);
-        console.log("Ensuring namespace is created...");
-        await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
-
-        await this.createOrUpdateRegistryConfigMap(s3Target);
 
         if (useLocalStorage) {
             await this.createPersistenvColumeCLaim();
@@ -224,7 +225,7 @@ class RegistryService {
                         containers: [
                             {
                                 name: deploymentName,
-                                image: 'registry:latest',
+                                image: 'registry:2.8',
                                 volumeMounts: [
                                     ...localStorageVolumeMount,
                                     {
@@ -314,7 +315,6 @@ http:
 `
             },
         };
-
         const existingConfigMaps = await k3s.core.listNamespacedConfigMap(BUILD_NAMESPACE);
         if (existingConfigMaps.body.items.find(cm => cm.metadata?.name === REGISTRY_CONFIG_MAP_NAME)) {
             console.log("ConfigMap already exists, deleting and recreating...");
