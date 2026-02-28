@@ -76,6 +76,18 @@ echo "Using K3s version: $K3S_VERSION"
 sudo systemctl stop rpcbind.service rpcbind.socket
 sudo systemctl disable rpcbind.service rpcbind.socket
 
+if systemctl list-units --full --all | grep -q 'multipathd'; then
+  sudo systemctl stop multipathd
+  sudo systemctl disable multipathd
+fi
+
+if ! lsmod | grep -q dm_crypt; then
+  sudo modprobe dm_crypt
+fi
+if ! grep -q 'dm_crypt' /etc/modules; then
+  echo "dm_crypt" | sudo tee -a /etc/modules
+fi
+
 # Installation of k3s
 echo "Installing k3s with --flannel-iface=$selected_iface"
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="$K3S_VERSION" K3S_URL=${K3S_URL} K3S_TOKEN=${JOIN_TOKEN} sh -

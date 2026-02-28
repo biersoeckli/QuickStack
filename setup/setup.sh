@@ -101,6 +101,20 @@ echo "Using Longhorn version: $LONGHORN_VERSION"
 sudo systemctl stop rpcbind.service rpcbind.socket
 sudo systemctl disable rpcbind.service rpcbind.socket
 
+# Disable multipathd service, as it can cause issues with Longhorn --> https://longhorn.io/kb/troubleshooting-volume-with-multipath
+if systemctl list-units --full --all | grep -q 'multipathd'; then
+  sudo systemctl stop multipathd
+  sudo systemctl disable multipathd
+fi
+
+# Enable dm_crypt module for Longhorn encryption support
+if ! lsmod | grep -q dm_crypt; then
+  sudo modprobe dm_crypt
+fi
+if ! grep -q 'dm_crypt' /etc/modules; then
+  echo "dm_crypt" | sudo tee -a /etc/modules
+fi
+
 # Installation of k3s
 #curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
 
