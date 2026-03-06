@@ -8,7 +8,9 @@ export interface BackupInfoModel {
     volumeId: string;
     mountPath: string;
     backupRetention: number;
-    backups: BackupEntry[]
+    backups: BackupEntry[];
+    cron?: string;
+    missedBackup?: boolean;
 }
 
 export interface BackupEntry {
