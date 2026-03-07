@@ -251,6 +251,15 @@ class DeploymentService {
             body.spec!.template!.spec!.imagePullSecrets = [{ name: dockerPullSecretName }];
         }
 
+        if (app.securityContextRunAsUser != null || app.securityContextRunAsGroup != null || app.securityContextFsGroup != null) {
+            body.spec!.template!.spec!.securityContext = {
+                ...(app.securityContextRunAsUser != null ? { runAsUser: app.securityContextRunAsUser } : {}),
+                ...(app.securityContextRunAsGroup != null ? { runAsGroup: app.securityContextRunAsGroup } : {}),
+                ...(app.securityContextFsGroup != null ? { fsGroup: app.securityContextFsGroup } : {}),
+            };
+            dlog(deploymentId, `Configured Security Context.`);
+        }
+
         if (existingDeployment) {
             dlog(deploymentId, `Replacing existing deployment...`);
             const res = await k3s.apps.replaceNamespacedDeployment(app.id, app.projectId, body);

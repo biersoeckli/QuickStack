@@ -1,5 +1,8 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AppTemplateUtils } from "@/server/utils/app-template.utils";
+import { EnvVarUtils } from "@/server/utils/env-var.utils";
 
 export const n8nAppTemplate: AppTemplateModel = {
     name: "n8n",
@@ -14,11 +17,11 @@ export const n8nAppTemplate: AppTemplateModel = {
                 randomGeneratedIfEmpty: false,
             },
             {
-                key: "N8N_ENCRYPTION_KEY",
-                label: "Encryption Key",
-                value: "",
+                key: "TZ",
+                label: "Timezone",
+                value: "Europe/Zurich",
                 isEnvVar: true,
-                randomGeneratedIfEmpty: true,
+                randomGeneratedIfEmpty: false,
             },
         ],
         appModel: {
@@ -29,13 +32,12 @@ export const n8nAppTemplate: AppTemplateModel = {
             replicas: 1,
             ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
-            envVars: `GENERIC_TIMEZONE=Europe/Zurich
-TZ=Europe/Zurich
-`,
+            envVars: ``,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
+            securityContextFsGroup: 1000,
         },
         appDomains: [],
         appVolumes: [{
@@ -52,4 +54,21 @@ TZ=Europe/Zurich
     }],
 };
 
-// todo set the permissions of the volume chown to the n8n user
+export const postCreateN8NAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+
+    const createdN8nApp = createdApps[0];
+    if (!createdN8nApp) {
+        throw new Error('Created n8n app not found.');
+    }
+
+    const envVars = EnvVarUtils.parseEnvVariables(createdN8nApp);
+
+    const encryptionKey = AppTemplateUtils.getRandomKey(64);
+    createdN8nApp.envVars += `N8N_ENCRYPTION_KEY=${encryptionKey}\n`;
+
+    const timeZone = envVars.find(x => x.name === 'TZ')?.value ?? 'Europe/Zurich';
+    createdN8nApp.envVars += `GENERIC_TIMEZONE=${timeZone}\n`;
+
+    return [createdN8nApp];
+};
+

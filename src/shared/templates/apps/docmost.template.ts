@@ -51,6 +51,7 @@ export const docmostAppTemplate: AppTemplateModel = {
                 healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
                 healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
                 healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
+                securityContextFsGroup: 1000,
             },
             appDomains: [],
             appVolumes: [{

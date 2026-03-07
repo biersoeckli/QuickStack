@@ -185,6 +185,9 @@ model App {
   containerRegistryPassword String?
   containerCommand          String? // Custom command to override container ENTRYPOINT
   containerArgs             String? // Custom args to override container CMD (JSON array string)
+  securityContextRunAsUser  Int?
+  securityContextRunAsGroup Int?
+  securityContextFsGroup    Int?
 
   gitUrl         String?
   gitBranch      String?

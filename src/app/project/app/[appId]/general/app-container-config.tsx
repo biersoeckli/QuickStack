@@ -16,14 +16,8 @@ import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Trash2, Plus } from "lucide-react";
 import { z } from "zod";
-
-// Zod schema for the container config form
-const appContainerConfigZodModel = z.object({
-    containerCommand: z.string().trim().nullish(),
-    containerArgs: z.array(z.object({
-        value: z.string().trim()
-    })).optional(),
-});
+import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
+import FormLabelWithQuestion from "@/components/custom/form-label-with-question";
 
 export type AppContainerConfigInputModel = z.infer<typeof appContainerConfigZodModel>;
 
@@ -41,6 +35,9 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
         defaultValues: {
             containerCommand: app.containerCommand || '',
             containerArgs: initialArgs,
+            securityContextRunAsUser: app.securityContextRunAsUser ?? undefined,
+            securityContextRunAsGroup: app.securityContextRunAsGroup ?? undefined,
+            securityContextFsGroup: app.securityContextFsGroup ?? undefined,
         },
         disabled: readonly,
     });
@@ -149,6 +146,80 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                     Add Argument
                                 </Button>
                             )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-sm font-medium">Security Context (optional)</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Use this when your app requires specific user/group permissions or needs to run with a specific filesystem group for volume access.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextRunAsUser"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabelWithQuestion hint="The UID to run the container process as. Corresponds to runAsUser in the Kubernetes pod securityContext.">
+                                                Run As User
+                                            </FormLabelWithQuestion>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={field.value ?? ''}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextRunAsGroup"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabelWithQuestion hint="The GID to run the container process as. Corresponds to runAsGroup in the Kubernetes pod securityContext.">
+                                                Run As Group
+                                            </FormLabelWithQuestion>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={field.value ?? ''}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextFsGroup"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabelWithQuestion hint="A special supplemental group applied to all containers in the pod. Volume ownership will be set to this GID. Corresponds to fsGroup in the Kubernetes pod securityContext.">
+                                                FS Group
+                                            </FormLabelWithQuestion>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={field.value ?? ''}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                         </div>
                     </CardContent>
                     {!readonly && (

@@ -1,4 +1,4 @@
-import { stringToNumber, stringToOptionalNumber } from "@/shared/utils/zod.utils";
+import { stringToOptionalNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const appContainerConfigZodModel = z.object({
@@ -6,6 +6,9 @@ export const appContainerConfigZodModel = z.object({
   containerArgs: z.array(z.object({
     value: z.string().trim()
   })).optional(),
+  securityContextRunAsUser: stringToOptionalNumber,
+  securityContextRunAsGroup: stringToOptionalNumber,
+  securityContextFsGroup: stringToOptionalNumber,
 });
 
 export type AppContainerConfigModel = z.infer<typeof appContainerConfigZodModel>;
