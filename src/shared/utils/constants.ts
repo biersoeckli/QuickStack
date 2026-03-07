@@ -20,4 +20,5 @@ export class Constants {
     static readonly DEFAULT_HEALTH_CHECK_PERIOD_SECONDS = 15;
     static readonly DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 10;
     static readonly DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD = 3;
+    static readonly TOLERATION_FOR_EXECUTED_CRON_BACKUPS_MS = 60 * 60 * 1000; // 60 minutes;
 }

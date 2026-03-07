@@ -6,12 +6,14 @@ import { formatDateTime } from "@/frontend/utils/format.utils";
 import { List } from "lucide-react";
 import { BackupInfoModel } from "@/shared/model/backup-info.model";
 import { BackupDetailDialog } from "./backup-detail-overlay";
+import BackupStatusBadge from "./backup-status-badge";
 
 export default function BackupsTable({ data }: { data: BackupInfoModel[] }) {
 
     return <>
         <SimpleDataTable columns={[
             ['projectId', 'Project ID', false],
+            ['missedBackup', 'Status', true, (item) => <BackupStatusBadge missedBackup={item.missedBackup} />],
             ['projectName', 'Project', true],
             ['appName', 'App', true],
             ['appId', 'App ID', false],

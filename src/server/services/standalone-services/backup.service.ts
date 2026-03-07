@@ -8,6 +8,7 @@ import standalonePodService from "./standalone-pod.service";
 import { ListUtils } from "../../../shared/utils/list.utils";
 import { S3Target } from "@prisma/client";
 import { BackupEntry, BackupInfoModel } from "../../../shared/model/backup-info.model";
+import { CronCheckUtils } from "../../utils/cron-check.utils";
 import databaseBackupService from "./database-backup.service";
 import sharedBackupService, { s3BucketPrefix } from "./database-backup-services/shared-backup.service";
 import systemBackupService from "./system-backup.service";
@@ -163,11 +164,17 @@ class BackupService {
                 volumeId: volumeBackup?.id ?? defaultInfoIfAppWasDeleted,
                 mountPath: volumeBackup?.volume.containerMountPath ?? defaultInfoIfAppWasDeleted,
                 backups: backupEntries,
-                s3TargetId: s3Target.id
+                s3TargetId: s3Target.id,
+                cron: volumeBackup?.cron,
+                missedBackup: volumeBackup?.cron
+                    ? CronCheckUtils.isBackupMissed(volumeBackup.cron, backupEntries[0]?.backupDate)
+                    : undefined,
             });
         }
 
-        const backupsVolumesWithoutActualBackups = volumeBackups.filter(vb => !backupInfoModels.find(x => x.backupVolumeId === vb.id));
+        const backupsVolumesWithoutActualBackups = volumeBackups
+            .filter(vb => vb.targetId === s3Target.id)
+            .filter(vb => !backupInfoModels.find(x => x.backupVolumeId === vb.id));
 
         backupInfoModels.sort((a, b) => {
             if (a.projectName === b.projectName) {
