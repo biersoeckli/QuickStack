@@ -39,7 +39,23 @@ export function BreadcrumbsGenerator() {
                     {breadcrumbs.map((x, index) => (<>
                         {index > 0 && <BreadcrumbSeparator />}
                         <BreadcrumbItem key={x.name}>
-                            <BreadcrumbLink href={x.url ?? undefined}>{x.name}</BreadcrumbLink>
+                            {x.dropdownItems ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger className="flex items-center gap-1 transition-colors hover:text-foreground">
+                                        {x.name}
+                                        <ChevronDown size={14} />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        {x.dropdownItems.map((item) => (
+                                            <DropdownMenuItem key={item.url} disabled={item.active} asChild={!item.active}>
+                                                {item.active ? <span>{item.name}</span> : <Link href={item.url}>{item.name}</Link>}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <BreadcrumbLink href={x.url ?? undefined}>{x.name}</BreadcrumbLink>
+                            )}
                         </BreadcrumbItem>
                     </>))}
                 </BreadcrumbList>

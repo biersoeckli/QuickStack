@@ -5,7 +5,7 @@ import { mongodbAppTemplate } from "./databases/mongodb.template";
 import { mysqlAppTemplate } from "./databases/mysql.template";
 import { postgreAppTemplate } from "./databases/postgres.template";
 import { postCreateRedisAppTemplate, redisAppTemplate } from "./databases/redis.template";
-import { n8nAppTemplate } from "./apps/n8n.template";
+import { n8nAppTemplate, postCreateN8NAppTemplate } from "./apps/n8n.template";
 import { noderedAppTemplate } from "./apps/nodered.template";
 import { huginnAppTemplate } from "./apps/huginn.template";
 import { nextcloudAppTemplate } from "./apps/nextcloud.template";
@@ -58,7 +58,7 @@ export const databaseTemplates: AppTemplateModel[] = [
 
 export const appTemplates: AppTemplateModel[] = [
     wordpressAppTemplate,
-    //n8nAppTemplate,
+    n8nAppTemplate,
     //noderedAppTemplate,
     //huginnAppTemplate,
     nextcloudAppTemplate,
@@ -104,6 +104,7 @@ export const postCreateTemplateFunctions: Map<string, (createdApps: AppExtendedM
     [redisAppTemplate.name, postCreateRedisAppTemplate],
     [docmostAppTemplate.name, postCreateDocmostAppTemplate],
     [duplicatiAppTemplate.name, postCreateDuplicatiAppTemplate],
+    [n8nAppTemplate.name, postCreateN8NAppTemplate],
 ]);
 
 

@@ -46,9 +46,16 @@ interface ZustandBreadcrumbsProps {
     setBreadcrumbs: ((result: Breadcrumb[]) => void);
 }
 
+export interface BreadcrumbDropdownItem {
+    name: string;
+    url: string;
+    active?: boolean;
+}
+
 export interface Breadcrumb {
     name: string;
     url?: string;
+    dropdownItems?: BreadcrumbDropdownItem[];
 }
 
 export const useBreadcrumbs = create<ZustandBreadcrumbsProps>((set) => ({
