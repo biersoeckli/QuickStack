@@ -42,7 +42,6 @@ export class CronCheckUtils {
             return new Date(now.getTime() - intervalMs);
         }
 
-        // Handle standard cron expressions + @daily/@weekly/@monthly/@annually/@yearly/@hourly
         try {
             const interval = parseExpression(cron, { currentDate: now, iterator: false });
             const prev = interval.prev();
@@ -72,12 +71,10 @@ export class CronCheckUtils {
         }
 
         if (!latestBackupDate) {
-            // No backup ever created – already tracked by backupsVolumesWithoutActualBackups,
-            // but we still flag it here for status display.
+            // No backup ever created
             return true;
         }
 
-        // Backup is missed if the latest backup pre-dates (lastScheduledTime - tolerance)
         return latestBackupDate.getTime() < lastScheduledTime.getTime() - toleranceMs;
     }
 }

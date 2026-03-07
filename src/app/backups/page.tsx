@@ -4,7 +4,7 @@ import { getAuthUserSession, isAuthorizedForBackups } from "@/server/utils/actio
 import PageTitle from "@/components/custom/page-title";
 import backupService from "@/server/services/standalone-services/backup.service";
 import BackupsTable from "./backups-table";
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, AlertTriangleIcon } from "lucide-react"
 import {
     Alert,
     AlertDescription,
@@ -20,19 +20,28 @@ export default async function BackupsPage() {
         backupsVolumesWithoutActualBackups
     } = await backupService.getBackupsForAllS3Targets();
 
+    const hasMissedBackups = backupInfoModels.some(x => x.missedBackup === true);
+
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
                 title={'Backups'}
                 subtitle={`View all backups wich are stored in all S3 Target destinations. If a backup exists from an app wich doesnt exist anymore, it will be shown as orphaned.`}>
             </PageTitle>
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {backupsVolumesWithoutActualBackups.length > 0 && <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Apps without Backup</AlertTitle>
                     <AlertDescription>
                         The following apps have backups configured, but until now no backups were created for them:<br />
                         {backupsVolumesWithoutActualBackups.map((item) => `${item.volume.app.name} (mount: ${item.volume.containerMountPath})`).join(', ')}
+                    </AlertDescription>
+                </Alert>}
+                {hasMissedBackups && <Alert variant="destructive" className="border-orange-400 text-orange-400">
+                    <AlertTriangleIcon className="h-4 w-4 text-orange-400" />
+                    <AlertTitle>Missed Backups</AlertTitle>
+                    <AlertDescription>
+                        Some backups may not have been created for their last scheduled interval. Check the Status column below for details.
                     </AlertDescription>
                 </Alert>}
                 {backupsVolumesWithoutActualBackups.length === 0 && backupInfoModels.length === 0 && <Alert>

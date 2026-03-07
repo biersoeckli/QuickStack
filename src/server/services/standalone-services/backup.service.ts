@@ -172,7 +172,9 @@ class BackupService {
             });
         }
 
-        const backupsVolumesWithoutActualBackups = volumeBackups.filter(vb => !backupInfoModels.find(x => x.backupVolumeId === vb.id));
+        const backupsVolumesWithoutActualBackups = volumeBackups
+            .filter(vb => vb.targetId === s3Target.id)
+            .filter(vb => !backupInfoModels.find(x => x.backupVolumeId === vb.id));
 
         backupInfoModels.sort((a, b) => {
             if (a.projectName === b.projectName) {

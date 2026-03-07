@@ -21,10 +21,9 @@ export default function BackupStatusBadge({ missedBackup }: BackupStatusBadgePro
                     </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>The backup schedule is configured, but it seems that a backup has not been created recently. This could indicate a problem with the backup process. Please check the backup configuration and logs to ensure that backups are running correctly.</p>
+                    <p className="max-w-60">The backup schedule is configured, but it seems that a backup has not been created recently. This could indicate a problem with the backup process. Please check the backup configuration and logs to ensure that backups are running correctly.</p>
                 </TooltipContent>
             </Tooltip>
-
         );
     }
 
