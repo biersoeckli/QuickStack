@@ -40,7 +40,7 @@ If you want to skip the network interface selection prompt, you can specify the 
 curl -sfL https://get.quickstack.dev/setup.sh | INSTALL_K3S_INTERFACE=eth0 sh -
 ```
 
-Visit our [docs](https://quickstack.dev/docs/intro) for more detailed installation instructions:
+Visit our [docs](https://quickstack.dev/docs) for more detailed installation instructions:
 
 ## Contributing
 Contributions are welcome! Further information on how to contribute can be found in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
