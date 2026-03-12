@@ -11,10 +11,14 @@ import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { cn } from "@/frontend/utils/utils";
+import { getRessourceDataApp } from "../overview/actions";
+import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
+import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 export default function GeneralAppRateLimits({ app, readonly }: {
@@ -26,6 +30,23 @@ export default function GeneralAppRateLimits({ app, readonly }: {
         defaultValues: app,
         disabled: readonly
     });
+
+    const [monitoringData, setMonitoringData] = useState<PodsResourceInfoModel | undefined>(undefined);
+
+    useEffect(() => {
+        getRessourceDataApp(app.projectId, app.id).then((res) => {
+            if (res.status === 'success' && res.data) {
+                setMonitoringData(res.data);
+            }
+        }).catch(() => { /* pod may not be running, silently ignore */ });
+    }, [app.id, app.projectId]);
+
+    const suggestedMemoryMb = monitoringData && monitoringData.ramAbsolutBytes
+        ? Math.ceil(KubeSizeConverter.fromBytesToMegabytes(monitoringData.ramAbsolutBytes))
+        : undefined;
+    const suggestedCpuMillicores = monitoringData && monitoringData.cpuAbsolutCores
+        ? Math.max(1, Math.round(monitoringData.cpuAbsolutCores * 1000))
+        : undefined;
 
     const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppRateLimitsModel) => saveGeneralAppRateLimits(state, payload, app.id), FormUtils.getInitialFormState<typeof appRateLimitsZodModel>());
     useEffect(() => {
@@ -90,6 +111,23 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                             <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
                                         </FormControl>
                                         <FormMessage />
+                                        {!readonly && suggestedMemoryMb !== undefined && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={200}>
+                                                    <TooltipTrigger asChild>
+                                                        <span
+                                                            className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                                                            onClick={() => form.setValue('memoryReservation', suggestedMemoryMb)}
+                                                        >
+                                                            ~ {suggestedMemoryMb} MB
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Suggestion based on current pod resource usage</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
                                     </FormItem>
                                 )}
                             />
@@ -118,6 +156,23 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                             <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
                                         </FormControl>
                                         <FormMessage />
+                                        {!readonly && suggestedCpuMillicores !== undefined && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={200}>
+                                                    <TooltipTrigger asChild>
+                                                        <span
+                                                            className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                                                            onClick={() => form.setValue('cpuReservation', suggestedCpuMillicores)}
+                                                        >
+                                                            ~ {suggestedCpuMillicores} m
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Suggestion based on current pod resource usage</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
                                     </FormItem>
                                 )}
                             />
