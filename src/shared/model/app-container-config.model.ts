@@ -9,6 +9,7 @@ export const appContainerConfigZodModel = z.object({
   securityContextRunAsUser: stringToOptionalNumber,
   securityContextRunAsGroup: stringToOptionalNumber,
   securityContextFsGroup: stringToOptionalNumber,
+  securityContextPrivileged: z.boolean().default(false),
 });
 
 export type AppContainerConfigModel = z.infer<typeof appContainerConfigZodModel>;

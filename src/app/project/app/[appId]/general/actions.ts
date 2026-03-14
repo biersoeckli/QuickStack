@@ -75,6 +75,7 @@ export const saveGeneralAppContainerConfig = async (prevState: any, inputData: A
             securityContextRunAsUser: validatedData.securityContextRunAsUser ?? null,
             securityContextRunAsGroup: validatedData.securityContextRunAsGroup ?? null,
             securityContextFsGroup: validatedData.securityContextFsGroup ?? null,
+            securityContextPrivileged: validatedData.securityContextPrivileged ?? false,
             id: appId,
         });
     });

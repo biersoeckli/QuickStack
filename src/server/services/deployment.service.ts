@@ -139,6 +139,7 @@ class DeploymentService {
                                 imagePullPolicy: 'Always',
                                 ...(app.containerCommand ? { command: [app.containerCommand] } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
+                                ...(app.securityContextPrivileged ? { securityContext: { privileged: true } } : {}),
                                 ...(envVars.length > 0 ? { env: envVars } : {}),
                                 ...(allVolumeMounts.length > 0 ? { volumeMounts: allVolumeMounts } : {}),
                             }

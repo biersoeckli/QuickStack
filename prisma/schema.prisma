@@ -188,6 +188,7 @@ model App {
   securityContextRunAsUser  Int?
   securityContextRunAsGroup Int?
   securityContextFsGroup    Int?
+  securityContextPrivileged Boolean? @default(false)
 
   gitUrl         String?
   gitBranch      String?
