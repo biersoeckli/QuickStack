@@ -3,6 +3,7 @@
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +39,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
             securityContextRunAsUser: app.securityContextRunAsUser ?? undefined,
             securityContextRunAsGroup: app.securityContextRunAsGroup ?? undefined,
             securityContextFsGroup: app.securityContextFsGroup ?? undefined,
+            securityContextPrivileged: app.securityContextPrivileged ?? false,
         },
         disabled: readonly,
     });
@@ -220,6 +222,27 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                     )}
                                 />
                             </div>
+                            <FormField
+                                control={form.control}
+                                name="securityContextPrivileged"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={readonly}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>Privileged Mode</FormLabel>
+                                            <FormDescription>
+                                                Run this container in privileged mode. This grants full access to the host&apos;s devices and kernel capabilities. Required for Docker-in-Docker (DinD) workloads such as CI/CD runners.
+                                            </FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
                         </div>
                     </CardContent>
                     {!readonly && (
