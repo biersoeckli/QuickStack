@@ -16,6 +16,7 @@ export const AppModel = z.object({
   securityContextRunAsUser: z.number().int().nullish(),
   securityContextRunAsGroup: z.number().int().nullish(),
   securityContextFsGroup: z.number().int().nullish(),
+  securityContextPrivileged: z.boolean().nullish(),
   gitUrl: z.string().nullish(),
   gitBranch: z.string().nullish(),
   gitUsername: z.string().nullish(),
