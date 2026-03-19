@@ -115,6 +115,13 @@ if ! grep -q 'dm_crypt' /etc/modules; then
   echo "dm_crypt" | sudo tee -a /etc/modules
 fi
 
+# Installation of helm
+sudo apt-get install apt-transport-https gpg --yes
+curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
 # Installation of k3s
 #curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
 
@@ -132,10 +139,19 @@ echo "Waiting for Longhorn to start..."
 wait_until_all_pods_running
 
 # Installation of Cert-Manager
-sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.1/cert-manager.yaml
+sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml install \
+  cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.18.6 \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+
 echo "Waiting for Cert-Manager to start..."
 wait_until_all_pods_running
 sudo kubectl -n cert-manager get pod
+
+# Use this for manually upgrading cert-manager using helm:
+# helm upgrade --reset-then-reuse-values --version <version> <release_name> oci://quay.io/jetstack/charts/cert-manager
 
 # Use this for checking installation of Longhorn
 # sudo curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/scripts/environment_check.sh | sudo bash
