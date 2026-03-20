@@ -123,8 +123,6 @@ sudo apt-get update
 sudo apt-get install helm
 
 # Installation of k3s
-#curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--node-ip=192.168.1.2 --advertise-address=192.168.1.2 --node-external-ip=188.245.236.232 --flannel-iface=enp7s0" INSTALL_K3S_VERSION="v1.31.3+k3s1" sh -
-
 echo "Installing k3s with --flannel-iface=$selected_iface"
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-iface=$selected_iface" INSTALL_K3S_VERSION="$K3S_VERSION" sh -
 # Todo: Check for Ready node, takes ~30 seconds
