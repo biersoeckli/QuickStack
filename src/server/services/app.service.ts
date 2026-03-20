@@ -185,6 +185,7 @@ class AppService {
         // for new objects, make sure some params are optional, wich will be created by prisma
         const optionalParam = z.object({
             id: z.string().optional(),
+            appId: z.string().optional(),
             createdAt: z.date().optional(),
             updatedAt: z.date().optional(),
         });
