@@ -1,6 +1,6 @@
 {
-	"name": "quick-stack",
-	"dockerComposeFile": "./docker.compose.yml",
+	"name": "QuickStack",
+	"dockerComposeFile": "docker.compose.yml",
 	"service": "vscode-container",
 	"workspaceFolder": "/workspace",
 	"shutdownAction": "stopCompose",
@@ -14,18 +14,16 @@
 				"bradlc.vscode-tailwindcss",
 				"GitHub.copilot",
 				"GitHub.copilot-chat",
-				"oven.bun-vscode",
 				"christian-kohler.path-intellisense",
 				"esbenp.prettier-vscode",
 				"VisualStudioExptTeam.vscodeintellicode",
 				"mhutchie.git-graph",
 				"donjayamanne.githistory",
 				"qwtel.sqlite-viewer",
-				"mindaro.mindaro",
-				"shd101wyy.markdown-preview-enhanced",
 				"ms-kubernetes-tools.vscode-kubernetes-tools"
 			]
 		}
 	},
-	"postCreateCommand": "curl -fsSL https://bun.sh/install | bash"
+	"postStartCommand": "bash .devcontainer/start-k3s.sh",
+	"remoteUser": "node"
 }

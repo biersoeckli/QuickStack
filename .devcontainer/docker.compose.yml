@@ -1,11 +1,31 @@
 version: "3"
 services:
   vscode-container:
-    image: mcr.microsoft.com/devcontainers/typescript-node
-    #image: mcr.microsoft.com/devcontainers/base:debian
-    #image: mcr.microsoft.com/devcontainers/base:alpine
+    image: mcr.microsoft.com/devcontainers/typescript-node:22
     command: /bin/sh -c "while sleep 1000; do :; done"
     volumes:
       - ..:/workspace
       - ~/.ssh:/home/node/.ssh
+      - qs-k3s-dev-kubeconfig:/k3s-config:ro
     env_file: devcontainer.env
+    depends_on:
+      - qs-k3s-dev
+
+  qs-k3s-dev:
+    image: rancher/k3s:v1.31.3-k3s1
+    privileged: true
+    hostname: qs-k3s-dev
+    cgroup: host
+    command: ["server", "--snapshotter=native", "--write-kubeconfig-mode=644", "--tls-san=k3s"]
+    tmpfs:
+      - /run
+      - /var/run
+    ports:
+      - "6443:6443"
+    volumes:
+      - qs-k3s-dev-kubeconfig:/etc/rancher/k3s
+      - qs-k3s-dev-data:/var/lib/rancher/k3s
+
+volumes:
+  qs-k3s-dev-kubeconfig:
+  qs-k3s-dev-data:

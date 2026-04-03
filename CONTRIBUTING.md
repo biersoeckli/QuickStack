@@ -76,10 +76,57 @@ yarn test
 
 ### Environment Setup
 
-To setup a developement environment, use the provided devcontainer configuration. This will setup a development environment with all necessary dependencies and the correct node version.
+To set up a development environment, use the provided devcontainer configuration. This will set up a development environment with all necessary dependencies and the correct Node version.
 
-Additionally to the devcontainer, you need a running k3s cluster.
-To connect to your own k3s test cluster, provide the kuberentes credentials in the file `k3s-config.yaml` in the root of the project.
+In order to run QuickStack, a kubernetes (k3s) cluster is required. There are two ways to connect the devcontainer to a Kubernetes cluster:
+
+#### Option 1: Local Docker k3s (simple, limited)
+
+The devcontainer includes a lightweight k3s cluster running as a Docker container. This is the easiest way to get started and is sufficient for most development and unit testing.
+
+**Limitations:** This local cluster does not include Longhorn (persistent storage) or cert-manager (HTTPS). As a result, you cannot fully test features that rely on volumes or browse deployed apps via HTTPS.
+
+To use this option:
+1. Copy `.devcontainer/devcontainer.env_template` to `.devcontainer/devcontainer.env`.
+2. Make sure `USE_LOCAL_DOCKER_K3S=true` is set in `devcontainer.env`.
+3. Open the project in the devcontainer — the kubeconfig will be configured automatically.
+
+#### Option 2: External VM / VPS with full QuickStack setup (recommended for full testing)
+
+To test all QuickStack features (Longhorn volumes, HTTPS, deployed app access), a VM or VPS with a full QuickStack installation is required.
+
+1. Install QuickStack on the VPS/VM by running the following command:
+   ```sh
+   curl -sfL https://get.quickstack.dev/setup.sh | sh -
+   ```
+2. Copy the kubeconfig from the VM (`/etc/rancher/k3s/k3s.yaml`) to `kube-config.config` in the root of the project.
+3. add insecure-skip-tls-verify: true to the cluster configuration in `kube-config.config` (see example below).
+4. Copy `.devcontainer/devcontainer.env_template` to `.devcontainer/devcontainer.env` and set `USE_LOCAL_DOCKER_K3S=false`.
+
+Example `kube-config.config`:
+```yaml
+apiVersion: v1
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: https://SOME-IP-ADDRESS-OR-HOSTNAME:6443
+  name: default
+contexts:
+- context:
+    cluster: default
+    namespace: registry-and-build
+    user: default
+  name: default
+current-context: default
+kind: Config
+users:
+- name: default
+  user:
+    client-certificate-data: .....
+    client-key-data: .....
+```
+
+If you run into any issues, feel free to reach out and open an issue.
 
 #### Install Dependencies
 ```sh
