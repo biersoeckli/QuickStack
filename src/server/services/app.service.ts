@@ -32,11 +32,11 @@ class AppService {
 
             if (app.sourceType === 'GIT') {
                 // first make build
-                const [buildJobName, gitCommitHash, buildPromise] = await buildService.buildApp(deploymentId, app, forceBuild);
+                const [buildJobName, gitCommitHash, gitCommitMessage, buildPromise] = await buildService.buildApp(deploymentId, app, forceBuild);
                 buildPromise.then(async () => {
                     console.log('Build job finished, deploying...');
                     dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-                    await deploymentService.createDeployment(deploymentId, app, buildJobName, gitCommitHash);
+                    await deploymentService.createDeployment(deploymentId, app, buildJobName, gitCommitHash, gitCommitMessage);
                 });
             } else {
                 // only deploy

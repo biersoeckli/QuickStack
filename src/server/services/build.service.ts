@@ -21,7 +21,7 @@ const buildkitImage = "moby/buildkit:master";
 class BuildService {
 
 
-    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, Promise<void>]> {
+    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, Promise<void>]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -35,9 +35,13 @@ class BuildService {
 
         // Check if last build is already up to date with data in git repo
         const latestSuccessfulBuld = buildsForApp.find(x => x.status === 'SUCCEEDED');
-        const latestRemoteGitHash = await gitService.openGitContext(app, async (ctx) => {
+        const { latestRemoteGitHash, latestRemoteGitCommitMessage } = await gitService.openGitContext(app, async (ctx) => {
             await ctx.checkIfDockerfileExists();
-            return await ctx.getLatestRemoteCommitHash();
+            const [hash, message] = await Promise.all([
+                ctx.getLatestRemoteCommitHash(),
+                ctx.getLatestRemoteCommitMessage(),
+            ]);
+            return { latestRemoteGitHash: hash, latestRemoteGitCommitMessage: message };
         });
 
         dlog(deploymentId, `Cloned repository successfully`);
@@ -48,15 +52,15 @@ class BuildService {
 
             if (await registryService.doesImageExist(app.id, 'latest')) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
-                return [latestSuccessfulBuld.name, latestRemoteGitHash, Promise.resolve()];
+                return [latestSuccessfulBuld.name, latestRemoteGitHash, latestRemoteGitCommitMessage, Promise.resolve()];
             } else {
                 await dlog(deploymentId, `Docker Image for last build not found in internal registry, creating new build.`);
             }
         }
-        return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash);
+        return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash, latestRemoteGitCommitMessage);
     }
 
-    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string): Promise<[string, string, Promise<void>]> {
+    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string, latestRemoteGitCommitMessage: string = ''): Promise<[string, string, string, Promise<void>]> {
 
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(app.id));
 
@@ -167,6 +171,7 @@ class BuildService {
                     [Constants.QS_ANNOTATION_APP_ID]: app.id,
                     [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
                     [Constants.QS_ANNOTATION_GIT_COMMIT]: latestRemoteGitHash,
+                    [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: latestRemoteGitCommitMessage.substring(0, 200), // truncate to avoid exceeding 256 KiB size limits of annotations object.
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
                 }
             },
@@ -205,7 +210,7 @@ class BuildService {
 
         const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!, deploymentId)
 
-        return [buildName, latestRemoteGitHash, buildJobPromise];
+        return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, buildJobPromise];
     }
 
     async logBuildOutput(deploymentId: string, buildName: string) {
@@ -299,6 +304,7 @@ class BuildService {
                 startTime: job.status?.startTime,
                 status: this.getJobStatusString(job.status),
                 gitCommit: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT],
+                gitCommitMessage: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
                 deploymentId: job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID],
             } as BuildJobModel;
         });
