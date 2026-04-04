@@ -22,7 +22,7 @@ const buildkitImage = "moby/buildkit:master";
 class BuildService {
 
 
-    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, Promise<void>]> {
+    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -53,7 +53,7 @@ class BuildService {
 
             if (await registryService.doesImageExist(app.id, 'latest')) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
-                return [latestSuccessfulBuld.name, latestRemoteGitHash, latestRemoteGitCommitMessage, Promise.resolve()];
+                return [latestSuccessfulBuld.name, latestRemoteGitHash, latestRemoteGitCommitMessage, true];
             } else {
                 await dlog(deploymentId, `Docker Image for last build not found in internal registry, creating new build.`);
             }
@@ -61,7 +61,7 @@ class BuildService {
         return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash, latestRemoteGitCommitMessage);
     }
 
-    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string, latestRemoteGitCommitMessage: string = ''): Promise<[string, string, string, Promise<void>]> {
+    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string, latestRemoteGitCommitMessage: string = ''): Promise<[string, string, string, boolean]> {
 
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(app.id));
 
@@ -216,9 +216,7 @@ class BuildService {
         await new Promise(resolve => setTimeout(resolve, 5000)); // wait to be sure that pod is created
         await this.logBuildOutput(deploymentId, buildName);
 
-        const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!, deploymentId)
-
-        return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, buildJobPromise];
+        return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, false];
     }
 
     async logBuildOutput(deploymentId: string, buildName: string) {

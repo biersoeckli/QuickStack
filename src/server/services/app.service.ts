@@ -32,12 +32,12 @@ class AppService {
 
             if (app.sourceType === 'GIT') {
                 // first make build
-                const [buildJobName, gitCommitHash, gitCommitMessage, buildPromise] = await buildService.buildApp(deploymentId, app, forceBuild);
-                buildPromise.then(async () => {
-                    console.log('Build job finished, deploying...');
+                const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildApp(deploymentId, app, forceBuild);
+                if (shouldDeployImmediately) {
                     dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
                     await deploymentService.createDeployment(deploymentId, app, buildJobName, gitCommitHash, gitCommitMessage);
-                });
+                }
+                // Otherwise the build-watch service will trigger the deployment once the build job completes
             } else {
                 // only deploy
                 await deploymentService.createDeployment(deploymentId, app);
