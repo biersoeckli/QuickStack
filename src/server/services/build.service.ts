@@ -203,7 +203,7 @@ class BuildService {
         await new Promise(resolve => setTimeout(resolve, 5000)); // wait to be sure that pod is created
         await this.logBuildOutput(deploymentId, buildName);
 
-        const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!)
+        const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!, deploymentId)
 
         return [buildName, latestRemoteGitHash, buildJobPromise];
     }
@@ -325,7 +325,7 @@ class BuildService {
         } as PodsInfoModel;
     }
 
-    async waitForJobCompletion(jobName: string) {
+    async waitForJobCompletion(jobName: string, deploymentId: string){
         const POLL_INTERVAL = 10000; // 10 seconds
         return await new Promise<void>((resolve, reject) => {
             const intervalId = setInterval(async () => {
@@ -334,16 +334,26 @@ class BuildService {
                     if (jobStatus === 'UNKNOWN') {
                         console.log(`Job ${jobName} not found.`);
                         clearInterval(intervalId);
+                        dlog(deploymentId, `***********************************`);
+                        dlog(deploymentId, ` ⚠ Build job ${jobName} not found.`);
+                        dlog(deploymentId, ` It might have been deleted manually or due to a cleanup process.`);
+                        dlog(deploymentId, `***********************************`);
                         reject(new Error(`Job ${jobName} not found.`));
                         return;
                     }
                     if (jobStatus === 'SUCCEEDED') {
                         clearInterval(intervalId);
                         console.log(`Job ${jobName} completed successfully.`);
+                        dlog(deploymentId, `*************************************`);
+                        dlog(deploymentId, ` ✓ Build job completed successfully. `);
+                        dlog(deploymentId, `*************************************`);
                         resolve();
                     } else if (jobStatus === 'FAILED') {
                         clearInterval(intervalId);
                         console.log(`Job ${jobName} failed.`);
+                        dlog(deploymentId, `*********************`);
+                        dlog(deploymentId, ` ⚠ Build job failed. `);
+                        dlog(deploymentId, `*********************`);
                         reject(new Error(`Job ${jobName} failed.`));
                     } else {
                         console.log(`Job ${jobName} is still running...`);
