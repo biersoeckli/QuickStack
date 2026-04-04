@@ -70,7 +70,7 @@ class DeploymentService {
         }
     }
 
-    async createDeployment(deploymentId: string, app: AppExtendedModel, buildJobName?: string, gitCommitHash?: string) {
+    async createDeployment(deploymentId: string, app: AppExtendedModel, buildJobName?: string, gitCommitHash?: string, gitCommitMessage?: string) {
         await this.validateDeployment(app);
 
         dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
@@ -154,7 +154,11 @@ class DeploymentService {
         }
 
         if (gitCommitHash) {
-            body.spec!.template!.metadata!.annotations![Constants.QS_ANNOTATION_GIT_COMMIT] = gitCommitHash; // add gitCommitHash to deployment
+            body.spec!.template!.metadata!.annotations![Constants.QS_ANNOTATION_GIT_COMMIT] = gitCommitHash;
+        }
+
+        if (gitCommitMessage) {
+            body.spec!.template!.metadata!.annotations![Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE] = gitCommitMessage;
         }
 
         if (!appHasPvcChanges && app.appVolumes.length === 0 || app.appVolumes.every(vol => vol.accessMode === 'ReadWriteMany')) {
@@ -324,6 +328,7 @@ class DeploymentService {
                     buildJobName: build.name!,
                     status: this.mapBuildStatusToDeploymentStatus(build.status),
                     gitCommit: build.gitCommit,
+                    gitCommitMessage: build.gitCommitMessage,
                     deploymentId: build.deploymentId
                 }
             });
@@ -358,6 +363,7 @@ class DeploymentService {
                 createdAt: rs.metadata?.creationTimestamp!,
                 buildJobName: rs.spec?.template?.metadata?.annotations?.buildJobName!,
                 gitCommit: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT],
+                gitCommitMessage: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
                 status: status,
                 deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!
             }

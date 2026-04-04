@@ -1,6 +1,6 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
-import { V1Job, V1JobStatus } from "@kubernetes/client-node";
+import { V1Job, V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { BuildJobModel } from "@/shared/model/build-job";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -14,13 +14,14 @@ import stream from "stream";
 import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import paramService, { ParamService } from "./param.service";
+import clusterService from "./cluster.service";
 
 const buildkitImage = "moby/buildkit:master";
 
 class BuildService {
 
 
-    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, Promise<void>]> {
+    async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, Promise<void>]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -34,9 +35,13 @@ class BuildService {
 
         // Check if last build is already up to date with data in git repo
         const latestSuccessfulBuld = buildsForApp.find(x => x.status === 'SUCCEEDED');
-        const latestRemoteGitHash = await gitService.openGitContext(app, async (ctx) => {
+        const { latestRemoteGitHash, latestRemoteGitCommitMessage } = await gitService.openGitContext(app, async (ctx) => {
             await ctx.checkIfDockerfileExists();
-            return await ctx.getLatestRemoteCommitHash();
+            const [hash, message] = await Promise.all([
+                ctx.getLatestRemoteCommitHash(),
+                ctx.getLatestRemoteCommitMessage(),
+            ]);
+            return { latestRemoteGitHash: hash, latestRemoteGitCommitMessage: message };
         });
 
         dlog(deploymentId, `Cloned repository successfully`);
@@ -47,15 +52,15 @@ class BuildService {
 
             if (await registryService.doesImageExist(app.id, 'latest')) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
-                return [latestSuccessfulBuld.name, latestRemoteGitHash, Promise.resolve()];
+                return [latestSuccessfulBuld.name, latestRemoteGitHash, latestRemoteGitCommitMessage, Promise.resolve()];
             } else {
                 await dlog(deploymentId, `Docker Image for last build not found in internal registry, creating new build.`);
             }
         }
-        return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash);
+        return await this.createAndStartBuildJob(deploymentId, app, latestRemoteGitHash, latestRemoteGitCommitMessage);
     }
 
-    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string): Promise<[string, string, Promise<void>]> {
+    private async createAndStartBuildJob(deploymentId: string, app: AppExtendedModel, latestRemoteGitHash: string, latestRemoteGitCommitMessage: string = ''): Promise<[string, string, string, Promise<void>]> {
 
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(app.id));
 
@@ -85,6 +90,77 @@ class BuildService {
 
         dlog(deploymentId, `Dockerfile context path: ${contextPaths.folderPath ?? 'root directory of Git Repository'}. Dockerfile name: ${contextPaths.filePath}`);
 
+        // Read global build settings
+        const buildNode = await paramService.getString(ParamService.BUILD_NODE);
+
+        // Determine node selector and resource limits based on build node setting
+        let nodeSelector: Record<string, string> | undefined;
+        let resources: V1ResourceRequirements | undefined;
+
+        if (buildNode === Constants.BUILD_NODE_K3S_NATIVE_VALUE) {
+            // k3s native: let k3s schedule based on resource limits, no nodeSelector
+            const [memoryLimit, memoryReservation, cpuLimit, cpuReservation] = await Promise.all([
+                paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
+                paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
+                paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
+                paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
+            ]);
+            const hasLimits = memoryLimit || cpuLimit;
+            const hasRequests = memoryReservation || cpuReservation;
+            if (hasLimits || hasRequests) {
+                resources = {
+                    ...(hasLimits ? {
+                        limits: {
+                            ...(cpuLimit ? { cpu: `${cpuLimit}m` } : {}),
+                            ...(memoryLimit ? { memory: `${memoryLimit}M` } : {}),
+                        }
+                    } : {}),
+                    ...(hasRequests ? {
+                        requests: {
+                            ...(cpuReservation ? { cpu: `${cpuReservation}m` } : {}),
+                            ...(memoryReservation ? { memory: `${memoryReservation}M` } : {}),
+                        }
+                    } : {}),
+                };
+            }
+            const resourceLimitsString = [
+                memoryLimit ? `memory limit: ${memoryLimit}M` : null,
+                memoryReservation ? `memory reservation: ${memoryReservation}M` : null,
+                cpuLimit ? `CPU limit: ${cpuLimit}m` : null,
+                cpuReservation ? `CPU reservation: ${cpuReservation}m` : null,
+            ]
+            dlog(deploymentId, `Build scheduling: k3s native - ${resourceLimitsString.filter(s => !!s).join(', ') || 'no resource limits or reservations configured'}`);
+        } else if (buildNode) {
+            // specific node pinned
+            const nodes = await clusterService.getNodeInfo();
+            const targetNode = nodes.find(n => n.name === buildNode);
+            if (!targetNode || !targetNode.schedulable) {
+                throw new ServiceException(
+                    `Configured build node '${buildNode}' is not schedulable. Please update build settings.`
+                );
+            }
+            nodeSelector = { 'kubernetes.io/hostname': buildNode };
+            dlog(deploymentId, `Build node pinned to: ${buildNode}`);
+        } else {
+            // auto: pick node with most available RAM
+            try {
+                const [nodeResources, nodeInfos] = await Promise.all([
+                    clusterService.getNodeResourceUsage(),
+                    clusterService.getNodeInfo(),
+                ]);
+                const schedulableNames = new Set(nodeInfos.filter(n => n.schedulable).map(n => n.name));
+                const bestNode = nodeResources
+                    .filter(n => schedulableNames.has(n.name))
+                    .sort((a, b) => (b.ramCapacity - b.ramUsage) - (a.ramCapacity - a.ramUsage))[0];
+                if (bestNode) {
+                    nodeSelector = { 'kubernetes.io/hostname': bestNode.name };
+                    dlog(deploymentId, `Auto-selected build node with most available resources: ${bestNode.name}`);
+                }
+            } catch {
+                dlog(deploymentId, `Could not determine best build node, scheduling on any available node.`);
+            }
+        }
+
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
             kind: "Job",
@@ -95,6 +171,7 @@ class BuildService {
                     [Constants.QS_ANNOTATION_APP_ID]: app.id,
                     [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
                     [Constants.QS_ANNOTATION_GIT_COMMIT]: latestRemoteGitHash,
+                    [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: latestRemoteGitCommitMessage.substring(0, 200), // truncate to avoid exceeding 256 KiB size limits of annotations object.
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
                 }
             },
@@ -104,6 +181,7 @@ class BuildService {
                     spec: {
                         // Depends on feature gate UserNamespacesSupport (available in k8s 1.25+)
                         hostUsers: false,
+                        ...(nodeSelector ? { nodeSelector } : {}),
                         containers: [
                             {
                                 name: buildName,
@@ -112,7 +190,8 @@ class BuildService {
                                 args: buildkitArgs,
                                 securityContext: {
                                     privileged: true
-                                }
+                                },
+                                ...(resources ? { resources } : {}),
                             },
                         ],
                         restartPolicy: "Never",
@@ -129,9 +208,9 @@ class BuildService {
         await new Promise(resolve => setTimeout(resolve, 5000)); // wait to be sure that pod is created
         await this.logBuildOutput(deploymentId, buildName);
 
-        const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!)
+        const buildJobPromise = this.waitForJobCompletion(jobDefinition.metadata!.name!, deploymentId)
 
-        return [buildName, latestRemoteGitHash, buildJobPromise];
+        return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, buildJobPromise];
     }
 
     async logBuildOutput(deploymentId: string, buildName: string) {
@@ -225,6 +304,7 @@ class BuildService {
                 startTime: job.status?.startTime,
                 status: this.getJobStatusString(job.status),
                 gitCommit: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT],
+                gitCommitMessage: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
                 deploymentId: job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID],
             } as BuildJobModel;
         });
@@ -251,7 +331,7 @@ class BuildService {
         } as PodsInfoModel;
     }
 
-    async waitForJobCompletion(jobName: string) {
+    async waitForJobCompletion(jobName: string, deploymentId: string){
         const POLL_INTERVAL = 10000; // 10 seconds
         return await new Promise<void>((resolve, reject) => {
             const intervalId = setInterval(async () => {
@@ -260,16 +340,26 @@ class BuildService {
                     if (jobStatus === 'UNKNOWN') {
                         console.log(`Job ${jobName} not found.`);
                         clearInterval(intervalId);
+                        dlog(deploymentId, `***********************************`);
+                        dlog(deploymentId, ` ⚠ Build job ${jobName} not found.`);
+                        dlog(deploymentId, ` It might have been deleted manually or due to a cleanup process.`);
+                        dlog(deploymentId, `***********************************`);
                         reject(new Error(`Job ${jobName} not found.`));
                         return;
                     }
                     if (jobStatus === 'SUCCEEDED') {
                         clearInterval(intervalId);
                         console.log(`Job ${jobName} completed successfully.`);
+                        dlog(deploymentId, `*************************************`);
+                        dlog(deploymentId, ` ✓ Build job completed successfully. `);
+                        dlog(deploymentId, `*************************************`);
                         resolve();
                     } else if (jobStatus === 'FAILED') {
                         clearInterval(intervalId);
                         console.log(`Job ${jobName} failed.`);
+                        dlog(deploymentId, `*********************`);
+                        dlog(deploymentId, ` ⚠ Build job failed. `);
+                        dlog(deploymentId, `*********************`);
                         reject(new Error(`Job ${jobName} failed.`));
                     } else {
                         console.log(`Job ${jobName} is still running...`);

@@ -84,6 +84,7 @@ export default function BuildsTab({
                         ['status', 'Status', true, (item) => <DeploymentStatusBadge>{item.status}</DeploymentStatusBadge>],
                         ["startTime", "Started At", true, (item) => formatDateTime(item.createdAt)],
                         ['gitCommit', 'Git Commit', true, (item) => <ShortCommitHash>{item.gitCommit}</ShortCommitHash>],
+                        ['gitCommitMessage', 'Commit Message', true, (item) => <span className="text-muted-foreground text-sm">{item.gitCommitMessage ?? ''}</span>],
                     ]}
                         data={appBuilds}
                         hideSearchBar={true}

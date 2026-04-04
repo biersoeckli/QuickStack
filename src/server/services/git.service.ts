@@ -110,6 +110,11 @@ class InternalGitService {
             throw new ServiceException("The git repository is empty.");
         }
     }
+
+    async getLatestRemoteCommitMessage() {
+        const log = await this.git.log();
+        return log.latest?.message ?? '';
+    }
 }
 
 const gitService = new GitService();

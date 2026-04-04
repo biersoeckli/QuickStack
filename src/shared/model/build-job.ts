@@ -8,6 +8,7 @@ export const buildJobSchemaZod = z.object({
     startTime: z.date(),
     status:  buildJobStatusEnumZod,
     gitCommit: z.string(),
+    gitCommitMessage: z.string().optional(),
     deploymentId: z.string(),
 });
 
