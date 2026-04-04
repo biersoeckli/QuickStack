@@ -15,6 +15,7 @@ import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import paramService, { ParamService } from "./param.service";
 import clusterService from "./cluster.service";
+import buildInitContainerService from "./build-init-container.service";
 
 const buildkitImage = "moby/buildkit:master";
 
@@ -65,6 +66,11 @@ class BuildService {
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(app.id));
 
         dlog(deploymentId, `Creating build job with name: ${buildName}`);
+
+        await buildInitContainerService.ensureRbacResources();
+        const concurrencyLimit = await paramService.getNumber(ParamService.BUILD_CONCURRENCY_LIMIT, 1);
+        const initContainer = buildInitContainerService.getInitContainer(concurrencyLimit ?? 1, buildName);
+        dlog(deploymentId, `Build concurrency limit: ${concurrencyLimit ?? 1}`);
 
         const contextPaths = PathUtils.splitPath(app.dockerfilePath);
 
@@ -181,6 +187,8 @@ class BuildService {
                     spec: {
                         // Depends on feature gate UserNamespacesSupport (available in k8s 1.25+)
                         hostUsers: false,
+                        serviceAccountName: 'qs-build-watcher',
+                        initContainers: [initContainer],
                         ...(nodeSelector ? { nodeSelector } : {}),
                         containers: [
                             {
