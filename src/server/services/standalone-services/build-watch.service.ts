@@ -33,8 +33,12 @@ class BuildWatchService {
             `/apis/batch/v1/namespaces/${BUILD_NAMESPACE}/jobs`,
             {},
             async (type: string, apiObj: unknown) => {
-                const job = apiObj as V1Job;
-                await this.handleJobEvent(job);
+                try {
+                    const job = apiObj as V1Job;
+                    await this.handleJobEvent(job);
+                } catch (e) {
+                    console.error('[BuildWatch] Error handling job event:', e);
+                }
             },
             (err: unknown) => {
                 if (err) console.error('[BuildWatch] Watch error:', err);

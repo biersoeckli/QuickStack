@@ -12,6 +12,7 @@ import maintenanceService from './server/services/standalone-services/maintenanc
 import passwordChangeService from './server/services/standalone-services/password-change.service'
 import appLogsService from './server/services/standalone-services/app-logs.service'
 import buildWatchService from './server/services/standalone-services/build-watch.service'
+import deploymentEventWatchService from './server/services/standalone-services/deployment-event-watch.service'
 
 // Source: https://nextjs.org/docs/app/building-your-application/configuring/custom-server
 
@@ -59,6 +60,7 @@ async function initializeNextJs() {
     maintenanceService.configureMaintenanceCronJobs();
     appLogsService.configureCronJobs();
     buildWatchService.startWatch();
+    deploymentEventWatchService.startWatch();
 
     const app = next({ dev });
     const handle = app.getRequestHandler();

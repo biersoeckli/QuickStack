@@ -1,6 +1,7 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import deploymentLiveStatusService from "@/server/services/deployment-live-status.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
+import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
 import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { V1Deployment } from "@kubernetes/client-node";
 import * as k8s from '@kubernetes/client-node';
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
 
          // starts the buildwatch service if not already running.
         buildWatchService.startWatch();
+        deploymentEventWatchService.startWatch();
 
         const encoder = new TextEncoder();
         let shouldStopStreaming = false;
