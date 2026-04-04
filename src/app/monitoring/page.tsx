@@ -11,22 +11,17 @@ import AppRessourceMonitoring from "./app-monitoring";
 import AppVolumeMonitoring from "./app-volumes-monitoring";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 export default async function ResourceNodesInfoPage() {
 
     const session = await getAuthUserSession();
-    let resourcesNode: NodeResourceModel[] | undefined;
-    let volumesUsage: AppVolumeMonitoringUsageModel[] | undefined;
-    let updatedNodeRessources: AppMonitoringUsageModel[] | undefined;
-    try {
-        [resourcesNode, volumesUsage, updatedNodeRessources] = await Promise.all([
-            clusterService.getNodeResourceUsage(),
-            monitoringService.getAllAppVolumesUsage(),
-            await monitoringService.getMonitoringForAllApps()
-        ]);
-    } catch (ex) {
-        // do nothing --> if an error occurs, the ResourceNodes will show a loading spinner and error message
-    }
+
+    let [resourcesNode, volumesUsage, updatedNodeRessources] = await Promise.all([
+        CatchUtils.resultOrUndefined(() => clusterService.getNodeResourceUsage()),
+        CatchUtils.resultOrUndefined(() => monitoringService.getAllAppVolumesUsage()),
+        CatchUtils.resultOrUndefined(() => monitoringService.getMonitoringForAllApps())
+    ]);
 
     // filter by role
     volumesUsage = volumesUsage?.filter((volume) => UserGroupUtils.sessionHasReadAccessForApp(session, volume.appId));

@@ -4,6 +4,7 @@ import { getAuthUserSession, isAuthorizedForBackups } from "@/server/utils/actio
 import PageTitle from "@/components/custom/page-title";
 import backupService from "@/server/services/standalone-services/backup.service";
 import BackupsTable from "./backups-table";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 import { AlertCircle, AlertTriangleIcon } from "lucide-react"
 import {
     Alert,
@@ -15,10 +16,11 @@ import {
 export default async function BackupsPage() {
 
     await isAuthorizedForBackups();
-    const {
-        backupInfoModels,
-        backupsVolumesWithoutActualBackups
-    } = await backupService.getBackupsForAllS3Targets();
+    const backupData = await CatchUtils.resultOrUndefined(() => backupService.getBackupsForAllS3Targets());
+
+    const backupInfoModels = backupData?.backupInfoModels ?? [];
+    const backupsVolumesWithoutActualBackups = backupData?.backupsVolumesWithoutActualBackups ?? [];
+    const failedS3Targets = backupData?.failedS3Targets ?? [];
 
     const hasMissedBackups = backupInfoModels.some(x => x.missedBackup === true);
 
@@ -29,6 +31,20 @@ export default async function BackupsPage() {
                 subtitle={`View all backups wich are stored in all S3 Target destinations. If a backup exists from an app wich doesnt exist anymore, it will be shown as orphaned.`}>
             </PageTitle>
             <div className="space-y-4">
+                {!backupData && <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Backup data could not be loaded</AlertTitle>
+                    <AlertDescription>
+                        The configured backup storage could not be reached. Please verify your S3/B2 target settings and credentials.
+                    </AlertDescription>
+                </Alert>}
+                {failedS3Targets.length > 0 && <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Some S3 targets could not be loaded</AlertTitle>
+                    <AlertDescription>
+                        Backups from the following locations could not be fetched: {failedS3Targets.map((target) => `${target.name} (${target.endpoint}/${target.bucketName})`).join(', ')}
+                    </AlertDescription>
+                </Alert>}
                 {backupsVolumesWithoutActualBackups.length > 0 && <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Apps without Backup</AlertTitle>

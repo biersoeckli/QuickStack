@@ -8,10 +8,10 @@ export const nodeResourceZodModel = z.object({
   cpuCapacity: z.number(),
   ramUsage: z.number(),
   ramCapacity: z.number(),
-  diskUsageAbsolut: z.number(),
-  diskUsageCapacity: z.number(),
-  diskUsageReserved: z.number(),
-  diskSpaceSchedulable: z.number(),
+  diskUsageAbsolut: z.number().optional(),
+  diskUsageCapacity: z.number().optional(),
+  diskUsageReserved: z.number().optional(),
+  diskSpaceSchedulable: z.number().optional(),
 })
 
 export type NodeResourceModel = z.infer<typeof nodeResourceZodModel>;

@@ -40,6 +40,11 @@ export default function ResourcesNodes({
   resourcesNodes?: NodeResourceModel[];
 }) {
 
+  const getDiskUsageAbsolut = (node: NodeResourceModel) => node.diskUsageAbsolut ?? 0;
+  const getDiskUsageReserved = (node: NodeResourceModel) => node.diskUsageReserved ?? 0;
+  const getDiskUsageCapacity = (node: NodeResourceModel) => node.diskUsageCapacity ?? 0;
+  const toPercent = (used: number, capacity: number) => (capacity > 0 ? (used / capacity) * 100 : 0);
+
   const [updatedNodeRessources, setUpdatedResourcesNodes] = useState<NodeResourceModel[] | undefined>(resourcesNodes);
 
   const fetchResourcesNodes = async () => {
@@ -76,9 +81,9 @@ export default function ResourcesNodes({
       cpuCapacity: acc.cpuCapacity + node.cpuCapacity,
       ramUsage: acc.ramUsage + node.ramUsage,
       ramCapacity: acc.ramCapacity + node.ramCapacity,
-      diskUsageAbsolut: acc.diskUsageAbsolut + node.diskUsageAbsolut,
-      diskUsageReserved: acc.diskUsageReserved + node.diskUsageReserved,
-      diskCapacity: acc.diskCapacity + node.diskUsageCapacity,
+      diskUsageAbsolut: acc.diskUsageAbsolut + getDiskUsageAbsolut(node),
+      diskUsageReserved: acc.diskUsageReserved + getDiskUsageReserved(node),
+      diskCapacity: acc.diskCapacity + getDiskUsageCapacity(node),
     }), {
       cpuUsage: 0, cpuCapacity: 0,
       ramUsage: 0, ramCapacity: 0,
@@ -227,7 +232,7 @@ export default function ResourcesNodes({
                       return (
                         <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                           <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                            {(((clusterStats.diskUsageAbsolut + clusterStats.diskUsageReserved) / clusterStats.diskCapacity) * 100).toFixed(0)}%
+                            {toPercent(clusterStats.diskUsageAbsolut + clusterStats.diskUsageReserved, clusterStats.diskCapacity).toFixed(0)}%
                           </tspan>
                           <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
                             Used
@@ -283,11 +288,22 @@ export default function ResourcesNodes({
                   </TableCell>
                   <TableCell className="w-[25%]">
                     <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{(((node.diskUsageAbsolut + node.diskUsageReserved) / node.diskUsageCapacity) * 100).toFixed(0)}%</span>
-                        <span>{KubeSizeConverter.convertBytesToReadableSize(node.diskUsageAbsolut + node.diskUsageReserved)} / {KubeSizeConverter.convertBytesToReadableSize(node.diskUsageCapacity)}</span>
-                      </div>
-                      <Progress value={((node.diskUsageAbsolut + node.diskUsageReserved) / node.diskUsageCapacity) * 100} className="h-2" />
+                      {(() => {
+                        const diskUsed = getDiskUsageAbsolut(node);
+                        const diskReserved = getDiskUsageReserved(node);
+                        const diskCapacity = getDiskUsageCapacity(node);
+                        const diskUsedAndReserved = diskUsed + diskReserved;
+                        const diskPercent = toPercent(diskUsedAndReserved, diskCapacity);
+                        return (
+                          <>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>{diskPercent.toFixed(0)}%</span>
+                              <span>{KubeSizeConverter.convertBytesToReadableSize(diskUsedAndReserved)} / {KubeSizeConverter.convertBytesToReadableSize(diskCapacity)}</span>
+                            </div>
+                            <Progress value={diskPercent} className="h-2" />
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
