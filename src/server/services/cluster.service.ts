@@ -6,6 +6,7 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
 import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 class ClusterService {
 
@@ -88,7 +89,7 @@ class ClusterService {
             nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
             const latestUsageItem = nodeMetrics[0];
 
-            const diskInfo = await longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!);
+            const diskInfo = await CatchUtils.resultOrUndefined(() => longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!));
 
             return {
                 name: node.Node.metadata?.name!,
@@ -96,10 +97,10 @@ class ClusterService {
                 cpuCapacity: Number(node.CPU?.Capacity!),
                 ramUsage: latestUsageItem.ramUsage,
                 ramCapacity: Number(node.Memory?.Capacity!),
-                diskUsageAbsolut: diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable,
-                diskUsageReserved: diskInfo.totalStorageReserved,
-                diskUsageCapacity: diskInfo.totalStorageMaximum,
-                diskSpaceSchedulable: diskInfo.totalSchedulableStorage
+                diskUsageAbsolut: diskInfo ? diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable : undefined,
+                diskUsageReserved: diskInfo?.totalStorageReserved,
+                diskUsageCapacity: diskInfo?.totalStorageMaximum,
+                diskSpaceSchedulable: diskInfo?.totalSchedulableStorage
             }
         }));
     }

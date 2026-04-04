@@ -100,10 +100,39 @@ class BackupService {
 
     async getBackupsForAllS3Targets() {
         const s3Targets = await dataAccess.client.s3Target.findMany();
-        const returnValFromAllS3Targets = await Promise.all(s3Targets.map(s3Target =>
-            this.getBackupsFromS3Target(s3Target)));
+        const returnValFromAllS3Targets = await Promise.all(s3Targets.map(async (s3Target) => {
+            try {
+                const data = await this.getBackupsFromS3Target(s3Target);
+                return {
+                    s3Target,
+                    data,
+                    error: undefined
+                };
+            } catch (error) {
+                const errorMessage = error instanceof Error
+                    ? `${error.name}: ${error.message}`
+                    : String(error);
+                console.error(`Failed to fetch backups for S3 target '${s3Target.name}' (${s3Target.endpoint}/${s3Target.bucketName})`, error);
+                return {
+                    s3Target,
+                    data: undefined,
+                    error: errorMessage
+                };
+            }
+        }));
 
-        const backupInfoModels = returnValFromAllS3Targets.map(x => x.backupInfoModels).flat();
+        const successfulResults = returnValFromAllS3Targets.filter((result) => !!result.data);
+        const failedS3Targets = returnValFromAllS3Targets
+            .filter((result) => !!result.error)
+            .map((result) => ({
+                id: result.s3Target.id,
+                name: result.s3Target.name,
+                endpoint: result.s3Target.endpoint,
+                bucketName: result.s3Target.bucketName,
+                error: result.error ?? 'Unknown error'
+            }));
+
+        const backupInfoModels = successfulResults.map(x => x.data!.backupInfoModels).flat();
         backupInfoModels.sort((a, b) => {
             if (a.projectName === b.projectName) {
                 return a.appName.localeCompare(b.appName);
@@ -111,10 +140,11 @@ class BackupService {
             return a.projectName.localeCompare(b.projectName);
         });
 
-        const backupsVolumesWithoutActualBackups = returnValFromAllS3Targets.map(x => x.backupsVolumesWithoutActualBackups).flat();
+        const backupsVolumesWithoutActualBackups = successfulResults.map(x => x.data!.backupsVolumesWithoutActualBackups).flat();
         return {
             backupInfoModels,
-            backupsVolumesWithoutActualBackups
+            backupsVolumesWithoutActualBackups,
+            failedS3Targets
         };
     }
 

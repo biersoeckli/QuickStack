@@ -17,10 +17,17 @@ export default function ChartDiskRessources({
     nodeRessource: NodeResourceModel;
 }) {
 
+    const diskUsed = nodeRessource.diskUsageAbsolut ?? 0;
+    const diskReserved = nodeRessource.diskUsageReserved ?? 0;
+    const diskCapacity = nodeRessource.diskUsageCapacity ?? 0;
+    const diskSchedulable = nodeRessource.diskSpaceSchedulable ?? Math.max(0, diskCapacity - diskUsed - diskReserved);
+    const diskUsedAndReserved = diskUsed + diskReserved;
+    const diskUsagePercent = diskCapacity > 0 ? (diskUsedAndReserved / diskCapacity) * 100 : 0;
+
     const chartData = [{
-        diskUsed: nodeRessource.diskUsageAbsolut,
-        diskReserved: nodeRessource.diskUsageReserved,
-        diskSchedulable: nodeRessource.diskSpaceSchedulable
+        diskUsed,
+        diskReserved,
+        diskSchedulable
     }];
 
     const chartConfig = {
@@ -81,7 +88,7 @@ export default function ChartDiskRessources({
                                             y={(viewBox.cy || 0) - 10}
                                             className="fill-foreground text-4xl font-bold"
                                         >
-                                            {((nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved) / nodeRessource.diskUsageCapacity * 100).toFixed(0)}%
+                                            {diskUsagePercent.toFixed(0)}%
                                         </tspan>
                                         <tspan
                                             x={viewBox.cx}
@@ -94,7 +101,7 @@ export default function ChartDiskRessources({
                                             x={viewBox.cx}
                                             y={(viewBox.cy || 0) + 30}
                                             className="fill-muted-foreground">
-                                            {KubeSizeConverter.convertBytesToReadableSize(nodeRessource.diskUsageAbsolut + nodeRessource.diskUsageReserved, 1, true)} / {KubeSizeConverter.convertBytesToReadableSize(nodeRessource.diskUsageCapacity, 1)}
+                                            {KubeSizeConverter.convertBytesToReadableSize(diskUsedAndReserved, 1, true)} / {KubeSizeConverter.convertBytesToReadableSize(diskCapacity, 1)}
                                         </tspan>
                                     </text>
                                 );
