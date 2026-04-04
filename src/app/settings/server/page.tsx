@@ -18,7 +18,9 @@ import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickStackMaintenanceSettings from "./qs-maintenance-settings";
 import podService from "@/server/services/pod.service";
 import { ServerSettingsTabs } from "./server-settings-tabs";
-import { Settings, Network, HardDrive, Rocket, Wrench } from "lucide-react";
+import { Settings, Network, HardDrive, Rocket, Wrench, Hammer } from "lucide-react";
+import QsBuildSettings from "./qs-build-settings";
+import { getBuildSettings } from "./actions";
 import quickStackUpdateService from "@/server/services/qs-update.service";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import clusterService from "@/server/services/cluster.service";
@@ -57,13 +59,15 @@ export default async function ProjectPage({
         traefikStatus,
         qsPodInfos,
         newVersionInfo,
-        nodeInfo
+        nodeInfo,
+        buildSettings
     ] = await Promise.all([
         s3TargetService.getAll(),
         traefikService.getStatus(),
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
         quickStackUpdateService.getNewVersionInfo(),
-        clusterService.getNodeInfo()
+        clusterService.getNodeInfo(),
+        getBuildSettings()
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);
@@ -90,6 +94,7 @@ export default async function ProjectPage({
                         <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
                         <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
                         <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
+                        <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>
                         <TabsTrigger value="cluster"><Network className="mr-2 h-4 w-4" />Cluster</TabsTrigger>
                         <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
                         <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
@@ -115,6 +120,12 @@ export default async function ProjectPage({
                         <QuickStackRegistrySettings registryStorageLocation={regitryStorageLocation!} s3Targets={s3Targets} />
                         <QuickStackSystemBackupSettings systemBackupLocation={systemBackupLocation!} s3Targets={s3Targets} />
                         <LonghornUiToggle />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="builds" className="space-y-4">
+                    <div className="grid gap-6">
+                        <QsBuildSettings buildSettings={buildSettings} nodes={nodeInfo} />
                     </div>
                 </TabsContent>
 

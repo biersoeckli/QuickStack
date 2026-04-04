@@ -1,6 +1,6 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
-import { V1Job, V1JobStatus } from "@kubernetes/client-node";
+import { V1Job, V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { BuildJobModel } from "@/shared/model/build-job";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -14,6 +14,7 @@ import stream from "stream";
 import { PathUtils } from "../utils/path.utils";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import paramService, { ParamService } from "./param.service";
+import clusterService from "./cluster.service";
 
 const buildkitImage = "moby/buildkit:master";
 
@@ -85,6 +86,77 @@ class BuildService {
 
         dlog(deploymentId, `Dockerfile context path: ${contextPaths.folderPath ?? 'root directory of Git Repository'}. Dockerfile name: ${contextPaths.filePath}`);
 
+        // Read global build settings
+        const buildNode = await paramService.getString(ParamService.BUILD_NODE);
+
+        // Determine node selector and resource limits based on build node setting
+        let nodeSelector: Record<string, string> | undefined;
+        let resources: V1ResourceRequirements | undefined;
+
+        if (buildNode === Constants.BUILD_NODE_K3S_NATIVE_VALUE) {
+            // k3s native: let k3s schedule based on resource limits, no nodeSelector
+            const [memoryLimit, memoryReservation, cpuLimit, cpuReservation] = await Promise.all([
+                paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
+                paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
+                paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
+                paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
+            ]);
+            const hasLimits = memoryLimit || cpuLimit;
+            const hasRequests = memoryReservation || cpuReservation;
+            if (hasLimits || hasRequests) {
+                resources = {
+                    ...(hasLimits ? {
+                        limits: {
+                            ...(cpuLimit ? { cpu: `${cpuLimit}m` } : {}),
+                            ...(memoryLimit ? { memory: `${memoryLimit}M` } : {}),
+                        }
+                    } : {}),
+                    ...(hasRequests ? {
+                        requests: {
+                            ...(cpuReservation ? { cpu: `${cpuReservation}m` } : {}),
+                            ...(memoryReservation ? { memory: `${memoryReservation}M` } : {}),
+                        }
+                    } : {}),
+                };
+            }
+            const resourceLimitsString = [
+                memoryLimit ? `memory limit: ${memoryLimit}M` : null,
+                memoryReservation ? `memory reservation: ${memoryReservation}M` : null,
+                cpuLimit ? `CPU limit: ${cpuLimit}m` : null,
+                cpuReservation ? `CPU reservation: ${cpuReservation}m` : null,
+            ]
+            dlog(deploymentId, `Build scheduling: k3s native - ${resourceLimitsString.filter(s => !!s).join(', ') || 'no resource limits or reservations configured'}`);
+        } else if (buildNode) {
+            // specific node pinned
+            const nodes = await clusterService.getNodeInfo();
+            const targetNode = nodes.find(n => n.name === buildNode);
+            if (!targetNode || !targetNode.schedulable) {
+                throw new ServiceException(
+                    `Configured build node '${buildNode}' is not schedulable. Please update build settings.`
+                );
+            }
+            nodeSelector = { 'kubernetes.io/hostname': buildNode };
+            dlog(deploymentId, `Build node pinned to: ${buildNode}`);
+        } else {
+            // auto: pick node with most available RAM
+            try {
+                const [nodeResources, nodeInfos] = await Promise.all([
+                    clusterService.getNodeResourceUsage(),
+                    clusterService.getNodeInfo(),
+                ]);
+                const schedulableNames = new Set(nodeInfos.filter(n => n.schedulable).map(n => n.name));
+                const bestNode = nodeResources
+                    .filter(n => schedulableNames.has(n.name))
+                    .sort((a, b) => (b.ramCapacity - b.ramUsage) - (a.ramCapacity - a.ramUsage))[0];
+                if (bestNode) {
+                    nodeSelector = { 'kubernetes.io/hostname': bestNode.name };
+                    dlog(deploymentId, `Auto-selected build node with most available resources: ${bestNode.name}`);
+                }
+            } catch {
+                dlog(deploymentId, `Could not determine best build node, scheduling on any available node.`);
+            }
+        }
+
         const jobDefinition: V1Job = {
             apiVersion: "batch/v1",
             kind: "Job",
@@ -104,6 +176,7 @@ class BuildService {
                     spec: {
                         // Depends on feature gate UserNamespacesSupport (available in k8s 1.25+)
                         hostUsers: false,
+                        ...(nodeSelector ? { nodeSelector } : {}),
                         containers: [
                             {
                                 name: buildName,
@@ -112,7 +185,8 @@ class BuildService {
                                 args: buildkitArgs,
                                 securityContext: {
                                     privileged: true
-                                }
+                                },
+                                ...(resources ? { resources } : {}),
                             },
                         ],
                         restartPolicy: "Never",

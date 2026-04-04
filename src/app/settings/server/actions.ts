@@ -32,6 +32,46 @@ import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagatio
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
 import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import longhornUiService from "@/server/services/longhorn-ui.service";
+import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
+
+export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
+  saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
+    await getAdminUserSession();
+
+    const saveOrDelete = async (key: string, value: string | number | null | undefined) => {
+      if (value !== null && value !== undefined && value !== '') {
+        await paramService.save({ name: key, value: String(value) });
+      } else {
+        await paramService.deleteByNameIfExists(key);
+      }
+    };
+
+    // Resource limits only apply when using k3s native scheduling
+    if (validatedData.buildNode === Constants.BUILD_NODE_K3S_NATIVE_VALUE) {
+      await saveOrDelete(ParamService.BUILD_MEMORY_LIMIT, validatedData.memoryLimit);
+      await saveOrDelete(ParamService.BUILD_MEMORY_RESERVATION, validatedData.memoryReservation);
+      await saveOrDelete(ParamService.BUILD_CPU_LIMIT, validatedData.cpuLimit);
+      await saveOrDelete(ParamService.BUILD_CPU_RESERVATION, validatedData.cpuReservation);
+    } else {
+      await paramService.deleteByNameIfExists(ParamService.BUILD_MEMORY_LIMIT);
+      await paramService.deleteByNameIfExists(ParamService.BUILD_MEMORY_RESERVATION);
+      await paramService.deleteByNameIfExists(ParamService.BUILD_CPU_LIMIT);
+      await paramService.deleteByNameIfExists(ParamService.BUILD_CPU_RESERVATION);
+    }
+    await saveOrDelete(ParamService.BUILD_NODE, validatedData.buildNode);
+  });
+
+export const getBuildSettings = async (): Promise<BuildSettingsModel> => {
+  await getAdminUserSession();
+  const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode] = await Promise.all([
+    paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
+    paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
+    paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
+    paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
+    paramService.getString(ParamService.BUILD_NODE),
+  ]);
+  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode };
+};
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
   simpleAction(async () => {

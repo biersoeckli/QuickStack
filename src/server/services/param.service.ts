@@ -14,6 +14,11 @@ export class ParamService {
     static readonly PUBLIC_IPV4_ADDRESS = 'publicIpv4Address';
     static readonly QS_SYSTEM_BACKUP_LOCATION = Constants.QS_SYSTEM_BACKUP_LOCATION_PARAM_KEY;
     static readonly K3S_JOIN_TOKEN = Constants.K3S_JOIN_TOKEN;
+    static readonly BUILD_MEMORY_LIMIT = 'buildMemoryLimit';
+    static readonly BUILD_MEMORY_RESERVATION = 'buildMemoryReservation';
+    static readonly BUILD_CPU_LIMIT = 'buildCpuLimit';
+    static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
+    static readonly BUILD_NODE = 'buildNode';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({
@@ -94,6 +99,22 @@ export class ParamService {
 
     async deleteByName(name: string) {
         const existingParam = await this.get(name);
+        if (!existingParam) {
+            return;
+        }
+        try {
+            await dataAccess.client.parameter.delete({
+                where: {
+                    name
+                }
+            });
+        } finally {
+            revalidateTag(Tags.parameter());
+        }
+    }
+
+    async deleteByNameIfExists(name: string) {
+        const existingParam = await this.getOrUndefined(name);
         if (!existingParam) {
             return;
         }
