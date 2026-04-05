@@ -33,7 +33,7 @@ export function EditAppDialog({
         if (!name) { return; }
         const result = await Toast.fromAction(() => createApp(name, projectId, existingItem?.id));
         if (result.status === "success" && !existingItem) {
-            router.push(`/project/app/${result.data.id}`);
+            router.push(`/project/app/${result!.data!.id}`);
         }
     };
 

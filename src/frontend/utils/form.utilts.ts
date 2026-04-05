@@ -8,8 +8,8 @@ export type FormZodErrorValidationCallback<T> = {
 
 export class FormUtils {
 
-    static mapValidationErrorsToForm<T extends ZodType<any, any, any>>(
-        state: ServerActionResult<z.infer<T>, undefined>,
+    static mapValidationErrorsToForm<T extends ZodType<any, any, any>, TReturnData = any>(
+        state: ServerActionResult<z.infer<T>, TReturnData>,
         form: UseFormReturn<z.infer<T>, any, undefined>) {
 
         form.clearErrors();

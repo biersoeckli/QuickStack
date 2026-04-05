@@ -401,11 +401,11 @@ class BuildService {
         if (status.ready ?? 0 > 0) {
             return 'RUNNING';
         }
-        if ((status.succeeded ?? 0) > 0) {
-            return 'SUCCEEDED';
-        }
         if ((status.failed ?? 0) > 0) {
             return 'FAILED';
+        }
+        if ((status.succeeded ?? 0) > 0) {
+            return 'SUCCEEDED';
         }
         if ((status.terminating ?? 0) > 0) {
             return 'UNKNOWN';
@@ -421,11 +421,11 @@ class BuildService {
 
     async getAllBuilds(): Promise<GlobalBuildJobModel[]> {
         const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        const appIds = [...new Set(
+        const appIds = Array.from(new Set(
             jobs.body.items
                 .map((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID])
                 .filter((id): id is string => !!id)
-        )];
+        ));
         const apps = await dataAccess.client.app.findMany({
             where: { id: { in: appIds } },
             include: { project: true },
