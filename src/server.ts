@@ -84,7 +84,6 @@ async function initializeNextJs() {
             );
             // Trigger watch services via the protected init route
             fetch(`http://localhost:${port}/api/init?key=${globalThis.quickStackInitKey}`)
-                .then(() => console.log('Init route called successfully.'))
                 .catch((err) => console.error('Failed to call init route:', err));
         });
     }).catch((err) => console.error(

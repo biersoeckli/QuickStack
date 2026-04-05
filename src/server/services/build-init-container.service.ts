@@ -59,7 +59,7 @@ class BuildInitContainerService {
     getInitContainer(concurrencyLimit: number, currentJobName: string): V1Container {
         const script = [
             'while true; do',
-            '  RUNNING=$(kubectl get jobs -n "$NAMESPACE" -o jsonpath=\'{range .items[*]}{.metadata.name}{"\\t"}{.status.active}{"\\n"}{end}\' | awk -v cur="$CURRENT_JOB_NAME" \'BEGIN{FS="\\t"} $1 != cur {s+=$2} END{print s+0}\');',
+            '  RUNNING=$(kubectl get jobs -n "$NAMESPACE" -o jsonpath=\'{range .items[*]}{.metadata.name}{"\\t"}{.status.ready}{"\\n"}{end}\' | awk -v cur="$CURRENT_JOB_NAME" \'BEGIN{FS="\\t"} $1 != cur {s+=$2} END{print s+0}\');',
             '  if [ "$RUNNING" -lt "$CONCURRENCY_LIMIT" ]; then',
             '    echo "Slot available ($RUNNING running, limit $CONCURRENCY_LIMIT). Starting build.";',
             '    exit 0;',

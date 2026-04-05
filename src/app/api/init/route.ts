@@ -15,9 +15,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        buildWatchService.startWatch();
-        deploymentEventWatchService.startWatch();
+        await buildWatchService.startWatch();
+        await deploymentEventWatchService.startWatch();
 
+        console.log('Initialized services successfully via init route.');
         return NextResponse.json({ status: "ok" });
     });
 }
