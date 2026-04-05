@@ -70,9 +70,8 @@ class BuildService {
         dlog(deploymentId, `Creating build job with name: ${buildName}`);
 
         await buildInitContainerService.ensureRbacResources();
-        const concurrencyLimit = await paramService.getNumber(ParamService.BUILD_CONCURRENCY_LIMIT, 1);
-        const initContainer = buildInitContainerService.getInitContainer(concurrencyLimit ?? 1, buildName);
-        dlog(deploymentId, `Build concurrency limit: ${concurrencyLimit ?? 1}`);
+        const queuedAt = Date.now().toString();
+        const initContainer = buildInitContainerService.getInitContainer(buildName, queuedAt);
 
         const contextPaths = PathUtils.splitPath(app.dockerfilePath);
 
@@ -181,6 +180,7 @@ class BuildService {
                     [Constants.QS_ANNOTATION_GIT_COMMIT]: latestRemoteGitHash,
                     [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: latestRemoteGitCommitMessage.substring(0, 200), // truncate to avoid exceeding 256 KiB size limits of annotations object.
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
+                    [Constants.QS_ANNOTATION_BUILD_QUEUED_AT]: queuedAt,
                 }
             },
             spec: {

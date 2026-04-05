@@ -19,7 +19,6 @@ export class ParamService {
     static readonly BUILD_CPU_LIMIT = 'buildCpuLimit';
     static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
     static readonly BUILD_NODE = 'buildNode';
-    static readonly BUILD_CONCURRENCY_LIMIT = 'buildConcurrencyLimit';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({

@@ -70,20 +70,6 @@ export default function QsBuildSettings({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
-                                name="concurrencyLimit"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Build Concurrency Limit</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" {...field} value={field.value as string | number | undefined ?? ''} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
                                 name="buildNode"
                                 render={({ field }) => (
                                     <FormItem>

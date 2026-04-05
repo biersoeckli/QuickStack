@@ -59,20 +59,18 @@ export const saveBuildSettings = async (prevState: any, inputData: BuildSettings
       await paramService.deleteByNameIfExists(ParamService.BUILD_CPU_RESERVATION);
     }
     await saveOrDelete(ParamService.BUILD_NODE, validatedData.buildNode);
-    await saveOrDelete(ParamService.BUILD_CONCURRENCY_LIMIT, validatedData.concurrencyLimit);
   });
 
 export const getBuildSettings = async (): Promise<BuildSettingsModel> => {
   await getAdminUserSession();
-  const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, concurrencyLimit] = await Promise.all([
+  const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode] = await Promise.all([
     paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
     paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
     paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
     paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
     paramService.getString(ParamService.BUILD_NODE),
-    paramService.getNumber(ParamService.BUILD_CONCURRENCY_LIMIT),
   ]);
-  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, concurrencyLimit };
+  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode };
 };
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>

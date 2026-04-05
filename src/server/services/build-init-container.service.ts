@@ -56,16 +56,28 @@ class BuildInitContainerService {
         }, BUILD_NAMESPACE);
     }
 
-    getInitContainer(concurrencyLimit: number, currentJobName: string): V1Container {
+    getInitContainer(currentJobName: string, queuedAt: string): V1Container {
         const script = [
+            'sleep $((RANDOM % 5 + 1));',
             'while true; do',
-            '  RUNNING=$(kubectl get jobs -n "$NAMESPACE" -o jsonpath=\'{range .items[*]}{.metadata.name}{"\\t"}{.status.ready}{"\\n"}{end}\' | awk -v cur="$CURRENT_JOB_NAME" \'BEGIN{FS="\\t"} $1 != cur {s+=$2} END{print s+0}\');',
-            '  if [ "$RUNNING" -lt "$CONCURRENCY_LIMIT" ]; then',
-            '    echo "Slot available ($RUNNING running, limit $CONCURRENCY_LIMIT). Starting build.";',
+            '  DATA=$(kubectl get jobs -n "$NAMESPACE" \\',
+            '    -o go-template=\'{{range .items}}{{.metadata.name}}{{"\\t"}}{{index .metadata.annotations "qs-build-queued-at"}}{{"\\t"}}{{range .status.conditions}}{{.type}}={{.status}},{{end}}{{"\\n"}}{{end}}\');',
+            '  OLDEST=$(echo "$DATA" | awk \'',
+            '    BEGIN { min_ts=""; min_name="" }',
+            '    {',
+            '      name=$1; ts=$2; conds=$3;',
+            '      if (conds ~ /Complete=True/ || conds ~ /Failed=True/) next;',
+            '      if (ts == "") next;',
+            '      if (min_ts=="" || ts+0 < min_ts+0) { min_ts=ts; min_name=name }',
+            '    }',
+            '    END { print min_name }',
+            '  \');',
+            '  if [ "$OLDEST" = "$CURRENT_JOB_NAME" ]; then',
+            '    echo "Queue slot acquired (oldest pending build: $CURRENT_JOB_NAME). Starting build.";',
             '    exit 0;',
             '  fi;',
-            '  echo "Too many builds running ($RUNNING/$CONCURRENCY_LIMIT). Waiting...";',
-            '  sleep $((RANDOM % 5 + 4));',
+            '  echo "Waiting for older build to finish (oldest pending: $OLDEST). Retrying...";',
+            '  sleep $((RANDOM % 5 + 5));',
             'done',
         ].join('\n');
 
@@ -80,12 +92,12 @@ class BuildInitContainerService {
                     value: BUILD_NAMESPACE,
                 },
                 {
-                    name: 'CONCURRENCY_LIMIT',
-                    value: String(concurrencyLimit),
-                },
-                {
                     name: 'CURRENT_JOB_NAME',
                     value: currentJobName,
+                },
+                {
+                    name: 'QUEUED_AT',
+                    value: queuedAt,
                 },
             ],
         };
