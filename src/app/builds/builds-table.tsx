@@ -108,7 +108,7 @@ export default function BuildsTable({
                                     Show Logs
                                 </Button>
                             )}
-                            {item.status === 'RUNNING' && UserGroupUtils.sessionHasWriteAccessForApp(session, item.appId) && (
+                            {(item.status === 'RUNNING' || item.status === 'PENDING') && UserGroupUtils.sessionHasWriteAccessForApp(session, item.appId) && (
                                 <Button variant="destructive" onClick={() => handleDeleteBuild(item.name)}>
                                     Stop Build
                                 </Button>

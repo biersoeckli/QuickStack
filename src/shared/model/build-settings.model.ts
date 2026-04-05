@@ -7,6 +7,7 @@ export const buildSettingsZodModel = z.object({
     cpuReservation: stringToOptionalNumber,
     cpuLimit: stringToOptionalNumber,
     buildNode: z.string().optional().nullable(),
+    concurrencyLimit: stringToOptionalNumber,
 });
 
 export type BuildSettingsModel = z.infer<typeof buildSettingsZodModel>;
