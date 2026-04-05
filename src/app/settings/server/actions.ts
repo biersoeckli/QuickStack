@@ -184,7 +184,9 @@ export const updateQuickstack = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
     const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
-    await quickStackService.updateQuickStack(useCaranyChannel);
+    // delay is needed to ensure that the response is sent before the backend restarts, otherwise an error is shown in the UI.
+    setTimeout(() => quickStackService.updateQuickStack(useCaranyChannel)
+      .catch(e => console.error('Error occurred while updating QuickStack', e)), 2000);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
   });
 
