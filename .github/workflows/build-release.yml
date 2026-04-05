@@ -31,7 +31,7 @@ jobs:
         run: yarn test
 
   build-and-push-amd64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     if: ${{ needs.test.result == 'success' }}
     steps:
@@ -61,7 +61,7 @@ jobs:
             quickstack/quickstack:${{ github.ref_name }}-amd64
 
   build-and-push-arm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: test
     if: ${{ needs.test.result == 'success' }}
     steps:
