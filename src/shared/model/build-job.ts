@@ -1,7 +1,7 @@
 import { GitCommit } from "lucide-react";
 import { z } from "zod";
 
-export const buildJobStatusEnumZod = z.union([z.literal('UNKNOWN'), z.literal('RUNNING'), z.literal('FAILED'), z.literal('SUCCEEDED')]);
+export const buildJobStatusEnumZod = z.union([z.literal('UNKNOWN'), z.literal('RUNNING'), z.literal('FAILED'), z.literal('SUCCEEDED'), z.literal('PENDING')]);
 
 export const buildJobSchemaZod = z.object({
     name: z.string(),

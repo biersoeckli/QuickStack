@@ -1,5 +1,5 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-import {  UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
+import { UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
 import { getServerSession } from "next-auth";
 import { ZodRawShape, ZodObject, objectUtil, baseObjectOutputType, z, ZodType } from "zod";
 import { redirect } from "next/navigation";
@@ -99,13 +99,13 @@ export async function safeGetUserPermissionForApp(appId: string) {
     return UserGroupUtils.getRolePermissionForApp(session, appId);
 }
 
-export async function saveFormAction<ReturnType, TInputData, ZodType extends ZodRawShape>(
+export async function saveFormAction<TReturnType, TInputData, ZodType extends ZodRawShape>(
     inputData: TInputData,
     validationModel: ZodObject<ZodType>,
-    func: (validateData: { [k in keyof objectUtil.addQuestionMarks<baseObjectOutputType<ZodType>, any>]: objectUtil.addQuestionMarks<baseObjectOutputType<ZodType>, any>[k]; }) => Promise<ReturnType>,
+    func: (validateData: z.infer<ZodObject<ZodType>>) => Promise<TReturnType>,
     redirectOnSuccessPath?: string,
-    ignoredFields: (keyof ZodType)[] = []) {
-    return simpleAction<ReturnType, z.infer<typeof validationModel>>(async () => {
+    ignoredFields: (keyof ZodType)[] = []): Promise<ServerActionResult<z.infer<ZodObject<ZodType>>, TReturnType>> {
+    return simpleAction<TReturnType, z.infer<typeof validationModel>>(async () => {
 
         // Omit ignored fields from validation model
         const omitBody = {};
@@ -127,10 +127,10 @@ export async function saveFormAction<ReturnType, TInputData, ZodType extends Zod
     }, redirectOnSuccessPath);
 }
 
-export async function simpleAction<ReturnType, ValidationCallbackType>(
-    func: () => Promise<ReturnType>,
-    redirectOnSuccessPath?: string) {
-    let funcResult: ReturnType;
+export async function simpleAction<TReturnType, TValidationData = never>(
+    func: () => Promise<TReturnType>,
+    redirectOnSuccessPath?: string): Promise<ServerActionResult<TValidationData, TReturnType>> {
+    let funcResult: TReturnType;
     try {
         funcResult = await func();
     } catch (ex) {
@@ -139,18 +139,18 @@ export async function simpleAction<ReturnType, ValidationCallbackType>(
                 status: 'error',
                 message: ex.message,
                 errors: ex.errors ?? undefined
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as ServerActionResult<TValidationData, TReturnType>;
         } else if (ex instanceof ServiceException) {
             return {
                 status: 'error',
                 message: ex.message
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as ServerActionResult<TValidationData, TReturnType>;
         } else {
             console.error(ex)
             return {
                 status: 'error',
                 message: 'An unknown error occurred.'
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as ServerActionResult<TValidationData, TReturnType>;
         }
     }
     if (redirectOnSuccessPath) redirect(redirectOnSuccessPath);
@@ -161,12 +161,12 @@ export async function simpleAction<ReturnType, ValidationCallbackType>(
             message: funcResult.message,
             errors: funcResult.errors,
             data: funcResult.data
-        } as ServerActionResult<ValidationCallbackType, typeof funcResult.data>;
+        } as ServerActionResult<TValidationData, typeof funcResult.data>;
     }
     return {
         status: 'success',
         data: funcResult ?? undefined
-    } as ServerActionResult<ValidationCallbackType, ReturnType>;
+    } as ServerActionResult<TValidationData, TReturnType>;
 }
 
 /**

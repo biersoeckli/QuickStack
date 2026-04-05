@@ -3,7 +3,9 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import { V1Job, V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { BuildJobModel } from "@/shared/model/build-job";
+import { GlobalBuildJobModel } from "@/shared/model/global-build-job.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import dataAccess from "../adapter/db.client";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import namespaceService from "./namespace.service";
 import { Constants } from "../../shared/utils/constants";
@@ -213,8 +215,11 @@ class BuildService {
 
         await dlog(deploymentId, `Build job ${buildName} started successfully`);
 
-        await new Promise(resolve => setTimeout(resolve, 5000)); // wait to be sure that pod is created
-        await this.logBuildOutput(deploymentId, buildName);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // wait to be sure that pod is created
+        this.logBuildOutput(deploymentId, buildName).catch((err) => {
+            dlog(deploymentId, `An error occurred while loading build logs: ${err instanceof Error ? err.message : String(err)}`);
+            console.error(`Error while streaming build logs for build ${buildName}:`, err);
+        });
 
         return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, false];
     }
@@ -337,7 +342,7 @@ class BuildService {
         } as PodsInfoModel;
     }
 
-    async waitForJobCompletion(jobName: string, deploymentId: string){
+    async waitForJobCompletion(jobName: string, deploymentId: string) {
         const POLL_INTERVAL = 10000; // 10 seconds
         return await new Promise<void>((resolve, reject) => {
             const intervalId = setInterval(async () => {
@@ -378,7 +383,7 @@ class BuildService {
         });
     }
 
-    async getJobStatus(buildName: string): Promise<'UNKNOWN' | 'RUNNING' | 'FAILED' | 'SUCCEEDED'> {
+    async getJobStatus(buildName: string): Promise<'UNKNOWN' | 'RUNNING' | 'FAILED' | 'SUCCEEDED' | 'PENDING'> {
         try {
             const response = await k3s.batch.readNamespacedJobStatus(buildName, BUILD_NAMESPACE);
             const status = response.body.status;
@@ -393,7 +398,7 @@ class BuildService {
         if (!status) {
             return 'UNKNOWN';
         }
-        if ((status.active ?? 0) > 0) {
+        if (status.ready ?? 0 > 0) {
             return 'RUNNING';
         }
         if ((status.succeeded ?? 0) > 0) {
@@ -408,7 +413,47 @@ class BuildService {
         if (!!status.completionTime) {
             return 'SUCCEEDED';
         }
+        if ((status.active ?? 0) > 0) {
+            return 'PENDING';
+        }
         return 'UNKNOWN';
+    }
+
+    async getAllBuilds(): Promise<GlobalBuildJobModel[]> {
+        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
+        const appIds = [...new Set(
+            jobs.body.items
+                .map((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID])
+                .filter((id): id is string => !!id)
+        )];
+        const apps = await dataAccess.client.app.findMany({
+            where: { id: { in: appIds } },
+            include: { project: true },
+        });
+        const appMap = new Map(apps.map((a) => [a.id, a]));
+
+        const builds: GlobalBuildJobModel[] = jobs.body.items
+            .map((job) => {
+                const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+                const projectId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
+                const app = appId ? appMap.get(appId) : undefined;
+                return {
+                    name: job.metadata?.name ?? '',
+                    startTime: job.status?.startTime ?? new Date(0),
+                    status: this.getJobStatusString(job.status),
+                    gitCommit: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT] ?? '',
+                    gitCommitMessage: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
+                    deploymentId: job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID] ?? '',
+                    appId: appId ?? '',
+                    projectId: projectId ?? '',
+                    appName: app?.name ?? appId ?? 'Unknown',
+                    projectName: app?.project?.name ?? projectId ?? 'Unknown',
+                    completionTime: job.status?.completionTime ?? undefined,
+                } as GlobalBuildJobModel;
+            })
+            .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+        return builds;
     }
 }
 

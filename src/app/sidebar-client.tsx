@@ -17,7 +17,7 @@ import {
   SidebarMenuAction,
   useSidebar
 } from "@/components/ui/sidebar"
-import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, History, Info, Plus, Server, Settings, Settings2, User, User2 } from "lucide-react"
+import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Server, Settings, Settings2, User, User2 } from "lucide-react"
 import Link from "next/link"
 import { EditProjectDialog } from "./projects/edit-project-dialog"
 import { SidebarLogoutButton } from "./sidebar-logout-button"
@@ -211,6 +211,25 @@ export function SidebarCient({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={{
+                  children: 'Builds',
+                  hidden: open,
+                }}
+                  isActive={path.startsWith('/builds')}>
+                  <Link href="/builds">
+                    <Hammer />
+                    <span>Builds</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip={{
                   children: 'Monitoring',
                   hidden: open,
                 }}
@@ -224,7 +243,6 @@ export function SidebarCient({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
 
         {UserGroupUtils.sessionHasAccessToBackups(session) && <SidebarGroup>
           <SidebarGroupContent>

@@ -69,7 +69,7 @@ class DeploymentEventWatchService {
             const reason = event.reason ?? 'Unknown';
             const message = event.message ?? '';
 
-            await dlog(deploymentId, `[K8s Event] ${eventType}/${reason}: ${message}`);
+            await dlog(deploymentId, `[event] ${eventType}/${reason}: ${message}`);
         } catch {
             // Pod may already be gone — silently skip
         }
