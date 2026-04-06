@@ -2,20 +2,20 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { toast } from "sonner";
 
 export class Toast {
-    static async fromAction<A, B>(action: () => Promise<ServerActionResult<A, B>>,
+    static async fromAction<TReturnType, TValidationData = never>(action: () => Promise<ServerActionResult<TValidationData, TReturnType>>,
         defaultSuccessMessage = 'Operation successful',
         defaultLoadingMessage = 'loading...') {
 
-        return new Promise<ServerActionResult<A, B>>(async (resolve, reject) => {
+        return new Promise<ServerActionResult<TValidationData, TReturnType>>(async (resolve, reject) => {
             toast.promise(async () => {
                 const retVal = await action();
-                if (!retVal || (retVal as ServerActionResult<A, B>).status !== 'success') {
+                if (!retVal || (retVal as ServerActionResult<TValidationData, TReturnType>).status !== 'success') {
                     throw new Error(retVal?.message ?? 'An unknown error occurred.');
                 }
                 return retVal;
             }, {
                 loading: defaultLoadingMessage,
-                success: (result: ServerActionResult<A, B>) => {
+                success: (result: ServerActionResult<TValidationData, TReturnType>) => {
                     resolve(result);
                     return result.message ?? defaultSuccessMessage;
                 },

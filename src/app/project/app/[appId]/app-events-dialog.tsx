@@ -31,7 +31,7 @@ export function AppEventsDialog({
     try {
       const eventsResponse = await getLatestAppEvents(app.id);
       if (eventsResponse.status === 'success') {
-        setEvents(eventsResponse.data);
+        setEvents(eventsResponse.data!);
       } else {
         toast.error(eventsResponse.message);
       }

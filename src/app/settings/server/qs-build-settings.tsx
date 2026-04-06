@@ -67,44 +67,46 @@ export default function QsBuildSettings({
                     return formAction(payload);
                 })()}>
                     <CardContent className="space-y-6">
-
-                        <FormField
-                            control={form.control}
-                            name="buildNode"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Build Node (optional)</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        value={field.value || Constants.BUILD_AUTO_NODE_VALUE}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Auto (node with most available resources)" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value={Constants.BUILD_AUTO_NODE_VALUE}>
-                                                Auto (node with most available resources)
-                                            </SelectItem>
-                                            <SelectItem value={Constants.BUILD_NODE_K3S_NATIVE_VALUE}>
-                                                k3s native
-                                            </SelectItem>
-                                            {nodes.map((node) => (
-                                                <SelectItem
-                                                    key={node.name}
-                                                    value={node.name}
-                                                    disabled={!node.schedulable}
-                                                >
-                                                    {node.name}{!node.schedulable ? ' (not schedulable)' : ''}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="buildNode"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Build Node (optional)</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value || Constants.BUILD_AUTO_NODE_VALUE}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Auto (node with most available resources)" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value={Constants.BUILD_AUTO_NODE_VALUE}>
+                                                    Auto (node with most available resources)
                                                 </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                                <SelectItem value={Constants.BUILD_NODE_K3S_NATIVE_VALUE}>
+                                                    k3s native
+                                                </SelectItem>
+                                                {nodes.map((node) => (
+                                                    <SelectItem
+                                                        key={node.name}
+                                                        value={node.name}
+                                                        disabled={!node.schedulable}
+                                                    >
+                                                        {node.name}{!node.schedulable ? ' (not schedulable)' : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
                         {isK3sNative && showReservationAlert && (
                             <Alert>
                                 <AlertCircle className="h-4 w-4" />

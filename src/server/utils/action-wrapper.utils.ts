@@ -127,9 +127,14 @@ export async function saveFormAction<ReturnType, TInputData, ZodType extends Zod
     }, redirectOnSuccessPath);
 }
 
-export async function simpleAction<ReturnType, ValidationCallbackType>(
+type SimpleActionResult<TReturn, TValidation = unknown> =
+    TReturn extends ServerActionResult<any, infer D>
+        ? ServerActionResult<TValidation, NonNullable<D>>
+        : ServerActionResult<TValidation, TReturn>;
+
+export async function simpleAction<ReturnType, ValidationCallbackType = unknown>(
     func: () => Promise<ReturnType>,
-    redirectOnSuccessPath?: string) {
+    redirectOnSuccessPath?: string): Promise<SimpleActionResult<ReturnType, ValidationCallbackType>> {
     let funcResult: ReturnType;
     try {
         funcResult = await func();
@@ -139,18 +144,18 @@ export async function simpleAction<ReturnType, ValidationCallbackType>(
                 status: 'error',
                 message: ex.message,
                 errors: ex.errors ?? undefined
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as any;
         } else if (ex instanceof ServiceException) {
             return {
                 status: 'error',
                 message: ex.message
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as any;
         } else {
             console.error(ex)
             return {
                 status: 'error',
                 message: 'An unknown error occurred.'
-            } as ServerActionResult<ValidationCallbackType, ReturnType>;
+            } as any;
         }
     }
     if (redirectOnSuccessPath) redirect(redirectOnSuccessPath);
@@ -161,12 +166,12 @@ export async function simpleAction<ReturnType, ValidationCallbackType>(
             message: funcResult.message,
             errors: funcResult.errors,
             data: funcResult.data
-        } as ServerActionResult<ValidationCallbackType, typeof funcResult.data>;
+        } as any;
     }
     return {
         status: 'success',
         data: funcResult ?? undefined
-    } as ServerActionResult<ValidationCallbackType, ReturnType>;
+    } as any;
 }
 
 /**

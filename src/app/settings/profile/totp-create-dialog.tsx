@@ -46,7 +46,7 @@ export default function TotpCreateDialog({
         setIsOpen(true);
         const response = await Toast.fromAction(() => createNewTotpToken());
         if (response.status === 'success') {
-            const qrCode = response.data;
+            const qrCode = response.data!;
             setTotpQrCode(qrCode);
         }
     };

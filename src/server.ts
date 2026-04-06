@@ -1,6 +1,7 @@
 import { createServer } from 'http'
 import { parse } from 'url'
 import next from 'next'
+import { randomUUID } from 'crypto'
 import socketIoServer from './socket-io.server'
 import quickStackService from './server/services/qs.service'
 import { CommandExecutorUtils } from './server/utils/command-executor.utils'
@@ -11,6 +12,10 @@ import backupService from './server/services/standalone-services/backup.service'
 import maintenanceService from './server/services/standalone-services/maintenance.service'
 import passwordChangeService from './server/services/standalone-services/password-change.service'
 import appLogsService from './server/services/standalone-services/app-logs.service'
+
+declare global {
+    var quickStackInitKey: string | undefined;
+}
 
 // Source: https://nextjs.org/docs/app/building-your-application/configuring/custom-server
 
@@ -30,6 +35,9 @@ async function setupQuickStack() {
 }
 
 async function initializeNextJs() {
+
+    globalThis.quickStackInitKey = randomUUID();
+    console.log('Init key generated.');
 
     FancyConsoleUtils.printQuickStack();
     if (process.env.NODE_ENV === 'production') {
@@ -69,13 +77,19 @@ async function initializeNextJs() {
         });
 
         socketIoServer.initialize(server);
-        server.listen(port)
-
-        console.log(
-            `> Server listening at http://localhost:${port} as ${dev ? 'development' : process.env.NODE_ENV
-            }`
-        )
-    });
+        server.listen(port, () => {
+            console.log(
+                `> Server listening at http://localhost:${port} as ${dev ? 'development' : process.env.NODE_ENV
+                }`
+            );
+            // Trigger watch services via the protected init route
+            fetch(`http://localhost:${port}/api/init?key=${globalThis.quickStackInitKey}`)
+                .catch((err) => console.error('Failed to call init route:', err));
+        });
+    }).catch((err) => console.error(
+        'Failed to initialize watch services via init route; background watch functionality may be unavailable:',
+        err
+    ));
 }
 
 if (process.env.NODE_ENV === 'production' && process.env.START_MODE === 'setup') {

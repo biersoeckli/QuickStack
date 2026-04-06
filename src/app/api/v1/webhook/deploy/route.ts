@@ -1,6 +1,8 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import appService from "@/server/services/app.service";
 import deploymentService from "@/server/services/deployment.service";
+import buildWatchService from "@/server/services/standalone-services/build-watch.service";
+import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
 import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { Informer, V1Pod } from "@kubernetes/client-node";
 import { NextResponse } from "next/server";
@@ -20,6 +22,11 @@ const routeLogic = (request: Request) => simpleRoute(async () => {
     });
 
     const app = await appService.getByWebhookId(id);
+
+    // starts the buildwatch service if not already running.
+    buildWatchService.startWatch();
+    deploymentEventWatchService.startWatch();
+
     await appService.buildAndDeploy(app.id, true);
 
     return NextResponse.json({
