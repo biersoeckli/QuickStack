@@ -213,13 +213,7 @@ class BuildService {
         };
         await k3s.batch.createNamespacedJob(BUILD_NAMESPACE, jobDefinition);
 
-        await dlog(deploymentId, `Build job ${buildName} started successfully`);
-
-        await new Promise(resolve => setTimeout(resolve, 2000)); // wait to be sure that pod is created
-        this.logBuildOutput(deploymentId, buildName).catch((err) => {
-            dlog(deploymentId, `An error occurred while loading build logs: ${err instanceof Error ? err.message : String(err)}`);
-            console.error(`Error while streaming build logs for build ${buildName}:`, err);
-        });
+        await dlog(deploymentId, `Build job ${buildName} scheduled successfully`);
 
         return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, false];
     }
@@ -340,47 +334,6 @@ class BuildService {
             podName: pod.metadata?.name!,
             containerName: pod.spec?.containers?.[0].name!
         } as PodsInfoModel;
-    }
-
-    async waitForJobCompletion(jobName: string, deploymentId: string) {
-        const POLL_INTERVAL = 10000; // 10 seconds
-        return await new Promise<void>((resolve, reject) => {
-            const intervalId = setInterval(async () => {
-                try {
-                    const jobStatus = await this.getJobStatus(jobName);
-                    if (jobStatus === 'UNKNOWN') {
-                        console.log(`Job ${jobName} not found.`);
-                        clearInterval(intervalId);
-                        dlog(deploymentId, `***********************************`);
-                        dlog(deploymentId, ` ⚠ Build job ${jobName} not found.`);
-                        dlog(deploymentId, ` It might have been deleted manually or due to a cleanup process.`);
-                        dlog(deploymentId, `***********************************`);
-                        reject(new Error(`Job ${jobName} not found.`));
-                        return;
-                    }
-                    if (jobStatus === 'SUCCEEDED') {
-                        clearInterval(intervalId);
-                        console.log(`Job ${jobName} completed successfully.`);
-                        dlog(deploymentId, `*************************************`);
-                        dlog(deploymentId, ` ✓ Build job completed successfully. `);
-                        dlog(deploymentId, `*************************************`);
-                        resolve();
-                    } else if (jobStatus === 'FAILED') {
-                        clearInterval(intervalId);
-                        console.log(`Job ${jobName} failed.`);
-                        dlog(deploymentId, `*********************`);
-                        dlog(deploymentId, ` ⚠ Build job failed. `);
-                        dlog(deploymentId, `*********************`);
-                        reject(new Error(`Job ${jobName} failed.`));
-                    } else {
-                        console.log(`Job ${jobName} is still running...`);
-                    }
-                } catch (err) {
-                    clearInterval(intervalId);
-                    reject(err);
-                }
-            }, POLL_INTERVAL);
-        });
     }
 
     async getJobStatus(buildName: string): Promise<'UNKNOWN' | 'RUNNING' | 'FAILED' | 'SUCCEEDED' | 'PENDING'> {
