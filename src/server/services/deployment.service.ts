@@ -320,7 +320,7 @@ class DeploymentService {
         const builds = await buildService.getBuildsForApp(appId);
         // adding running or failed builds as "Deployment" to the list
         const runningOrFailedBuilds = builds
-            .filter((build) => ['RUNNING', 'FAILED', 'UNKNOWN'].includes(build.status))
+            .filter((build) => ['RUNNING', 'PENDING', 'FAILED', 'UNKNOWN'].includes(build.status))
             .map((build) => {
                 return {
                     replicasetName: undefined,
@@ -340,7 +340,8 @@ class DeploymentService {
         const map = new Map<BuildJobStatus, DeploymentStatus>([
             ['UNKNOWN', 'UNKNOWN'],
             ['RUNNING', 'BUILDING'],
-            ['FAILED', 'ERROR']
+            ['FAILED', 'ERROR'],
+            ['PENDING', 'PENDING']
         ]);
         return map.get(buildJobStatus ?? 'UNKNOWN') ?? 'UNKNOWN';
     }

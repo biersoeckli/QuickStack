@@ -28,6 +28,8 @@ function getTextForStatus(status: DeploymentStatus) {
             return 'Deploying';
         case 'DEPLOYED':
             return 'Deployed';
+        case 'PENDING':
+            return 'Pending';
         default:
             return 'Unknown';
     }
@@ -46,6 +48,8 @@ function getBackgroundColorForStatus(status: DeploymentStatus) {
             return 'bg-blue-100';
         case 'DEPLOYED':
             return 'bg-green-100';
+        case 'PENDING':
+            return 'bg-yellow-100';
         default:
             return 'bg-slate-100';
     }
@@ -64,6 +68,8 @@ function getTextColorForStatus(status: DeploymentStatus) {
             return 'text-blue-800';
         case 'DEPLOYED':
             return 'text-green-800';
+        case 'PENDING':
+            return 'text-yellow-800';
         default:
             return 'text-slate-800';
     }
