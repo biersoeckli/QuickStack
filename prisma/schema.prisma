@@ -223,6 +223,7 @@ model App {
 
   appDomains         AppDomain[]
   appPorts           AppPort[]
+  appNodePorts       AppNodePort[]
   appVolumes         AppVolume[]
   appFileMounts      AppFileMount[]
   appBasicAuths      AppBasicAuth[]
@@ -242,6 +243,20 @@ model AppPort {
   updatedAt DateTime @updatedAt
 
   @@unique([appId, port])
+}
+
+model AppNodePort {
+  id       String @id @default(uuid())
+  appId    String
+  app      App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  port     Int
+  nodePort Int
+  protocol String @default("TCP")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nodePort])
 }
 
 model AppDomain {

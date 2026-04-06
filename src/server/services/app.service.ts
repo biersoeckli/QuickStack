@@ -1,7 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { App, AppBasicAuth, AppDomain, AppFileMount, AppPort, AppVolume, Prisma } from "@prisma/client";
+import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppPort, AppVolume, Prisma } from "@prisma/client";
 import { AppExtendedModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -95,6 +95,7 @@ class AppService {
             appDomains: true,
             appVolumes: true,
             appPorts: true,
+            appNodePorts: true,
             appFileMounts: true,
             appBasicAuths: true
         };
@@ -624,6 +625,64 @@ class AppService {
             return 0;
         });
         return apps;
+    }
+
+    async saveNodePort(nodePortToBeSaved: Prisma.AppNodePortUncheckedCreateInput | Prisma.AppNodePortUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
+        const client = tx || dataAccess.client;
+        const existingApp = await this.getExtendedById(nodePortToBeSaved.appId as string, false, client);
+
+        const nodePortValue = nodePortToBeSaved.nodePort as number;
+        const existingWithSameNodePort = await client.appNodePort.findFirst({
+            where: {
+                nodePort: nodePortValue,
+                NOT: { id: nodePortToBeSaved.id as string | undefined },
+            }
+        });
+        if (existingWithSameNodePort) {
+            throw new ServiceException(`Node port ${nodePortValue} is already in use by another app.`);
+        }
+
+        let savedItem: AppNodePort;
+        try {
+            if (nodePortToBeSaved.id) {
+                savedItem = await client.appNodePort.update({
+                    where: { id: nodePortToBeSaved.id as string },
+                    data: nodePortToBeSaved,
+                });
+            } else {
+                savedItem = await client.appNodePort.create({
+                    data: nodePortToBeSaved as Prisma.AppNodePortUncheckedCreateInput,
+                });
+            }
+        } finally {
+            revalidateTag(Tags.apps(existingApp.projectId as string));
+            revalidateTag(Tags.app(existingApp.id as string));
+        }
+        return savedItem;
+    }
+
+    async getNodePortById(id: string) {
+        return await dataAccess.client.appNodePort.findFirstOrThrow({
+            where: { id },
+        });
+    }
+
+    async deleteNodePortById(id: string) {
+        const existing = await dataAccess.client.appNodePort.findFirst({
+            where: { id },
+            include: { app: true },
+        });
+        if (!existing) {
+            return;
+        }
+        try {
+            await dataAccess.client.appNodePort.delete({
+                where: { id },
+            });
+        } finally {
+            revalidateTag(Tags.app(existing.appId));
+            revalidateTag(Tags.apps(existing.app.projectId));
+        }
     }
 }
 

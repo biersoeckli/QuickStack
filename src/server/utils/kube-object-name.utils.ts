@@ -49,6 +49,10 @@ export class KubeObjectNameUtils {
         return `svc-${appId}`;
     }
 
+    static toNodePortServiceName(appId: string): `np-${string}` {
+        return `np-${appId}`;
+    }
+
     static toPvcName(volumeId: string): `pvc-${string}` {
         return `pvc-${volumeId}`;
     }

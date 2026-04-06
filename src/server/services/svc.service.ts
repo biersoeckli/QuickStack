@@ -32,6 +32,8 @@ class SvcService {
             name: string;
             port: number;
             targetPort: number;
+            nodePort?: number;
+            protocol?: string;
         }[] = [
             ...app.appDomains.map((domain) => ({
                 name: `domain-port-${domain.id}`,
@@ -47,11 +49,29 @@ class SvcService {
             index === self.findIndex((t) =>
                 (t.port === port.port && t.targetPort === port.targetPort)));
 
+        for (const np of app.appNodePorts) {
+            const existing = ports.find(p => p.port === np.port);
+            if (existing) {
+                existing.nodePort = np.nodePort;
+                existing.protocol = np.protocol;
+            } else {
+                ports.push({
+                    name: `nodeport-${np.id}`,
+                    port: np.port,
+                    targetPort: np.port,
+                    nodePort: np.nodePort,
+                    protocol: np.protocol,
+                });
+            }
+        }
+
+        const serviceType = app.appNodePorts.length > 0 ? 'NodePort' : undefined;
+
         if (ports.length === 0) {
             dlog(deplyomentId, `No domain or internal port settings found, service (HTTP) will not be created or updated. The application will run, but will not be accessible via the internal network or the internet.`);
         }
 
-        await this.createOrUpdateService(app.projectId, app.id, ports);
+        await this.createOrUpdateService(app.projectId, app.id, ports, serviceType);
 
         dlog(deplyomentId, `Updating service (HTTP) with ports ${ports.map(x => x.port).join(', ')}...`);
 
@@ -61,7 +81,9 @@ class SvcService {
         name: string;
         port: number;
         targetPort: number;
-    }[]) {
+        nodePort?: number;
+        protocol?: string;
+    }[], serviceType?: string) {
         const existingService = await this.getService(namespace, kubeAppName);
         // port configuration with removed duplicates
 
@@ -77,6 +99,7 @@ class SvcService {
                 name: KubeObjectNameUtils.toServiceName(kubeAppName)
             },
             spec: {
+                ...(serviceType ? { type: serviceType } : {}),
                 selector: {
                     app: kubeAppName
                 },

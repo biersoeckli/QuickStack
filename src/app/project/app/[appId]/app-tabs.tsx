@@ -14,6 +14,7 @@ import BuildsTab from "./overview/deployments";
 import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
 import InternalHostnames from "./domains/ports-and-internal-hostnames";
+import NodePortsCard from "./domains/node-ports";
 import FileMount from "./volumes/file-mount";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
@@ -84,6 +85,7 @@ export default function AppTabs({
             <TabsContent value="domains" className="space-y-4">
                 <DomainsList readonly={readonly} app={app} />
                 <InternalHostnames readonly={readonly} app={app} />
+                <NodePortsCard readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
                 <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
