@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ZodUtils, stringToNumber, stringToOptionalNumber, stringToOptionalDate, stringToDate, stringToOptionalBoolean, stringToBoolean } from "../../../shared/utils/zod.utils";
+import { ZodUtils, stringToNumber, stringToOptionalNumber, stringToOptionalDate, stringToDate, stringToOptionalBoolean, stringToBoolean } from "@/shared/utils/zod.utils";
 
 describe("ZodUtils", () => {
     describe("getFieldNamesAndTypes", () => {

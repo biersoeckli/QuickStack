@@ -1,4 +1,4 @@
-import { PathUtils } from '../../../server/utils/path.utils';
+import { PathUtils } from '@/server/utils/path.utils';
 
 describe('PathUtils', () => {
     const originalEnv = (process.env as any);

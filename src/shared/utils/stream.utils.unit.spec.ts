@@ -1,5 +1,5 @@
-import { StreamUtils } from '../../../shared/utils/stream.utils';
-import { TerminalSetupInfoModel } from '../../../shared/model/terminal-setup-info.model';
+import { StreamUtils } from '@/shared/utils/stream.utils';
+import { TerminalSetupInfoModel } from '@/shared/model/terminal-setup-info.model';
 
 describe('StreamUtils', () => {
     const terminalInfo: TerminalSetupInfoModel = {

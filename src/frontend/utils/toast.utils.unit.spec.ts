@@ -1,4 +1,4 @@
-import { Toast } from '../../../frontend/utils/toast.utils';
+import { Toast } from '@/frontend/utils/toast.utils';
 import { toast } from 'sonner';
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 

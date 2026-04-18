@@ -1,5 +1,5 @@
 import { promises } from 'dns';
-import { FsUtils } from '../../../server/utils/fs.utils';
+import { FsUtils } from '@/server/utils/fs.utils';
 import fs from 'fs';
 
 jest.mock('fs', () => ({

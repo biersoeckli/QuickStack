@@ -1,4 +1,4 @@
-import { KubeObjectNameUtils } from '../../../server/utils/kube-object-name.utils';
+import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
 
 describe('KubeObjectNameUtils', () => {
     describe('toSnakeCase', () => {
