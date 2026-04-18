@@ -7,7 +7,6 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"Orta.vscode-jest",
 				"Prisma.prisma",
 				"pflannery.vscode-versionlens",
 				"github.vscode-github-actions",
@@ -20,9 +19,13 @@
 				"mhutchie.git-graph",
 				"donjayamanne.githistory",
 				"qwtel.sqlite-viewer",
-				"ms-kubernetes-tools.vscode-kubernetes-tools"
+				"ms-kubernetes-tools.vscode-kubernetes-tools",
+				"vitest.explorer"
 			]
 		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
 	},
 	"postStartCommand": "bash .devcontainer/start-k3s.sh",
 	"remoteUser": "node"

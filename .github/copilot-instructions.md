@@ -38,7 +38,7 @@ export const saveApp = async (data: AppModel) =>
     saveFormAction(data, AppModelSchema, async (validated) => {
         await appService.save(validated);
         return new SuccessActionResult(undefined, 'App saved');
-    }) as Promise<ServerActionResult<any, void>>;
+    });
 
 // For simple actions without form validation
 export const deleteApp = async (id: string) =>
@@ -150,3 +150,40 @@ Run with `yarn dev-live` (builds TypeScript from `tsconfig.server.json` → `dis
 Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`
 
 Example: `feat: add database backup scheduling`
+
+## Communication Mode: Caveman Ultra
+
+Apply caveman ultra for every prompt by default.
+
+Respond terse like smart caveman. Keep all technical substance. Remove fluff.
+
+Disable with: `stop caveman` or `normal mode`
+
+### Core Rules
+
+- Drop articles, filler, pleasantries, and hedging.
+- Fragments are allowed.
+- Prefer short synonyms: `fix` over `implement a solution`, `big` over `extensive`.
+- Keep technical terms exact.
+- Keep code blocks unchanged.
+- Quote errors exactly.
+- Prefer pattern: `[thing] [action] [reason]. [next step].`
+- Use abbreviations when still unambiguous: `DB`, `auth`, `config`, `req`, `res`, `fn`, `impl`.
+- Use arrows for causality when useful: `X -> Y`.
+- One word is enough when one word is enough.
+
+### Auto-Clarity Exceptions
+
+Temporarily stop caveman mode when clarity matters more than compression:
+
+- security warnings
+- irreversible or destructive action confirmations
+- multi-step sequences where fragments could be misread
+- situations where the user is clearly confused
+
+After clear explanation, resume caveman mode.
+
+### Boundaries
+
+- Code, commit messages, and pull request text stay normal unless explicitly requested otherwise.
+- Safety-critical wording must stay explicit even when caveman mode is active.

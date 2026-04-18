@@ -2,20 +2,20 @@
 import { formatDate, formatDateTime, formatTime } from '@/frontend/utils/format.utils';
 import { formatInTimeZone } from 'date-fns-tz';
 
-jest.mock('date-fns-tz', () => ({
-    formatInTimeZone: jest.fn(),
+vi.mock('date-fns-tz', () => ({
+    formatInTimeZone: vi.fn(),
 }));
 
 describe('format.utils', () => {
     const mockDate = new Date('2023-10-10T10:10:10Z');
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('formatDate', () => {
         it('should return formatted date string for valid date', () => {
-            (formatInTimeZone as jest.Mock).mockReturnValue('10.10.2023');
+            vi.mocked(formatInTimeZone).mockReturnValue('10.10.2023');
             const result = formatDate(mockDate);
             expect(result).toBe('10.10.2023');
             expect(formatInTimeZone).toHaveBeenCalledWith(mockDate, 'Europe/Zurich', 'dd.MM.yyyy');
@@ -36,7 +36,7 @@ describe('format.utils', () => {
 
     describe('formatDateTime', () => {
         it('should return formatted date-time string for valid date', () => {
-            (formatInTimeZone as jest.Mock).mockReturnValue('10.10.2023 12:10');
+            vi.mocked(formatInTimeZone).mockReturnValue('10.10.2023 12:10');
             const result = formatDateTime(mockDate);
             expect(result).toBe('10.10.2023 12:10');
             expect(formatInTimeZone).toHaveBeenCalledWith(mockDate, 'Europe/Zurich', 'dd.MM.yyyy HH:mm');
@@ -57,7 +57,7 @@ describe('format.utils', () => {
 
     describe('formatTime', () => {
         it('should return formatted time string for valid date', () => {
-            (formatInTimeZone as jest.Mock).mockReturnValue('12:10');
+            vi.mocked(formatInTimeZone).mockReturnValue('12:10');
             const result = formatTime(mockDate);
             expect(result).toBe('12:10');
             expect(formatInTimeZone).toHaveBeenCalledWith(mockDate, 'Europe/Zurich', 'HH:mm');

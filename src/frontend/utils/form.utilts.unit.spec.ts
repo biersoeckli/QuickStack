@@ -8,8 +8,8 @@ describe('FormUtils', () => {
     describe('mapValidationErrorsToForm', () => {
         it('should clear existing errors and set new errors from state', () => {
             const mockForm: UseFormReturn<any> = {
-                clearErrors: jest.fn(),
-                setError: jest.fn(),
+                clearErrors: vi.fn(),
+                setError: vi.fn(),
             } as any;
 
             const state = {
@@ -31,8 +31,8 @@ describe('FormUtils', () => {
 
         it('should not set errors if state has no errors', () => {
             const mockForm: UseFormReturn<any> = {
-                clearErrors: jest.fn(),
-                setError: jest.fn(),
+                clearErrors: vi.fn(),
+                setError: vi.fn(),
             } as any;
 
             const state = {

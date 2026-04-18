@@ -4,7 +4,7 @@ describe('PathUtils', () => {
     const originalEnv = (process.env as any);
 
     beforeEach(() => {
-        jest.resetModules();
+        vi.resetModules();
         (process.env as any) = { ...originalEnv };
     });
 

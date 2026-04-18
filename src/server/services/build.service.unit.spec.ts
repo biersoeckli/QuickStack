@@ -1,14 +1,14 @@
-// Mock heavy dependencies that cannot run in jsdom
-jest.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
-jest.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
-jest.mock('@/server/services/namespace.service', () => ({ default: {} }));
-jest.mock('@/server/services/registry.service', () => ({ default: {}, BUILD_NAMESPACE: 'qs-build' }));
-jest.mock('@/server/services/param.service', () => ({ default: {}, ParamService: {} }));
-jest.mock('@/server/services/cluster.service', () => ({ default: {} }));
-jest.mock('@/server/services/build-init-container.service', () => ({ default: {} }));
-jest.mock('@/server/services/git.service', () => ({ default: {} }));
-jest.mock('@/server/services/pod.service', () => ({ default: {} }));
-jest.mock('@/server/services/deployment-logs.service', () => ({ dlog: jest.fn() }));
+// Mock heavy dependencies that cannot run in node
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+vi.mock('@/server/services/namespace.service', () => ({ default: {} }));
+vi.mock('@/server/services/registry.service', () => ({ default: {}, BUILD_NAMESPACE: 'qs-build' }));
+vi.mock('@/server/services/param.service', () => ({ default: {}, ParamService: {} }));
+vi.mock('@/server/services/cluster.service', () => ({ default: {} }));
+vi.mock('@/server/services/build-init-container.service', () => ({ default: {} }));
+vi.mock('@/server/services/git.service', () => ({ default: {} }));
+vi.mock('@/server/services/pod.service', () => ({ default: {} }));
+vi.mock('@/server/services/deployment-logs.service', () => ({ dlog: vi.fn() }));
 
 import buildService from '@/server/services/build.service';
 import { V1JobStatus } from '@kubernetes/client-node';

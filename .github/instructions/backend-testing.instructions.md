@@ -1,5 +1,5 @@
 ---
-description: "Use when creating, editing, or reviewing QuickStack backend unit tests or integration tests. Covers Jest test patterns, mocking, SQLite-backed Prisma integration tests, and required folder/file naming conventions."
+description: "Use when creating, editing, or reviewing QuickStack backend unit tests or integration tests. Covers Vitest test patterns, mocking, SQLite-backed Prisma integration tests, k3s integration tests and required folder/file naming conventions."
 applyTo: "src/server/**/*.spec.ts, src/server/**/*.test.ts, src/shared/**/*.spec.ts, src/shared/**/*.test.ts, src/__tests__/integration/**/*.spec.ts, src/__tests__/integration/**/*.test.ts"
 ---
 
@@ -41,28 +41,29 @@ Use this split for backend logic in `src/server/` and for backend-adjacent share
 
 ## Unit Tests
 
-- Framework: Jest with `describe`, `it`, `expect`, `beforeEach`, and `jest.fn()`.
+- Framework: Vitest with `describe`, `it`, `expect`, `beforeEach`, and `vi.fn()`.
+- All Vitest globals (`vi`, `describe`, `it`, `expect`, `beforeEach`, etc.) are available without imports (`globals: true` in vitest.config.ts).
 - Mock all external dependencies: Prisma/data access, Kubernetes adapters, S3/Longhorn adapters, filesystem access, network calls, and other singleton services.
-- Use `jest.mock()` plus `jest.mocked()` or `jest.Mocked<T>` for typed mocks.
-- Use `jest.requireActual()` for partial mocks when one function must stay real.
-- Prefer `@/...` imports for app modules, matching the existing Jest alias configuration.
+- Use `vi.mock()` plus `vi.mocked()` for typed mocks.
+- Use `vi.importActual()` for partial mocks when one function must stay real.
+- Prefer `@/...` imports for app modules, matching the alias configuration in vitest.config.ts.
 - Keep unit tests deterministic and isolated. They must not talk to the real SQLite database, Kubernetes, or the filesystem unless the test is explicitly an integration test.
-- If a module reads environment variables or initializes singletons at import time, set the environment first and call `jest.resetModules()` before importing the module under test.
+- If a module reads environment variables or initializes singletons at import time, set the environment first and call `vi.resetModules()` before importing the module under test.
 
 ```typescript
 import { V1JobStatus } from '@kubernetes/client-node';
 
-jest.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
-jest.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
-jest.mock('@/server/services/namespace.service', () => ({ default: {} }));
-jest.mock('@/server/services/registry.service', () => ({ default: {}, BUILD_NAMESPACE: 'qs-build' }));
-jest.mock('@/server/services/param.service', () => ({ default: {}, ParamService: {} }));
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+vi.mock('@/server/services/namespace.service', () => ({ default: {} }));
+vi.mock('@/server/services/registry.service', () => ({ default: {}, BUILD_NAMESPACE: 'qs-build' }));
+vi.mock('@/server/services/param.service', () => ({ default: {}, ParamService: {} }));
 
 import buildService from './build.service';
 
 describe('build.service', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     it('returns RUNNING when ready is greater than 0', () => {
@@ -77,37 +78,42 @@ describe('build.service', () => {
 - Use a real temporary SQLite database file, not mocks.
 - Place integration suites in `src/__tests__/integration/`, mirroring the source path.
 - **Always use `createPrismaTestContext` from `src/__tests__/prisma-test.utils.ts`** to set up and tear down the database. Never copy the lifecycle boilerplate manually.
+- Call `createPrismaTestContext('label')` at the top of the `describe` block. It **automatically registers** `beforeAll` (DB setup + client swap), `beforeEach` (table reset), and `afterAll` (teardown) — no manual hook wiring needed.
 - Pass a short, descriptive label that identifies the suite (e.g. `'build-service'`).
-- Wire the three lifecycle hooks: `beforeAll(ctx.setup)`, `beforeEach(ctx.resetTables)`, `afterAll(ctx.teardown)`.
-- `ctx.setup` sets `DATABASE_URL`, clears the Prisma singleton, calls `jest.resetModules()`, and runs `npx prisma db push --skip-generate`.
-- `ctx.resetTables` deletes all rows in FK-safe order so each test starts from a clean state.
-- `ctx.teardown` disconnects Prisma and removes the temp file.
-- Import `dataAccess` dynamically inside each test (or `beforeEach`) so it binds to the temp database after `jest.resetModules()`.
+- The context works by **mutating `dataAccess.client`** on the shared singleton. Services that call `dataAccess.client` internally automatically use the test DB — no `vi.resetModules()` or dynamic imports needed. **Static top-level imports of services are fine.**
+- Use `ctx.getDataAccess().client` for direct DB access in tests.
+- Integration tests run in the `node` environment (configured via `environmentMatchGlobs` in vitest.config.ts).
 
 ```typescript
+// @vitest-environment node
+
+vi.mock('next/cache', () => ({
+    revalidateTag: vi.fn(),
+    unstable_cache: vi.fn().mockImplementation(
+        (fn: (...args: unknown[]) => Promise<unknown>) =>
+            (...args: unknown[]) => fn(...args)
+    ),
+}));
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
+import appService from '@/server/services/app.service'; // static import is fine
 
-const ctx = createPrismaTestContext('build-service');
+describe('app.service integration', () => {
+    const dbCtx = createPrismaTestContext('app-service');
 
-describe('build.service integration', () => {
-    beforeAll(ctx.setup);
-    beforeEach(ctx.resetTables);
-    afterAll(ctx.teardown);
+    it('service writes to test DB', async () => {
+        await appService.create({ name: 'my-app', projectId: '...' });
 
-    it('persists and reloads data through Prisma', async () => {
-        const { default: dataAccess } = await import('@/server/adapter/db.client');
+        const apps = await dbCtx.getDataAccess().client.app.findMany();
+        expect(apps).toHaveLength(1);
+    });
 
-        const created = await dataAccess.client.user.create({
-            data: {
-                email: 'alice@example.com',
-                password: 'secret',
-            },
+    it('direct DB access', async () => {
+        const created = await dbCtx.getDataAccess().client.user.create({
+            data: { email: 'alice@example.com', password: 'secret' },
         });
-
-        const fetched = await dataAccess.client.user.findUnique({
-            where: { id: created.id },
-        });
-
+        const fetched = await dbCtx.getDataAccess().client.user.findUnique({ where: { id: created.id } });
         expect(fetched?.email).toBe('alice@example.com');
     });
 });
@@ -117,46 +123,40 @@ describe('build.service integration', () => {
 
 ```bash
 yarn test
-yarn test --watch
-yarn test --runInBand src/server/services/build.service.unit.spec.ts
-yarn test --runInBand src/__tests__/integration/server/services/build.service.integration.spec.ts
+yarn test:watch
+yarn test src/server/services/build.service.unit.spec.ts
+yarn test src/__tests__/integration/server/services/build.service.integration.spec.ts
 ```
 
-Use `--runInBand` for integration suites that mutate `process.env.DATABASE_URL` or Prisma singleton state.
+Use `--pool=forks` or `--no-file-parallelism` for integration suites that mutate `process.env.DATABASE_URL` or Prisma singleton state.
 
 ## Integration Tests (Kubernetes / K3s)
 
 - Use `createK3sTestContext` from `src/__tests__/k3s-test.utils.ts` to spin up a real k3s cluster in Docker via testcontainers.
-- Wire **only two** lifecycle hooks: `beforeAll(ctx.setup)` and `afterAll(ctx.teardown)`. No `beforeEach` reset needed — recreate Kubernetes resources per test using unique names.
-- Call `ctx.getClients()` inside tests (or `beforeAll`) to get typed API clients (`core`, `apps`, `batch`, `network`, `customObjects`, `metrics`) wired to the test cluster.
-- Use `ctx.getKubeConfig()` when you need the raw `KubeConfig` object (e.g., for custom watchers or log streaming).
-- To test a service that depends on `K3sApiAdapter`, mock the adapter module and populate it with clients from the context:
+- Call `createK3sTestContext()` at the top of the `describe` block. It **automatically registers** `beforeAll` (cluster start + adapter wiring) and `afterAll` (teardown) — no manual hook wiring needed.
+- Call `ctx.getClients()` inside tests to get typed API clients (`core`, `apps`, `batch`, `log`, `network`, `customObjects`, `metrics`) wired to the test cluster.
+- Use `ctx.getKubeConfig()` when you need the raw `KubeConfig` object (e.g., for custom watchers).
+- `K3sApiAdapter` is **automatically wired** with test cluster clients in the registered `beforeAll`. To use this, mock the adapter module at the top of the test file (before any imports):
 
 ```typescript
-jest.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
-
-// in beforeAll, after ctx.setup:
-const { default: k3sAdapter } = await import('@/server/adapter/kubernetes-api.adapter');
-Object.assign(k3sAdapter, ctx.getClients());
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 ```
 
-- K3s startup takes 20–30 s. Add `jest.setTimeout(120_000)` at the top of every K3s integration suite.
-- Run with `--runInBand` to avoid multiple containers competing for Docker resources.
+- K3s startup takes 20–30 s. Use `{ timeout: 120_000 }` in the `beforeAll` or configure via vitest's `testTimeout`.
+- Run with `--no-file-parallelism` to avoid multiple containers competing for Docker resources.
 - **Requires Docker with privileged container support.** Will not work in rootless Docker or Docker-in-Docker environments that forbid privileged containers.
 
 ```typescript
 import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 
-jest.setTimeout(120_000);
-
-const ctx = createK3sTestContext();
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 describe('namespace.service integration', () => {
-    beforeAll(ctx.setup);
-    afterAll(ctx.teardown);
+    const { getClients, getKubeConfig } = createK3sTestContext();
+    // K3sApiAdapter is automatically wired — no extra beforeAll needed
 
     it('lists the default namespaces', async () => {
-        const { core } = ctx.getClients();
+        const { core } = getClients();
         const result = await core.listNamespace();
         const names = result.items.map((ns) => ns.metadata?.name);
         expect(names).toContain('kube-system');
@@ -168,5 +168,5 @@ describe('namespace.service integration', () => {
 ## Scope Note
 
 - This file covers backend tests for `src/server/` and backend-oriented `src/shared/` modules.
-- Frontend and component tests continue to follow the existing Jest + Testing Library patterns under `src/__tests__/frontend/`.
+- Frontend and component tests follow the same Vitest patterns under `src/frontend/` and `src/__tests__/frontend/`.
 - This file defines testing structure and test-writing rules only. It does not change backend architecture or authorization patterns.
