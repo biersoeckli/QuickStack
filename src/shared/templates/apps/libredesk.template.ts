@@ -9,7 +9,7 @@ import { getRedisAppTemplate } from "../databases/redis.template";
 
 export const libredeskAppTemplate: AppTemplateModel = {
     name: "Libredesk",
-    iconName: 'https://libredesk.io/apple-touch-icon.png',
+    iconName: 'libredesk.png',
     templates: [
         // PostgreSQL Database
         getPostgresAppTemplate({
