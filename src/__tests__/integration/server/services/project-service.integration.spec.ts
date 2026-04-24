@@ -1,23 +1,14 @@
 // @vitest-environment node
 
-vi.mock('next/cache', () => ({
-    revalidateTag: vi.fn(),
-    unstable_cache: vi.fn().mockImplementation(
-        (fn: (...args: unknown[]) => Promise<unknown>) =>
-            (...args: unknown[]) =>
-                fn(...args)
-    ),
-}));
+import mockNextJsCaching from '@/__tests__/nextjs-cache.utils';
+mockNextJsCaching();
 
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { revalidateTag } from 'next/cache';
 import { Tags } from '@/server/utils/cache-tag-generator.utils';
-import buildService from '@/server/services/build.service';
 import namespaceService from '@/server/services/namespace.service';
 import projectService from '@/server/services/project.service';
 import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
-import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
-
 
 describe('project.service', () => {
     const dbCtx = createPrismaTestContext('project-service');
