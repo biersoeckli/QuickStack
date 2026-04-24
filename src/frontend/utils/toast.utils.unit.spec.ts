@@ -1,21 +1,21 @@
-import { Toast } from '../../../frontend/utils/toast.utils';
+import { Toast } from '@/frontend/utils/toast.utils';
 import { toast } from 'sonner';
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 
-jest.mock('sonner', () => ({
+vi.mock('sonner', () => ({
     toast: {
-        promise: jest.fn()
+        promise: vi.fn()
     }
 }));
 
 describe('Toast', () => {
     describe('fromAction', () => {
         it('should resolve with success message when action is successful', async () => {
-            const action = jest.fn().mockResolvedValue({ status: 'success', message: 'Success' } as ServerActionResult<any, any>);
+            const action = vi.fn().mockResolvedValue({ status: 'success', message: 'Success' } as ServerActionResult<any, any>);
             const defaultSuccessMessage = 'Operation successful';
 
-            (toast.promise as jest.Mock).mockImplementation(async (actionFn, { success }) => {
-                const result = await actionFn();
+            vi.mocked(toast.promise).mockImplementation(async (actionFn, { success }: any) => {
+                const result = await (actionFn as () => Promise<unknown>)();
                 return success(result);
             });
 
@@ -26,11 +26,11 @@ describe('Toast', () => {
         });
 
         it('should reject with error message when action fails', async () => {
-            const action = jest.fn().mockResolvedValue({ status: 'error', message: 'Failure' } as ServerActionResult<any, any>);
+            const action = vi.fn().mockResolvedValue({ status: 'error', message: 'Failure' } as ServerActionResult<any, any>);
 
-            (toast.promise as jest.Mock).mockImplementation(async (actionFn, { error }) => {
+            vi.mocked(toast.promise).mockImplementation(async (actionFn, { error }: any) => {
                 try {
-                    await actionFn();
+                    await (actionFn as () => Promise<unknown>)();
                 } catch (err) {
                     return error(err);
                 }
@@ -41,11 +41,11 @@ describe('Toast', () => {
         });
 
         it('should reject with unknown error message when action throws an error', async () => {
-            const action = jest.fn().mockRejectedValue(new Error('Some error'));
+            const action = vi.fn().mockRejectedValue(new Error('Some error'));
 
-            (toast.promise as jest.Mock).mockImplementation(async (actionFn, { error }) => {
+            vi.mocked(toast.promise).mockImplementation(async (actionFn, { error }: any) => {
                 try {
-                    await actionFn();
+                    await (actionFn as () => Promise<unknown>)();
                 } catch (err) {
                     return error(err);
                 }
@@ -56,11 +56,11 @@ describe('Toast', () => {
         });
 
         it('should use default success message when action is successful and no message is provided', async () => {
-            const action = jest.fn().mockResolvedValue({ status: 'success' } as ServerActionResult<any, any>);
+            const action = vi.fn().mockResolvedValue({ status: 'success' } as ServerActionResult<any, any>);
             const defaultSuccessMessage = 'Operation successful';
 
-            (toast.promise as jest.Mock).mockImplementation(async (actionFn, { success }) => {
-                const result = await actionFn();
+            vi.mocked(toast.promise).mockImplementation(async (actionFn, { success }: any) => {
+                const result = await (actionFn as () => Promise<unknown>)();
                 return success(result);
             });
 

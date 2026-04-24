@@ -1,4 +1,4 @@
-import { UserGroupUtils } from "../../../shared/utils/role.utils";
+import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { adminRoleName, RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { UserSession } from "@/shared/model/sim-session.model";
 

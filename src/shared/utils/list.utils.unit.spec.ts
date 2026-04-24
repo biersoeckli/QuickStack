@@ -1,4 +1,4 @@
-import { ListUtils } from '../../../shared/utils/list.utils';
+import { ListUtils } from '@/shared/utils/list.utils';
 
 describe('ListUtils', () => {
 

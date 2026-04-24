@@ -1,4 +1,4 @@
-import { HostnameDnsProviderUtils } from '../../../shared/utils/domain-dns-provider.utils';
+import { HostnameDnsProviderUtils } from '@/shared/utils/domain-dns-provider.utils';
 
 describe('DomainDnsProviderUtils', () => {
     describe('isValidDnsProviderHostname', () => {

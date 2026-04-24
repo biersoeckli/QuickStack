@@ -1,4 +1,4 @@
-import { DateUtils } from '../../../shared/utils/date.utils';
+import { DateUtils } from '@/shared/utils/date.utils';
 
 describe('DateUtils', () => {
 

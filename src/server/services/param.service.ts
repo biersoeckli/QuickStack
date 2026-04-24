@@ -19,6 +19,7 @@ export class ParamService {
     static readonly BUILD_CPU_LIMIT = 'buildCpuLimit';
     static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
     static readonly BUILD_NODE = 'buildNode';
+    static readonly QS_INSTANCE_ID = 'qsInstanceId';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({
@@ -42,6 +43,25 @@ export class ParamService {
                 name
             }
         });
+    }
+
+    async getOrCreate(name: string, defaultValue: string) {
+        let param: Parameter;
+        try {
+            param = await dataAccess.client.parameter.upsert({
+                where: {
+                    name
+                },
+                create: {
+                    name,
+                    value: defaultValue
+                },
+                update: {}
+            });
+        } finally {
+            revalidateTag(Tags.parameter());
+        }
+        return param;
     }
 
     async getOrUndefined(name: string) {

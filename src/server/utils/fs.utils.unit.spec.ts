@@ -1,34 +1,45 @@
 import { promises } from 'dns';
-import { FsUtils } from '../../../server/utils/fs.utils';
+import { FsUtils } from '@/server/utils/fs.utils';
 import fs from 'fs';
 
-jest.mock('fs', () => ({
-    existsSync: jest.fn(),
-    mkdirSync: jest.fn(),
-    mkdir: jest.fn(),
+vi.mock('fs', () => ({
+    default: {
+        existsSync: vi.fn(),
+        mkdirSync: vi.fn(),
+        mkdir: vi.fn(),
+        promises: {
+            access: vi.fn(),
+            readdir: vi.fn(),
+            mkdir: vi.fn(),
+            rm: vi.fn()
+        }
+    },
+    existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    mkdir: vi.fn(),
     promises: {
-        access: jest.fn(),
-        readdir: jest.fn(),
-        mkdir: jest.fn(),
-        rm: jest.fn()
+        access: vi.fn(),
+        readdir: vi.fn(),
+        mkdir: vi.fn(),
+        rm: vi.fn()
     }
 }));
 
 describe('FsUtils', () => {
     afterEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('fileExists', () => {
         it('should return true if file exists', async () => {
-            (fs.promises.access as jest.Mock).mockResolvedValue(undefined);
+            vi.mocked(fs.promises.access).mockResolvedValue(undefined);
             (fs.constants as any) = { F_OK: 0 };
             const result = await FsUtils.fileExists('path/to/file');
             expect(result).toBe(true);
         });
 
         it('should return false if file does not exist', async () => {
-            (fs.promises.access as jest.Mock).mockRejectedValue(new Error('File not found'));
+            vi.mocked(fs.promises.access).mockRejectedValue(new Error('File not found'));
             const result = await FsUtils.fileExists('path/to/file');
             expect(result).toBe(false);
         });
@@ -36,13 +47,13 @@ describe('FsUtils', () => {
 
     describe('directoryExists', () => {
         it('should return true if directory exists', () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            vi.mocked(fs.existsSync).mockReturnValue(true);
             const result = FsUtils.directoryExists('path/to/dir');
             expect(result).toBe(true);
         });
 
         it('should return false if directory does not exist', () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(false);
+            vi.mocked(fs.existsSync).mockReturnValue(false);
             const result = FsUtils.directoryExists('path/to/dir');
             expect(result).toBe(false);
         });
@@ -50,13 +61,13 @@ describe('FsUtils', () => {
 
     describe('isFolderEmpty', () => {
         it('should return true if folder is empty', async () => {
-            (fs.promises.readdir as jest.Mock).mockResolvedValue([]);
+            vi.mocked(fs.promises.readdir as any).mockResolvedValue([]);
             const result = await FsUtils.isFolderEmpty('path/to/dir');
             expect(result).toBe(true);
         });
 
         it('should return false if folder is not empty', async () => {
-            (fs.promises.readdir as jest.Mock).mockResolvedValue(['file1', 'file2']);
+            vi.mocked(fs.promises.readdir as any).mockResolvedValue(['file1', 'file2']);
             const result = await FsUtils.isFolderEmpty('path/to/dir');
             expect(result).toBe(false);
         });
@@ -64,13 +75,13 @@ describe('FsUtils', () => {
 
     describe('createDirIfNotExists', () => {
         it('should create directory if it does not exist', () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(false);
+            vi.mocked(fs.existsSync).mockReturnValue(false);
             FsUtils.createDirIfNotExists('path/to/dir');
             expect(fs.mkdirSync).toHaveBeenCalledWith('path/to/dir', { recursive: false });
         });
 
         it('should not create directory if it exists', () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            vi.mocked(fs.existsSync).mockReturnValue(true);
             FsUtils.createDirIfNotExists('path/to/dir');
             expect(fs.mkdirSync).not.toHaveBeenCalled();
         });
@@ -78,13 +89,13 @@ describe('FsUtils', () => {
 
     describe('createDirIfNotExistsAsync', () => {
         it('should create directory if it does not exist', async () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(false);
+            vi.mocked(fs.existsSync).mockReturnValue(false);
             await FsUtils.createDirIfNotExistsAsync('path/to/dir');
             expect(fs.promises.mkdir).toHaveBeenCalledWith('path/to/dir', { recursive: false });
         });
 
         it('should not create directory if it exists', async () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            vi.mocked(fs.existsSync).mockReturnValue(true);
             await FsUtils.createDirIfNotExistsAsync('path/to/dir');
             expect(fs.promises.mkdir).not.toHaveBeenCalled();
         });
@@ -92,13 +103,13 @@ describe('FsUtils', () => {
 
     describe('deleteDirIfExistsAsync', () => {
         it('should delete directory if it exists', async () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            vi.mocked(fs.existsSync).mockReturnValue(true);
             await FsUtils.deleteDirIfExistsAsync('path/to/dir');
             expect(fs.promises.rm).toHaveBeenCalledWith('path/to/dir', { recursive: false });
         });
 
         it('should not delete directory if it does not exist', async () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(false);
+            vi.mocked(fs.existsSync).mockReturnValue(false);
             await FsUtils.deleteDirIfExistsAsync('path/to/dir');
             expect(fs.promises.rm).not.toHaveBeenCalled();
         });

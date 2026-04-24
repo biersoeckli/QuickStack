@@ -7,10 +7,12 @@ import { DatabaseTemplateInfoModel } from '@/shared/model/database-template-info
 import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
-jest.mock('crypto', () => ({
-    randomBytes: jest.fn(() => ({
-        toString: jest.fn(() => 'mockedRandomValue')
-    }))
+vi.mock('crypto', () => ({
+    default: {
+        randomBytes: vi.fn(() => ({
+            toString: vi.fn(() => 'mockedRandomValue')
+        }))
+    }
 }));
 
 describe('AppTemplateService', () => {
@@ -49,10 +51,12 @@ describe('AppTemplateService', () => {
             expect(inputValues[0].value).toBe('existingValue');
         });
 
-        jest.mock('crypto', () => ({
-            randomBytes: jest.fn(() => ({
-                toString: jest.fn(() => 'mockedRandomValue')
-            }))
+        vi.mock('crypto', () => ({
+            default: {
+                randomBytes: vi.fn(() => ({
+                    toString: vi.fn(() => 'mockedRandomValue')
+                }))
+            }
         }));
 
 

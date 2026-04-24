@@ -1,8 +1,8 @@
 version: "3"
 services:
   vscode-container:
-    image: mcr.microsoft.com/devcontainers/typescript-node:22
-    command: /bin/sh -c "while sleep 1000; do :; done"
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+    command: sleep infinity
     volumes:
       - ..:/workspace
       - ~/.ssh:/home/node/.ssh

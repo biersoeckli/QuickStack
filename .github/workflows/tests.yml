@@ -15,15 +15,21 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable Corepack/Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@stable --activate
+          yarn --version
 
       - name: Install dependencies for backend
         run: yarn install && yarn run prisma-generate
