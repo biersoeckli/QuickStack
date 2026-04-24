@@ -5,7 +5,9 @@
         "module": "commonjs",
         "outDir": "dist",
         "lib": [
-            "ES2023"
+            "dom",
+            "dom.iterable",
+            "esnext"
         ],
         "target": "ES2023",
         "isolatedModules": false,

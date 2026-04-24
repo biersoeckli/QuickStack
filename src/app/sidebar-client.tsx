@@ -32,7 +32,7 @@ import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
-import { GithubReleaseInfo } from "@/server/adapter/github.adapter"
+import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
 
 export function SidebarCient({
   projects,
@@ -41,7 +41,7 @@ export function SidebarCient({
 }: {
   projects: (Project & { apps: App[] })[];
   session: UserSession;
-  newVersionInfo?: GithubReleaseInfo;
+  newVersionInfo?: QuickStackReleaseInfo;
 }) {
 
   const path = usePathname();
