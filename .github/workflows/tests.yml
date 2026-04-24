@@ -59,4 +59,3 @@ jobs:
             VERSION_ARG=${{ github.ref_name }}
           tags: |
             quickstack/quickstack:test-amd64
-            quickstack/quickstack:${{ github.ref_name }}-test-amd64
