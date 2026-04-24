@@ -80,6 +80,11 @@ export default function BuildsTable({
                             </span>
                         )],
                         ['name', 'Build Job', false],
+                        ['buildMethod', 'Build Method', true, (item) => (
+                            <span className="text-muted-foreground text-sm">
+                                {item.buildMethod === 'DOCKERFILE' ? 'Dockerfile' : 'Railpack'}
+                            </span>
+                        )],
                         ['startTime', 'Started At', true, (item) => formatDateTime(item.startTime)],
                         ['completionTime', 'Duration', true, (item) => {
                             const start = new Date(item.startTime).getTime();

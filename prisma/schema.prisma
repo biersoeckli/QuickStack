@@ -179,6 +179,7 @@ model App {
   projectId  String
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sourceType String  @default("GIT") // GIT, CONTAINER
+  buildMethod String @default("RAILPACK") // RAILPACK, DOCKERFILE
 
   containerImageSource      String?
   containerRegistryUsername String?

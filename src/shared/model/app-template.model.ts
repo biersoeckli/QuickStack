@@ -5,6 +5,7 @@ import { appVolumeTypeZodModel, storageClassNameZodModel } from "./volume-edit.m
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined(),
+    buildMethod: z.undefined(),
     dockerfilePath: z.undefined(),
     appType: appTypeZodModel,
     sourceType: appSourceTypeZodModel,

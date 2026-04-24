@@ -1,4 +1,5 @@
 import paramService, { ParamService } from "@/server/services/param.service";
+import buildPodLogWatchService from "@/server/services/standalone-services/build-pod-log-watch.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
 import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
 import { simpleRoute } from "@/server/utils/action-wrapper.utils";
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
         }
 
         await buildWatchService.startWatch();
+        await buildPodLogWatchService.startWatch();
         await deploymentEventWatchService.startWatch();
         const instanceId = await paramService.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID());
 

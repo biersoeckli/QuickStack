@@ -20,6 +20,7 @@ import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
 import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
+import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 
 class DeploymentService {
 
@@ -70,7 +71,14 @@ class DeploymentService {
         }
     }
 
-    async createDeployment(deploymentId: string, app: AppExtendedModel, buildJobName?: string, gitCommitHash?: string, gitCommitMessage?: string) {
+    async createDeployment(
+        deploymentId: string,
+        app: AppExtendedModel,
+        buildJobName?: string,
+        gitCommitHash?: string,
+        gitCommitMessage?: string,
+        buildMethod?: AppBuildMethod,
+    ) {
         await this.validateDeployment(app);
 
         dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
@@ -151,6 +159,9 @@ class DeploymentService {
         };
         if (buildJobName) {
             body.spec!.template!.metadata!.annotations!.buildJobName = buildJobName; // add buildJobName to deployment
+        }
+        if (buildMethod) {
+            body.spec!.template!.metadata!.annotations![Constants.QS_ANNOTATION_BUILD_METHOD] = buildMethod;
         }
 
         if (gitCommitHash) {
@@ -326,10 +337,11 @@ class DeploymentService {
                     replicasetName: undefined,
                     createdAt: build.startTime!,
                     buildJobName: build.name!,
-                    status: this.mapBuildStatusToDeploymentStatus(build.status),
-                    gitCommit: build.gitCommit,
-                    gitCommitMessage: build.gitCommitMessage,
-                    deploymentId: build.deploymentId
+                status: this.mapBuildStatusToDeploymentStatus(build.status),
+                gitCommit: build.gitCommit,
+                gitCommitMessage: build.gitCommitMessage,
+                deploymentId: build.deploymentId,
+                buildMethod: build.buildMethod,
                 }
             });
         replicasetRevisions.push(...runningOrFailedBuilds);
@@ -366,7 +378,8 @@ class DeploymentService {
                 gitCommit: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT],
                 gitCommitMessage: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
                 status: status,
-                deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!
+                deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!,
+                buildMethod: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
             }
         });
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);

@@ -1,6 +1,7 @@
 import { V1Container } from "@kubernetes/client-node";
-import k3s from "../adapter/kubernetes-api.adapter";
-import { BUILD_NAMESPACE } from "./registry.service";
+import k3s from "../../adapter/kubernetes-api.adapter";
+import { BUILD_NAMESPACE } from "../registry.service";
+import { Constants } from "@/shared/utils/constants";
 
 const SERVICE_ACCOUNT_NAME = 'qs-build-watcher';
 const ROLE_NAME = 'qs-build-watcher-role';
@@ -82,7 +83,7 @@ class BuildInitContainerService {
         ].join('\n');
 
         return {
-            name: 'build-queue-init',
+            name: Constants.QS_BUILD_INIT_CONTAINER_NAME,
             image: 'bitnami/kubectl:latest',
             command: ['sh', '-c'],
             args: [script],
