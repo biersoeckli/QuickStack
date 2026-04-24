@@ -3,6 +3,8 @@
 import mockNextJsCaching from '@/__tests__/nextjs-cache.utils';
 mockNextJsCaching();
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { revalidateTag } from 'next/cache';
 import { Tags } from '@/server/utils/cache-tag-generator.utils';

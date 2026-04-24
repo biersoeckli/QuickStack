@@ -136,6 +136,9 @@ Use `--pool=forks` or `--no-file-parallelism` for integration suites that mutate
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 ```
 
+- **Import order is strict**: keep the adapter mock above any import that may transitively load services using `@/server/adapter/kubernetes-api.adapter`.
+- If mock order is wrong, the real singleton may initialize during module import and try to read `/workspace/kube-config.config`
+
 - K3s startup takes 20–30 s. Use `{ timeout: 120_000 }` in the `beforeAll` or configure via vitest's `testTimeout`.
 - Run with `--no-file-parallelism` to avoid multiple containers competing for Docker resources.
 - **Requires Docker with privileged container support.** Will not work in rootless Docker or Docker-in-Docker environments that forbid privileged containers.
