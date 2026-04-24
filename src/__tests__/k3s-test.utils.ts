@@ -86,7 +86,27 @@ export function createK3sTestContext(image = DEFAULT_IMAGE) {
         // Auto-wire K3sApiAdapter with test cluster clients.
         // Works whether the adapter is mocked ({ default: {} }) or real.
         const { default: k3sAdapter } = await import('@/server/adapter/kubernetes-api.adapter');
-        Object.assign(k3sAdapter, getClients());
+        Object.assign(k3sAdapter, getClients(), {
+            getKubeConfig,
+            applyResource: async (spec: any, namespace: string) => {
+                if (!spec?.kind) {
+                    throw new Error('Invalid resource specification');
+                }
+
+                const targetNamespace = spec.metadata?.namespace || namespace;
+                if (!targetNamespace) {
+                    throw new Error('Namespace is required in resource metadata in method applyResource');
+                }
+
+                const client = k8s.KubernetesObjectApi.makeApiClient(getKubeConfig());
+                try {
+                    await client.read(spec);
+                    await client.patch(spec);
+                } catch {
+                    await client.create(spec);
+                }
+            },
+        });
     }, K3S_HOOK_TIMEOUT_MS);
 
     it('healthcheck for k3s cluster', async () => {

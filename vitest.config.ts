@@ -18,6 +18,15 @@ export default defineConfig({
           name: 'jsdom',
           environment: 'jsdom',
           include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+          exclude: ['src/__tests__/integration/**/*.spec.ts', 'src/__tests__/integration/**/*.test.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'node-integration',
+          environment: 'node',
+          include: ['src/__tests__/integration/**/*.spec.ts', 'src/__tests__/integration/**/*.test.ts'],
         },
       },
     ],
