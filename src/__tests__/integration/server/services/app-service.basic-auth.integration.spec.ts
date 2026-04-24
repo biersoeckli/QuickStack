@@ -1,13 +1,7 @@
 // @vitest-environment node
 
-vi.mock('next/cache', () => ({
-    revalidateTag: vi.fn(),
-    unstable_cache: vi.fn().mockImplementation(
-        (fn: (...args: unknown[]) => Promise<unknown>) =>
-            (...args: unknown[]) =>
-                fn(...args)
-    ),
-}));
+import mockNextJsCaching from '@/__tests__/nextjs-cache.utils';
+mockNextJsCaching();
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 vi.mock('@/server/services/deployment.service', () => ({ default: {} }));

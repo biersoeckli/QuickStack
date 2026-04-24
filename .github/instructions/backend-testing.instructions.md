@@ -86,14 +86,8 @@ describe('build.service', () => {
 
 ```typescript
 // @vitest-environment node
-
-vi.mock('next/cache', () => ({
-    revalidateTag: vi.fn(),
-    unstable_cache: vi.fn().mockImplementation(
-        (fn: (...args: unknown[]) => Promise<unknown>) =>
-            (...args: unknown[]) => fn(...args)
-    ),
-}));
+import mockNextJsCaching from '@/__tests__/nextjs-cache.utils';
+mockNextJsCaching(); // Mocks Next.js caching functions to prevent errors when services call revalidateTag or unstable_cache during tests.
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';

@@ -65,11 +65,12 @@ class DeploymentEventWatchService {
             const deploymentId = pod.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
             if (!deploymentId) return;
 
-            const eventType = event.type ?? 'Unknown';
-            const reason = event.reason ?? 'Unknown';
+            const eventType = event.type?.toLocaleLowerCase() === "normal" ? '' : `/${event.type?.toLocaleLowerCase()}`;
+            const reason = event.reason ? `/${event.reason}` : '';
             const message = event.message ?? '';
 
-            await dlog(deploymentId, `[event] ${eventType}/${reason}: ${message}`);
+
+            await dlog(deploymentId, `[event${eventType}${reason}]: ${message}`);
         } catch {
             // Pod may already be gone — silently skip
         }
