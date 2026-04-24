@@ -5,6 +5,7 @@ mockNextJsCaching();
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
+import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 import buildService from '@/server/services/build.service';
@@ -16,6 +17,21 @@ import k3s from '@/server/adapter/kubernetes-api.adapter';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Constants } from '@/shared/utils/constants';
 import { PathUtils } from '@/server/utils/path.utils';
+import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
+
+const testStorageRoot = path.join(process.cwd(), 'storage');
+const originalInternalDataRoot = Object.getOwnPropertyDescriptor(PathUtils, 'internalDataRoot');
+const originalTempDataRoot = Object.getOwnPropertyDescriptor(PathUtils, 'tempDataRoot');
+
+Object.defineProperty(PathUtils, 'internalDataRoot', {
+    configurable: true,
+    get: () => path.join(testStorageRoot, 'internal'),
+});
+
+Object.defineProperty(PathUtils, 'tempDataRoot', {
+    configurable: true,
+    get: () => path.join(testStorageRoot, 'tmp'),
+});
 
 async function deployRegistry() {
     await paramService.save({
@@ -44,6 +60,17 @@ async function deployRegistry() {
 
 describe('build.service integration', () => {
     createK3sTestContext();
+    createPrismaTestContext('build-service-integration');
+
+    afterAll(() => {
+        if (originalInternalDataRoot) {
+            Object.defineProperty(PathUtils, 'internalDataRoot', originalInternalDataRoot);
+        }
+        if (originalTempDataRoot) {
+            Object.defineProperty(PathUtils, 'tempDataRoot', originalTempDataRoot);
+        }
+        vi.restoreAllMocks();
+    });
 
     beforeEach(() => {
         vi.clearAllMocks();

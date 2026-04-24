@@ -23,7 +23,6 @@ class BuildPodLogWatchService {
 
         this.isWatchRunning = true;
         console.log('[BuildPodLogWatch] Starting build pod log watch...');
-        //  await this.captureLogsForExistingPods();
 
         const watch = new k8s.Watch(k3s.getKubeConfig());
         await watch.watch(

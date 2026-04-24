@@ -1,5 +1,7 @@
 import dockerfileBuildJobBuilder from "./dockerfile-build-job-builder.service";
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 describe('DockerfileBuildJobBuilder', () => {
     it('builds a Dockerfile-based build job with queue init container and build annotations', async () => {
         const job = await dockerfileBuildJobBuilder.buildJobDefinition({

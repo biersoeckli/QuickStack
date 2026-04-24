@@ -45,7 +45,7 @@ vi.mock('@/server/services/cluster.service', () => ({
         getNodeInfo: vi.fn().mockResolvedValue([]),
     },
 }));
-vi.mock('@/server/services/build-init-container.service', () => ({
+vi.mock('@/server/services/build-job-builders/build-init-container.service', () => ({
     default: {
         ensureRbacResources: vi.fn(),
     },

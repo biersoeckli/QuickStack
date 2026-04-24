@@ -1,5 +1,7 @@
 import railpackBuildJobBuilder, { RAILPACK_FRONTEND_IMAGE } from "./railpack-build-job-builder.service";
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 describe('RailpackBuildJobBuilder', () => {
     it('builds a Railpack job with queue init, prepare init, shared volume, and frontend image', async () => {
         const job = await railpackBuildJobBuilder.buildJobDefinition({

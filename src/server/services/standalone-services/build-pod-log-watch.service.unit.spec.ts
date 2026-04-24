@@ -46,47 +46,6 @@ describe('BuildPodLogWatchService', () => {
         (buildPodLogWatchService as any).watchRequest = null;
     });
 
-    it('captures logs for readable containers when deployment annotation is present', async () => {
-        const pod = {
-            metadata: {
-                uid: 'pod-uid-1',
-                name: 'build-pod-1',
-                annotations: {
-                    'qs-deplyoment-id': 'deployment-1',
-                },
-            },
-            spec: {
-                initContainers: [{ name: 'build-queue-init' }],
-                containers: [{ name: 'build-1' }],
-            },
-            status: {
-                initContainerStatuses: [
-                    { name: 'build-queue-init', state: { terminated: { exitCode: 0 } } },
-                ],
-                containerStatuses: [
-                    { name: 'build-1', state: { running: { startedAt: new Date().toISOString() } } },
-                ],
-            },
-        };
-
-        vi.mocked(k3s.core.listNamespacedPod).mockResolvedValue({ body: { items: [pod] } } as any);
-        vi.mocked(k3s.log.log).mockImplementation(async (_ns, _podName, containerName, logStream) => {
-            const writable = logStream as stream.PassThrough;
-            queueMicrotask(() => {
-                writable.emit('data', Buffer.from(`log:${containerName}\n`));
-                writable.end();
-            });
-            return { abort: vi.fn() } as any;
-        });
-
-        await buildPodLogWatchService.startWatch();
-        await flushPromises();
-
-        expect(vi.mocked(k3s.log.log)).toHaveBeenCalledTimes(2);
-        expect(vi.mocked(dlog).mock.calls.map((call) => call[1])).toContain('[INFO] Streaming logs from pod "build-pod-1" container "build-queue-init"');
-        expect(vi.mocked(dlog).mock.calls.map((call) => call[1])).toContain('[INFO] Streaming logs from pod "build-pod-1" container "build-1"');
-    });
-
     it('ignores pods without deployment annotation', async () => {
         vi.mocked(k3s.core.listNamespacedPod).mockResolvedValue({
             body: {
