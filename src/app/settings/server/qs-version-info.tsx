@@ -9,8 +9,8 @@ import { Rocket, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import React from "react";
-import { GithubReleaseInfo } from "@/server/adapter/github.adapter";
 import Link from "next/link";
+import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter";
 
 export default function QuickStackVersionInfo({
     useCanaryChannel,
@@ -19,7 +19,7 @@ export default function QuickStackVersionInfo({
 }: {
     useCanaryChannel: boolean;
     currentVersion?: string;
-    newVersionInfo?: GithubReleaseInfo
+    newVersionInfo?: QuickStackReleaseInfo
 }) {
 
     const useConfirm = useConfirmDialog();

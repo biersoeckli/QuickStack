@@ -11,12 +11,16 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    environmentMatchGlobs: [
-      ['src/__tests__/integration/**', 'node'],
-      ['src/server/**', 'node'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'jsdom',
+          environment: 'jsdom',
+          include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+        },
+      },
     ],
-    include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

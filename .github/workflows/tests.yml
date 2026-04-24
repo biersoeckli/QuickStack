@@ -36,3 +36,26 @@ jobs:
 
       - name: Run tests for backend
         run: yarn  test
+
+  build-amd64:
+    runs-on: self-hosted
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+
+      - name: Build Docker Image (amd64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          push: false
+          platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=${{ github.ref_name }}
+          tags: |
+            quickstack/quickstack:test-amd64

@@ -37,7 +37,7 @@ class RegistryApiAdapter {
         });
 
         await this.checkIfResponseIsOk(response);
-        const data = await response.json();
+        const data = await response.json() as { repositories: string[] } | null;
         return data?.repositories ?? [] as string[];
     }
 
