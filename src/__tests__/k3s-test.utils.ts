@@ -7,6 +7,7 @@ import { beforeAll, afterAll } from 'vitest';
  * Override via the `image` parameter of createK3sTestContext when needed.
  */
 const DEFAULT_IMAGE = 'rancher/k3s:v1.31.3-k3s1';
+const K3S_HOOK_TIMEOUT_MS = 60_000; // because pulling and starting the container can take longer the first time
 
 export interface K3sTestClients {
     core: k8s.CoreV1Api;
@@ -86,7 +87,7 @@ export function createK3sTestContext(image = DEFAULT_IMAGE) {
         // Works whether the adapter is mocked ({ default: {} }) or real.
         const { default: k3sAdapter } = await import('@/server/adapter/kubernetes-api.adapter');
         Object.assign(k3sAdapter, getClients());
-    });
+    }, K3S_HOOK_TIMEOUT_MS);
 
     it('healthcheck for k3s cluster', async () => {
         const c = getClients();
@@ -98,7 +99,7 @@ export function createK3sTestContext(image = DEFAULT_IMAGE) {
         await container?.stop();
         container = undefined;
         kubeConfig = undefined;
-    });
+    }, K3S_HOOK_TIMEOUT_MS);
 
     function getKubeConfig(): k8s.KubeConfig {
         if (!kubeConfig) {
