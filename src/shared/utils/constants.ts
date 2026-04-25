@@ -8,6 +8,7 @@ export class Constants {
     static readonly QS_ANNOTATION_GIT_COMMIT = 'qs-git-commit';
     static readonly QS_ANNOTATION_GIT_COMMIT_MESSAGE = 'qs-git-commit-message';
     static readonly QS_ANNOTATION_BUILD_QUEUED_AT = 'qs-build-queued-at';
+    static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';
@@ -25,4 +26,5 @@ export class Constants {
     static readonly TOLERATION_FOR_EXECUTED_CRON_BACKUPS_MS = 60 * 60 * 1000; // 60 minutes;
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
+    static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
 }

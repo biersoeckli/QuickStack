@@ -1,5 +1,6 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import deploymentLiveStatusService from "@/server/services/deployment-live-status.service";
+import buildPodLogWatchService from "@/server/services/standalone-services/build-pod-log-watch.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
 import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
 import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
 
         const session = await getAuthUserSession();
 
-         // starts the buildwatch service if not already running.
+        buildPodLogWatchService.startWatch();
         buildWatchService.startWatch();
         deploymentEventWatchService.startWatch();
 

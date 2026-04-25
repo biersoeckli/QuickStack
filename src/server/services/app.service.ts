@@ -35,7 +35,14 @@ class AppService {
                 const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildApp(deploymentId, app, forceBuild);
                 if (shouldDeployImmediately) {
                     dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-                    await deploymentService.createDeployment(deploymentId, app, buildJobName, gitCommitHash, gitCommitMessage);
+                    await deploymentService.createDeployment(
+                        deploymentId,
+                        app,
+                        buildJobName,
+                        gitCommitHash,
+                        gitCommitMessage,
+                        app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK',
+                    );
                 }
                 // Otherwise the build-watch service will trigger the deployment once the build job completes
             } else {

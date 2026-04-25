@@ -8,6 +8,7 @@ export const AppModel = z.object({
   appType: z.string(),
   projectId: z.string(),
   sourceType: z.string(),
+  buildMethod: z.string(),
   containerImageSource: z.string().nullish(),
   containerRegistryUsername: z.string().nullish(),
   containerRegistryPassword: z.string().nullish(),

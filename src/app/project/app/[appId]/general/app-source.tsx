@@ -4,7 +4,7 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
-import { AppSourceInfoInputModel, appSourceInfoInputZodModel } from "@/shared/model/app-source-info.model";
+import { AppBuildMethod, AppSourceInfoInputModel, appSourceInfoInputZodModel } from "@/shared/model/app-source-info.model";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveGeneralAppSourceInfo } from "./actions";
@@ -14,9 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useEffect } from "react";
-import { App } from "@prisma/client";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function GeneralAppSource({ app, readonly }: {
     app: AppExtendedModel;
@@ -26,7 +26,9 @@ export default function GeneralAppSource({ app, readonly }: {
         resolver: zodResolver(appSourceInfoInputZodModel),
         defaultValues: {
             ...app,
-            sourceType: app.sourceType as 'GIT' | 'CONTAINER'
+            sourceType: app.sourceType as 'GIT' | 'CONTAINER',
+            buildMethod: (app.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK',
+            dockerfilePath: app.dockerfilePath ?? './Dockerfile',
         },
         disabled: readonly,
     });
@@ -92,6 +94,7 @@ export default function GeneralAppSource({ app, readonly }: {
                                 />
                                 <div className="grid grid-cols-2 gap-4">
 
+
                                     <FormField
                                         control={form.control}
                                         name="gitUsername"
@@ -133,21 +136,50 @@ export default function GeneralAppSource({ app, readonly }: {
                                             </FormItem>
                                         )}
                                     />
+
                                     <FormField
                                         control={form.control}
-                                        name="dockerfilePath"
+                                        name="buildMethod"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Path to Dockerfile</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="./Dockerfile"  {...field} value={field.value as string | number | readonly string[] | undefined} />
-                                                </FormControl>
+                                                <FormLabel>Build Method</FormLabel>
+                                                <Select
+                                                    disabled={field.disabled}
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select build method" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="RAILPACK">detect automatically (using railpack)</SelectItem>
+                                                        <SelectItem value="DOCKERFILE">Dockerfile</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
-                                </div>
 
+                                    {sourceTypeField.buildMethod === 'DOCKERFILE' && (<>
+                                        <div></div>
+                                        <FormField
+                                            control={form.control}
+                                            name="dockerfilePath"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Path to Dockerfile</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="./Dockerfile"  {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </>)}
+                                </div>
 
                             </TabsContent>
                             <TabsContent value="CONTAINER" className="space-y-4 mt-4">

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { appBuildMethodZodModel } from "./app-source-info.model";
 
 export const deploymentStatusEnumZod = z.union([
     z.literal('UNKNOWN'),
@@ -19,9 +20,9 @@ export const deploymentInfoZodModel = z.object({
     gitCommit: z.string().optional(),
     gitCommitMessage: z.string().optional(),
     deploymentId: z.string(),
+    buildMethod: appBuildMethodZodModel.optional(),
 });
 
 export type DeploymentInfoModel = z.infer<typeof deploymentInfoZodModel>;
 export type DeploymentStatus = z.infer<typeof deploymentStatusEnumZod>;
-
 

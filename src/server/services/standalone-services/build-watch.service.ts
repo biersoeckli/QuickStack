@@ -7,6 +7,7 @@ import deploymentService from '../deployment.service';
 import appService from '../app.service';
 import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
+import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -15,7 +16,6 @@ declare global {
 class BuildWatchService {
     private isWatchRunning = false;
     private processedJobs = new Set<string>();
-    private loggingStartedJobs = new Set<string>();
 
     async startWatch() {
         if (this.isWatchRunning) {
@@ -63,11 +63,6 @@ class BuildWatchService {
                 if (status === 'FAILED') {
                     // Mark as processed so watch won't re-handle it
                     this.processedJobs.add(jobName);
-                    continue;
-                }
-
-                if (status === 'RUNNING') {
-                    this.startLogCaptureIfNeeded(job);
                     continue;
                 }
 
@@ -120,8 +115,6 @@ class BuildWatchService {
         } else if (status === 'FAILED') {
             this.processedJobs.add(jobName);
             await this.handleFailed(job);
-        } else if (status === 'RUNNING') {
-            this.startLogCaptureIfNeeded(job);
         }
     }
 
@@ -131,6 +124,7 @@ class BuildWatchService {
         const gitCommitHash = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
         const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
         const buildJobName = job.metadata?.name;
+        const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
 
         if (!deploymentId || !appId || !buildJobName) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
@@ -144,30 +138,20 @@ class BuildWatchService {
             await dlog(deploymentId, `*************************************`);
             await dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
             const app = await appService.getExtendedById(appId, false);
-            await deploymentService.createDeployment(deploymentId, app, buildJobName, gitCommitHash, gitCommitMessage);
+            await deploymentService.createDeployment(
+                deploymentId,
+                app,
+                buildJobName,
+                gitCommitHash,
+                gitCommitMessage,
+                buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+            );
         } catch (e) {
             console.error(`[BuildWatch] Error triggering deployment for app ${appId}:`, e);
             if (deploymentId) {
                 await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
             }
         }
-
-        if (buildJobName && this.loggingStartedJobs.has(buildJobName)) {
-            this.loggingStartedJobs.delete(buildJobName);
-        }
-    }
-
-    private startLogCaptureIfNeeded(job: V1Job) {
-        const jobName = job.metadata?.name;
-        const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
-        if (!jobName || !deploymentId || this.loggingStartedJobs.has(jobName)) { return; }
-
-        this.loggingStartedJobs.add(jobName);
-        console.log(`[BuildWatch] Starting log capture for build job ${jobName}`);
-        buildService.logBuildOutput(deploymentId, jobName).catch((err) => {
-            dlog(deploymentId, `An error occurred while loading build logs: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
-            console.error(`Error while streaming build logs for build ${jobName}:`, err);
-        });
     }
 
     private async handleFailed(job: V1Job) {
@@ -179,10 +163,6 @@ class BuildWatchService {
         await dlog(deploymentId, `*********************`);
         await dlog(deploymentId, ` ⚠ Build job failed. `);
         await dlog(deploymentId, `*********************`);
-
-        if (buildJobName && this.loggingStartedJobs.has(buildJobName)) {
-            this.loggingStartedJobs.delete(buildJobName);
-        }
     }
 }
 

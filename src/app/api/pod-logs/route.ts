@@ -12,7 +12,6 @@ export const dynamic = "force-dynamic";
 const zodInputModel = z.object({
     namespace: z.string().optional(),
     podName: z.string().optional(),
-    buildJobName: z.string().optional(),
     linesCount: z.number().optional().default(100),
 });
 
@@ -21,17 +20,12 @@ export async function POST(request: Request) {
         const input = await request.json();
 
         const podInfo = zodInputModel.parse(input);
-        let { namespace, podName, buildJobName, linesCount } = podInfo;
+        let { namespace, podName, linesCount } = podInfo;
         let pod;
         let streamKey;
         if (namespace && podName) {
             pod = await podService.getPodInfoByName(namespace, podName);
             streamKey = `${namespace}_${podName}`;
-
-        } else if (buildJobName) {
-            namespace = BUILD_NAMESPACE;
-            pod = await buildService.getPodForJob(buildJobName);
-            streamKey = `${buildJobName}`;
 
         } else {
             console.error('Invalid pod info for streaming logs', podInfo);
@@ -55,7 +49,7 @@ export async function POST(request: Request) {
 
                     k3sStreamRequest = await k3s.log.log(namespace, pod.podName, pod.containerName, logStream, {
                         follow: true,
-                        tailLines: namespace === BUILD_NAMESPACE ? undefined : linesCount,
+                        tailLines: linesCount,
                         timestamps: true,
                         pretty: false,
                         previous: false
