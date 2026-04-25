@@ -7,7 +7,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import { Constants } from "../../shared/utils/constants";
 import dataAccess from "../adapter/db.client";
 import k3s from "../adapter/kubernetes-api.adapter";
-import buildInitContainerService from "./build-job-builders/build-init-container.service";
+import buildQueueInitContainer from "./build-job-builders/build-init-container.service";
 import dockerfileBuildJobBuilder from "./build-job-builders/dockerfile-build-job-builder.service";
 import railpackBuildJobBuilder from "./build-job-builders/railpack-build-job-builder.service";
 import { BuildJobBuilder } from "./build-job-builders/build-job-builder.interface";
@@ -77,7 +77,7 @@ class BuildService {
         const builder = this.getBuilder(buildMethod);
 
         await dlog(deploymentId, `Creating build job with name: ${buildName}`);
-        await buildInitContainerService.ensureRbacResources();
+        await buildQueueInitContainer.ensureRbacResources();
 
         if (buildMethod === 'DOCKERFILE') {
             await dlog(deploymentId, `Dockerfile path: ${app.dockerfilePath || './Dockerfile'}`);

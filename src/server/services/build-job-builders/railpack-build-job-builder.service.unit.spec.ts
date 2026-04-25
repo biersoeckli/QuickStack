@@ -25,11 +25,12 @@ describe('RailpackBuildJobBuilder', () => {
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
         expect(initContainers.map((container) => container.name)).toEqual([
             'build-queue-init',
+            'build-git-init',
             'railpack-prepare-init',
         ]);
         expect(job.spec?.template?.spec?.volumes).toEqual([
             expect.objectContaining({
-                name: 'railpack-workspace',
+                name: 'build-workspace',
                 emptyDir: {},
             }),
         ]);
@@ -39,5 +40,9 @@ describe('RailpackBuildJobBuilder', () => {
             'context=/workspace/source',
             'dockerfile=/workspace/plan',
         ]));
+
+        const prepareContainer = initContainers.find((container) => container.name === 'railpack-prepare-init')!;
+        expect(prepareContainer.env?.map((entry) => entry.name)).not.toContain('GIT_URL');
+        expect(prepareContainer.args?.[0]).not.toContain('git clone');
     });
 });

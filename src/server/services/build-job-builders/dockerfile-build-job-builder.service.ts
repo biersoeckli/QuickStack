@@ -2,9 +2,11 @@ import { V1Job } from "@kubernetes/client-node";
 import { BuildJobBuilder, BuildJobBuilderContext } from "./build-job-builder.interface";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { Constants } from "@/shared/utils/constants";
-import buildInitContainerService from "./build-init-container.service";
+import buildQueueInitContainer from "./build-init-container.service";
+import buildGitInitContainerService from "./build-git-init-container.service";
 import registryService, { BUILD_NAMESPACE } from "../registry.service";
 import { PathUtils } from "@/server/utils/path.utils";
+import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME } from "./build-workspace.constants";
 
 const buildkitImage = "moby/buildkit:master";
 
@@ -13,21 +15,18 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
 
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
         const contextPaths = PathUtils.splitPath(ctx.app.dockerfilePath || './Dockerfile');
-
-        let gitContextUrl = `${ctx.app.gitUrl!}#refs/heads/${ctx.app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
-        if (ctx.app.gitUsername && ctx.app.gitToken) {
-            const authenticatedGitUrl = ctx.app.gitUrl!.replace('https://', `https://${ctx.app.gitUsername}:${ctx.app.gitToken}@`);
-            gitContextUrl = `${authenticatedGitUrl}#refs/heads/${ctx.app.gitBranch}${contextPaths.folderPath ? ':' + contextPaths.folderPath : ''}`;
-        }
+        const dockerfileContextPath = this.getDockerfileContextPath(contextPaths.folderPath);
 
         const buildkitArgs = [
             "build",
             "--frontend",
             "dockerfile.v0",
+            "--local",
+            `context=${dockerfileContextPath}`,
+            "--local",
+            `dockerfile=${dockerfileContextPath}`,
             "--opt",
             `filename=${contextPaths.filePath}`,
-            "--opt",
-            `context=${gitContextUrl}`,
             "--output",
             `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.app.id)},push=true,registry.insecure=true`
         ];
@@ -64,7 +63,10 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                     spec: {
                         hostUsers: false,
                         serviceAccountName: 'qs-build-watcher',
-                        initContainers: [buildInitContainerService.getInitContainer(ctx.buildName, ctx.queuedAt)],
+                        initContainers: [
+                            buildQueueInitContainer.getInitContainer(ctx.buildName, ctx.queuedAt),
+                            buildGitInitContainerService.getInitContainer(ctx),
+                        ],
                         ...(ctx.nodeSelector ? { nodeSelector: ctx.nodeSelector } : {}),
                         containers: [
                             {
@@ -76,14 +78,29 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                                     privileged: true
                                 },
                                 ...(ctx.resources ? { resources: ctx.resources } : {}),
+                                volumeMounts: [{ name: BUILD_WORKSPACE_VOLUME_NAME, mountPath: BUILD_WORKSPACE_MOUNT_PATH }],
                             },
                         ],
                         restartPolicy: "Never",
+                        volumes: [
+                            {
+                                name: BUILD_WORKSPACE_VOLUME_NAME,
+                                emptyDir: {},
+                            },
+                        ],
                     },
                 },
                 backoffLimit: 0,
             },
         };
+    }
+
+    private getDockerfileContextPath(folderPath: string | undefined) {
+        if (!folderPath) {
+            return BUILD_SOURCE_PATH;
+        }
+
+        return `${BUILD_SOURCE_PATH}/${folderPath.replace(/^\.\//, '')}`;
     }
 }
 
