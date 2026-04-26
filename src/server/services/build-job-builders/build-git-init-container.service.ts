@@ -3,6 +3,10 @@ import { BuildJobBuilderContext } from "./build-job-builder.interface";
 import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME } from "./build-workspace.constants";
 
 export const BUILD_GIT_INIT_CONTAINER_NAME = 'build-git-init';
+export const BUILD_GIT_SSH_KEY_VOLUME_NAME = 'build-git-ssh-key';
+export const BUILD_GIT_SSH_KEY_MOUNT_PATH = '/git-ssh-key';
+const GIT_SSH_PRIVATE_KEY_SECRET_KEY = 'ssh-privatekey';
+export const BUILD_GIT_SSH_KEY_PATH = `${BUILD_GIT_SSH_KEY_MOUNT_PATH}/${GIT_SSH_PRIVATE_KEY_SECRET_KEY}`;
 
 class BuildGitInitContainerService {
 
@@ -19,7 +23,7 @@ class BuildGitInitContainerService {
             'fi',
             'git checkout --detach "$GIT_COMMIT"',
             'echo "Successfully checked out git commit: $(git rev-parse HEAD)"',
-        ].join('\n');
+        ].filter(Boolean).join('\n');
 
         return {
             name: BUILD_GIT_INIT_CONTAINER_NAME,
@@ -47,13 +51,24 @@ class BuildGitInitContainerService {
                     name: 'SOURCE_PATH',
                     value: BUILD_SOURCE_PATH,
                 },
+                ...(ctx.gitSshPrivateKeySecretName ? [{
+                    name: 'GIT_SSH_COMMAND',
+                    value: `ssh -i ${BUILD_GIT_SSH_KEY_PATH} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`,
+                }] : []),
             ],
-            volumeMounts: [{ name: BUILD_WORKSPACE_VOLUME_NAME, mountPath: BUILD_WORKSPACE_MOUNT_PATH }],
+            volumeMounts: [
+                { name: BUILD_WORKSPACE_VOLUME_NAME, mountPath: BUILD_WORKSPACE_MOUNT_PATH },
+                ...(ctx.gitSshPrivateKeySecretName ? [{
+                    name: BUILD_GIT_SSH_KEY_VOLUME_NAME,
+                    mountPath: BUILD_GIT_SSH_KEY_MOUNT_PATH,
+                    readOnly: true,
+                }] : []),
+            ],
         };
     }
 
     private getAuthenticatedGitUrl(ctx: BuildJobBuilderContext) {
-        if (ctx.app.gitUsername && ctx.app.gitToken) {
+        if (ctx.app.sourceType !== 'GIT_SSH' && ctx.app.gitUsername && ctx.app.gitToken) {
             return ctx.app.gitUrl!.replace('https://', `https://${ctx.app.gitUsername}:${ctx.app.gitToken}@`);
         }
         return ctx.app.gitUrl!;

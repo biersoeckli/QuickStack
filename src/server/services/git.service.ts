@@ -4,6 +4,7 @@ import simpleGit, { SimpleGit } from "simple-git";
 import { PathUtils } from "../utils/path.utils";
 import { FsUtils } from "../utils/fs.utils";
 import path from "path";
+import appGitSshKeyService from "./app-git-ssh-key.service";
 
 
 class GitService {
@@ -30,6 +31,7 @@ class GitService {
     private async cleanupLocalGitDataForApp(app: AppExtendedModel) {
         const gitPath = PathUtils.gitRootPathForApp(app.id);
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
+        await appGitSshKeyService.cleanupTempKeyFile(app.id);
     }
 
     private async pullLatestChangesFromRepo(app: AppExtendedModel) {
@@ -40,6 +42,12 @@ class GitService {
         await FsUtils.createDirIfNotExistsAsync(gitPath, true);
 
         const git = simpleGit(gitPath);
+        const sshKeyPath = app.sourceType === 'GIT_SSH'
+            ? await appGitSshKeyService.writePrivateKeyToTempFile(app.id)
+            : undefined;
+        if (sshKeyPath) {
+            git.env('GIT_SSH_COMMAND', this.getGitSshCommand(sshKeyPath));
+        }
         const gitUrl = this.getGitUrl(app);
 
         // initial clone
@@ -51,10 +59,14 @@ class GitService {
     }
 
     private getGitUrl(app: AppExtendedModel) {
-        if (app.gitUsername && app.gitToken) {
+        if (app.sourceType !== 'GIT_SSH' && app.gitUsername && app.gitToken) {
             return app.gitUrl!.replace('https://', `https://${app.gitUsername}:${app.gitToken}@`);
         }
         return app.gitUrl!;
+    }
+
+    private getGitSshCommand(sshConfigPath: string) {
+        return `ssh -i ${sshConfigPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`;
     }
 }
 

@@ -1,4 +1,4 @@
-import { appSourceInfoGitZodModel, appSourceInfoInputZodModel } from "./app-source-info.model";
+import { appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, appSourceInfoInputZodModel } from "./app-source-info.model";
 
 describe('appSourceInfoGitZodModel', () => {
     const baseInput = {
@@ -36,5 +36,37 @@ describe('appSourceInfoGitZodModel', () => {
         });
 
         expect(result.success).toBe(true);
+    });
+});
+
+describe('appSourceInfoGitSshZodModel', () => {
+    it('accepts SCP-style SSH URLs', () => {
+        const result = appSourceInfoGitSshZodModel.safeParse({
+            gitUrl: 'git@github.com:example/repo.git',
+            gitBranch: 'main',
+            buildMethod: 'RAILPACK',
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts ssh:// URLs', () => {
+        const result = appSourceInfoGitSshZodModel.safeParse({
+            gitUrl: 'ssh://git@gitlab.com/example/repo.git',
+            gitBranch: 'main',
+            buildMethod: 'RAILPACK',
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects HTTPS URLs for SSH source type', () => {
+        const result = appSourceInfoGitSshZodModel.safeParse({
+            gitUrl: 'https://github.com/example/repo.git',
+            gitBranch: 'main',
+            buildMethod: 'RAILPACK',
+        });
+
+        expect(result.success).toBe(false);
     });
 });

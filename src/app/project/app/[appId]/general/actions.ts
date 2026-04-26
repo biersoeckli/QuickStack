@@ -1,7 +1,7 @@
 'use server'
 
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { appSourceInfoContainerZodModel, appSourceInfoGitZodModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
+import { appSourceInfoContainerZodModel, appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -9,6 +9,7 @@ import appService from "@/server/services/app.service";
 import { isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
 import { AppContainerConfigInputModel } from "./app-container-config";
+import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
 
 
 export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSourceInfoInputModel, appId: string) => {
@@ -31,6 +32,25 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 id: appId,
             });
         });
+    } else if (inputData.sourceType === 'GIT_SSH') {
+        return saveFormAction(inputData, appSourceInfoGitSshZodModel, async (validatedData) => {
+            if (validatedData.buildMethod === 'DOCKERFILE' && !validatedData.dockerfilePath) {
+                throw new FormValidationException('Please correct the errors in the form.', {
+                    dockerfilePath: ['Path to Dockerfile is required when using the Dockerfile build method.'],
+                });
+            }
+            await isAuthorizedWriteForApp(appId);
+            const existingApp = await appService.getById(appId);
+            await appService.save({
+                ...existingApp,
+                ...validatedData,
+                dockerfilePath: validatedData.buildMethod === 'DOCKERFILE'
+                    ? validatedData.dockerfilePath ?? existingApp.dockerfilePath
+                    : existingApp.dockerfilePath,
+                sourceType: 'GIT_SSH',
+                id: appId,
+            });
+        });
     } else if (inputData.sourceType === 'CONTAINER') {
         return saveFormAction(inputData, appSourceInfoContainerZodModel, async (validatedData) => {
             await isAuthorizedWriteForApp(appId);
@@ -46,6 +66,12 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
         return simpleAction(async () => new ServerActionResult('error', undefined, 'Invalid Source Type', undefined));
     }
 };
+
+export const generateOrRegenerateGitSshKey = async (appId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForApp(appId);
+        return await appGitSshKeyService.generateOrRegenerate(appId);
+    });
 
 export const saveGeneralAppRateLimits = async (prevState: any, inputData: AppRateLimitsModel, appId: string) =>
     saveFormAction(inputData, appRateLimitsZodModel, async (validatedData) => {

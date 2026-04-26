@@ -3,7 +3,7 @@ import { BuildJobBuilder, BuildJobBuilderContext } from "./build-job-builder.int
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { Constants } from "@/shared/utils/constants";
 import buildQueueInitContainer from "./build-init-container.service";
-import buildGitInitContainerService from "./build-git-init-container.service";
+import buildGitInitContainerService, { BUILD_GIT_SSH_KEY_VOLUME_NAME } from "./build-git-init-container.service";
 import registryService, { BUILD_NAMESPACE } from "../registry.service";
 import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME, RAILPACK_PLAN_PATH } from "./build-workspace.constants";
 
@@ -47,6 +47,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                     [Constants.QS_ANNOTATION_BUILD_QUEUED_AT]: ctx.queuedAt,
                     [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                    ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                 }
             },
             spec: {
@@ -60,6 +61,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                             [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                             [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                            ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                         },
                     },
                     spec: {
@@ -90,6 +92,13 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                                 name: BUILD_WORKSPACE_VOLUME_NAME,
                                 emptyDir: {},
                             },
+                            ...(ctx.gitSshPrivateKeySecretName ? [{
+                                name: BUILD_GIT_SSH_KEY_VOLUME_NAME,
+                                secret: {
+                                    secretName: ctx.gitSshPrivateKeySecretName,
+                                    defaultMode: 0o400,
+                                },
+                            }] : []),
                         ],
                     },
                 },

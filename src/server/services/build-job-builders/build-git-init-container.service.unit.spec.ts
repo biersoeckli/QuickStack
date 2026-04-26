@@ -36,4 +36,41 @@ describe('BuildGitInitContainerService', () => {
         expect(script).toContain('git fetch --depth 1 origin "$GIT_COMMIT"');
         expect(script).toContain('git checkout --detach "$GIT_COMMIT"');
     });
+
+    it('mounts an SSH key secret and configures GIT_SSH_COMMAND for SSH auth', () => {
+        const container = buildGitInitContainerService.getInitContainer({
+            app: {
+                id: 'app-1',
+                projectId: 'project-1',
+                sourceType: 'GIT_SSH',
+                gitUrl: 'git@github.com:example/repo.git',
+                gitBranch: 'main',
+                gitUsername: 'user',
+                gitToken: 'token',
+            } as any,
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'feat: test',
+            queuedAt: '123',
+            gitSshPrivateKeySecretName: 'git-ssh-build-1',
+        });
+
+        expect(container.env).toEqual(expect.arrayContaining([
+            { name: 'GIT_URL', value: 'git@github.com:example/repo.git' },
+            {
+                name: 'GIT_SSH_COMMAND',
+                value: 'ssh -i /git-ssh-key/ssh-privatekey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null',
+            },
+        ]));
+        expect(container.env).not.toEqual(expect.arrayContaining([
+            { name: 'GIT_URL', value: 'https://user:token@github.com/example/repo.git' },
+        ]));
+        expect(container.volumeMounts).toEqual(expect.arrayContaining([
+            { name: 'build-git-ssh-key', mountPath: '/git-ssh-key', readOnly: true },
+        ]));
+
+        const script = container.args?.[0] ?? '';
+        expect(script).toContain('git clone --depth 1 --single-branch --branch "$GIT_BRANCH" "$GIT_URL" "$SOURCE_PATH"');
+    });
 });

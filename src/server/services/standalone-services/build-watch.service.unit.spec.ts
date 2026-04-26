@@ -39,11 +39,17 @@ vi.mock('@/server/services/deployment-logs.service', () => ({
 vi.mock('@/server/services/registry.service', () => ({
     BUILD_NAMESPACE: 'qs-build',
 }));
+vi.mock('@/server/services/app-git-ssh-key.service', () => ({
+    default: {
+        deleteTemporaryBuildSecret: vi.fn(),
+    },
+}));
 
 import buildService from '@/server/services/build.service';
 import buildWatchService from '@/server/services/standalone-services/build-watch.service';
 import deploymentService from '@/server/services/deployment.service';
 import appService from '@/server/services/app.service';
+import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
 
 describe('BuildWatchService', () => {
     beforeEach(() => {
@@ -59,11 +65,13 @@ describe('BuildWatchService', () => {
                 name: 'build-1',
                 annotations: {
                     'qs-deplyoment-id': 'deployment-1',
+                    'qs-git-ssh-secret': 'git-ssh-build-1',
                 },
             },
         });
 
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
+        expect(appGitSshKeyService.deleteTemporaryBuildSecret).not.toHaveBeenCalled();
     });
 
     it('logs failed jobs without triggering deployment', async () => {
@@ -72,11 +80,13 @@ describe('BuildWatchService', () => {
                 name: 'build-1',
                 annotations: {
                     'qs-deplyoment-id': 'deployment-1',
+                    'qs-git-ssh-secret': 'git-ssh-build-1',
                 },
             },
         });
 
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
+        expect(appGitSshKeyService.deleteTemporaryBuildSecret).toHaveBeenCalledWith('git-ssh-build-1');
     });
 
     it('triggers deployment for succeeded jobs', async () => {
@@ -93,10 +103,12 @@ describe('BuildWatchService', () => {
                     'qs-git-commit': 'abc123',
                     'qs-git-commit-message': 'feat: test',
                     'qs-build-method': 'RAILPACK',
+                    'qs-git-ssh-secret': 'git-ssh-build-1',
                 },
             },
         });
 
         expect(deploymentService.createDeployment).toHaveBeenCalled();
+        expect(appGitSshKeyService.deleteTemporaryBuildSecret).toHaveBeenCalledWith('git-ssh-build-1');
     });
 });

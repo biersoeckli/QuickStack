@@ -8,6 +8,7 @@ import appService from '../app.service';
 import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
+import appGitSshKeyService from '../app-git-ssh-key.service';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -125,6 +126,7 @@ class BuildWatchService {
         const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
         const buildJobName = job.metadata?.name;
         const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
+        const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
 
         if (!deploymentId || !appId || !buildJobName) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
@@ -151,18 +153,25 @@ class BuildWatchService {
             if (deploymentId) {
                 await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
             }
+        } finally {
+            await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
         }
     }
 
     private async handleFailed(job: V1Job) {
         const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
         const buildJobName = job.metadata?.name;
-        if (!deploymentId) return;
+        const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
+        if (!deploymentId) {
+            await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+            return;
+        }
 
         console.log(`[BuildWatch] Build job ${buildJobName} failed, logging error.`);
         await dlog(deploymentId, `*********************`);
         await dlog(deploymentId, ` ⚠ Build job failed. `);
         await dlog(deploymentId, `*********************`);
+        await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
     }
 }
 

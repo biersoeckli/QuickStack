@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel } from "./index"
 
 export const AppModel = z.object({
   id: z.string(),
@@ -52,6 +52,7 @@ export interface CompleteApp extends z.infer<typeof AppModel> {
   appVolumes: CompleteAppVolume[]
   appFileMounts: CompleteAppFileMount[]
   appBasicAuths: CompleteAppBasicAuth[]
+  appGitSshKey?: CompleteAppGitSshKey | null
   roleAppPermissions: CompleteRoleAppPermission[]
 }
 
@@ -67,5 +68,6 @@ export const RelatedAppModel: z.ZodSchema<CompleteApp> = z.lazy(() => AppModel.e
   appVolumes: RelatedAppVolumeModel.array(),
   appFileMounts: RelatedAppFileMountModel.array(),
   appBasicAuths: RelatedAppBasicAuthModel.array(),
+  appGitSshKey: RelatedAppGitSshKeyModel.nullish(),
   roleAppPermissions: RelatedRoleAppPermissionModel.array(),
 }))

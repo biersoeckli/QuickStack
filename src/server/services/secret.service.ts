@@ -53,23 +53,50 @@ class SecretService {
             const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toSecretId(app.id));
             if (existingSecret) {
                 console.log(`Deleting secret ${existingSecret.metadata?.name}...`);
-                await k3s.core.deleteNamespacedSecret(existingSecret.metadata?.name!, app.projectId);
+                await this.deleteSecret(app.projectId, existingSecret.metadata?.name!);
             }
         }
     }
 
     private appNeedsNoSecret(app: { id: string; name: string; appType: string; projectId: string; sourceType: string; dockerfilePath: string; replicas: number; envVars: string; createdAt: Date; updatedAt: Date; project: { id: string; name: string; createdAt: Date; updatedAt: Date; }; appDomains: { id: string; createdAt: Date; updatedAt: Date; hostname: string; port: number; useSsl: boolean; redirectHttps: boolean; appId: string; }[]; appVolumes: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; size: number; accessMode: string; storageClassName: string; }[]; appPorts: { id: string; createdAt: Date; updatedAt: Date; port: number; appId: string; }[]; appFileMounts: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; content: string; }[]; containerImageSource?: string | null | undefined; containerRegistryUsername?: string | null | undefined; containerRegistryPassword?: string | null | undefined; gitUrl?: string | null | undefined; gitBranch?: string | null | undefined; gitUsername?: string | null | undefined; gitToken?: string | null | undefined; memoryReservation?: number | null | undefined; memoryLimit?: number | null | undefined; cpuReservation?: number | null | undefined; cpuLimit?: number | null | undefined; }) {
-        return app.sourceType === 'GIT' || !app.containerImageSource || !app.containerRegistryUsername || !app.containerRegistryPassword;
+        return app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH' || !app.containerImageSource || !app.containerRegistryUsername || !app.containerRegistryPassword;
+    }
+
+    async createSecret(namespace: string, secretManifest: V1Secret) {
+        const secretName = secretManifest.metadata?.name;
+        if (!secretName) {
+            throw new Error('Secret name is required.');
+        }
+        console.log(`Creating secret ${secretName}...`);
+        await k3s.core.createNamespacedSecret(namespace, secretManifest);
+    }
+
+    async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
+        console.log(`Updating secret ${secretName}...`);
+        await k3s.core.replaceNamespacedSecret(secretName, namespace, secretManifest);
     }
 
     async saveSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
         const existingSecret = await this.getExistingSecret(namespace, secretName);
         if (existingSecret) {
-            console.log(`Updating existing Docker registry secret ${secretName}...`);
-            await k3s.core.replaceNamespacedSecret(secretName, namespace, secretManifest);
+            await this.updateSecret(namespace, secretName, secretManifest);
         } else {
-            console.log(`Creating new Docker registry secret ${secretName}...`);
-            await k3s.core.createNamespacedSecret(namespace, secretManifest);
+            await this.createSecret(namespace, secretManifest);
+        }
+    }
+
+    async deleteSecret(namespace: string, secretName: string) {
+        await k3s.core.deleteNamespacedSecret(secretName, namespace);
+    }
+
+    async deleteSecretIfExists(namespace: string, secretName?: string) {
+        if (!secretName) {
+            return;
+        }
+        const existingSecret = await this.getExistingSecret(namespace, secretName);
+        if (existingSecret) {
+            console.log(`Deleting secret ${secretName}...`);
+            await this.deleteSecret(namespace, secretName);
         }
     }
 

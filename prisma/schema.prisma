@@ -178,7 +178,7 @@ model App {
   appType    String  @default("APP") // APP, POSTGRES, MYSQL, MONGO
   projectId  String
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceType String  @default("GIT") // GIT, CONTAINER
+  sourceType String  @default("GIT") // GIT, GIT_SSH, CONTAINER
   buildMethod String @default("RAILPACK") // RAILPACK, DOCKERFILE
 
   containerImageSource      String?
@@ -227,7 +227,19 @@ model App {
   appVolumes         AppVolume[]
   appFileMounts      AppFileMount[]
   appBasicAuths      AppBasicAuth[]
+  appGitSshKey       AppGitSshKey?
   roleAppPermissions RoleAppPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppGitSshKey {
+  id                  String @id @default(uuid())
+  appId               String @unique
+  app                 App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  publicKey           String
+  encryptedPrivateKey String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
