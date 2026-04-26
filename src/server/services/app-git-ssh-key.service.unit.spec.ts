@@ -26,8 +26,12 @@ vi.mock('@/server/services/registry.service', () => ({
     BUILD_NAMESPACE: 'qs-build',
 }));
 
+import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { CryptoUtils } from '../utils/crypto.utils';
+import { PathUtils } from '../utils/path.utils';
 import appGitSshKeyService from './app-git-ssh-key.service';
+
+const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
 
 describe('AppGitSshKeyService', () => {
     beforeEach(() => {
@@ -39,6 +43,17 @@ describe('AppGitSshKeyService', () => {
             ...update,
         }));
     });
+
+    afterAll(async () => {
+        if (originalInternalDataRoot) {
+            Object.defineProperty(PathUtils, 'internalDataRoot', originalInternalDataRoot);
+        }
+        if (originalTempDataRoot) {
+            Object.defineProperty(PathUtils, 'tempDataRoot', originalTempDataRoot);
+        }
+        vi.restoreAllMocks();
+    });
+
 
     it('generates an Ed25519 public key and stores only encrypted private key data', async () => {
         const publicKey = await appGitSshKeyService.generateOrRegenerate('app-1');

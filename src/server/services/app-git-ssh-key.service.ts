@@ -1,7 +1,6 @@
 import { revalidateTag } from "next/cache";
 import crypto from "crypto";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -14,6 +13,7 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { BUILD_NAMESPACE } from "./registry.service";
 import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
+import { PathUtils } from "../utils/path.utils";
 
 const execFileAsync = promisify(execFile);
 
@@ -98,7 +98,8 @@ class AppGitSshKeyService {
         if (!privateKey) {
             return undefined;
         }
-        const keyRoot = path.join(os.tmpdir(), "quickstack-git-ssh", KubeObjectNameUtils.toSnakeCase(appId));
+        await this.ensureTempGitSshPathExists();
+        const keyRoot = path.join(PathUtils.tempGitSshPath, KubeObjectNameUtils.toSnakeCase(appId));
         await FsUtils.deleteDirIfExistsAsync(keyRoot, true);
         await FsUtils.createDirIfNotExistsAsync(keyRoot, true);
         const keyPath = path.join(keyRoot, "id_ed25519");
@@ -108,7 +109,7 @@ class AppGitSshKeyService {
     }
 
     async cleanupTempKeyFile(appId: string) {
-        const keyRoot = path.join(os.tmpdir(), "quickstack-git-ssh", KubeObjectNameUtils.toSnakeCase(appId));
+        const keyRoot = path.join(PathUtils.tempGitSshPath, KubeObjectNameUtils.toSnakeCase(appId));
         await FsUtils.deleteDirIfExistsAsync(keyRoot, true);
     }
 
@@ -117,7 +118,8 @@ class AppGitSshKeyService {
     }
 
     private async generateEd25519KeyPair(appId: string): Promise<{ publicKey: string; privateKey: string }> {
-        const tempRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), "quickstack-ssh-key-"));
+        await this.ensureTempGitSshPathExists();
+        const tempRoot = await fs.promises.mkdtemp(path.join(PathUtils.tempGitSshPath, "keygen-"));
         const keyPath = path.join(tempRoot, "id_ed25519");
         try {
             await execFileAsync("ssh-keygen", [
@@ -142,6 +144,10 @@ class AppGitSshKeyService {
         } finally {
             await FsUtils.deleteDirIfExistsAsync(tempRoot, true);
         }
+    }
+
+    private async ensureTempGitSshPathExists() {
+        await FsUtils.createDirIfNotExistsAsync(PathUtils.tempGitSshPath, true);
     }
 }
 

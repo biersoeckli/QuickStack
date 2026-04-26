@@ -11,6 +11,10 @@ export class PathUtils {
         return this.isProduction ? '/app/tmp-storage' : '/workspace/storage/tmp';
     }
 
+    static get tempGitSshPath() {
+        return path.join(this.tempDataRoot, 'git-ssh');
+    }
+
     static get gitRootPath() {
         return path.join(this.tempDataRoot, 'git');
     }
