@@ -17,6 +17,10 @@ vi.mock('@/server/services/app-git-ssh-key.service', () => ({
 
 import gitService from './git.service';
 import appGitSshKeyService from './app-git-ssh-key.service';
+import { PathUtils } from '../utils/path.utils';
+import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
+
+const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
 
 describe('GitService', () => {
     beforeEach(() => {
@@ -24,17 +28,27 @@ describe('GitService', () => {
         gitMock.env.mockReturnValue(gitMock);
     });
 
+    afterAll(() => {
+        if (originalInternalDataRoot) {
+            Object.defineProperty(PathUtils, 'internalDataRoot', originalInternalDataRoot);
+        }
+        if (originalTempDataRoot) {
+            Object.defineProperty(PathUtils, 'tempDataRoot', originalTempDataRoot);
+        }
+        vi.restoreAllMocks();
+    });
+
     it('keeps HTTPS token authentication for GIT apps', async () => {
         await gitService.openGitContext({
             id: 'app-1',
             sourceType: 'GIT',
-            gitUrl: 'https://github.com/example/repo.git',
+            gitUrl: 'https://github.com/biersoeckli/dummy-node-app.git',
             gitUsername: 'user',
             gitToken: 'token',
             gitBranch: 'main',
         } as any, async () => undefined);
 
-        expect(gitMock.clone).toHaveBeenCalledWith('https://user:token@github.com/example/repo.git', expect.any(String));
+        expect(gitMock.clone).toHaveBeenCalledWith('https://user:token@github.com/biersoeckli/dummy-node-app.git', expect.any(String));
         expect(gitMock.env).not.toHaveBeenCalled();
     });
 
@@ -44,13 +58,13 @@ describe('GitService', () => {
         await gitService.openGitContext({
             id: 'app-1',
             sourceType: 'GIT_SSH',
-            gitUrl: 'git@github.com:example/repo.git',
+            gitUrl: 'git@github.com:biersoeckli/dummy-node-app.git',
             gitUsername: 'user',
             gitToken: 'token',
             gitBranch: 'main',
         } as any, async () => undefined);
 
-        expect(gitMock.clone).toHaveBeenCalledWith('git@github.com:example/repo.git', expect.any(String));
+        expect(gitMock.clone).toHaveBeenCalledWith('git@github.com:biersoeckli/dummy-node-app.git', expect.any(String));
         expect(gitMock.env).toHaveBeenCalledWith(
             'GIT_SSH_COMMAND',
             'ssh -i /tmp/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null',
@@ -63,11 +77,11 @@ describe('GitService', () => {
         await gitService.openGitContext({
             id: 'app-1',
             sourceType: 'GIT_SSH',
-            gitUrl: 'git@github.com:example/repo.git',
+            gitUrl: 'git@github.com:biersoeckli/dummy-node-app.git',
             gitBranch: 'main',
         } as any, async () => undefined);
 
-        expect(gitMock.clone).toHaveBeenCalledWith('git@github.com:example/repo.git', expect.any(String));
+        expect(gitMock.clone).toHaveBeenCalledWith('git@github.com:biersoeckli/dummy-node-app.git', expect.any(String));
         expect(gitMock.env).not.toHaveBeenCalled();
     });
 });

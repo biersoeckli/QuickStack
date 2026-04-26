@@ -18,20 +18,9 @@ import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Constants } from '@/shared/utils/constants';
 import { PathUtils } from '@/server/utils/path.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
+import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 
-const testStorageRoot = path.join(process.cwd(), 'storage');
-const originalInternalDataRoot = Object.getOwnPropertyDescriptor(PathUtils, 'internalDataRoot');
-const originalTempDataRoot = Object.getOwnPropertyDescriptor(PathUtils, 'tempDataRoot');
-
-Object.defineProperty(PathUtils, 'internalDataRoot', {
-    configurable: true,
-    get: () => path.join(testStorageRoot, 'internal'),
-});
-
-Object.defineProperty(PathUtils, 'tempDataRoot', {
-    configurable: true,
-    get: () => path.join(testStorageRoot, 'tmp'),
-});
+const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
 
 async function deployRegistry() {
     await paramService.save({
