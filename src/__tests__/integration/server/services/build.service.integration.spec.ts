@@ -27,14 +27,26 @@ import fs from 'node:fs/promises';
 describe('build.service integration', () => {
     setupBuildServiceIntegration('build-service');
 
-    it('builds and pushes a docker image from the public SSH repository', async () => {
-        await runBuildAndAssert({
+    it('fails to build a docker image from an SSH repository without ssh key auth', async () => {
+        await runBuildAndAssertGitFailure({
             appIdPrefix: 'dockerfile-ssh-public',
             projectIdPrefix: 'proj-dockerfile-ssh-public',
             sourceType: 'GIT_SSH',
             buildMethod: 'DOCKERFILE',
             gitUrl: GitTestRepositories.publicSshUrl,
-            expectedLogLine: 'Dockerfile path: ./Dockerfile'
+            expectedLogLine: 'Dockerfile path: ./Dockerfile',
+        });
+    }, 420_000);
+
+    it.skipIf(!getPrivateGitSshKeyFromEnv())('builds and pushes a docker image from the private SSH repository', async () => {
+        await runBuildAndAssert({
+            appIdPrefix: 'dockerfile-ssh-private',
+            projectIdPrefix: 'proj-dockerfile-ssh-private',
+            sourceType: 'GIT_SSH',
+            buildMethod: 'DOCKERFILE',
+            gitUrl: GitTestRepositories.privateSshUrl,
+            expectedLogLine: 'Dockerfile path: ./Dockerfile',
+            privateSshKey: getRequiredPrivateGitSshKey(),
         });
     }, 420_000);
 
@@ -186,6 +198,25 @@ export async function runBuildAndAssert(input: BuildIntegrationInput) {
     expect(logFile).toContain(`Selected build method: ${input.buildMethod}`);
     expect(logFile).toContain(input.expectedLogLine);
     expect(logFile).toContain(`Build job ${buildJobName} scheduled successfully`);
+}
+
+export async function runBuildAndAssertGitFailure(input: BuildIntegrationInput) {
+    await deployRegistryForBuildIntegration();
+
+    const suffix = Date.now();
+    const app = createBuildApp({
+        ...input,
+        id: `${input.appIdPrefix}-${suffix}`,
+        projectId: `${input.projectIdPrefix}-${suffix}`,
+    });
+
+    const deploymentId = `dep-${suffix}`;
+    await expect(deploymentLogService.catchErrosAndLog(deploymentId, async () => buildService.buildApp(deploymentId, app, true)))
+        .rejects
+        .toThrow('Git: SSH host key verification failed.');
+
+    const builds = await buildService.getBuildsForApp(app.id);
+    expect(builds).toHaveLength(0);
 }
 
 export function getRequiredPrivateGitSshKey() {

@@ -66,16 +66,6 @@ describe('git.service integration', () => {
         expect(appGitSshKeyServiceMock.writePrivateKeyToTempFile).not.toHaveBeenCalled();
     }, 120_000);
 
-    it('clones the public repository over SSH without an app key when local SSH auth is available', async () => {
-        await expectRepositoryCloneWorks(createGitApp({
-            id: 'git-public-ssh',
-            sourceType: 'GIT_SSH',
-            gitUrl: GitTestRepositories.publicSshUrl,
-        }));
-
-        expect(appGitSshKeyServiceMock.writePrivateKeyToTempFile).toHaveBeenCalledWith('git-public-ssh');
-    }, 30_000);
-
     it.skipIf(!getPrivateGitSshKeyFromEnv())(
         'clones the private repository over SSH with an app key',
         async () => {

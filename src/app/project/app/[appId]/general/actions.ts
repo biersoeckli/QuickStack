@@ -40,6 +40,10 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 });
             }
             await isAuthorizedWriteForApp(appId);
+            const publicKey = await appGitSshKeyService.getPublicKey(appId);
+            if (!publicKey) {
+                throw new ServiceException('Generate SSH keys before saving a Git SSH source.');
+            }
             const existingApp = await appService.getById(appId);
             await appService.save({
                 ...existingApp,

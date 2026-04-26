@@ -18,7 +18,23 @@ class GitService {
                 internalGitService = new InternalGitService(git, app);
             } catch (error) {
                 console.error('Error while connecting to the git repository:', error);
-                throw new ServiceException("Error while connecting to the git repository.");
+                // Provide more specific error messages
+                if (error instanceof Error) {
+                    if (error.message.includes('Permission denied')) {
+                        if (app.sourceType === 'GIT_SSH') {
+                            throw new ServiceException("Git: SSH permission denied. Please check your SSH key configuration and ensure the public key is added to your Git provider.");
+                        }
+                        throw new ServiceException("Git: Permission denied. Please check your Git credentials or SSH key.");
+                    } else if (error.message.includes('Host key verification failed')) {
+                        throw new ServiceException("Git: SSH host key verification failed.");
+                    } else if (error.message.includes('Repository not found')) {
+                        throw new ServiceException("Git repository not found. Please check the repository URL.");
+                    } else if (error.message.includes('Authentication failed')) {
+                        throw new ServiceException("Git authentication failed. Please check your credentials.");
+                    }
+                }
+
+                throw new ServiceException(`Error while connecting to the git repository: ${error}`);
             }
             return await action(internalGitService);
         } catch (error) {

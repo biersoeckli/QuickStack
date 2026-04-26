@@ -69,4 +69,14 @@ describe('appSourceInfoGitSshZodModel', () => {
 
         expect(result.success).toBe(false);
     });
+
+    it('requires a branch', () => {
+        const result = appSourceInfoGitSshZodModel.safeParse({
+            gitUrl: 'git@github.com:example/repo.git',
+            gitBranch: '',
+            buildMethod: 'RAILPACK',
+        });
+
+        expect(result.success).toBe(false);
+    });
 });

@@ -19,11 +19,13 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateOrRegenerateGitSshKey } from "./actions";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { ClipboardCopy, KeyRound, RefreshCw } from "lucide-react";
+import { ClipboardCopy, GitBranch, Info, KeyRound, Package, RefreshCw } from "lucide-react";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 
 export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
     app: AppExtendedModel;
@@ -73,10 +75,16 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
                 return;
             }
         }
-        const result = await Toast.fromAction(() => generateOrRegenerateGitSshKey(app.id));
-        if (result.status === 'success' && result.data) {
-            setPublicKey(result.data);
+
+        const formIsValid = await form.trigger();
+        if (!formIsValid) {
+            return;
         }
+        const result = await Actions.run(() => generateOrRegenerateGitSshKey(app.id));
+        setPublicKey(result);
+
+        const saveResult = await Toast.fromAction(() => saveGeneralAppSourceInfo(undefined, form.getValues(), app.id), 'Successfully generated SSH keys and saved Git SSH source info.', 'Failed to generate SSH keys and save Git SSH source info.');
+        FormUtils.mapValidationErrorsToForm<typeof appSourceInfoInputZodModel>(saveResult, form);
     };
 
     return <>
@@ -110,9 +118,9 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
                             form.setValue('sourceType', val as 'GIT' | 'GIT_SSH' | 'CONTAINER');
                         }} className="mt-2">
                             <TabsList>
-                                {app.appType === 'APP' && <TabsTrigger value="GIT">Git HTTPS</TabsTrigger>}
-                                {app.appType === 'APP' && <TabsTrigger value="GIT_SSH">Git SSH</TabsTrigger>}
-                                <TabsTrigger value="CONTAINER">Docker Container</TabsTrigger>
+                                {app.appType === 'APP' && <TabsTrigger value="GIT"><GitBranch className="mr-2 h-4 w-4" />Git HTTPS</TabsTrigger>}
+                                {app.appType === 'APP' && <TabsTrigger value="GIT_SSH"><KeyRound className="mr-2 h-4 w-4" />Git SSH</TabsTrigger>}
+                                <TabsTrigger value="CONTAINER"><Package className="mr-2 h-4 w-4" />Docker Container</TabsTrigger>
                             </TabsList>
                             <TabsContent value="GIT" className="space-y-4 mt-4">
                                 <FormField
@@ -219,6 +227,14 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
 
                             </TabsContent>
                             <TabsContent value="GIT_SSH" className="space-y-4 mt-4">
+
+                                <Alert>
+                                    <Info className="h-4 w-4" />
+                                    <AlertTitle>SSH access requires a known key</AlertTitle>
+                                    <AlertDescription>
+                                        Git providers like GitHub require an accepted SSH key for SSH clone URLs, even for public repositories. Generate keys and add the public key as a deploy key, or use HTTPS for anonymous public clones.
+                                    </AlertDescription>
+                                </Alert>
                                 <FormField
                                     control={form.control}
                                     name="gitUrl"
@@ -248,7 +264,7 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
                                     />
 
                                     {!readonly && <div className="space-y-2">
-                                        <Label>SSH Key Authentication (optional)</Label>
+                                        <Label>SSH Key Authentication</Label>
                                         <div className="flex items-center gap-2">
                                             {publicKey && <Button
                                                 type="button"
@@ -264,7 +280,7 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
                                                 {publicKey ? 'Regenerate' : 'Generate SSH Keys'}
                                             </Button>
                                         </div>
-                                         {publicKey &&<FormDescription>Add this public key as deploy key in your git provider.</FormDescription>}
+                                        {publicKey && <FormDescription>Add this public key as deploy key in your git provider.</FormDescription>}
                                     </div>}
 
                                     <FormField

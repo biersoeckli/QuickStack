@@ -10,6 +10,7 @@ const gitHubGitLabDotGitRegex = /^https:\/\/(github\.com|gitlab\.com)\//;
 const gitSshScpUrlRegex = /^[^\s@]+@[^\s:]+:[^\s]+$/;
 const gitSshUrlRegex = /^ssh:\/\/[^\s@]+@[^\s/]+(?::\d+)?\/[^\s]+$/;
 const gitUrlValidationMessage = 'Must be a valid HTTPS git URL. For GitHub/GitLab the .git suffix is required (e.g. https://github.com/user/repo.git)';
+const gitBranchValidationMessage = 'Git branch is required.';
 const gitUrlValidation = (val: string) => {
   if (!gitHttpsUrlRegex.test(val)) return false;
   if (gitHubGitLabDotGitRegex.test(val) && !val.endsWith('.git')) return false;
@@ -20,7 +21,7 @@ const gitSshUrlValidation = (val: string) => gitSshScpUrlRegex.test(val) || gitS
 
 export const appSourceInfoGitZodModel = z.object({
   gitUrl: z.string().trim().refine(gitUrlValidation, gitUrlValidationMessage),
-  gitBranch: z.string().trim(),
+  gitBranch: z.string().trim().min(1, gitBranchValidationMessage),
   gitUsername: z.string().trim().nullish(),
   gitToken: z.string().trim().nullish(),
   buildMethod: appBuildMethodZodModel.default("RAILPACK"),
@@ -30,7 +31,7 @@ export type AppSourceInfoGitModel = z.infer<typeof appSourceInfoGitZodModel>;
 
 export const appSourceInfoGitSshZodModel = z.object({
   gitUrl: z.string().trim().refine(gitSshUrlValidation, gitSshUrlValidationMessage),
-  gitBranch: z.string().trim(),
+  gitBranch: z.string().trim().min(1, gitBranchValidationMessage),
   buildMethod: appBuildMethodZodModel.default("RAILPACK"),
   dockerfilePath: z.string().trim().nullish(),
 });
@@ -68,6 +69,13 @@ export const appSourceInfoInputZodModel = z.object({
       code: z.ZodIssueCode.custom,
       path: ['gitUrl'],
       message: gitSshUrlValidationMessage,
+    });
+  }
+  if ((val.sourceType === 'GIT' || val.sourceType === 'GIT_SSH') && !val.gitBranch) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['gitBranch'],
+      message: gitBranchValidationMessage,
     });
   }
   if ((val.sourceType === 'GIT' || val.sourceType === 'GIT_SSH') && val.buildMethod === 'DOCKERFILE' && !val.dockerfilePath) {
