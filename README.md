@@ -1,49 +1,58 @@
+<img src="/github-assets/quickstack-repo-heading.png" alt="QuickStack Logo" width="100%" />
 
+**QuickStack** is a free, open-source, self-hosted PaaS alternative to Vercel / Netlify / Railway / Heroku for deploying and managing applications and databases on your own VPS, Bare Metal or any other infrastructure.
 
-<img  src="/public/quickstack-repo-heading.png" alt="QuickStack Logo" width="100%" />
-
-QuickStack is a self-hosted PaaS solution designed to simplify the management of your applications on one or more virtual private servers (VPS).
-
-Developed as part of a student project by [glueh-wyy-huet](https://github.com/glueh-wyy-huet) and [biersoeckli](https://github.com/biersoeckli) at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/), QuickStack provides a scalable and cost-effective alternative to commercial cloud PaaS offerings like Vercel, Digital Ocean App Platform or Azure App Service.
-
-<img src="/github-assets/app-settings-general.png" alt="QuickStack App Settings Image" width="100%" />
+QuickStack combines the simplicity of a cloud platform with the control of self-hosting. For more information visit our Website [quickstack.dev](https://quickstack.dev).
 
 ## Key Features
 
-* **One-Command Installation:** Deploy QuickStack on a VPS with a single command.
-* **Git Integration:** Deploy applications directly from public or private Git repositories.
-* **Docker Container Deployment:** Deploy Docker containers from a Docker Hub, a public or a private registry.
-* **Live Logging:** Debug running containers with live log streams.
-* **Web Terminal:** Access a web-based terminal directly within the container for debugging.
-* **SSL Certificate Management:** Automatic SSL certificate generation via Let's Encrypt.
-* **Resource Management:** Set resource limits (CPU, RAM, storage) for each application.
-* **Monitoring Dashboard:** Track resource consumption and application performance.
-* **Backups:** Create backups of application data and databases to a S3-compatible storage.
-* **Cluster Support:** Scale applications across multiple VPS nodes.
-* **Persistent Storage:** Cluster-wide persistent storage volumes for applications.
+- **App deployments:** Deploy applications from public or private Git repositories or any docker image from a private or public container registry (e.g. Docker Hub).
+- **Database deplyoment:** Create MySQL, MariaDB, PostgreSQL, MongoDB and Redis instances quickly.
+- **Multi-server support:** Run applications across multiple server nodes with automatic load balancing and
+ persisted storage across nodes.
+- **Domains and routing:** Connect custom domains or a preview domain to your applications.
+- **Monitoring:** View live-logs, track RAM, CPU and storage usage and configure health checks.
+- **Automatic HTTPS:** Generate and manage SSL certificates with Let's Encrypt.
+- **Backups:** Schedule backups for application data and databases to an external storage.
+- **Multi User support:** Invite team members on your projects with role-based access control.
+- **Self-hosted:** Full control over your infrastructure and data without vendor lock-in.
 
-## Getting Started
-### Prerequisites
-Before getting started, ensure that you have:
-* A new virtual private server (VPS) running a Linux distribution (Ubuntu preferred).
+<img src="/github-assets/app-settings-general.png" alt="QuickStack app settings" width="100%" />
 
-### Installation
-1. **Connect to your VPS via SSH.**
-2. **Run the setup script:**
+## Installation
+
+### Requirements
+
+- A fresh server with at least 2 CPU Cores, 4 GB RAM, 40 GB Storage
+- Ubuntu is recommended
+- SSH access to the server
+
+### Install QuickStack
+
+Open the terminal on your server and run:
+
 ```bash
 curl -sfL https://get.quickstack.dev/setup.sh | sh -
 ```
 
-**Non-interactive installation:**
-If you want to skip the network interface selection prompt, you can specify the interface using the `INSTALL_K3S_INTERFACE` environment variable:
+For non-interactive installation, provide the network interface manually:
+
 ```bash
 curl -sfL https://get.quickstack.dev/setup.sh | INSTALL_K3S_INTERFACE=eth0 sh -
 ```
 
-Visit our [docs](https://quickstack.dev/docs) for more detailed installation instructions:
+After installation, open QuickStack in your browser and start deploying your applications.
+
+For detailed setup instructions, visit the [QuickStack documentation](https://quickstack.dev/docs).
 
 ## Contributing
-Contributions are welcome! Further information on how to contribute can be found in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+Contributions are very welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## About
+
+QuickStack was originally developed as a student project by [glueh-wyy-huet](https://github.com/glueh-wyy-huet) and [biersoeckli](https://github.com/biersoeckli) at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/). Since then, new features have been added to make QuickStack a powerful and user-friendly platform for self-hosting.
 
 ## License
-This project is licensed under the GPL-3.0 license.
+
+QuickStack is licensed under the GPL-3.0 license.
