@@ -30,7 +30,7 @@ class AppService {
  Project:      ${app.projectId}
 -----------------------------------------------`, false);
 
-            if (app.sourceType === 'GIT') {
+            if (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') {
                 // first make build
                 const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildApp(deploymentId, app, forceBuild);
                 if (shouldDeployImmediately) {

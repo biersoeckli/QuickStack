@@ -34,7 +34,8 @@ export default function AppTabs({
     tabName,
     s3Targets,
     volumeBackups,
-    nodesInfo
+    nodesInfo,
+    gitSshPublicKey,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
@@ -42,6 +43,7 @@ export default function AppTabs({
     s3Targets: S3Target[];
     volumeBackups: VolumeBackupExtendedModel[];
     nodesInfo: NodeInfoModel[];
+    gitSshPublicKey?: string;
 }) {
     const router = useRouter();
     const readonly = role !== RolePermissionEnum.READWRITE;
@@ -74,7 +76,7 @@ export default function AppTabs({
                 <DbCredentials app={app} />
             </TabsContent>}
             <TabsContent value="general" className="space-y-4">
-                <GeneralAppSource readonly={readonly} app={app} />
+                <GeneralAppSource readonly={readonly} app={app} gitSshPublicKey={gitSshPublicKey} />
                 <GeneralAppRateLimits readonly={readonly} app={app} />
                 <GeneralAppContainerConfig readonly={readonly} app={app} />
             </TabsContent>

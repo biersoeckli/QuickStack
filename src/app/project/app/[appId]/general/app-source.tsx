@@ -13,20 +13,33 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { generateOrRegenerateGitSshKey } from "./actions";
+import { Toast } from "@/frontend/utils/toast.utils";
+import { ClipboardCopy, GitBranch, Info, KeyRound, Package, RefreshCw } from "lucide-react";
+import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 
-export default function GeneralAppSource({ app, readonly }: {
+export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
     app: AppExtendedModel;
     readonly: boolean;
+    gitSshPublicKey?: string;
 }) {
+    const [publicKey, setPublicKey] = useState(gitSshPublicKey);
+    const [isPublicKeyDialogOpen, setIsPublicKeyDialogOpen] = useState(false);
+    const { openConfirmDialog } = useConfirmDialog();
     const form = useForm<AppSourceInfoInputModel>({
         resolver: zodResolver(appSourceInfoInputZodModel),
         defaultValues: {
             ...app,
-            sourceType: app.sourceType as 'GIT' | 'CONTAINER',
+            sourceType: app.sourceType as 'GIT' | 'GIT_SSH' | 'CONTAINER',
             buildMethod: (app.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK',
             dockerfilePath: app.dockerfilePath ?? './Dockerfile',
         },
@@ -44,6 +57,36 @@ export default function GeneralAppSource({ app, readonly }: {
     }, [state]);
 
     const sourceTypeField = form.watch();
+    const copyPublicKey = () => {
+        if (!publicKey) {
+            return;
+        }
+        navigator.clipboard.writeText(publicKey);
+        toast.success('Copied to clipboard.');
+    };
+    const generateKey = async () => {
+        if (publicKey) {
+            const confirmed = await openConfirmDialog({
+                title: "Regenerate SSH Key",
+                description: "This replaces the current app SSH key. Update the deploy key in your git provider before deploying again.",
+                okButton: "Regenerate",
+            });
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        const formIsValid = await form.trigger();
+        if (!formIsValid) {
+            return;
+        }
+        const result = await Actions.run(() => generateOrRegenerateGitSshKey(app.id));
+        setPublicKey(result);
+
+        const saveResult = await Toast.fromAction(() => saveGeneralAppSourceInfo(undefined, form.getValues(), app.id), 'Successfully generated SSH keys and saved Git SSH source info.', 'Failed to generate SSH keys and save Git SSH source info.');
+        FormUtils.mapValidationErrorsToForm<typeof appSourceInfoInputZodModel>(saveResult, form);
+    };
+
     return <>
         <Card>
             <CardHeader>
@@ -72,11 +115,12 @@ export default function GeneralAppSource({ app, readonly }: {
                         </div>
                         <Label>Source Type</Label>
                         <Tabs defaultValue="GIT" value={sourceTypeField.sourceType} onValueChange={(val) => {
-                            form.setValue('sourceType', val as 'GIT' | 'CONTAINER');
+                            form.setValue('sourceType', val as 'GIT' | 'GIT_SSH' | 'CONTAINER');
                         }} className="mt-2">
                             <TabsList>
-                                {app.appType === 'APP' && <TabsTrigger value="GIT">Git</TabsTrigger>}
-                                <TabsTrigger value="CONTAINER">Docker Container</TabsTrigger>
+                                {app.appType === 'APP' && <TabsTrigger value="GIT"><GitBranch className="mr-2 h-4 w-4" />Git HTTPS</TabsTrigger>}
+                                {app.appType === 'APP' && <TabsTrigger value="GIT_SSH"><KeyRound className="mr-2 h-4 w-4" />Git SSH</TabsTrigger>}
+                                <TabsTrigger value="CONTAINER"><Package className="mr-2 h-4 w-4" />Docker Container</TabsTrigger>
                             </TabsList>
                             <TabsContent value="GIT" className="space-y-4 mt-4">
                                 <FormField
@@ -182,6 +226,107 @@ export default function GeneralAppSource({ app, readonly }: {
                                 </div>
 
                             </TabsContent>
+                            <TabsContent value="GIT_SSH" className="space-y-4 mt-4">
+
+                                <Alert>
+                                    <Info className="h-4 w-4" />
+                                    <AlertTitle>SSH access requires a known key</AlertTitle>
+                                    <AlertDescription>
+                                        Git providers like GitHub require an accepted SSH key for SSH clone URLs, even for public repositories. Generate keys and add the public key as a deploy key, or use HTTPS for anonymous public clones.
+                                    </AlertDescription>
+                                </Alert>
+                                <FormField
+                                    control={form.control}
+                                    name="gitUrl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Git SSH Repo URL</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="git@github.com:user/repo.git" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="gitBranch"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Git Branch</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {!readonly && <div className="space-y-2">
+                                        <Label>SSH Key Authentication</Label>
+                                        <div className="flex items-center gap-2">
+                                            {publicKey && <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setIsPublicKeyDialogOpen(true)}
+                                                disabled={!publicKey}
+                                            >
+                                                <KeyRound />
+                                                Show Public SSH Key
+                                            </Button>}
+                                            <Button type="button" variant="secondary" onClick={generateKey}>
+                                                {publicKey ? <RefreshCw /> : <KeyRound />}
+                                                {publicKey ? 'Regenerate' : 'Generate SSH Keys'}
+                                            </Button>
+                                        </div>
+                                        {publicKey && <FormDescription>Add this public key as deploy key in your git provider.</FormDescription>}
+                                    </div>}
+
+                                    <FormField
+                                        control={form.control}
+                                        name="buildMethod"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Build Method</FormLabel>
+                                                <Select
+                                                    disabled={field.disabled}
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select build method" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="RAILPACK">detect automatically (using railpack)</SelectItem>
+                                                        <SelectItem value="DOCKERFILE">Dockerfile</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {sourceTypeField.buildMethod === 'DOCKERFILE' && (<>
+                                        <FormField
+                                            control={form.control}
+                                            name="dockerfilePath"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Path to Dockerfile</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="./Dockerfile"  {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </>)}
+                                </div>
+
+                            </TabsContent>
                             <TabsContent value="CONTAINER" className="space-y-4 mt-4">
                                 <FormField
                                     control={form.control}
@@ -238,6 +383,26 @@ export default function GeneralAppSource({ app, readonly }: {
                 </form>
             </Form >
         </Card >
+        <Dialog open={isPublicKeyDialogOpen} onOpenChange={setIsPublicKeyDialogOpen}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Public SSH Key</DialogTitle>
+                    <DialogDescription>Add this public key as deploy key in your git provider.</DialogDescription>
+                </DialogHeader>
+                <Textarea
+                    readOnly
+                    value={publicKey ?? ''}
+                    className="min-h-32 font-mono"
+                />
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={copyPublicKey} disabled={!publicKey}>
+                        <ClipboardCopy />
+                        Copy
+                    </Button>
+                    <Button type="button" onClick={() => setIsPublicKeyDialogOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
     </>;
 }

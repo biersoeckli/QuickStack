@@ -7,7 +7,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import { Constants } from "../../shared/utils/constants";
 import dataAccess from "../adapter/db.client";
 import k3s from "../adapter/kubernetes-api.adapter";
-import buildInitContainerService from "./build-job-builders/build-init-container.service";
+import buildQueueInitContainer from "./build-job-builders/build-init-container.service";
 import dockerfileBuildJobBuilder from "./build-job-builders/dockerfile-build-job-builder.service";
 import railpackBuildJobBuilder from "./build-job-builders/railpack-build-job-builder.service";
 import { BuildJobBuilder } from "./build-job-builders/build-job-builder.interface";
@@ -19,6 +19,7 @@ import paramService, { ParamService } from "./param.service";
 import registryService, { BUILD_NAMESPACE } from "./registry.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
+import appGitSshKeyService from "./app-git-ssh-key.service";
 
 class BuildService {
 
@@ -77,7 +78,7 @@ class BuildService {
         const builder = this.getBuilder(buildMethod);
 
         await dlog(deploymentId, `Creating build job with name: ${buildName}`);
-        await buildInitContainerService.ensureRbacResources();
+        await buildQueueInitContainer.ensureRbacResources();
 
         if (buildMethod === 'DOCKERFILE') {
             await dlog(deploymentId, `Dockerfile path: ${app.dockerfilePath || './Dockerfile'}`);
@@ -87,17 +88,27 @@ class BuildService {
 
         const queuedAt = Date.now().toString();
         const schedulingConfig = await this.getBuildSchedulingConfig(deploymentId);
-        const jobDefinition = await builder.buildJobDefinition({
-            app,
-            buildName,
-            deploymentId,
-            latestRemoteGitHash,
-            latestRemoteGitCommitMessage,
-            queuedAt,
-            ...schedulingConfig,
-        });
+        const gitSshPrivateKeySecretName = app.sourceType === 'GIT_SSH'
+            ? await appGitSshKeyService.createTemporaryBuildSecret(app.id, buildName)
+            : undefined;
 
-        await k3s.batch.createNamespacedJob(BUILD_NAMESPACE, jobDefinition);
+        try {
+            const jobDefinition = await builder.buildJobDefinition({
+                app,
+                buildName,
+                deploymentId,
+                latestRemoteGitHash,
+                latestRemoteGitCommitMessage,
+                queuedAt,
+                ...schedulingConfig,
+                gitSshPrivateKeySecretName,
+            });
+
+            await k3s.batch.createNamespacedJob(BUILD_NAMESPACE, jobDefinition);
+        } catch (error) {
+            await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshPrivateKeySecretName);
+            throw error;
+        }
         await dlog(deploymentId, `Build job ${buildName} scheduled successfully`);
 
         return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, false];
@@ -233,7 +244,10 @@ class BuildService {
     }
 
     async deleteBuild(buildName: string) {
+        const job = await this.getBuildByName(buildName);
+        const gitSshSecretName = job?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
         await k3s.batch.deleteNamespacedJob(buildName, BUILD_NAMESPACE);
+        await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
         console.log(`Deleted build job ${buildName}`);
     }
 

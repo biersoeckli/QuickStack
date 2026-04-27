@@ -2,19 +2,17 @@ import { V1Container, V1Job } from "@kubernetes/client-node";
 import { BuildJobBuilder, BuildJobBuilderContext } from "./build-job-builder.interface";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { Constants } from "@/shared/utils/constants";
-import buildInitContainerService from "./build-init-container.service";
+import buildQueueInitContainer from "./build-init-container.service";
+import buildGitInitContainerService, { BUILD_GIT_SSH_KEY_VOLUME_NAME } from "./build-git-init-container.service";
 import registryService, { BUILD_NAMESPACE } from "../registry.service";
+import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME, RAILPACK_PLAN_PATH } from "./build-workspace.constants";
 
 const buildkitImage = "moby/buildkit:master";
 const railpackVersion = "0.15.1";
 export const RAILPACK_FRONTEND_IMAGE = `ghcr.io/railwayapp/railpack-frontend:v${railpackVersion}`;
 
-const sharedVolumeName = 'railpack-workspace';
-const sharedMountPath = '/workspace';
-const sourcePath = `${sharedMountPath}/source`;
-const planPath = `${sharedMountPath}/plan`;
-const railpackPlanFile = `${planPath}/railpack-plan.json`;
-const railpackInfoFile = `${planPath}/railpack-info.json`;
+const railpackPlanFile = `${RAILPACK_PLAN_PATH}/railpack-plan.json`;
+const railpackInfoFile = `${RAILPACK_PLAN_PATH}/railpack-info.json`;
 
 class RailpackBuildJobBuilder implements BuildJobBuilder {
 
@@ -24,9 +22,9 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
         const buildkitArgs = [
             "build",
             "--local",
-            `context=${sourcePath}`,
+            `context=${BUILD_SOURCE_PATH}`,
             "--local",
-            `dockerfile=${planPath}`,
+            `dockerfile=${RAILPACK_PLAN_PATH}`,
             "--frontend",
             "gateway.v0",
             "--opt",
@@ -49,6 +47,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                     [Constants.QS_ANNOTATION_BUILD_QUEUED_AT]: ctx.queuedAt,
                     [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                    ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                 }
             },
             spec: {
@@ -62,14 +61,16 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                             [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                             [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                            ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                         },
                     },
                     spec: {
                         hostUsers: false,
                         serviceAccountName: 'qs-build-watcher',
                         initContainers: [
-                            buildInitContainerService.getInitContainer(ctx.buildName, ctx.queuedAt),
-                            this.getPreparedRailpackInitContainer(ctx),
+                            buildQueueInitContainer.getInitContainer(ctx.buildName, ctx.queuedAt),
+                            buildGitInitContainerService.getInitContainer(ctx),
+                            this.getPreparedRailpackInitContainer(),
                         ],
                         ...(ctx.nodeSelector ? { nodeSelector: ctx.nodeSelector } : {}),
                         containers: [
@@ -82,15 +83,22 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
                                     privileged: true
                                 },
                                 ...(ctx.resources ? { resources: ctx.resources } : {}),
-                                volumeMounts: [{ name: sharedVolumeName, mountPath: sharedMountPath }],
+                                volumeMounts: [{ name: BUILD_WORKSPACE_VOLUME_NAME, mountPath: BUILD_WORKSPACE_MOUNT_PATH }],
                             },
                         ],
                         restartPolicy: "Never",
                         volumes: [
                             {
-                                name: sharedVolumeName,
+                                name: BUILD_WORKSPACE_VOLUME_NAME,
                                 emptyDir: {},
                             },
+                            ...(ctx.gitSshPrivateKeySecretName ? [{
+                                name: BUILD_GIT_SSH_KEY_VOLUME_NAME,
+                                secret: {
+                                    secretName: ctx.gitSshPrivateKeySecretName,
+                                    defaultMode: 0o400,
+                                },
+                            }] : []),
                         ],
                     },
                 },
@@ -99,17 +107,15 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
         };
     }
 
-    private getPreparedRailpackInitContainer(ctx: BuildJobBuilderContext): V1Container {
-        const gitUrl = this.getAuthenticatedGitUrl(ctx);
+    private getPreparedRailpackInitContainer(): V1Container {
         const script = [
             'set -euo pipefail',
-            'apt-get update',
-            'apt-get install -y --no-install-recommends ca-certificates curl git',
+            'apt-get update -qq',
+            'apt-get install -y -qq --no-install-recommends ca-certificates curl',
             'rm -rf /var/lib/apt/lists/*',
             'curl -fsSL https://railpack.com/install.sh | RAILPACK_VERSION="$RAILPACK_VERSION" sh -s -- --bin-dir /usr/local/bin',
-            `mkdir -p ${sourcePath} ${planPath}`,
-            `git clone --depth 1 --single-branch --branch "$GIT_BRANCH" "$GIT_URL" ${sourcePath}`,
-            `railpack prepare ${sourcePath} --plan-out ${railpackPlanFile} --info-out ${railpackInfoFile}`,
+            `mkdir -p ${RAILPACK_PLAN_PATH}`,
+            `railpack prepare ${BUILD_SOURCE_PATH} --plan-out ${railpackPlanFile} --info-out ${railpackInfoFile}`,
             'echo "Prepared Railpack build plan:"',
             `cat ${railpackInfoFile} || true`,
         ].join('\n');
@@ -121,27 +127,12 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
             args: [script],
             env: [
                 {
-                    name: 'GIT_URL',
-                    value: gitUrl,
-                },
-                {
-                    name: 'GIT_BRANCH',
-                    value: ctx.app.gitBranch ?? 'main',
-                },
-                {
                     name: 'RAILPACK_VERSION',
                     value: railpackVersion,
                 },
             ],
-            volumeMounts: [{ name: sharedVolumeName, mountPath: sharedMountPath }],
+            volumeMounts: [{ name: BUILD_WORKSPACE_VOLUME_NAME, mountPath: BUILD_WORKSPACE_MOUNT_PATH }],
         };
-    }
-
-    private getAuthenticatedGitUrl(ctx: BuildJobBuilderContext) {
-        if (ctx.app.gitUsername && ctx.app.gitToken) {
-            return ctx.app.gitUrl!.replace('https://', `https://${ctx.app.gitUsername}:${ctx.app.gitToken}@`);
-        }
-        return ctx.app.gitUrl!;
     }
 }
 

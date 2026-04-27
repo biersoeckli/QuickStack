@@ -34,7 +34,7 @@ export default function AppTable({
         <SimpleDataTable columns={[
             ['id', 'ID', false],
             ['name', 'Name', true],
-            ['sourceType', 'Source Type', false, (item) => item.sourceType === 'GIT' ? 'Git' : 'Container'],
+            ['sourceType', 'Source Type', false, (item) => item.sourceType === 'GIT' ? 'Git HTTPS' : item.sourceType === 'GIT_SSH' ? 'Git SSH' : 'Container'],
             ['replicas', 'Replica Count', false],
             ['memoryLimit', 'Memory Limit', false],
             ['memoryReservation', 'Memory Reservation', false],

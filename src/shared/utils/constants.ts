@@ -1,5 +1,6 @@
 export class Constants {
     static readonly QS_ANNOTATION_APP_ID = 'qs-app-id';
+    static readonly QS_ANNOTATION_BUILD_NAME = 'qs-build-name';
     static readonly QS_ANNOTATION_PROJECT_ID = 'qs-project-id';
     static readonly QS_ANNOTATION_CONTAINER_TYPE = 'qs-containter-type';
     static readonly QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB = 'qs-job-database-backup';
@@ -9,6 +10,7 @@ export class Constants {
     static readonly QS_ANNOTATION_GIT_COMMIT_MESSAGE = 'qs-git-commit-message';
     static readonly QS_ANNOTATION_BUILD_QUEUED_AT = 'qs-build-queued-at';
     static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
+    static readonly QS_ANNOTATION_GIT_SSH_SECRET = 'qs-git-ssh-secret';
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';

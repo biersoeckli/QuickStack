@@ -1,12 +1,12 @@
 FROM node:22-alpine AS base
 
 ARG VERSION_ARG
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl openssh-keygen
 
 FROM base AS deps
 
 # Install necessary packages for building
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 make g++ 
 
 WORKDIR /app
 

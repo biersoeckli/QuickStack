@@ -21,12 +21,60 @@ describe('DockerfileBuildJobBuilder', () => {
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('DOCKERFILE');
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
-        expect(job.spec?.template?.spec?.initContainers).toHaveLength(1);
-        expect(job.spec?.template?.spec?.containers[0].command).toEqual(['buildctl-daemonless.sh']);
-        expect(job.spec?.template?.spec?.containers[0].args).toEqual(expect.arrayContaining([
+        expect(job.spec?.template?.spec?.initContainers?.map((container) => container.name)).toEqual([
+            'build-queue-init',
+            'build-git-init',
+        ]);
+        expect(job.spec?.template?.spec?.volumes).toEqual([
+            expect.objectContaining({
+                name: 'build-workspace',
+                emptyDir: {},
+            }),
+        ]);
+
+        const buildContainer = job.spec?.template?.spec?.containers[0]!;
+
+        expect(buildContainer.command).toEqual(['buildctl-daemonless.sh']);
+        expect(buildContainer.volumeMounts).toEqual([
+            { name: 'build-workspace', mountPath: '/workspace' },
+        ]);
+        expect(buildContainer.args).toEqual(expect.arrayContaining([
             'dockerfile.v0',
+            '--local',
             'filename=Dockerfile',
-            'context=https://github.com/example/repo.git#refs/heads/main:./apps/web',
+            'context=/workspace/source/apps/web',
+            'dockerfile=/workspace/source/apps/web',
+        ]));
+        expect(buildContainer.args).not.toContain('context=https://github.com/example/repo.git#refs/heads/main:./apps/web');
+    });
+
+    it('adds an SSH key secret volume when provided', async () => {
+        const job = await dockerfileBuildJobBuilder.buildJobDefinition({
+            app: {
+                id: 'app-1',
+                projectId: 'project-1',
+                sourceType: 'GIT_SSH',
+                gitUrl: 'git@github.com:example/repo.git',
+                gitBranch: 'main',
+                dockerfilePath: './Dockerfile',
+            } as any,
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'feat: test',
+            queuedAt: '123',
+            gitSshPrivateKeySecretName: 'git-ssh-build-1',
+        });
+
+        expect(job.metadata?.annotations?.['qs-git-ssh-secret']).toBe('git-ssh-build-1');
+        expect(job.spec?.template?.spec?.volumes).toEqual(expect.arrayContaining([
+            {
+                name: 'build-git-ssh-key',
+                secret: {
+                    secretName: 'git-ssh-build-1',
+                    defaultMode: 0o400,
+                },
+            },
         ]));
     });
 });

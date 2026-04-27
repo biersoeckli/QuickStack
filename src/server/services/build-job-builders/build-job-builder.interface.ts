@@ -11,6 +11,7 @@ export type BuildJobBuilderContext = {
     queuedAt: string;
     nodeSelector?: Record<string, string>;
     resources?: V1ResourceRequirements;
+    gitSshPrivateKeySecretName?: string;
 };
 
 export interface BuildJobBuilder {

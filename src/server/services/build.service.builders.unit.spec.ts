@@ -51,6 +51,12 @@ vi.mock('@/server/services/build-job-builders/build-init-container.service', () 
     },
 }));
 vi.mock('@/server/services/git.service', () => ({ default: { openGitContext: vi.fn() } }));
+vi.mock('@/server/services/app-git-ssh-key.service', () => ({
+    default: {
+        createTemporaryBuildSecret: vi.fn().mockResolvedValue('git-ssh-build-secret'),
+        deleteTemporaryBuildSecret: vi.fn(),
+    },
+}));
 vi.mock('@/server/services/pod.service', () => ({ default: {} }));
 vi.mock('@/server/services/deployment-logs.service', () => ({ dlog: vi.fn() }));
 
@@ -58,6 +64,7 @@ import buildService from '@/server/services/build.service';
 import gitService from '@/server/services/git.service';
 import dockerfileBuildJobBuilder from '@/server/services/build-job-builders/dockerfile-build-job-builder.service';
 import railpackBuildJobBuilder from '@/server/services/build-job-builders/railpack-build-job-builder.service';
+import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
 
 describe('BuildService.buildApp builder selection', () => {
     const dockerfileCheckSpy = vi.fn();
@@ -103,5 +110,22 @@ describe('BuildService.buildApp builder selection', () => {
         expect(dockerfileCheckSpy).not.toHaveBeenCalled();
         expect(railpackBuildJobBuilder.buildJobDefinition).toHaveBeenCalled();
         expect(dockerfileBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
+    });
+
+    it('passes a temporary SSH secret to the selected builder for GIT_SSH apps', async () => {
+        await buildService.buildApp('deployment-1', {
+            id: 'app-1',
+            projectId: 'project-1',
+            sourceType: 'GIT_SSH',
+            buildMethod: 'RAILPACK',
+            gitUrl: 'git@github.com:example/repo.git',
+            gitBranch: 'main',
+            dockerfilePath: './Dockerfile',
+        } as any);
+
+        expect(appGitSshKeyService.createTemporaryBuildSecret).toHaveBeenCalledWith('app-1', expect.stringMatching(/^build-app-1-/));
+        expect(railpackBuildJobBuilder.buildJobDefinition).toHaveBeenCalledWith(expect.objectContaining({
+            gitSshPrivateKeySecretName: 'git-ssh-build-secret',
+        }));
     });
 });

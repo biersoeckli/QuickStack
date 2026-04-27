@@ -105,5 +105,5 @@ class BuildInitContainerService {
     }
 }
 
-const buildInitContainerService = new BuildInitContainerService();
-export default buildInitContainerService;
+const buildQueueInitContainer = new BuildInitContainerService();
+export default buildQueueInitContainer;
