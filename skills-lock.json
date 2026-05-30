@@ -11,7 +11,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
-      "computedHash": "31a5b1ae116558bf7d3f633f442835f54bd7645923d4f45c7823e52a97317666"
+      "computedHash": "1adf321072f53cce3dcaf5357d91b8230d4aa647bb8a51756745337a6ee567b8"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
@@ -30,6 +30,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/to-prd/SKILL.md",
       "computedHash": "fd8c259f9c44eff08e29a1a2fc71a806a3568d279a55387a361f78620b10f2aa"
+    },
+    "write-a-skill": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/write-a-skill/SKILL.md",
+      "computedHash": "b44d8aab2ead83c716e01af4c9a24ccc4575ce70ad58ec4f1749fb88c9cc82ba"
     }
   }
 }

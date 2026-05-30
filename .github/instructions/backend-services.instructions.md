@@ -35,7 +35,8 @@ Rules:
 - All public methods `async`
 - Accept primitives or model types as parameters
 - Never instantiate services inside other services — import the singleton
-- Call `revalidateTag()` after mutations that affect cached data
+- For every method that creates, updates, or deletes a database record, call `revalidateTag()` in a `finally` block using the matching `Tags.*` helper (for example, `Tags.app(id)` for app mutations)
+- Never call `revalidateTag()` only in the happy path (`try` block)
 
 ## Adapter Pattern
 
@@ -77,6 +78,8 @@ class AppLogsService {
 }
 ```
 
+Cron callbacks in standalone services must wrap their body in `try/catch` and log errors using the application logger; do not rethrow from the callback because there is no request-scoped error handler.
+
 Standalone services are initialized in `src/server.ts` at application startup.
 
 ## Server Actions
@@ -109,7 +112,8 @@ export const restartApp = async (id: string) =>
 Rules:
 - Always wrap in `saveFormAction` (forms) or `simpleAction` (non-form) — never call services directly from actions
 - Auth checks go inside the action callback, before the service call.
-- Return `SuccessActionResult` on success
+- `simpleAction` and `saveFormAction` automatically return `SuccessActionResult` when the callback completes without throwing
+- Do not manually construct `SuccessActionResult`; return a value from the callback only when you need to include data in the success payload
 
 ## Authorization
 
@@ -147,6 +151,7 @@ For form validation errors, throw `FormValidationException` with field-level err
 - After schema changes: **`yarn prisma-migrate`** (runs `prisma migrate dev` + fixes Zod imports via `fix-wrong-zod-imports.js`)
 - Access via `dataAccess.client` for queries
 - Transactions: `dataAccess.client.$transaction(async (tx) => { ... })`
+- Use `dataAccess.client.$transaction()` when two or more database writes must succeed or fail together; use sequential `await` calls only when operations are independent and partial failure is acceptable
 - Batch updates: `dataAccess.updateManyItems()` and `dataAccess.updateManyItemsWithExistingTransaction()`
 
 **Critical**: After Prisma schema changes, `yarn prisma-migrate` automatically fixes incorrect Zod imports that `zod-prisma` generator produces.

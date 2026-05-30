@@ -20,7 +20,8 @@
 				"donjayamanne.githistory",
 				"qwtel.sqlite-viewer",
 				"ms-kubernetes-tools.vscode-kubernetes-tools",
-				"vitest.explorer"
+				"vitest.explorer",
+				"ms-vscode.vscode-chat-customizations-evaluations"
 			]
 		}
 	},
