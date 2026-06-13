@@ -4,14 +4,14 @@ import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model"
 import { appVolumeTypeZodModel, storageClassNameZodModel } from "./volume-edit.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
-    projectId: z.undefined(),
-    buildMethod: z.undefined(),
-    dockerfilePath: z.undefined(),
+    projectId: z.undefined().optional(),
+    buildMethod: z.undefined().optional(),
+    dockerfilePath: z.undefined().optional(),
     appType: appTypeZodModel,
     sourceType: appSourceTypeZodModel,
-    id: z.undefined(),
-    createdAt: z.undefined(),
-    updatedAt: z.undefined(),
+    id: z.undefined().optional(),
+    createdAt: z.undefined().optional(),
+    updatedAt: z.undefined().optional(),
 }));
 
 export const appTemplateInputSettingsZodModel = z.object({
@@ -30,22 +30,22 @@ export const appTemplateContentZodModel = z.object({
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
         storageClassName: storageClassNameZodModel.default('longhorn'),
-        id: z.undefined(),
-        appId: z.undefined(),
-        createdAt: z.undefined(),
-        updatedAt: z.undefined(),
+        id: z.undefined().optional(),
+        appId: z.undefined().optional(),
+        createdAt: z.undefined().optional(),
+        updatedAt: z.undefined().optional(),
     }).array(),
     appFileMounts: AppFileMountModel.extend({
-        id: z.undefined(),
-        appId: z.undefined(),
-        createdAt: z.undefined(),
-        updatedAt: z.undefined(),
+        id: z.undefined().optional(),
+        appId: z.undefined().optional(),
+        createdAt: z.undefined().optional(),
+        updatedAt: z.undefined().optional(),
     }).array(),
     appPorts: AppPortModel.extend({
-        id: z.undefined(),
-        appId: z.undefined(),
-        createdAt: z.undefined(),
-        updatedAt: z.undefined(),
+        id: z.undefined().optional(),
+        appId: z.undefined().optional(),
+        createdAt: z.undefined().optional(),
+        updatedAt: z.undefined().optional(),
     }).array(),
 });
 export type AppTemplateContentModel = z.infer<typeof appTemplateContentZodModel>;

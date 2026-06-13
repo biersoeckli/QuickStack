@@ -1,6 +1,5 @@
 import { AppTemplateUtils } from '@/server/utils/app-template.utils';
-import appTemplateService from '../../../server/services/app-template.service';
-import { AppTemplateContentModel, AppTemplateInputSettingsModel } from '@/shared/model/app-template.model';
+import { AppTemplateInputSettingsModel } from '@/shared/model/app-template.model';
 import crypto from 'crypto';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { DatabaseTemplateInfoModel } from '@/shared/model/database-template-info.model';

@@ -6,6 +6,8 @@ import userService from "@/server/services/user.service";
 import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { TotpModel, totpZodModel } from "@/shared/model/totp.model";
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
+import restApiKeyService from "@/server/services/rest-api-key.service";
+import { restApiKeyCreateZodModel, RestApiKeyCreateModel } from "@/shared/model/rest-api-key.model";
 
 export const changePassword = async (prevState: any, inputData: ProfilePasswordChangeModel) =>
   saveFormAction(inputData, profilePasswordChangeZodModel, async (validatedData) => {
@@ -38,4 +40,20 @@ export const deactivate2fa = async () =>
     console.log(session)
     await userService.deactivate2fa(session.email);
     return new SuccessActionResult(undefined, '2FA settings deactivated successfully');
+  });
+
+export const createRestApiKey = async (prevState: any, inputData: RestApiKeyCreateModel) =>
+  saveFormAction(inputData, restApiKeyCreateZodModel, async (validatedData) => {
+    const session = await getAuthUserSession();
+    const user = await userService.getUserByEmail(session.email);
+    const rawApiKey = await restApiKeyService.create(user.id, validatedData.name, validatedData.expiresAt ?? null);
+    return new SuccessActionResult({ rawApiKey }, 'REST API key created successfully.');
+  });
+
+export const deleteRestApiKey = async (apiKeyId: string) =>
+  simpleAction(async () => {
+    const session = await getAuthUserSession();
+    const user = await userService.getUserByEmail(session.email);
+    await restApiKeyService.deleteByIdForUser(user.id, apiKeyId);
+    return new SuccessActionResult(undefined, 'REST API key deleted successfully.');
   });

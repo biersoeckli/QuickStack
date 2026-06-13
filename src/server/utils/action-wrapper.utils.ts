@@ -1,7 +1,7 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
 import {  UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
 import { getServerSession } from "next-auth";
-import { ZodRawShape, ZodObject, objectUtil, baseObjectOutputType, z, ZodType } from "zod";
+import { ZodRawShape, ZodObject, z } from "zod";
 import { redirect } from "next/navigation";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
@@ -10,6 +10,12 @@ import { NextResponse } from "next/server";
 import userGroupService from "../services/user-group.service";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { UserGroupUtils } from "../../shared/utils/role.utils";
+import {
+    ensureAdmin,
+    ensureReadApp,
+    ensureWriteApp,
+    RequesterIdentity
+} from "./shared-authorization.utils";
 
 /**
  * THIS FUNCTION RETURNS NULL IF NO USER IS LOGGED IN
@@ -41,11 +47,9 @@ export async function getAuthUserSession(): Promise<UserSession> {
 
 export async function getAdminUserSession(): Promise<UserSession> {
     const session = await getAuthUserSession();
-    if (!UserGroupUtils.isAdmin(session)) {
-        console.error('User is not admin.');
-        throw new ServiceException('User is not authorized for this action.');
-    }
-    return session;
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureAdmin(identity);
+    return identity.session;
 }
 
 export async function isAuthorizedForBackups() {
@@ -59,36 +63,16 @@ export async function isAuthorizedForBackups() {
 
 export async function isAuthorizedReadForApp(appId: string) {
     const session = await getAuthUserSession();
-    if (UserGroupUtils.isAdmin(session)) {
-        return session;
-    }
-    if (!session.userGroup) {
-        console.error('User is not authorized for app: ' + appId);
-        throw new ServiceException('User is not authorized for this action.');
-    }
-    const roleHasReadAccessForApp = UserGroupUtils.sessionHasReadAccessForApp(session, appId);
-    if (!roleHasReadAccessForApp) {
-        console.error('User is not authorized for app: ' + appId);
-        throw new ServiceException('User is not authorized for this action.');
-    }
-    return session;
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureReadApp(identity, appId);
+    return identity.session;
 }
 
 export async function isAuthorizedWriteForApp(appId: string) {
     const session = await getAuthUserSession();
-    if (UserGroupUtils.isAdmin(session)) {
-        return session;
-    }
-    if (!session.userGroup) {
-        console.error('User is not authorized for app: ' + appId);
-        throw new ServiceException('User is not authorized for this action.');
-    }
-    const roleHasReadAccessForApp = UserGroupUtils.sessionHasWriteAccessForApp(session, appId);
-    if (!roleHasReadAccessForApp) {
-        console.error('User is not authorized for app: ' + appId);
-        throw new ServiceException('User is not authorized for this action.');
-    }
-    return session;
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureWriteApp(identity, appId);
+    return identity.session;
 }
 
 export async function safeGetUserPermissionForApp(appId: string) {
@@ -102,7 +86,7 @@ export async function safeGetUserPermissionForApp(appId: string) {
 export async function saveFormAction<ReturnType, TInputData, ZodType extends ZodRawShape>(
     inputData: TInputData,
     validationModel: ZodObject<ZodType>,
-    func: (validateData: { [k in keyof objectUtil.addQuestionMarks<baseObjectOutputType<ZodType>, any>]: objectUtil.addQuestionMarks<baseObjectOutputType<ZodType>, any>[k]; }) => Promise<ReturnType>,
+    func: (validateData: z.infer<ZodObject<ZodType>>) => Promise<ReturnType>,
     redirectOnSuccessPath?: string,
     ignoredFields: (keyof ZodType)[] = []) {
     return simpleAction<ReturnType, z.infer<typeof validationModel>>(async () => {
@@ -123,7 +107,7 @@ export async function saveFormAction<ReturnType, TInputData, ZodType extends Zod
             console.error('No data available after validation of input:', validatedFields.data);
             throw new ServiceException('An unknown error occurred.');
         }
-        return await func(validatedFields.data);
+        return await func(validatedFields.data as z.infer<ZodObject<ZodType>>);
     }, redirectOnSuccessPath);
 }
 
