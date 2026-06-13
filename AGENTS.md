@@ -9,13 +9,13 @@ QuickStack is a self-hosted PaaS built with Next.js 14 (App Router) that manages
 - **`src/server/`** - Backend services that interact with Kubernetes and database
 - **`src/shared/`** - Shared models, utils, and Zod schemas (used by both frontend and server)
 
-See `backend-services.instructions.md` for service patterns, adapters, server actions, authorization, database/Prisma, k8s naming, and caching details.
+See `.agents/skills/backend-services/SKILL.md` for service patterns, adapters, server actions, authorization, database/Prisma, k8s naming, and caching details.
 
 ## Frontend Patterns
-All frontend rules are stored in `frontend-ui-patterns.instructions.md`, covering all relevant UI patterns.
+All frontend rules are stored in `.agents/skills/frontend-ui-patterns/SKILL.md`, covering all relevant UI patterns.
 
 ## Testing
-All testing rules are stored in `backend-testing.instructions.md`, covering Vitest patterns, mocking, integration tests, and naming conventions.
+All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, covering Vitest patterns, mocking, integration tests, and naming conventions.
 
 ## Development Setup
 
