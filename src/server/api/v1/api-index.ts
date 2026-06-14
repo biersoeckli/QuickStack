@@ -3,6 +3,7 @@ import { Elysia } from 'elysia';
 import { ApiUtils } from '../../utils/api-response.utils';
 import { projectRoutes } from './project/route';
 import { appRoutes } from './app/route';
+import { deployRoutes } from './app/deploy/route';
 
 export const v1Api = new Elysia({ prefix: '/api/v1' })
     .use(openapi({
@@ -34,4 +35,5 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
         return ApiUtils.mapError(error);
     })
     .use(projectRoutes)
-    .use(appRoutes);
+    .use(appRoutes)
+    .use(deployRoutes);

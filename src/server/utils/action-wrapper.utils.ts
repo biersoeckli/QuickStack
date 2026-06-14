@@ -92,10 +92,15 @@ export async function saveFormAction<ReturnType, TInputData, ZodType extends Zod
     return simpleAction<ReturnType, z.infer<typeof validationModel>>(async () => {
 
         // Omit ignored fields from validation model
-        const omitBody = {};
+        const omitBody: Partial<Record<keyof ZodType, true>> = {};
+        const schemaFields = new Set(Object.keys(validationModel.shape));
         const allIgnoreFiels = ['createdAt', 'updatedAt', ...ignoredFields];
-        allIgnoreFiels.forEach(field => (omitBody as any)[field] = true);
-        const schemaWithoutIgnoredFields = validationModel.omit(omitBody);
+        allIgnoreFiels.forEach(field => {
+            if (schemaFields.has(field as string)) {
+                omitBody[field as keyof ZodType] = true;
+            }
+        });
+        const schemaWithoutIgnoredFields = validationModel.omit(omitBody as any);
 
         const validatedFields = schemaWithoutIgnoredFields.safeParse(inputData);
         if (!validatedFields.success) {

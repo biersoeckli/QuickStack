@@ -1,5 +1,5 @@
 import dataAccess from "../adapter/db.client";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import crypto from 'crypto';
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -15,8 +15,8 @@ export type RestApiKeyMetadata = {
 class RestApiKeyService {
 
     async listByUserId(userId: string): Promise<RestApiKeyMetadata[]> {
-        const keys = await dataAccess.client.restApiKey.findMany({
-            where: { userId },
+        return unstable_cache(async (innerUserId) => await dataAccess.client.restApiKey.findMany({
+            where: { userId: innerUserId },
             orderBy: { createdAt: 'desc' },
             select: {
                 id: true,
@@ -24,9 +24,10 @@ class RestApiKeyService {
                 createdAt: true,
                 expiresAt: true,
             }
-        });
-
-        return keys;
+        }),
+            [Tags.apiKey(userId)], // Cache key
+            { tags: [Tags.apiKey(userId)] } // Cache tags for revalidation
+        )(userId);
     }
 
     async create(userId: string, name: string, expiresAt?: Date | null) {
@@ -49,6 +50,7 @@ class RestApiKeyService {
             throw error;
         } finally {
             revalidateTag(Tags.users());
+            revalidateTag(Tags.apiKey(userId));
         }
 
         return rawApiKey;
@@ -68,6 +70,7 @@ class RestApiKeyService {
             }
         } finally {
             revalidateTag(Tags.users());
+            revalidateTag(Tags.apiKey(userId));
         }
     }
 

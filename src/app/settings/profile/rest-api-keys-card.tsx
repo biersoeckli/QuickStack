@@ -35,7 +35,7 @@ function OneTimeApiKeyDialog({ rawApiKey }: { rawApiKey: string }) {
 }
 
 export default function RestApiKeysCard({ initialApiKeys }: { initialApiKeys: RestApiKeyMetadata[] }) {
-    const [apiKeys, setApiKeys] = useState(initialApiKeys);
+
     const { openDialog } = useDialog();
     const router = useRouter();
 
@@ -53,7 +53,6 @@ export default function RestApiKeysCard({ initialApiKeys }: { initialApiKeys: Re
 
     const handleDelete = async (apiKeyId: string) => {
         await Toast.fromAction(() => deleteRestApiKey(apiKeyId));
-        setApiKeys(prev => prev.filter(key => key.id !== apiKeyId));
     };
 
     return (
@@ -63,7 +62,7 @@ export default function RestApiKeysCard({ initialApiKeys }: { initialApiKeys: Re
                 <CardDescription>Create and manage API keys for external clients. Keys are shown only once after creation.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-                {apiKeys.map((key) => (
+                {initialApiKeys.map((key) => (
                     <div key={key.id} className="flex items-center justify-between rounded-md border p-3">
                         <div>
                             <div className="font-medium">{key.name}</div>
@@ -74,7 +73,7 @@ export default function RestApiKeysCard({ initialApiKeys }: { initialApiKeys: Re
                         <Button variant="destructive" onClick={() => handleDelete(key.id)}>Delete</Button>
                     </div>
                 ))}
-                {apiKeys.length === 0 && <p className="text-sm text-muted-foreground">No REST API keys yet.</p>}
+                {initialApiKeys.length === 0 && <p className="text-sm text-muted-foreground">No REST API keys yet.</p>}
             </CardContent>
             <CardFooter>
                 <Button onClick={handleOpenCreateDialog}>Create REST API Key</Button>

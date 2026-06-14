@@ -45,7 +45,7 @@ export const projectRoutes = new Elysia()
             id: z.string(),
         }),
         response: ApiUtils.mapReponseModel(ProjectModel),
-        detail: { summary: 'Get project by id', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get project', security: [{ bearerAuth: [] }] }
     })
     .post('/projects', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()

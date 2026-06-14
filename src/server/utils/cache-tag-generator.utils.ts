@@ -32,6 +32,10 @@ export class Tags {
         return `app-${appId}`;
     }
 
+    static apiKey(userId: string) {
+        return `api-key-${userId}`;
+    }
+
     static appBuilds(appId: string) {
         return `app-build-${appId}`;
     }

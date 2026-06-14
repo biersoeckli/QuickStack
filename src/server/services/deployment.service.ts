@@ -348,6 +348,11 @@ class DeploymentService {
         return ListUtils.sortByDate(replicasetRevisions, (i) => i.createdAt!, true);
     }
 
+    async getDeploymentHistoryEntryById(projectId: string, appId: string, deploymentId: string): Promise<DeploymentInfoModel | undefined> {
+        const deployments = await this.getDeploymentHistory(projectId, appId);
+        return deployments.find((deployment) => deployment.deploymentId === deploymentId);
+    }
+
     mapBuildStatusToDeploymentStatus(buildJobStatus?: BuildJobStatus) {
         const map = new Map<BuildJobStatus, DeploymentStatus>([
             ['UNKNOWN', 'UNKNOWN'],

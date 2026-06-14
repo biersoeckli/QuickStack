@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia';
 import { z } from 'zod';
 import appService from '@/server/services/app.service';
+import appLogsService from '@/server/services/standalone-services/app-logs.service';
 import {
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
@@ -11,6 +12,7 @@ import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { AppExtendedWriteModel, AppExtendedWriteZodModel, AppExtendedZodModel } from '@/shared/model/app-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
+import { appLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
 
 export const appRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
@@ -33,10 +35,10 @@ export const appRoutes = new Elysia()
         response: ApiUtils.mapReponseModel(z.array(AppExtendedZodModel)),
         detail: { summary: 'List apps', security: [{ bearerAuth: [] }] }
     })
-    .get('/apps/:id', async ({ params, identity }) => {
+    .get('/apps/:appId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
-        const app = await appService.getByIdOrUndefined(params.id);
+        const app = await appService.getByIdOrUndefined(params.appId);
         if (!app) throw new ApiNotFoundException();
 
         ensureReadApp(identity, app.id);
@@ -44,10 +46,34 @@ export const appRoutes = new Elysia()
         return appService.getExtendedById(app.id);
     }, {
         params: z.object({
-            id: z.string(),
+            appId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(AppExtendedZodModel),
-        detail: { summary: 'Get app by id', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get app', security: [{ bearerAuth: [] }] }
+    })
+    .get('/apps/:appId/logs', async ({ params, query, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException()
+
+        const app = await appService.getByIdOrUndefined(params.appId);
+        if (!app) throw new ApiNotFoundException();
+
+        ensureReadApp(identity, app.id);
+
+        const logs = await appLogsService.getCurrentLogs(app.id, query.lines);
+        return {
+            appId: app.id,
+            lines: query.lines,
+            logs,
+        };
+    }, {
+        params: z.object({
+            appId: z.string(),
+        }),
+        query: z.object({
+            lines: z.coerce.number().int().positive().max(5000).optional().default(200)
+        }),
+        response: ApiUtils.mapReponseModel(appLogsResponseZodModel),
+        detail: { summary: 'Get current app logs', security: [{ bearerAuth: [] }] }
     })
     .post('/apps', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -87,38 +113,4 @@ export const appRoutes = new Elysia()
         }),
         response: ApiUtils.mapReponseModel(z.undefined()),
         detail: { summary: 'Delete app', security: [{ bearerAuth: [] }] }
-    })
-    .post('/apps/:appId/deploy', async ({ params, identity }) => {
-        if (!identity) throw new ApiUnauthorizedException()
-
-        const app = await appService.getByIdOrUndefined(params.appId);
-        if (!app) throw new ApiNotFoundException();
-
-        ensureWriteApp(identity, app.id);
-
-        const deploymentId = await appService.buildAndDeploy(app.id, false);
-        return { deploymentId };
-    }, {
-        params: z.object({
-            appId: z.string(),
-        }),
-        response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() })),
-        detail: { summary: 'Deploy app', security: [{ bearerAuth: [] }] }
-    })
-    .post('/apps/:appId/build-and-deploy', async ({ params, identity }) => {
-        if (!identity) throw new ApiUnauthorizedException()
-
-        const app = await appService.getByIdOrUndefined(params.appId);
-        if (!app) throw new ApiNotFoundException();
-
-        ensureWriteApp(identity, app.id);
-
-        const deploymentId = await appService.buildAndDeploy(app.id, true);
-        return { deploymentId };
-    }, {
-        params: z.object({
-            appId: z.string(),
-        }),
-        response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() })),
-        detail: { summary: 'Build and deploy app', security: [{ bearerAuth: [] }] }
     });
