@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { stringToDate } from '@/shared/utils/zod.utils';
 import { getIdentityFromApiKeyHeader } from './requester-identity.utils';
+import paramService, { ParamService } from '../services/param.service';
 
 const problemResponseSchema = z.object({
     type: z.string(),
@@ -98,7 +99,7 @@ export class ApiUtils {
     }
 
     static async deriveFunc({ request, path }: { request: Request, path: string }) {
-        const isPublicOpenApiPath = path === '/api/v1/openapi' || path === '/api/v1/openapi.json';
+        const isPublicOpenApiPath = await paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED) && (path === '/api/v1/openapi' || path === '/api/v1/openapi.json');
         if (isPublicOpenApiPath) {
             return { identity: null };
         }

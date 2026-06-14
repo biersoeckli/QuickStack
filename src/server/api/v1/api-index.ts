@@ -6,6 +6,7 @@ import { appRoutes } from './app/route';
 import { deployRoutes } from './app/deploy/route';
 
 export const v1Api = new Elysia({ prefix: '/api/v1' })
+    .derive(ApiUtils.deriveFunc)
     .use(openapi({
         path: '/openapi',
         specPath: '/openapi.json',
