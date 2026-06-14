@@ -201,12 +201,6 @@ class AppService {
 
     async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient) {
 
-        const parsedAppModel = AppModel.parse(app);
-        const savedApp = await this.save({
-            ...parsedAppModel,
-            id: app.id
-        }, false, tx);
-
         // for new objects, make sure some params are optional, wich will be created by prisma
         const optionalParam = z.object({
             id: z.string().optional(),
@@ -215,11 +209,19 @@ class AppService {
             updatedAt: z.date().optional(),
         });
 
+        const parsedAppModel = AppModel.merge(optionalParam).parse(app);
+        const savedApp = await this.save({
+            ...parsedAppModel,
+            id: app.id
+        }, false, tx);
+
+        const savedAppId = savedApp.id;
+
         const parsedDomains = AppDomainModel.merge(optionalParam).array().parse(app.appDomains);
         for (const domain of parsedDomains) {
             await this.saveDomain({
                 ...domain,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -227,7 +229,7 @@ class AppService {
         for (const volume of parsedVolumes) {
             await this.saveVolume({
                 ...volume,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -235,7 +237,7 @@ class AppService {
         for (const fileMount of parsedFileMounts) {
             await this.saveFileMount({
                 ...fileMount,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -243,7 +245,7 @@ class AppService {
         for (const port of parsedPorts) {
             await this.savePort({
                 ...port,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -251,7 +253,7 @@ class AppService {
         for (const nodePort of parsedNodePorts) {
             await this.saveNodePort({
                 ...nodePort,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -259,11 +261,11 @@ class AppService {
         for (const basicAuth of parsedBasicAuths) {
             await this.saveBasicAuth({
                 ...basicAuth,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
-        return await this.getExtendedById(savedApp.id, false, tx);
+        return await this.getExtendedById(savedAppId, false, tx);
     }
 
     async regenerateWebhookId(appId: string) {

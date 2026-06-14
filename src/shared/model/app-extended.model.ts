@@ -21,17 +21,22 @@ const subItemWriteMeta = z.object({
     updatedAt: z.date().optional(),
 });
 
+const omitFields: {
+    createdAt: true;
+    updatedAt: true;
+} = { createdAt: true, updatedAt: true };
+
 /** Write schema for POST upsert: id optional (absent = create), server meta fields stripped. */
 export const AppExtendedWriteZodModel = AppModel
-    .omit({ createdAt: true, updatedAt: true })
+    .omit(omitFields)
     .extend({
         id: z.string().optional(),
-        appDomains: AppDomainModel.merge(subItemWriteMeta).array(),
-        appPorts: AppPortModel.merge(subItemWriteMeta).array(),
-        appNodePorts: AppNodePortModel.merge(subItemWriteMeta).array(),
-        appFileMounts: AppFileMountModel.merge(subItemWriteMeta).array(),
-        appVolumes: AppVolumeModel.merge(subItemWriteMeta).array(),
-        appBasicAuths: AppBasicAuthModel.merge(subItemWriteMeta).array(),
+        appDomains: AppDomainModel.merge(subItemWriteMeta).omit(omitFields).array(),
+        appPorts: AppPortModel.merge(subItemWriteMeta).omit(omitFields).array(),
+        appNodePorts: AppNodePortModel.merge(subItemWriteMeta).omit(omitFields).array(),
+        appFileMounts: AppFileMountModel.merge(subItemWriteMeta).omit(omitFields).array(),
+        appVolumes: AppVolumeModel.merge(subItemWriteMeta).omit(omitFields).array(),
+        appBasicAuths: AppBasicAuthModel.merge(subItemWriteMeta).omit(omitFields).array(),
     });
 
 export type AppExtendedWriteModel = z.infer<typeof AppExtendedWriteZodModel>;

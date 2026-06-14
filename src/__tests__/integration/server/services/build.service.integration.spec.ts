@@ -6,21 +6,18 @@ mockNextJsCaching();
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import { getPrivateGitSshKeyFromEnv, GitTestRepositories } from '@/__tests__/git-test-repositories.utils';
-import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
+import { createK3sTestContext, deployRegistry } from '@/__tests__/k3s-test.utils';
 import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import dataAccess from '@/server/adapter/db.client';
-import k3s from '@/server/adapter/kubernetes-api.adapter';
 import buildService from '@/server/services/build.service';
 import deploymentLogService from '@/server/services/deployment-logs.service';
-import paramService, { ParamService } from '@/server/services/param.service';
 import podService from '@/server/services/pod.service';
-import registryService, { BUILD_NAMESPACE } from '@/server/services/registry.service';
+import { BUILD_NAMESPACE } from '@/server/services/registry.service';
 import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { PathUtils } from '@/server/utils/path.utils';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
-import { Constants } from '@/shared/utils/constants';
 import fs from 'node:fs/promises';
 
 
@@ -117,33 +114,8 @@ export function setupBuildServiceIntegration(label: string) {
     });
 }
 
-export async function deployRegistryForBuildIntegration() {
-    await paramService.save({
-        name: ParamService.BUILD_NODE,
-        value: Constants.BUILD_NODE_K3S_NATIVE_VALUE,
-    });
-
-    await registryService.deployRegistry(Constants.INTERNAL_REGISTRY_LOCATION, true);
-
-    await expect.poll(async () => {
-        const pods = await podService.getPodsForApp(BUILD_NAMESPACE, 'registry');
-        if (pods.length !== 1) {
-            return 'MISSING';
-        }
-
-        const pod = await k3s.core.readNamespacedPod(pods[0].podName, BUILD_NAMESPACE);
-        return pod.body.status?.phase ?? 'UNKNOWN';
-    }, {
-        timeout: 120_000,
-        interval: 2_000,
-    }).toBe('Running');
-
-    const registryDeployments = await k3s.apps.listNamespacedDeployment(BUILD_NAMESPACE);
-    expect(registryDeployments.body.items.some((item) => item.metadata?.name === 'registry')).toBe(true);
-}
-
 export async function runBuildAndAssert(input: BuildIntegrationInput) {
-    await deployRegistryForBuildIntegration();
+    await deployRegistry();
 
     const suffix = Date.now();
     const app = createBuildApp({
@@ -201,7 +173,7 @@ export async function runBuildAndAssert(input: BuildIntegrationInput) {
 }
 
 export async function runBuildAndAssertGitFailure(input: BuildIntegrationInput) {
-    await deployRegistryForBuildIntegration();
+    await deployRegistry();
 
     const suffix = Date.now();
     const app = createBuildApp({

@@ -91,7 +91,7 @@ export const appRoutes = new Elysia()
                 throw new ServiceException('projectId cannot be changed for an existing app.');
             }
         }
-        return appService.saveAppExtendedModel({ ...existing, ...body });
+        return await appService.saveAppExtendedModel({ ...existing, ...body });
     }, {
         body: AppExtendedWriteZodModel,
         response: ApiUtils.mapReponseModel(AppExtendedZodModel),
