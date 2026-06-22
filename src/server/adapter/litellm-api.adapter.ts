@@ -7,13 +7,16 @@ type LiteLlmModelInfoResponse = {
 };
 
 class LiteLlmApiAdapter {
-    private async fetchJson<T>(baseUrl: string, adminKey: string, path: string): Promise<T> {
+    private async fetchJson<T>(baseUrl: string, adminKey: string, path: string, init?: RequestInit): Promise<T> {
         let response: Response;
         try {
             response = await fetch(`${baseUrl}${path}`, {
+                ...init,
                 headers: {
                     accept: 'application/json',
                     authorization: `Bearer ${adminKey}`,
+                    ...(init?.method === 'POST' ? { 'content-type': 'application/json' } : {}),
+                    ...(init?.headers ? (init.headers as Record<string, string>) : {}),
                 },
                 cache: 'no-store',
             });
@@ -35,6 +38,18 @@ class LiteLlmApiAdapter {
         } catch {
             throw new ServiceException('LiteLLM returned an invalid JSON response.');
         }
+    }
+
+    async createVirtualKey(baseUrl: string, adminKey: string, modelAlias: string): Promise<string> {
+        const response = await this.fetchJson<{ key?: string }>(baseUrl, adminKey, '/key/generate', {
+            method: 'POST',
+            body: JSON.stringify({ models: [modelAlias] }),
+        });
+
+        if (!response.key) {
+            throw new ServiceException('LiteLLM virtual key response did not contain a key field.');
+        }
+        return response.key;
     }
 
     async listModelAliases(baseUrl: string, adminKey: string): Promise<string[]> {

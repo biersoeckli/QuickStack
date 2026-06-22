@@ -1,5 +1,6 @@
 import k3s from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { V1Secret } from "@kubernetes/client-node";
 
 export interface SandboxTemplateSpec {
     name: string;
@@ -21,7 +22,13 @@ export interface SandboxWarmPoolSpec {
     replicas: number;
 }
 
-const SANDBOX_API_GROUP = 'sandbox.quickstack.dev';
+export interface SandboxClaimSpec {
+    name: string;
+    namespace: string;
+    warmPoolName: string;
+}
+
+const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 const SANDBOX_API_VERSION = 'v1beta1';
 const TEMPLATE_PLURAL = 'sandboxtemplates';
 const WARMPOOL_PLURAL = 'sandboxwarmpools';
@@ -43,8 +50,13 @@ class AgentSandboxAdapter {
                 name,
             );
             return true;
-        } catch {
-            return false;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return false;
+            }
+            throw new ServiceException(
+                `Failed to check SandboxClaim "${name}": ${error?.message || error}`,
+            );
         }
     }
 
@@ -60,18 +72,25 @@ class AgentSandboxAdapter {
                 namespace: spec.namespace,
             },
             spec: {
-                image: spec.image,
-                command: spec.command || [],
-                args: spec.args || [],
-                env: spec.env || [],
-                resources: {
-                    requests: {
-                        cpu: spec.cpuRequest || '100m',
-                        memory: spec.memoryRequest || '128Mi',
-                    },
-                    limits: {
-                        cpu: spec.cpuLimit || '500m',
-                        memory: spec.memoryLimit || '512Mi',
+                podTemplate: {
+                    spec: {
+                        containers: [{
+                            name: 'agent',
+                            image: spec.image,
+                            ...(spec.command ? { command: spec.command } : {}),
+                            ...(spec.args ? { args: spec.args } : {}),
+                            ...(spec.env ? { env: spec.env } : {}),
+                            resources: {
+                                requests: {
+                                    cpu: spec.cpuRequest || '100m',
+                                    memory: spec.memoryRequest || '128Mi',
+                                },
+                                limits: {
+                                    cpu: spec.cpuLimit || '500m',
+                                    memory: spec.memoryLimit || '512Mi',
+                                },
+                            },
+                        }],
                     },
                 },
             },
@@ -80,6 +99,7 @@ class AgentSandboxAdapter {
         try {
             await this.applyCustomResource(resource, spec.namespace, TEMPLATE_PLURAL);
         } catch (error: any) {
+            console.error(`Failed to reconcile SandboxTemplate "${spec.name}":`, error);
             throw new ServiceException(
                 `Failed to reconcile SandboxTemplate "${spec.name}": ${error?.message || error}`,
             );
@@ -98,7 +118,7 @@ class AgentSandboxAdapter {
                 namespace: spec.namespace,
             },
             spec: {
-                templateRef: {
+                sandboxTemplateRef: {
                     name: spec.templateName,
                 },
                 replicas: spec.replicas,
@@ -156,6 +176,175 @@ class AgentSandboxAdapter {
                 `Failed to delete SandboxWarmPool "${name}": ${error?.message || error}`,
             );
         }
+    }
+
+    async createSandboxClaim(spec: SandboxClaimSpec): Promise<void> {
+        const resource = {
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxClaim',
+            metadata: {
+                name: spec.name,
+                namespace: spec.namespace,
+            },
+            spec: {
+                warmPoolRef: {
+                    name: spec.warmPoolName,
+                },
+            },
+        };
+
+        try {
+            await k3s.customObjects.getNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                spec.namespace,
+                CLAIM_PLURAL,
+                spec.name,
+            );
+            throw new ServiceException(
+                `SandboxClaim "${spec.name}" already exists. Stop the Agent before starting again.`,
+            );
+        } catch (error: any) {
+            if (error instanceof ServiceException) {
+                throw error;
+            }
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(
+                    `Failed to check existing SandboxClaim "${spec.name}": ${error?.message || error}`,
+                );
+            }
+        }
+
+        try {
+            await k3s.customObjects.createNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                spec.namespace,
+                CLAIM_PLURAL,
+                resource,
+            );
+        } catch (error: any) {
+            throw new ServiceException(
+                `Failed to create SandboxClaim "${spec.name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async getSandboxClaim(name: string, namespace: string): Promise<any | null> {
+        try {
+            const response = await k3s.customObjects.getNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                namespace,
+                CLAIM_PLURAL,
+                name,
+            );
+            return (response as any).body;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return null;
+            }
+            throw new ServiceException(
+                `Failed to get SandboxClaim "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async deleteSandboxClaim(name: string, namespace: string): Promise<void> {
+        try {
+            await k3s.customObjects.deleteNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                namespace,
+                CLAIM_PLURAL,
+                name,
+            );
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return;
+            }
+            throw new ServiceException(
+                `Failed to delete SandboxClaim "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async createOrReplaceSecret(name: string, namespace: string, data: Record<string, string>): Promise<void> {
+        const base64Data: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+            base64Data[key] = Buffer.from(value).toString('base64');
+        }
+
+        const secretManifest: V1Secret = {
+            metadata: { name },
+            data: base64Data,
+        };
+
+        try {
+            const existingResponse = await k3s.core.readNamespacedSecret(name, namespace);
+            secretManifest.metadata!.resourceVersion = existingResponse.body.metadata?.resourceVersion;
+            await k3s.core.replaceNamespacedSecret(name, namespace, secretManifest);
+        } catch (error: any) {
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(
+                    `Failed to read Secret "${name}": ${error?.message || error}`,
+                );
+            }
+            await k3s.core.createNamespacedSecret(namespace, secretManifest);
+        }
+    }
+
+    async deleteSecret(name: string, namespace: string): Promise<void> {
+        try {
+            await k3s.core.deleteNamespacedSecret(name, namespace);
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return;
+            }
+            throw new ServiceException(
+                `Failed to delete Secret "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async waitForSandboxReady(name: string, namespace: string, timeoutMs = 300_000, pollIntervalMs = 2_000): Promise<void> {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            const claim = await this.getSandboxClaim(name, namespace);
+            if (!claim) {
+                throw new ServiceException(`Sandbox Claim "${name}" not found while waiting for readiness.`);
+            }
+            const conditions: Array<{ type: string; status: string; message?: string; reason?: string }> =
+                claim?.status?.conditions || [];
+
+            const ready = conditions.find((c) => c.type === 'Ready');
+            if (ready?.status === 'True') {
+                return;
+            }
+
+            const terminalReasons = new Set([
+                'ClaimExpired',
+                'Expired',
+                'InvalidMetadata',
+                'ReconcilerError',
+                'TemplateNotFound',
+                'VolumeClaimTemplatesError',
+                'WarmPoolNotFound',
+            ]);
+            if (ready?.status === 'False' && ready.reason && terminalReasons.has(ready.reason)) {
+                throw new ServiceException(
+                    `Sandbox "${name}" failed to become ready: ${ready.message || ready.reason}`,
+                );
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        }
+
+        throw new ServiceException(
+            `Sandbox "${name}" did not become ready within ${timeoutMs / 1000}s. ` +
+            `Check sandbox controller logs and Pod events for details.`,
+        );
     }
 
     /**

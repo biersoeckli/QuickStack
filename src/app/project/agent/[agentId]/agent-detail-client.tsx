@@ -1,11 +1,27 @@
 'use client';
 
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { DeploymentStatus } from "@/shared/model/deployment-info.model";
+import { Toast } from "@/frontend/utils/toast.utils";
+import { Play, Square } from "lucide-react";
 import AgentConfigForm from "./general/agent-config-form";
+import { getAgentStatus, startAgent, stopAgent } from "./overview/actions";
+
+function getStatusColor(status: DeploymentStatus): string {
+    switch (status) {
+        case 'DEPLOYED': return 'text-green-600 bg-green-50';
+        case 'DEPLOYING': return 'text-yellow-600 bg-yellow-50';
+        case 'ERROR': return 'text-red-600 bg-red-50';
+        case 'SHUTDOWN': return 'text-gray-500 bg-gray-100';
+        default: return 'text-gray-500 bg-gray-100';
+    }
+}
 
 export default function AgentDetailClient({ agent, role }: {
     agent: AgentWithRelationsModel;
@@ -16,9 +32,56 @@ export default function AgentDetailClient({ agent, role }: {
     const tabName = searchParams.get('tabName') || 'general';
     const readonly = role !== RolePermissionEnum.READWRITE;
 
+    const [status, setStatus] = useState<DeploymentStatus>('SHUTDOWN');
+    const [statusText, setStatusText] = useState('Shut Down');
+    const [loading, setLoading] = useState(false);
+
+    const fetchStatus = useCallback(async () => {
+        try {
+            const result = await getAgentStatus(agent.id);
+            if (result.status === 'success' && result.data) {
+                setStatus(result.data.status);
+                setStatusText(result.data.statusText);
+            }
+        } catch {
+            // Keep current status on error
+        }
+    }, [agent.id]);
+
+    useEffect(() => {
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 5000);
+        return () => clearInterval(interval);
+    }, [fetchStatus]);
+
     const openTab = (tab: string) => {
         router.push(`/project/agent/${agent.id}?tabName=${tab}`);
     };
+
+    const handleStart = async () => {
+        setLoading(true);
+        await Toast.fromAction(
+            () => startAgent(agent.id),
+            'Agent started',
+            'Starting Agent...',
+        );
+        setLoading(false);
+        fetchStatus();
+    };
+
+    const handleStop = async () => {
+        setLoading(true);
+        await Toast.fromAction(
+            () => stopAgent(agent.id),
+            'Agent stopped',
+            'Stopping Agent...',
+        );
+        setLoading(false);
+        fetchStatus();
+    };
+
+    const isRunning = status === 'DEPLOYED' || status === 'DEPLOYING';
+    const isStopped = status === 'SHUTDOWN' || status === 'ERROR';
 
     return (
         <Tabs value={tabName} onValueChange={openTab}>
@@ -58,14 +121,40 @@ export default function AgentDetailClient({ agent, role }: {
                             </dl>
                         </CardContent>
                     </Card>
-                    <Card className="border-dashed">
+                    <Card>
                         <CardHeader>
                             <CardTitle>Agent Status</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Agent runtime controls and status will be available in a future update.
-                            </p>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                                {!readonly && (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={handleStart}
+                                            disabled={isRunning || loading}
+                                            variant="secondary"
+                                            size="sm"
+                                        >
+                                            <Play className="h-4 w-4 mr-1" />
+                                            Start
+                                        </Button>
+                                        <Button
+                                            onClick={handleStop}
+                                            disabled={isStopped || loading}
+                                            variant="secondary"
+                                            size="sm"
+                                        >
+                                            <Square className="h-4 w-4 mr-1" />
+                                            Stop
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
