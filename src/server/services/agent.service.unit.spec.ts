@@ -169,7 +169,7 @@ describe('agent.service', () => {
 
             expect(agentSandboxAdapter.reconcileSandboxTemplate).toHaveBeenCalledWith({
                 name: expect.stringMatching(/^agent-/),
-                namespace: 'Agent Project',
+                namespace: 'proj-test-agent',
                 image: DEFAULT_IMAGE,
             });
         });
@@ -189,7 +189,7 @@ describe('agent.service', () => {
 
             expect(agentSandboxAdapter.reconcileSandboxWarmPool).toHaveBeenCalledWith({
                 name: expect.stringMatching(/^agent-/),
-                namespace: 'Agent Project',
+                namespace: 'proj-test-agent',
                 templateName: expect.stringMatching(/^agent-/),
                 replicas: 0,
             });
@@ -273,18 +273,18 @@ describe('agent.service', () => {
         it('deletes sandbox resources then DB record', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({
                 ...mockAgent('agent-1', 'Agent One'),
-                project: { name: 'Agent Project' },
+                project: { id: 'proj-test-agent' },
             } as any);
 
             await agentService.deleteById('agent-1');
 
             expect(agentSandboxAdapter.deleteSandboxWarmPool).toHaveBeenCalledWith(
                 'agent-1',
-                'Agent Project',
+                'proj-test-agent',
             );
             expect(agentSandboxAdapter.deleteSandboxTemplate).toHaveBeenCalledWith(
                 'agent-1',
-                'Agent Project',
+                'proj-test-agent',
             );
             expect(dataAccess.client.agent.delete).toHaveBeenCalledWith({
                 where: { id: 'agent-1' },
@@ -301,7 +301,7 @@ describe('agent.service', () => {
 
     describe('saveConfig', () => {
         const agentId = 'agent-test-1';
-        const namespace = 'Agent Project';
+        const namespace = 'proj-test';
         const existingAgent = {
             ...mockAgent(agentId, 'Test Agent'),
             image: null,

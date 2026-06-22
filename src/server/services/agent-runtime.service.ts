@@ -126,7 +126,7 @@ class AgentRuntimeService {
             decryptedEnvVars,
         );
 
-        const namespace = agent.project.name;
+        const namespace = agent.project.id;
         await agentSandboxAdapter.createOrReplaceSecret(
             this.toSecretName(agentId),
             namespace,
@@ -158,7 +158,7 @@ class AgentRuntimeService {
      */
     async stopAgent(agentId: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.name;
+        const namespace = agent.project.id;
 
         await agentSandboxAdapter.deleteSandboxClaim(agentId, namespace);
         await agentSandboxAdapter.deleteSecret(this.toSecretName(agentId), namespace);
@@ -176,7 +176,7 @@ class AgentRuntimeService {
      */
     async getAgentStatus(agentId: string): Promise<DeploymentStatus> {
         const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.name;
+        const namespace = agent.project.id;
 
         const claim = await agentSandboxAdapter.getSandboxClaim(agentId, namespace);
 

@@ -29,7 +29,7 @@ export interface SandboxClaimSpec {
 }
 
 const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
-const SANDBOX_API_VERSION = 'v1beta1';
+const SANDBOX_API_VERSION = 'v1alpha1'; // or 'v1beta1'?
 const TEMPLATE_PLURAL = 'sandboxtemplates';
 const WARMPOOL_PLURAL = 'sandboxwarmpools';
 const CLAIM_PLURAL = 'sandboxclaims';

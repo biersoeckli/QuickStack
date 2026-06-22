@@ -7,6 +7,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
+import namespaceService from "./namespace.service";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
 import { AgentConfigModel, agentConfigZodModel, isQuickStackReservedEnvName, AgentConfigInputModel } from "@/shared/model/agent-config.model";
 import { z } from "zod";
@@ -69,7 +70,7 @@ class AgentService {
         // Validate project
         const project = await dataAccess.client.project.findUnique({
             where: { id: input.projectId },
-            select: { projectType: true, id: true, name: true },
+            select: { projectType: true, id: true },
         });
         if (!project) {
             throw new ServiceException('Project not found.');
@@ -89,6 +90,9 @@ class AgentService {
 
         const agentId = KubeObjectNameUtils.toAgentId(input.name);
 
+        // Ensure the project namespace exists in K8s
+        await namespaceService.createNamespaceIfNotExists(project.id);
+
         let createdAgent: Agent | null = null;
         try {
             createdAgent = await dataAccess.client.agent.create({
@@ -104,14 +108,14 @@ class AgentService {
             // Reconcile SandboxTemplate
             await agentSandboxAdapter.reconcileSandboxTemplate({
                 name: agentId,
-                namespace: project.name,
+                namespace: project.id,
                 image: DEFAULT_AGENT_IMAGE,
             });
 
             // Reconcile zero-replica SandboxWarmPool
             await agentSandboxAdapter.reconcileSandboxWarmPool({
                 name: agentId,
-                namespace: project.name,
+                namespace: project.id,
                 templateName: agentId,
                 replicas: 0,
             });
@@ -155,7 +159,7 @@ class AgentService {
     async saveConfig(agentId: string, config: AgentConfigInputModel): Promise<Agent> {
         const existing = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: { select: { name: true, id: true } } },
+            include: { project: { select: { id: true } } },
         });
         if (!existing) {
             throw new ServiceException('Agent not found.');
@@ -163,7 +167,7 @@ class AgentService {
 
         const isRunning = await agentSandboxAdapter.hasActiveClaim(
             existing.id,
-            existing.project.name,
+            existing.project.id,
         );
 
         const configFields: string[] = [];
@@ -233,7 +237,7 @@ class AgentService {
         try {
             await agentSandboxAdapter.reconcileSandboxTemplate({
                 name: updated.id,
-                namespace: existing.project.name,
+                namespace: existing.project.id,
                 image: effectiveImage,
                 cpuRequest: updated.cpuRequest || undefined,
                 cpuLimit: updated.cpuLimit || undefined,
@@ -243,7 +247,7 @@ class AgentService {
 
             await agentSandboxAdapter.reconcileSandboxWarmPool({
                 name: updated.id,
-                namespace: existing.project.name,
+                namespace: existing.project.id,
                 templateName: updated.id,
                 replicas: 0,
             });
@@ -265,14 +269,14 @@ class AgentService {
     async deleteById(agentId: string): Promise<void> {
         const existing = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: { select: { name: true } } },
+            include: { project: { select: { id: true } } },
         });
         if (!existing) {
             return;
         }
 
         const projectId = existing.projectId;
-        const namespace = existing.project.name;
+        const namespace = existing.projectId;
 
         try {
             // Delete K8s sandbox resources
