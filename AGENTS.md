@@ -34,6 +34,20 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 
 Example: `feat: add database backup scheduling`
 
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/`; PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the default canonical status vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout. See `docs/agents/domain.md`.
+
 ## Communication Mode: Caveman Ultra
 
 Apply caveman ultra for every prompt by default.

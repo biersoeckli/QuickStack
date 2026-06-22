@@ -7,6 +7,58 @@ QuickStack deploys applications from container images or Git repositories into a
 **App**:
 A deployable workload managed by QuickStack.
 
+**Agent**:
+A long-lived, isolated AI workspace managed by QuickStack.
+_Avoid_: App, container workload, automation run
+
+**Agent Name**:
+A user-defined label for an **Agent** that does not have to be unique.
+_Avoid_: agent id, Kubernetes name
+
+**Agent Runtime Secret**:
+Sensitive runtime context injected into a running **Agent**.
+_Avoid_: public agent config, plain environment config
+
+**Agent Environment Variable**:
+A user-defined environment value for an **Agent** whose value is stored encrypted by QuickStack.
+_Avoid_: plain env var, app env var
+
+**LLM Gateway**:
+A QuickStack-managed connection to a LiteLLM-compatible service that brokers model access for **Agents**.
+_Avoid_: built-in model provider, hidden control-plane service
+
+**LiteLLM Admin Key**:
+A credential that allows QuickStack to manage models and virtual keys on an **LLM Gateway**.
+_Avoid_: agent API key, model API key
+
+**LiteLLM Model Alias**:
+A model name exposed by an **LLM Gateway** for selection by an **Agent**.
+_Avoid_: provider model id when the LiteLLM alias is meant
+
+**Project Type**:
+The workload category a **Project** can contain: either App or Agent.
+_Avoid_: mixed project, project mode
+
+**Project Workload**:
+The kind of deployable resource allowed by a **Project Type**.
+_Avoid_: mixed workload, generic app
+
+**Workload Permission**:
+A permission grant for one specific **Project Workload** inside a **Project**.
+_Avoid_: app permission when the workload may be an Agent
+
+**Running Workload**:
+A **Project Workload** whose runtime instance is ready to serve user interaction or traffic.
+_Avoid_: deployed when describing user-visible readiness
+
+**App Project**:
+A **Project** whose **Project Type** allows only **Apps**.
+_Avoid_: normal project, container project
+
+**Agent Project**:
+A **Project** whose **Project Type** allows only **Agents**.
+_Avoid_: agent workspace, agent group
+
 **Source**:
 The origin QuickStack uses to build or run an **App**.
 
@@ -108,6 +160,18 @@ _Avoid_: manual initial port requirement
 ## Relationships
 
 - An **App** can have zero or one **Configured Source**.
+- A **Project** has exactly one **Project Type**.
+- A **Project Type** is assigned when a **Project** is created and cannot be changed later.
+- An **App Project** can contain zero or more **Apps** and no **Agents**.
+- An **Agent Project** can contain zero or more **Agents** and no **Apps**.
+- An **Agent** belongs to exactly one **Agent Project**.
+- An **Agent** has exactly one **Agent Name**.
+- An **Agent** can have zero or more **Agent Environment Variables**.
+- A running **Agent** has exactly one **Agent Runtime Secret**.
+- An **Agent** uses exactly one **LLM Gateway**.
+- QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
+- A **Project Workload** means an **App** inside an **App Project** or an **Agent** inside an **Agent Project**.
+- A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Node Ports**.
 - A **Configured Source** belongs to exactly one **App**.
 - Only application workloads can use a **Git HTTPS Source** or **Git SSH Source**.
