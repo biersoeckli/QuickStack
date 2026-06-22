@@ -11,7 +11,11 @@ import dbGateService from "@/server/services/db-tool-services/dbgate.service";
 import fileBrowserService from "@/server/services/file-browser-service";
 import phpMyAdminService from "@/server/services/db-tool-services/phpmyadmin.service";
 import pgAdminService from "@/server/services/db-tool-services/pgadmin.service";
-import { UserGroupUtils } from "@/shared/utils/role.utils";
+import {
+    ensureCreateProjectWorkloadInProject,
+    ensureDeleteProjectWorkloadInProject,
+    RequesterIdentity,
+} from "@/server/utils/shared-authorization.utils";
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -20,9 +24,8 @@ const createAppSchema = z.object({
 export const createApp = async (appName: string, projectId: string, appId?: string) =>
     saveFormAction({ appName }, createAppSchema, async (validatedData) => {
         const session = await getAuthUserSession();
-        if (!UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId)) {
-            throw new ServiceException("You are not allowed to create new apps.");
-        }
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureCreateProjectWorkloadInProject(identity, projectId);
 
         const returnData = await appService.save({
             id: appId ?? undefined,
@@ -36,9 +39,8 @@ export const createApp = async (appName: string, projectId: string, appId?: stri
 export const createAppFromTemplate = async (prevState: any, inputData: AppTemplateModel, projectId: string) =>
     saveFormAction(inputData, appTemplateZodModel, async (validatedData) => {
         const session = await getAuthUserSession();
-        if (!UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId)) {
-            throw new ServiceException("You are not allowed to create new apps.");
-        }
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureCreateProjectWorkloadInProject(identity, projectId);
         if (validatedData.templates.some(x => x.inputSettings.some(y => !y.randomGeneratedIfEmpty && !y.value))) {
             throw new ServiceException('Please fill out all required fields.');
         }
@@ -49,10 +51,9 @@ export const createAppFromTemplate = async (prevState: any, inputData: AppTempla
 export const deleteApp = async (appId: string) =>
     simpleAction(async () => {
         const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
         const app = await appService.getExtendedById(appId);
-        if (!UserGroupUtils.sessionCanDeleteAppsForProject(session, app.projectId)) {
-            throw new ServiceException("You are not allowed to delete apps in this project.");
-        }
+        ensureDeleteProjectWorkloadInProject(identity, app.projectId);
         // First delete external services wich might be running
         await dbGateService.deleteToolForAppIfExists(appId);
         await phpMyAdminService.deleteToolForAppIfExists(appId);

@@ -1,4 +1,3 @@
-import { RoleAppPermission } from "@prisma/client";
 import { Session } from "next-auth";
 import { RolePermissionEnum } from "./role-extended.model.ts";
 
@@ -7,22 +6,29 @@ export interface UserSession {
     userGroup?: UserGroupExtended;
 }
 
+export type ProjectWorkloadPermission = {
+    workloadId: string;
+    permission: RolePermissionEnum | string;
+};
+
+export type ProjectRolePermission = {
+    projectId: string;
+    project: {
+        projectWorkloads: {
+            id: string;
+            name: string;
+        }[];
+    };
+    createWorkloads: boolean;
+    deleteWorkloads: boolean;
+    writeWorkloads: boolean;
+    readWorkloads: boolean;
+    workloadPermissions: ProjectWorkloadPermission[];
+};
+
 export type UserGroupExtended = {
     name: string;
     id: string;
     canAccessBackups: boolean;
-    roleProjectPermissions: {
-        projectId: string;
-        project: {
-            apps: {
-                id: string;
-                name: string;
-            }[];
-        };
-        createApps: boolean;
-        deleteApps: boolean;
-        writeApps: boolean;
-        readApps: boolean;
-        roleAppPermissions: RoleAppPermission[];
-    }[];
+    roleProjectPermissions: ProjectRolePermission[];
 };

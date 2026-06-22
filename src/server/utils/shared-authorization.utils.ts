@@ -21,19 +21,27 @@ export function ensureAdmin(identity: RequesterIdentity) {
 }
 
 export function ensureReadApp(identity: RequesterIdentity, appId: string) {
+    ensureReadProjectWorkload(identity, appId);
+}
+
+export function ensureWriteApp(identity: RequesterIdentity, appId: string) {
+    ensureWriteProjectWorkload(identity, appId);
+}
+
+export function ensureReadProjectWorkload(identity: RequesterIdentity, workloadId: string) {
     if (UserGroupUtils.isAdmin(identity.session)) {
         return;
     }
-    if (!identity.session.userGroup || !UserGroupUtils.sessionHasReadAccessForApp(identity.session, appId)) {
+    if (!identity.session.userGroup || !UserGroupUtils.sessionHasReadAccessForProjectWorkload(identity.session, workloadId)) {
         throw new ServiceException('User is not authorized for this action.');
     }
 }
 
-export function ensureWriteApp(identity: RequesterIdentity, appId: string) {
+export function ensureWriteProjectWorkload(identity: RequesterIdentity, workloadId: string) {
     if (UserGroupUtils.isAdmin(identity.session)) {
         return;
     }
-    if (!identity.session.userGroup || !UserGroupUtils.sessionHasWriteAccessForApp(identity.session, appId)) {
+    if (!identity.session.userGroup || !UserGroupUtils.sessionHasWriteAccessForProjectWorkload(identity.session, workloadId)) {
         throw new ServiceException('User is not authorized for this action.');
     }
 }
@@ -48,19 +56,27 @@ export function ensureReadProject(identity: RequesterIdentity, projectId: string
 }
 
 export function ensureCreateAppInProject(identity: RequesterIdentity, projectId: string) {
+    ensureCreateProjectWorkloadInProject(identity, projectId);
+}
+
+export function ensureDeleteAppInProject(identity: RequesterIdentity, projectId: string) {
+    ensureDeleteProjectWorkloadInProject(identity, projectId);
+}
+
+export function ensureCreateProjectWorkloadInProject(identity: RequesterIdentity, projectId: string) {
     if (UserGroupUtils.isAdmin(identity.session)) {
         return;
     }
-    if (!identity.session.userGroup || !UserGroupUtils.sessionCanCreateNewAppsForProject(identity.session, projectId)) {
+    if (!identity.session.userGroup || !UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(identity.session, projectId)) {
         throw new ServiceException('User is not authorized for this action.');
     }
 }
 
-export function ensureDeleteAppInProject(identity: RequesterIdentity, projectId: string) {
+export function ensureDeleteProjectWorkloadInProject(identity: RequesterIdentity, projectId: string) {
     if (UserGroupUtils.isAdmin(identity.session)) {
         return;
     }
-    if (!identity.session.userGroup || !UserGroupUtils.sessionCanDeleteAppsForProject(identity.session, projectId)) {
+    if (!identity.session.userGroup || !UserGroupUtils.sessionCanDeleteProjectWorkloadsForProject(identity.session, projectId)) {
         throw new ServiceException('User is not authorized for this action.');
     }
 }

@@ -31,14 +31,14 @@ import { UserGroupExtended } from "@/shared/model/sim-session.model"
 
 type UiProjectPermission = {
   projectId: string;
-  createApps: boolean;
-  deleteApps: boolean;
-  writeApps: boolean;
-  readApps: boolean;
+  createWorkloads: boolean;
+  deleteWorkloads: boolean;
+  writeWorkloads: boolean;
+  readWorkloads: boolean;
   setPermissionsPerApp: boolean;
-  roleAppPermissions: {
-    appId: string;
-    appName: string;
+  workloadPermissions: {
+    workloadId: string;
+    workloadName: string;
     permission?: RolePermissionEnum;
   }[];
 };
@@ -70,13 +70,13 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
         }
         return {
           projectId: project.id,
-          createApps: projectPermission.createApps,
-          deleteApps: projectPermission.deleteApps,
-          writeApps: projectPermission.writeApps,
-          readApps: projectPermission.readApps,
-          roleAppPermissions: projectPermission.roleAppPermissions.filter(ap => !!ap.permission).map((appPerm) => {
+          createWorkloads: projectPermission.createWorkloads,
+          deleteWorkloads: projectPermission.deleteWorkloads,
+          writeWorkloads: projectPermission.writeWorkloads,
+          readWorkloads: projectPermission.readWorkloads,
+          workloadPermissions: projectPermission.workloadPermissions.filter(ap => !!ap.permission).map((appPerm) => {
             return {
-              appId: appPerm.appId,
+              workloadId: appPerm.workloadId,
               permission: appPerm.permission!,
             };
           }),
@@ -99,20 +99,20 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
       // Initialize app permissions based on role data
       const initialPermissions = projects.map(project => {
         const existingPermission = userGroup.roleProjectPermissions?.find(p => p.projectId === project.id);
-        const roleAppPermissions = project.apps.map(app => ({
-          appId: app.id,
-          appName: app.name,
-          permission: existingPermission?.roleAppPermissions.find(appPerm => appPerm.appId === app.id)?.permission
+        const workloadPermissions = project.apps.map(app => ({
+          workloadId: app.id,
+          workloadName: app.name,
+          permission: existingPermission?.workloadPermissions.find(appPerm => appPerm.workloadId === app.id)?.permission
         }));
-        const hasNoAppRolePermissionsSet = roleAppPermissions.every(appPerm => !appPerm.permission);
+        const hasNoWorkloadPermissionsSet = workloadPermissions.every(appPerm => !appPerm.permission);
         return {
           projectId: project.id,
-          createApps: existingPermission?.createApps || false,
-          deleteApps: existingPermission?.deleteApps || false,
-          writeApps: existingPermission?.writeApps || false,
-          readApps: existingPermission?.readApps || false,
-          setPermissionsPerApp: (existingPermission?.roleAppPermissions.length ?? 0) > 0 || false,
-          roleAppPermissions: hasNoAppRolePermissionsSet ? [] : roleAppPermissions
+          createWorkloads: existingPermission?.createWorkloads || false,
+          deleteWorkloads: existingPermission?.deleteWorkloads || false,
+          writeWorkloads: existingPermission?.writeWorkloads || false,
+          readWorkloads: existingPermission?.readWorkloads || false,
+          setPermissionsPerApp: (existingPermission?.workloadPermissions.length ?? 0) > 0 || false,
+          workloadPermissions: hasNoWorkloadPermissionsSet ? [] : workloadPermissions
         } as UiProjectPermission;
       });
       setProjectPermissions(initialPermissions);
@@ -120,12 +120,12 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
       // Initialize with all apps having no permissions
       const initialPermissions = projects.map(project => ({
         projectId: project.id,
-        createApps: false,
-        deleteApps: false,
-        writeApps: false,
-        readApps: false,
+        createWorkloads: false,
+        deleteWorkloads: false,
+        writeWorkloads: false,
+        readWorkloads: false,
         setPermissionsPerApp: false,
-        roleAppPermissions: []
+        workloadPermissions: []
       } as UiProjectPermission));
       setProjectPermissions(initialPermissions);
     }
@@ -135,7 +135,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
   const handleReadChange = (projectId: string, checked: boolean) => {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
-        return { ...perm, readApps: checked };
+        return { ...perm, readWorkloads: checked };
       }
       return perm;
     }));
@@ -144,7 +144,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
   const handleReadWriteChange = (projectId: string, checked: boolean) => {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
-        return { ...perm, writeApps: checked, readApps: checked ? true : perm.writeApps };
+        return { ...perm, writeWorkloads: checked, readWorkloads: checked ? true : perm.writeWorkloads };
       }
       return perm;
     }));
@@ -153,7 +153,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
   const handleCreateChange = (projectId: string, checked: boolean) => {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
-        return { ...perm, createApps: checked, readApps: checked ? true : perm.createApps };
+        return { ...perm, createWorkloads: checked, readWorkloads: checked ? true : perm.createWorkloads };
       }
       return perm;
     }));
@@ -162,7 +162,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
   const handleDeleteChange = (projectId: string, checked: boolean) => {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
-        return { ...perm, deleteApps: checked, readApps: checked ? true : perm.deleteApps };
+        return { ...perm, deleteWorkloads: checked, readWorkloads: checked ? true : perm.deleteWorkloads };
       }
       return perm;
     }));
@@ -172,18 +172,18 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
         const appPermissions = checked ? projects.find(p => p.id === projectId)?.apps.map(app => ({
-          appId: app.id,
-          appName: app.name,
+          workloadId: app.id,
+          workloadName: app.name,
           permission: undefined
         })) || [] : [];
         return {
           ...perm,
           setPermissionsPerApp: checked,
-          roleAppPermissions: appPermissions,
-          createApps: false,
-          deleteApps: false,
-          writeApps: false,
-          readApps: false
+          workloadPermissions: appPermissions,
+          createWorkloads: false,
+          deleteWorkloads: false,
+          writeWorkloads: false,
+          readWorkloads: false
         };
       }
       return perm;
@@ -192,11 +192,11 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
 
   const handleAppReadChange = (appId: string, checked: boolean) =>
     setProjectPermissions(prev => prev.map(perm => {
-      if (perm.roleAppPermissions.some(appPerm => appPerm.appId === appId)) {
+      if (perm.workloadPermissions.some(appPerm => appPerm.workloadId === appId)) {
         return {
           ...perm,
-          roleAppPermissions: perm.roleAppPermissions.map(appPerm => {
-            if (appPerm.appId === appId) {
+          workloadPermissions: perm.workloadPermissions.map(appPerm => {
+            if (appPerm.workloadId === appId) {
               return { ...appPerm, permission: checked ? RolePermissionEnum.READ : undefined };
             }
             return appPerm;
@@ -208,11 +208,11 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
 
   const handleAppReadWriteChange = (appId: string, checked: boolean) =>
     setProjectPermissions(prev => prev.map(perm => {
-      if (perm.roleAppPermissions.some(appPerm => appPerm.appId === appId)) {
+      if (perm.workloadPermissions.some(appPerm => appPerm.workloadId === appId)) {
         return {
           ...perm,
-          roleAppPermissions: perm.roleAppPermissions.map(appPerm => {
-            if (appPerm.appId === appId) {
+          workloadPermissions: perm.workloadPermissions.map(appPerm => {
+            if (appPerm.workloadId === appId) {
               return { ...appPerm, permission: checked ? RolePermissionEnum.READWRITE : undefined };
             }
             return appPerm;
@@ -277,16 +277,16 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                     />
 
                     <div className="pt-3">
-                      <h3 className="text-sm font-medium mb-2">App Permissions</h3>
+                      <h3 className="text-sm font-medium mb-2">Workload Permissions</h3>
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Project</TableHead>
                             <TableHead>Individual Permissions</TableHead>
-                            <TableHead>Read Apps</TableHead>
-                            <TableHead>Edit/Deploy Apps</TableHead>
-                            <TableHead>Create Apps</TableHead>
-                            <TableHead>Delete Apps</TableHead>
+                            <TableHead>Read Workloads</TableHead>
+                            <TableHead>Edit/Deploy Workloads</TableHead>
+                            <TableHead>Create Workloads</TableHead>
+                            <TableHead>Delete Workloads</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -294,7 +294,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                             const permission = projectPermissions.find(p => p.projectId === project.id);
                             return (
                               <>
-                                <TableRow key={project.id} className={(permission?.roleAppPermissions.length ?? 0) === 0 ? 'border-b-gray-400' : ''} >
+                                <TableRow key={project.id} className={(permission?.workloadPermissions.length ?? 0) === 0 ? 'border-b-gray-400' : ''} >
                                   <TableCell className="font-semibold">{project.name}</TableCell>
                                   <TableCell>
                                     <Checkbox
@@ -304,12 +304,12 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                                     />
                                   </TableCell>
                                   {permission?.setPermissionsPerApp ?
-                                    <TableHead>App</TableHead>
+                                    <TableHead>Workload</TableHead>
                                     : <TableCell>
                                       <Checkbox
                                         id={`read-${project.id}`}
-                                        disabled={permission?.writeApps || permission?.deleteApps || permission?.createApps}
-                                        checked={permission?.readApps || false}
+                                        disabled={permission?.writeWorkloads || permission?.deleteWorkloads || permission?.createWorkloads}
+                                        checked={permission?.readWorkloads || false}
                                         onCheckedChange={(checked) => handleReadChange(project.id, !!checked)}
                                       />
                                     </TableCell>}
@@ -317,7 +317,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                                     {!permission?.setPermissionsPerApp &&
                                       <Checkbox
                                         id={`write-${project.id}`}
-                                        checked={permission?.writeApps || false}
+                                        checked={permission?.writeWorkloads || false}
                                         onCheckedChange={(checked) => handleReadWriteChange(project.id, !!checked)}
                                       />}
                                   </TableCell>
@@ -326,7 +326,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                                     : <TableCell>
                                       <Checkbox
                                         id={`create-${project.id}`}
-                                        checked={permission?.createApps || false}
+                                        checked={permission?.createWorkloads || false}
                                         onCheckedChange={(checked) => handleCreateChange(project.id, !!checked)}
                                       />
                                     </TableCell>}
@@ -335,33 +335,33 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
                                     : <TableCell>
                                       <Checkbox
                                         id={`delete-${project.id}`}
-                                        checked={permission?.deleteApps || false}
+                                        checked={permission?.deleteWorkloads || false}
                                         onCheckedChange={(checked) => handleDeleteChange(project.id, !!checked)}
                                       />
                                     </TableCell>}
                                 </TableRow>
 
 
-                                {(permission?.roleAppPermissions.length ?? 0) > 0 &&
+                                {(permission?.workloadPermissions.length ?? 0) > 0 &&
                                   <>
-                                    {permission?.roleAppPermissions.map((roleAppPermission, index) =>
+                                    {permission?.workloadPermissions.map((roleAppPermission, index) =>
 
-                                      <TableRow key={roleAppPermission.appId} className={permission.roleAppPermissions.length - 1 === index ? 'border-b-gray-400' : ''}>
+                                      <TableRow key={roleAppPermission.workloadId} className={permission.workloadPermissions.length - 1 === index ? 'border-b-gray-400' : ''}>
                                         <TableCell></TableCell>
                                         <TableCell></TableCell>
-                                        <TableCell colSpan={2}>{roleAppPermission.appName}</TableCell>
+                                        <TableCell colSpan={2}>{roleAppPermission.workloadName}</TableCell>
                                         <TableCell>
                                           <Checkbox
-                                            id={`app-read-${roleAppPermission.appId}`}
+                                            id={`app-read-${roleAppPermission.workloadId}`}
                                             checked={roleAppPermission.permission === RolePermissionEnum.READ}
-                                            onCheckedChange={(checked) => handleAppReadChange(roleAppPermission.appId, !!checked)}
+                                            onCheckedChange={(checked) => handleAppReadChange(roleAppPermission.workloadId, !!checked)}
                                           />
                                         </TableCell>
                                         <TableCell>
                                           <Checkbox
-                                            id={`app-readwrite-${roleAppPermission.appId}`}
+                                            id={`app-readwrite-${roleAppPermission.workloadId}`}
                                             checked={roleAppPermission.permission === RolePermissionEnum.READWRITE}
-                                            onCheckedChange={(checked) => handleAppReadWriteChange(roleAppPermission.appId, !!checked)}
+                                            onCheckedChange={(checked) => handleAppReadWriteChange(roleAppPermission.workloadId, !!checked)}
                                           />
                                         </TableCell>
                                       </TableRow>

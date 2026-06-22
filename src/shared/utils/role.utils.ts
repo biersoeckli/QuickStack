@@ -13,42 +13,45 @@ export class UserGroupUtils {
             return false;
         }
 
-        if (projectPermission.roleAppPermissions.length > 0) {
+        if (projectPermission.workloadPermissions.length > 0) {
             return true;
         }
 
-        return projectPermission.readApps;
+        return projectPermission.readWorkloads;
     }
 
     private static getProjectPermissionForProjectId(session: UserSession, projectId: string) {
         return session.userGroup?.roleProjectPermissions?.find((projectPermission) => projectPermission.projectId === projectId);
     }
 
-    private static getProjectPermissionForAppId(session: UserSession, appId: string) {
+    private static getProjectPermissionForWorkloadId(session: UserSession, workloadId: string) {
         return session.userGroup?.roleProjectPermissions?.find((projectPermission) => {
-            return projectPermission.project?.apps?.some(app => app.id === appId);
+            return projectPermission.project?.projectWorkloads?.some(workload => workload.id === workloadId);
         });
     }
 
-    static getRolePermissionForApp(session: UserSession, appId: string): RolePermissionEnum | null {
+    static getRolePermissionForProjectWorkload(session: UserSession, workloadId: string): RolePermissionEnum | null {
         if (this.isAdmin(session)) {
             return RolePermissionEnum.READWRITE;
         }
-        const projectPermission = this.getProjectPermissionForAppId(session, appId);
+        const projectPermission = this.getProjectPermissionForWorkloadId(session, workloadId);
         if (!projectPermission) {
             return null;
         }
-        if (projectPermission?.roleAppPermissions.length > 0) {
-            return (projectPermission.roleAppPermissions.find(app => app.appId === appId)?.permission ?? null) as RolePermissionEnum | null;
+        if (projectPermission.workloadPermissions.length > 0) {
+            return (projectPermission.workloadPermissions.find(workload => workload.workloadId === workloadId)?.permission ?? null) as RolePermissionEnum | null;
         }
-        // If no roleAppPermissions are defined, we fallback to the projectPermission
-        if (projectPermission.writeApps) {
+        if (projectPermission.writeWorkloads) {
             return RolePermissionEnum.READWRITE;
         }
-        if (projectPermission.readApps) {
+        if (projectPermission.readWorkloads) {
             return RolePermissionEnum.READ;
         }
         return null;
+    }
+
+    static getRolePermissionForApp(session: UserSession, appId: string): RolePermissionEnum | null {
+        return this.getRolePermissionForProjectWorkload(session, appId);
     }
 
     static sessionHasAccessToBackups(session: UserSession) {
@@ -58,7 +61,7 @@ export class UserGroupUtils {
         return !!session.userGroup?.canAccessBackups;
     }
 
-    static sessionCanCreateNewAppsForProject(session: UserSession, projectId: string) {
+    static sessionCanCreateProjectWorkloadsForProject(session: UserSession, projectId: string) {
         if (this.isAdmin(session)) {
             return true;
         }
@@ -66,46 +69,63 @@ export class UserGroupUtils {
         if (!projectPermission) {
             return false;
         }
-        return !!projectPermission.createApps;
+        return !!projectPermission.createWorkloads;
+    }
+
+    static sessionCanCreateNewAppsForProject(session: UserSession, projectId: string) {
+        return this.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    }
+
+    static sessionCanDeleteProjectWorkloadsForProject(session: UserSession, projectId: string) {
+        if (this.isAdmin(session)) {
+            return true;
+        }
+        const projectPermission = this.getProjectPermissionForProjectId(session, projectId);
+        if (!projectPermission) {
+            return false;
+        }
+        return !!projectPermission.deleteWorkloads;
     }
 
     static sessionCanDeleteAppsForProject(session: UserSession, projectId: string) {
+        return this.sessionCanDeleteProjectWorkloadsForProject(session, projectId);
+    }
+
+    static sessionIsReadOnlyForProjectWorkload(session: UserSession, workloadId: string) {
         if (this.isAdmin(session)) {
-            return true;
-        }
-        const projectPermission = this.getProjectPermissionForProjectId(session, projectId);
-        if (!projectPermission) {
             return false;
         }
-        return !!projectPermission.deleteApps;
+        const rolePermission = this.getRolePermissionForProjectWorkload(session, workloadId);
+        const hasReadAccess = rolePermission === RolePermissionEnum.READ;
+        const hasWriteAccess = rolePermission === RolePermissionEnum.READWRITE;
+        return !!hasReadAccess && !hasWriteAccess;
     }
 
     static sessionIsReadOnlyForApp(session: UserSession, appId: string) {
+        return this.sessionIsReadOnlyForProjectWorkload(session, appId);
+    }
+
+    static sessionHasReadAccessForProjectWorkload(session: UserSession, workloadId: string) {
         if (this.isAdmin(session)) {
-            return false;
+            return true;
         }
-        const rolePermission = this.getRolePermissionForApp(session, appId);
-        const roleHasReadAccessForApp = rolePermission === RolePermissionEnum.READ;
-        const roleHasWriteAccessForApp = rolePermission === RolePermissionEnum.READWRITE;
-        return !!roleHasReadAccessForApp && !roleHasWriteAccessForApp;
+        const rolePermission = this.getRolePermissionForProjectWorkload(session, workloadId);
+        return rolePermission === RolePermissionEnum.READ || rolePermission === RolePermissionEnum.READWRITE;
     }
 
     static sessionHasReadAccessForApp(session: UserSession, appId: string) {
+        return this.sessionHasReadAccessForProjectWorkload(session, appId);
+    }
+
+    static sessionHasWriteAccessForProjectWorkload(session: UserSession, workloadId: string) {
         if (this.isAdmin(session)) {
             return true;
         }
-        const rolePermission = this.getRolePermissionForApp(session, appId);
-        const roleHasReadAccessForApp = rolePermission === RolePermissionEnum.READ || rolePermission === RolePermissionEnum.READWRITE;
-        return !!roleHasReadAccessForApp;
+        return this.getRolePermissionForProjectWorkload(session, workloadId) === RolePermissionEnum.READWRITE;
     }
 
     static sessionHasWriteAccessForApp(session: UserSession, appId: string) {
-        if (this.isAdmin(session)) {
-            return true;
-        }
-        const rolePermission = this.getRolePermissionForApp(session, appId);
-        const roleHasReadAccessForApp = rolePermission === RolePermissionEnum.READWRITE;
-        return roleHasReadAccessForApp;
+        return this.sessionHasWriteAccessForProjectWorkload(session, appId);
     }
 
     static isAdmin(session: UserSession) {

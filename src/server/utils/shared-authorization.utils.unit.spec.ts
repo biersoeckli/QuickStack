@@ -5,9 +5,13 @@ import {
     ensureAdmin,
     ensureReadApp,
     ensureWriteApp,
+    ensureReadProjectWorkload,
+    ensureWriteProjectWorkload,
     ensureReadProject,
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
+    ensureCreateProjectWorkloadInProject,
+    ensureDeleteProjectWorkloadInProject,
     RequesterIdentity,
 } from "./shared-authorization.utils";
 
@@ -16,9 +20,13 @@ vi.mock("@/shared/utils/role.utils", () => ({
         isAdmin: vi.fn(),
         sessionHasReadAccessForApp: vi.fn(),
         sessionHasWriteAccessForApp: vi.fn(),
+        sessionHasReadAccessForProjectWorkload: vi.fn(),
+        sessionHasWriteAccessForProjectWorkload: vi.fn(),
         sessionHasReadAccessToProject: vi.fn(),
         sessionCanCreateNewAppsForProject: vi.fn(),
         sessionCanDeleteAppsForProject: vi.fn(),
+        sessionCanCreateProjectWorkloadsForProject: vi.fn(),
+        sessionCanDeleteProjectWorkloadsForProject: vi.fn(),
     },
 }));
 
@@ -76,7 +84,7 @@ describe("shared-authorization.utils", () => {
 
         it("does not throw when user has read access", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionHasReadAccessForApp.mockReturnValue(true);
+            mockUserGroupUtils.sessionHasReadAccessForProjectWorkload.mockReturnValue(true);
             const identity = makeIdentity();
             expect(() => ensureReadApp(identity, "app-1")).not.toThrow();
         });
@@ -89,7 +97,7 @@ describe("shared-authorization.utils", () => {
 
         it("throws when user lacks read access", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionHasReadAccessForApp.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasReadAccessForProjectWorkload.mockReturnValue(false);
             expect(() => ensureReadApp(makeIdentity(), "app-1")).toThrow(ServiceException);
         });
     });
@@ -102,7 +110,7 @@ describe("shared-authorization.utils", () => {
 
         it("does not throw when user has write access", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionHasWriteAccessForApp.mockReturnValue(true);
+            mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(true);
             expect(() => ensureWriteApp(makeIdentity(), "app-1")).not.toThrow();
         });
 
@@ -114,7 +122,7 @@ describe("shared-authorization.utils", () => {
 
         it("throws when user lacks write access", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionHasWriteAccessForApp.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(false);
             expect(() => ensureWriteApp(makeIdentity(), "app-1")).toThrow(ServiceException);
         });
     });
@@ -152,7 +160,7 @@ describe("shared-authorization.utils", () => {
 
         it("does not throw when user can create apps", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionCanCreateNewAppsForProject.mockReturnValue(true);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(true);
             expect(() => ensureCreateAppInProject(makeIdentity(), "proj-1")).not.toThrow();
         });
 
@@ -164,8 +172,22 @@ describe("shared-authorization.utils", () => {
 
         it("throws when user cannot create apps", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionCanCreateNewAppsForProject.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(false);
             expect(() => ensureCreateAppInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureCreateProjectWorkloadInProject", () => {
+        it("does not throw when user can create workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(true);
+            expect(() => ensureCreateProjectWorkloadInProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("throws when user cannot create workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(false);
+            expect(() => ensureCreateProjectWorkloadInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
         });
     });
 
@@ -177,7 +199,7 @@ describe("shared-authorization.utils", () => {
 
         it("does not throw when user can delete apps", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionCanDeleteAppsForProject.mockReturnValue(true);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(true);
             expect(() => ensureDeleteAppInProject(makeIdentity(), "proj-1")).not.toThrow();
         });
 
@@ -189,8 +211,54 @@ describe("shared-authorization.utils", () => {
 
         it("throws when user cannot delete apps", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
-            mockUserGroupUtils.sessionCanDeleteAppsForProject.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(false);
             expect(() => ensureDeleteAppInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
         });
     });
+
+    describe("ensureDeleteProjectWorkloadInProject", () => {
+        it("does not throw when user can delete workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(true);
+            expect(() => ensureDeleteProjectWorkloadInProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("throws when user cannot delete workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(false);
+            expect(() => ensureDeleteProjectWorkloadInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
+        });
+    });
 });
+    describe("ensureReadProjectWorkload", () => {
+        it("does not throw when user is admin", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(true);
+            expect(() => ensureReadProjectWorkload(makeIdentity(), "workload-1")).not.toThrow();
+        });
+
+        it("does not throw when user has workload read access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasReadAccessForProjectWorkload.mockReturnValue(true);
+            expect(() => ensureReadProjectWorkload(makeIdentity(), "workload-1")).not.toThrow();
+        });
+
+        it("throws when user lacks workload read access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasReadAccessForProjectWorkload.mockReturnValue(false);
+            expect(() => ensureReadProjectWorkload(makeIdentity(), "workload-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureWriteProjectWorkload", () => {
+        it("does not throw when user has workload write access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(true);
+            expect(() => ensureWriteProjectWorkload(makeIdentity(), "workload-1")).not.toThrow();
+        });
+
+        it("throws when user lacks workload write access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(false);
+            expect(() => ensureWriteProjectWorkload(makeIdentity(), "workload-1")).toThrow(ServiceException);
+        });
+    });
