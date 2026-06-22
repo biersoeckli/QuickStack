@@ -5,11 +5,15 @@ import {
     ensureAdmin,
     ensureReadApp,
     ensureWriteApp,
+    ensureReadAgent,
+    ensureWriteAgent,
     ensureReadProjectWorkload,
     ensureWriteProjectWorkload,
     ensureReadProject,
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
+    ensureCreateAgentInProject,
+    ensureDeleteAgentInProject,
     ensureCreateProjectWorkloadInProject,
     ensureDeleteProjectWorkloadInProject,
     RequesterIdentity,
@@ -260,5 +264,59 @@ describe("shared-authorization.utils", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
             mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(false);
             expect(() => ensureWriteProjectWorkload(makeIdentity(), "workload-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureReadAgent", () => {
+        it("does not throw when user is admin", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(true);
+            expect(() => ensureReadAgent(makeIdentity(), "agent-1")).not.toThrow();
+        });
+
+        it("throws when user lacks agent read access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasReadAccessForProjectWorkload.mockReturnValue(false);
+            expect(() => ensureReadAgent(makeIdentity(), "agent-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureWriteAgent", () => {
+        it("does not throw when user is admin", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(true);
+            expect(() => ensureWriteAgent(makeIdentity(), "agent-1")).not.toThrow();
+        });
+
+        it("throws when user lacks agent write access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessForProjectWorkload.mockReturnValue(false);
+            expect(() => ensureWriteAgent(makeIdentity(), "agent-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureCreateAgentInProject", () => {
+        it("does not throw when user can create workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(true);
+            expect(() => ensureCreateAgentInProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("throws when user cannot create workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanCreateProjectWorkloadsForProject.mockReturnValue(false);
+            expect(() => ensureCreateAgentInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureDeleteAgentInProject", () => {
+        it("does not throw when user can delete workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(true);
+            expect(() => ensureDeleteAgentInProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("throws when user cannot delete workloads", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionCanDeleteProjectWorkloadsForProject.mockReturnValue(false);
+            expect(() => ensureDeleteAgentInProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
         });
     });

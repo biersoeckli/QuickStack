@@ -4,14 +4,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import AgentConfigForm from "./general/agent-config-form";
 
-export default function AgentDetailClient({ agent }: {
+export default function AgentDetailClient({ agent, role }: {
     agent: AgentWithRelationsModel;
+    role: RolePermissionEnum | null;
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabName = searchParams.get('tabName') || 'general';
+    const readonly = role !== RolePermissionEnum.READWRITE;
 
     const openTab = (tab: string) => {
         router.push(`/project/agent/${agent.id}?tabName=${tab}`);
@@ -25,7 +28,7 @@ export default function AgentDetailClient({ agent }: {
             </TabsList>
 
             <TabsContent value="general" className="pt-4">
-                <AgentConfigForm agent={agent} readonly={false} />
+                <AgentConfigForm agent={agent} readonly={readonly} />
             </TabsContent>
 
             <TabsContent value="overview" className="pt-4">

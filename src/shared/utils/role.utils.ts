@@ -54,6 +54,10 @@ export class UserGroupUtils {
         return this.getRolePermissionForProjectWorkload(session, appId);
     }
 
+    static getRolePermissionForAgent(session: UserSession, agentId: string): RolePermissionEnum | null {
+        return this.getRolePermissionForProjectWorkload(session, agentId);
+    }
+
     static sessionHasAccessToBackups(session: UserSession) {
         if (this.isAdmin(session)) {
             return true;
@@ -76,6 +80,10 @@ export class UserGroupUtils {
         return this.sessionCanCreateProjectWorkloadsForProject(session, projectId);
     }
 
+    static sessionCanCreateNewAgentsForProject(session: UserSession, projectId: string) {
+        return this.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    }
+
     static sessionCanDeleteProjectWorkloadsForProject(session: UserSession, projectId: string) {
         if (this.isAdmin(session)) {
             return true;
@@ -88,6 +96,10 @@ export class UserGroupUtils {
     }
 
     static sessionCanDeleteAppsForProject(session: UserSession, projectId: string) {
+        return this.sessionCanDeleteProjectWorkloadsForProject(session, projectId);
+    }
+
+    static sessionCanDeleteAgentsForProject(session: UserSession, projectId: string) {
         return this.sessionCanDeleteProjectWorkloadsForProject(session, projectId);
     }
 
@@ -105,6 +117,10 @@ export class UserGroupUtils {
         return this.sessionIsReadOnlyForProjectWorkload(session, appId);
     }
 
+    static sessionIsReadOnlyForAgent(session: UserSession, agentId: string) {
+        return this.sessionIsReadOnlyForProjectWorkload(session, agentId);
+    }
+
     static sessionHasReadAccessForProjectWorkload(session: UserSession, workloadId: string) {
         if (this.isAdmin(session)) {
             return true;
@@ -117,6 +133,10 @@ export class UserGroupUtils {
         return this.sessionHasReadAccessForProjectWorkload(session, appId);
     }
 
+    static sessionHasReadAccessForAgent(session: UserSession, agentId: string) {
+        return this.sessionHasReadAccessForProjectWorkload(session, agentId);
+    }
+
     static sessionHasWriteAccessForProjectWorkload(session: UserSession, workloadId: string) {
         if (this.isAdmin(session)) {
             return true;
@@ -126,6 +146,10 @@ export class UserGroupUtils {
 
     static sessionHasWriteAccessForApp(session: UserSession, appId: string) {
         return this.sessionHasWriteAccessForProjectWorkload(session, appId);
+    }
+
+    static sessionHasWriteAccessForAgent(session: UserSession, agentId: string) {
+        return this.sessionHasWriteAccessForProjectWorkload(session, agentId);
     }
 
     static isAdmin(session: UserSession) {

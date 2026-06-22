@@ -99,11 +99,18 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
       // Initialize app permissions based on role data
       const initialPermissions = projects.map(project => {
         const existingPermission = userGroup.roleProjectPermissions?.find(p => p.projectId === project.id);
-        const workloadPermissions = project.apps.map(app => ({
-          workloadId: app.id,
-          workloadName: app.name,
-          permission: existingPermission?.workloadPermissions.find(appPerm => appPerm.workloadId === app.id)?.permission
-        }));
+        const workloadPermissions = [
+          ...project.apps.map(app => ({
+            workloadId: app.id,
+            workloadName: app.name,
+            permission: existingPermission?.workloadPermissions.find(appPerm => appPerm.workloadId === app.id)?.permission
+          })),
+          ...(project.agents ?? []).map(agent => ({
+            workloadId: agent.id,
+            workloadName: agent.name,
+            permission: existingPermission?.workloadPermissions.find(wp => wp.workloadId === agent.id)?.permission
+          }))
+        ];
         const hasNoWorkloadPermissionsSet = workloadPermissions.every(appPerm => !appPerm.permission);
         return {
           projectId: project.id,
@@ -171,15 +178,21 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
   const handleSetPermissionsPerAppChange = (projectId: string, checked: boolean) => {
     setProjectPermissions(prev => prev.map(perm => {
       if (perm.projectId === projectId) {
-        const appPermissions = checked ? projects.find(p => p.id === projectId)?.apps.map(app => ({
+        const project = projects.find(p => p.id === projectId);
+        const appPermissions = checked ? project?.apps.map(app => ({
           workloadId: app.id,
           workloadName: app.name,
+          permission: undefined
+        })) || [] : [];
+        const agentPermissions = checked ? project?.agents?.map(agent => ({
+          workloadId: agent.id,
+          workloadName: agent.name,
           permission: undefined
         })) || [] : [];
         return {
           ...perm,
           setPermissionsPerApp: checked,
-          workloadPermissions: appPermissions,
+          workloadPermissions: [...appPermissions, ...agentPermissions],
           createWorkloads: false,
           deleteWorkloads: false,
           writeWorkloads: false,

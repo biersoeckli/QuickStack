@@ -14,6 +14,8 @@ import {
     ensureAdmin,
     ensureReadApp,
     ensureWriteApp,
+    ensureReadAgent,
+    ensureWriteAgent,
     RequesterIdentity
 } from "./shared-authorization.utils";
 
@@ -68,10 +70,24 @@ export async function isAuthorizedReadForApp(appId: string) {
     return identity.session;
 }
 
+export async function isAuthorizedReadForAgent(agentId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureReadAgent(identity, agentId);
+    return identity.session;
+}
+
 export async function isAuthorizedWriteForApp(appId: string) {
     const session = await getAuthUserSession();
     const identity: RequesterIdentity = { type: 'session', session };
     ensureWriteApp(identity, appId);
+    return identity.session;
+}
+
+export async function isAuthorizedWriteForAgent(agentId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureWriteAgent(identity, agentId);
     return identity.session;
 }
 
@@ -81,6 +97,14 @@ export async function safeGetUserPermissionForApp(appId: string) {
         return null;
     }
     return UserGroupUtils.getRolePermissionForApp(session, appId);
+}
+
+export async function safeGetUserPermissionForAgent(agentId: string) {
+    const session = await getUserSession();
+    if (!session) {
+        return null;
+    }
+    return UserGroupUtils.getRolePermissionForAgent(session, agentId);
 }
 
 export async function saveFormAction<ReturnType, TInputData, ZodType extends ZodRawShape>(

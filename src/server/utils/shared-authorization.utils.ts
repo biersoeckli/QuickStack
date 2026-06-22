@@ -24,8 +24,16 @@ export function ensureReadApp(identity: RequesterIdentity, appId: string) {
     ensureReadProjectWorkload(identity, appId);
 }
 
+export function ensureReadAgent(identity: RequesterIdentity, agentId: string) {
+    ensureReadProjectWorkload(identity, agentId);
+}
+
 export function ensureWriteApp(identity: RequesterIdentity, appId: string) {
     ensureWriteProjectWorkload(identity, appId);
+}
+
+export function ensureWriteAgent(identity: RequesterIdentity, agentId: string) {
+    ensureWriteProjectWorkload(identity, agentId);
 }
 
 export function ensureReadProjectWorkload(identity: RequesterIdentity, workloadId: string) {
@@ -59,7 +67,15 @@ export function ensureCreateAppInProject(identity: RequesterIdentity, projectId:
     ensureCreateProjectWorkloadInProject(identity, projectId);
 }
 
+export function ensureCreateAgentInProject(identity: RequesterIdentity, projectId: string) {
+    ensureCreateProjectWorkloadInProject(identity, projectId);
+}
+
 export function ensureDeleteAppInProject(identity: RequesterIdentity, projectId: string) {
+    ensureDeleteProjectWorkloadInProject(identity, projectId);
+}
+
+export function ensureDeleteAgentInProject(identity: RequesterIdentity, projectId: string) {
     ensureDeleteProjectWorkloadInProject(identity, projectId);
 }
 

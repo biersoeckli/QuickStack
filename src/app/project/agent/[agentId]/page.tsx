@@ -4,6 +4,8 @@ import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import agentService from "@/server/services/agent.service";
 import PageTitle from "@/components/custom/page-title";
 import { RequesterIdentity, ensureReadProjectWorkload } from "@/server/utils/shared-authorization.utils";
+import { UserGroupUtils } from "@/shared/utils/role.utils";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import AgentDetailClient from "./agent-detail-client";
 
 export default async function AgentDetailPage({
@@ -16,6 +18,7 @@ export default async function AgentDetailPage({
     ensureReadProjectWorkload(identity, params.agentId);
 
     const agent = await agentService.getById(params.agentId);
+    const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, params.agentId);
 
     return (
         <div className="flex-1 space-y-4 pt-6">
@@ -23,7 +26,7 @@ export default async function AgentDetailPage({
                 title={agent.name}
                 subtitle={`Agent · ${agent.project.name}`}
             />
-            <AgentDetailClient agent={agent} />
+            <AgentDetailClient agent={agent} role={role} />
         </div>
     );
 }

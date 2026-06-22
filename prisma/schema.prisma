@@ -155,7 +155,8 @@ model RoleProjectPermission {
   writeApps   Boolean   @default(false)
   readApps    Boolean   @default(false)
 
-  roleAppPermissions RoleAppPermission[]
+  roleAppPermissions   RoleAppPermission[]
+  roleAgentPermissions RoleAgentPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -175,6 +176,20 @@ model RoleAppPermission {
   updatedAt DateTime @updatedAt
 
   @@unique([roleProjectPermissionId, appId])
+}
+
+model RoleAgentPermission {
+  id                      String                 @id @default(uuid())
+  agent                   Agent                  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentId                 String
+  permission              String // READ, READWRITE
+  roleProjectPermission   RoleProjectPermission? @relation(fields: [roleProjectPermissionId], references: [id])
+  roleProjectPermissionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleProjectPermissionId, agentId])
 }
 
 model Project {
@@ -217,6 +232,8 @@ model Agent {
   memoryLimit        String?
   systemPrompt       String?
   encryptedEnvVars   String?
+
+  roleAgentPermissions RoleAgentPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -27,6 +27,10 @@ type RoleProjectPermissionRecord = {
         appId: string;
         permission: string;
     }[];
+    roleAgentPermissions: {
+        agentId: string;
+        permission: string;
+    }[];
 };
 
 export class UserGroupService {
@@ -40,6 +44,15 @@ export class UserGroupService {
             name: agent.name,
         })) ?? [];
 
+        const appPermissions = permission.roleAppPermissions.map((wp) => ({
+            workloadId: wp.appId,
+            permission: wp.permission,
+        }));
+        const agentPermissions = permission.roleAgentPermissions?.map((wp) => ({
+            workloadId: wp.agentId,
+            permission: wp.permission,
+        })) ?? [];
+
         return {
             projectId: permission.projectId,
             project: {
@@ -49,10 +62,7 @@ export class UserGroupService {
             deleteWorkloads: permission.deleteApps,
             writeWorkloads: permission.writeApps,
             readWorkloads: permission.readApps,
-            workloadPermissions: permission.roleAppPermissions.map((workloadPermission) => ({
-                workloadId: workloadPermission.appId,
-                permission: workloadPermission.permission,
-            })),
+            workloadPermissions: [...appPermissions, ...agentPermissions],
         };
     }
 
@@ -88,6 +98,7 @@ export class UserGroupService {
                                 writeApps: true,
                                 readApps: true,
                                 roleAppPermissions: true,
+                                roleAgentPermissions: true,
                             }
                         }
                     }
@@ -161,17 +172,41 @@ export class UserGroupService {
                         data: projectRolePermissionData
                     });
 
-                    // save workload permissions
+                    const project = await tx.project.findFirstOrThrow({
+                        where: { id: projectRolePermission.projectId },
+                        select: {
+                            apps: { select: { id: true } },
+                            agents: { select: { id: true } },
+                        },
+                    });
+                    const appIds = new Set(project.apps.map((a) => a.id));
+                    const agentIds = new Set(project.agents.map((a) => a.id));
+
+                    const appPermissions = projectRolePermission.workloadPermissions.filter((wp) => appIds.has(wp.workloadId));
+                    const agentPermissions = projectRolePermission.workloadPermissions.filter((wp) => agentIds.has(wp.workloadId));
+
                     await tx.roleAppPermission.deleteMany({
                         where: {
                             roleProjectPermissionId: savedProjectRolePermission.id
                         }
                     });
-
                     await tx.roleAppPermission.createMany({
-                        data: projectRolePermission.workloadPermissions.map((workloadPermission) => ({
-                            appId: workloadPermission.workloadId,
-                            permission: workloadPermission.permission,
+                        data: appPermissions.map((wp) => ({
+                            appId: wp.workloadId,
+                            permission: wp.permission,
+                            roleProjectPermissionId: savedProjectRolePermission.id
+                        }))
+                    });
+
+                    await tx.roleAgentPermission.deleteMany({
+                        where: {
+                            roleProjectPermissionId: savedProjectRolePermission.id
+                        }
+                    });
+                    await tx.roleAgentPermission.createMany({
+                        data: agentPermissions.map((wp) => ({
+                            agentId: wp.workloadId,
+                            permission: wp.permission,
                             roleProjectPermissionId: savedProjectRolePermission.id
                         }))
                     });
@@ -233,6 +268,7 @@ export class UserGroupService {
                         writeApps: true,
                         readApps: true,
                         roleAppPermissions: true,
+                        roleAgentPermissions: true,
                     }
                 }
             }
@@ -274,6 +310,7 @@ export class UserGroupService {
                         writeApps: true,
                         readApps: true,
                         roleAppPermissions: true,
+                        roleAgentPermissions: true,
                     }
                 }
             }

@@ -101,4 +101,110 @@ describe(UserGroupUtils.name, () => {
         expect(UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(regularSession, projectId)).toBe(true);
         expect(UserGroupUtils.sessionCanDeleteProjectWorkloadsForProject(regularSession, projectId)).toBe(true);
     });
+
+    describe("agent-specific wrappers", () => {
+        const agentId = "agent-456";
+
+        beforeEach(() => {
+            setProjectPermission({
+                project: {
+                    projectWorkloads: [
+                        { id: agentId, name: "Agent One" },
+                        { id: workloadId, name: "App One" },
+                    ],
+                },
+            });
+        });
+
+        test("admin has readwrite agent access", () => {
+            expect(UserGroupUtils.getRolePermissionForAgent(adminSession, agentId)).toBe(RolePermissionEnum.READWRITE);
+            expect(UserGroupUtils.sessionHasReadAccessForAgent(adminSession, agentId)).toBe(true);
+            expect(UserGroupUtils.sessionHasWriteAccessForAgent(adminSession, agentId)).toBe(true);
+            expect(UserGroupUtils.sessionIsReadOnlyForAgent(adminSession, agentId)).toBe(false);
+        });
+
+        test("project-level read grants agent read but not write", () => {
+            setProjectPermission({
+                readWorkloads: true,
+                project: {
+                    projectWorkloads: [
+                        { id: agentId, name: "Agent One" },
+                        { id: workloadId, name: "App One" },
+                    ],
+                },
+            });
+
+            expect(UserGroupUtils.getRolePermissionForAgent(regularSession, agentId)).toBe(RolePermissionEnum.READ);
+            expect(UserGroupUtils.sessionHasReadAccessForAgent(regularSession, agentId)).toBe(true);
+            expect(UserGroupUtils.sessionHasWriteAccessForAgent(regularSession, agentId)).toBe(false);
+            expect(UserGroupUtils.sessionIsReadOnlyForAgent(regularSession, agentId)).toBe(true);
+        });
+
+        test("project-level readwrite grants agent readwrite", () => {
+            setProjectPermission({
+                readWorkloads: true,
+                writeWorkloads: true,
+                project: {
+                    projectWorkloads: [
+                        { id: agentId, name: "Agent One" },
+                        { id: workloadId, name: "App One" },
+                    ],
+                },
+            });
+
+            expect(UserGroupUtils.getRolePermissionForAgent(regularSession, agentId)).toBe(RolePermissionEnum.READWRITE);
+            expect(UserGroupUtils.sessionHasReadAccessForAgent(regularSession, agentId)).toBe(true);
+            expect(UserGroupUtils.sessionHasWriteAccessForAgent(regularSession, agentId)).toBe(true);
+        });
+
+        test("agent-specific read permission hides other workloads", () => {
+            const otherAgentId = "agent-999";
+            setProjectPermission({
+                workloadPermissions: [{ workloadId: agentId, permission: RolePermissionEnum.READ }],
+                project: {
+                    projectWorkloads: [
+                        { id: agentId, name: "Agent One" },
+                        { id: otherAgentId, name: "Agent Two" },
+                    ],
+                },
+            });
+
+            expect(UserGroupUtils.getRolePermissionForAgent(regularSession, agentId)).toBe(RolePermissionEnum.READ);
+            expect(UserGroupUtils.getRolePermissionForAgent(regularSession, otherAgentId)).toBeNull();
+            expect(UserGroupUtils.sessionHasReadAccessForAgent(regularSession, otherAgentId)).toBe(false);
+            expect(UserGroupUtils.sessionHasReadAccessToProject(regularSession, projectId)).toBe(true);
+        });
+
+        test("agent-specific readwrite permission denies writes to ungranted agents", () => {
+            const otherAgentId = "agent-999";
+            setProjectPermission({
+                workloadPermissions: [{ workloadId: agentId, permission: RolePermissionEnum.READWRITE }],
+                project: {
+                    projectWorkloads: [
+                        { id: agentId, name: "Agent One" },
+                        { id: otherAgentId, name: "Agent Two" },
+                    ],
+                },
+            });
+
+            expect(UserGroupUtils.sessionHasWriteAccessForAgent(regularSession, agentId)).toBe(true);
+            expect(UserGroupUtils.sessionHasWriteAccessForAgent(regularSession, otherAgentId)).toBe(false);
+            expect(UserGroupUtils.sessionHasReadAccessForAgent(regularSession, otherAgentId)).toBe(false);
+        });
+
+        test("agent create and delete delegate to project workload methods", () => {
+            setProjectPermission({
+                createWorkloads: true,
+                deleteWorkloads: true,
+            });
+
+            expect(UserGroupUtils.sessionCanCreateNewAgentsForProject(regularSession, projectId)).toBe(true);
+            expect(UserGroupUtils.sessionCanDeleteAgentsForProject(regularSession, projectId)).toBe(true);
+        });
+
+        test("agent create and delete denied without permissions", () => {
+            expect(UserGroupUtils.sessionCanCreateNewAgentsForProject(regularSession, projectId)).toBe(false);
+            expect(UserGroupUtils.sessionCanDeleteAgentsForProject(regularSession, projectId)).toBe(false);
+        });
+    });
 });
