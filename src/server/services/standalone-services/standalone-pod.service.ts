@@ -236,6 +236,41 @@ class SetupPodService {
         });
     }
 
+    async getCurrentLogsForPod(namespace: string, podName: string, containerName: string, lines: number) {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                let logs = '';
+                const logStream = new stream.PassThrough();
+
+                const request = await k3s.log.log(namespace, podName, containerName, logStream, {
+                    follow: false,
+                    tailLines: lines,
+                    timestamps: true,
+                    pretty: false,
+                    previous: false
+                });
+
+                logStream.on('data', (chunk) => {
+                    logs += chunk.toString();
+                });
+
+                logStream.on('error', (error) => {
+                    console.error(`Error fetching current logs for pod ${podName} in container ${containerName}`, error);
+                    request?.abort();
+                    reject(error);
+                });
+
+                logStream.on('end', () => {
+                    request?.abort();
+                    resolve(logs);
+                });
+            } catch (error) {
+                console.error(`Error fetching current logs for pod ${podName} in container ${containerName}`, error);
+                reject(error);
+            }
+        });
+    }
+
     async deleteAllFailedAndSuccededPods() {
         const projects = await dataAccess.client.project.findMany();
 

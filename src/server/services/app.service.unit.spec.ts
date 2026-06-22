@@ -26,12 +26,13 @@ describe('app.service', () => {
     });
 
     it('persists App Node Ports when saving an extended App', async () => {
-        vi.spyOn(appService, 'save').mockResolvedValue({} as never);
+        vi.spyOn(appService, 'save').mockResolvedValue({ id: 'demo-app' } as never);
         vi.spyOn(appService, 'saveDomain').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveVolume').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveFileMount').mockResolvedValue({} as never);
         vi.spyOn(appService, 'savePort').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveBasicAuth').mockResolvedValue({} as never);
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({}) as never);
         const saveNodePort = vi.spyOn(appService, 'saveNodePort').mockResolvedValue({} as never);
 
         await appService.saveAppExtendedModel(createApp({

@@ -75,7 +75,7 @@ class MonitorService {
         const [topPods, totalResourcesNodes, projects] = await Promise.all([
             k8s.topPods(k3s.core, new k8s.Metrics(k3s.getKubeConfig())),
             this.getTotalAvailableNodeRessources(),
-            projectService.getAllProjects()
+            projectService.getAll()
         ]);
 
         const appStats: AppMonitoringUsageModel[] = [];

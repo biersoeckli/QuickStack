@@ -18,7 +18,7 @@ import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickStackMaintenanceSettings from "./qs-maintenance-settings";
 import podService from "@/server/services/pod.service";
 import { ServerSettingsTabs } from "./server-settings-tabs";
-import { Settings, Network, HardDrive, Rocket, Wrench, Hammer } from "lucide-react";
+import { Settings, Network, HardDrive, Rocket, Wrench, Hammer, ChevronsLeftRightEllipsis } from "lucide-react";
 import QsBuildSettings from "./qs-build-settings";
 import { getBuildSettings } from "./actions";
 import quickStackUpdateService from "@/server/services/qs-update.service";
@@ -27,6 +27,7 @@ import clusterService from "@/server/services/cluster.service";
 import NodeInfo from "./nodeInfo";
 import UpdateInfoPage from "./update-info";
 import LonghornUiToggle from "./longhorn-ui-toggle";
+import RestApiSettings from "./rest-api-settings";
 
 export default async function ProjectPage({
     searchParams
@@ -43,7 +44,8 @@ export default async function ProjectPage({
         regitryStorageLocation,
         ipv4Address,
         systemBackupLocation,
-        clusterJoinToken
+        clusterJoinToken,
+        openApiEnabled
     ] = await Promise.all([
         paramService.getString(ParamService.QS_SERVER_HOSTNAME, ''),
         paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false),
@@ -51,7 +53,8 @@ export default async function ProjectPage({
         paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
         paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS),
         paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-        paramService.getString(ParamService.K3S_JOIN_TOKEN)
+        paramService.getString(ParamService.K3S_JOIN_TOKEN),
+        paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED)
     ]);
 
     const [
@@ -95,6 +98,7 @@ export default async function ProjectPage({
                         <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
                         <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage & Backups</TabsTrigger>
                         <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>
+                        <TabsTrigger value="api"><ChevronsLeftRightEllipsis className="mr-2 h-4 w-4" />REST API</TabsTrigger>
                         <TabsTrigger value="cluster"><Network className="mr-2 h-4 w-4" />Cluster</TabsTrigger>
                         <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
                         <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
@@ -132,6 +136,13 @@ export default async function ProjectPage({
                 <TabsContent value="cluster" className="space-y-4">
                     <NodeInfo nodeInfos={nodeInfo} clusterJoinToken={clusterJoinToken} />
                 </TabsContent>
+
+                <TabsContent value="api" className="space-y-4">
+                    <div className="grid gap-6">
+                        <RestApiSettings openApiEnabled={openApiEnabled ?? false} />
+                    </div>
+                </TabsContent>
+
                 <TabsContent value="updates" className="space-y-4">
                     <UpdateInfoPage />
                 </TabsContent>

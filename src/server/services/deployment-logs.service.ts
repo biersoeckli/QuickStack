@@ -1,5 +1,5 @@
 import fsPromises from 'fs/promises';
-import fs, { read } from 'fs';
+import fs from 'fs';
 import { PathUtils } from '../utils/path.utils';
 import { FsUtils } from '../utils/fs.utils';
 
@@ -40,12 +40,10 @@ class DeploymentLogService {
     }
 
     async getLogsStream(deploymentId: string, streamedData: (data: string) => void) {
-        await FsUtils.createDirIfNotExistsAsync(PathUtils.deploymentLogsPath, true);
-        const logFilePath = PathUtils.appDeploymentLogFile(deploymentId);
-
-        if (!await FsUtils.fileExists(logFilePath)) {
+        const logFilePath = await this.getExistingLogFilePath(deploymentId);
+        if (!logFilePath) {
             streamedData(`The log file for deployment ${deploymentId} does not exist.`);
-            console.error(`Build Log file ${logFilePath} does not exist`);
+            console.error(`Build Log file for deployment ${deploymentId} does not exist`);
             return undefined;
         }
 
@@ -97,6 +95,50 @@ class DeploymentLogService {
         }
     }
 
+    async getLogsById(deploymentId: string, tailLines?: number): Promise<string> {
+        const logFilePath = await this.getExistingLogFilePath(deploymentId);
+
+        if (!logFilePath) {
+            return `The log file for deployment ${deploymentId} does not exist.`;
+        }
+
+        const logContent = await fsPromises.readFile(logFilePath, 'utf-8');
+        return this.getTailLogContent(logContent, tailLines);
+    }
+
+    private async getExistingLogFilePath(deploymentId: string): Promise<string | undefined> {
+        await FsUtils.createDirIfNotExistsAsync(PathUtils.deploymentLogsPath, true);
+        const logFilePath = PathUtils.appDeploymentLogFile(deploymentId);
+
+        if (!await FsUtils.fileExists(logFilePath)) {
+            return undefined;
+        }
+
+        return logFilePath;
+    }
+
+    private getTailLogContent(logContent: string, tailLines?: number) {
+        if (tailLines === undefined) {
+            return logContent;
+        }
+
+        if (tailLines <= 0) {
+            return '';
+        }
+
+        const hasTrailingNewLine = logContent.endsWith('\n');
+        const lines = logContent.split('\n');
+        if (hasTrailingNewLine) {
+            lines.pop();
+        }
+
+        const tailedLogContent = lines.slice(-tailLines).join('\n');
+        if (!hasTrailingNewLine || tailedLogContent.length === 0) {
+            return tailedLogContent;
+        }
+
+        return `${tailedLogContent}\n`;
+    }
 }
 
 const deploymentLogService = new DeploymentLogService();

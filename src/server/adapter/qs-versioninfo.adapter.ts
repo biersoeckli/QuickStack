@@ -1,4 +1,5 @@
 import { K3sReleaseResponseSchema, LonghornReleaseResponseSchema } from "@/shared/model/generated-zod/k3s-longhorn-release-schemas";
+import { z } from "zod";
 
 export interface QuickStackReleaseInfo {
     version: string;
@@ -102,22 +103,39 @@ class QsVersionInfoAdapter {
                 'Content-Type': 'application/json'
             }
         });
+
         if (!response.ok) {
             throw new Error(`Failed to fetch latest QuickStack version: HTTP ${response.status} ${response.statusText}`);
         }
+
         const data = await response.json();
+
+        // verify response of server
+        const quickStackReleaseInfoSchema = z.object({
+            tag_name: z.string(),
+            html_url: z.string().url(),
+            published_at: z.string(),
+            body: z.string()
+        });
+
+        const parsedData = quickStackReleaseInfoSchema.safeParse(data);
+        if (!parsedData.success) {
+            console.error("Failed to parse latest QuickStack version info:", data, parsedData.error);
+            throw new Error("Failed to parse latest QuickStack version info");
+        }
+
         return {
-            version: data.tag_name,
-            url: data.html_url,
-            publishedAt: data.published_at,
-            body: data.body
+            version: parsedData.data.tag_name,
+            url: parsedData.data.html_url,
+            publishedAt: parsedData.data.published_at,
+            body: parsedData.data.body
         };
 
         /* example:
         {
-            "version": "0.0.11",
-            "url": "https://github.com/biersoeckli/QuickStack/releases/tag/0.0.11",
-            "publishedAt": "2026-04-22T08:11:12Z",
+            "tag_name": "0.0.11",
+            "html_url": "https://github.com/biersoeckli/QuickStack/releases/tag/0.0.11",
+            "published_at": "2026-04-22T08:11:12Z",
             "body": "## What’s New\r\n* Added a queue mechanism to the build process to prevent multiple parallel builds from overloading a QuickStack node\r\n* Added placement options for build jobs in the QuickStack settings\r\n* Added an overview page for all recent builds\r\n* Kubernetes events are now displayed in the deployment logs\r\n* Fixed an error on the backups page that prevented it from loading when a backup location was unreachable\r\n* Optimized build pipelines and devcontainer setup\r\n* Various smaller fixes and improvements\r\n\r\n## What's Changed\r\n* chore: enhance devcontainer setup for local k3s development and updated contribution guidelines by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/81\r\n* fix: implement error handling for external data fetching in backups and monitoring page by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/84\r\n* Feat/placement options for build containers in cluster by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/85\r\n* chore: optimized arm build-and-push on canary and prod release for quickstack image by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/86\r\n* Feat/build process optimizations by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/87\r\n* fix: replaced libredesk logo by @biersoeckli in https://github.com/biersoeckli/QuickStack/pull/88\r\n\r\n\r\n**Full Changelog**: https://github.com/biersoeckli/QuickStack/compare/0.0.9...0.0.11"
         }*/
     }

@@ -327,7 +327,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey }: {
                             </Button>
                         )}
                     </div>
-                    <div className="grid md:grid-cols-2 gap-2">
+                    <div className="grid md:grid-cols-1 gap-2">
                         {step === 'summary' ? (
                             <>
                                 <Button type="button" variant="secondary" onClick={() => save(false)}>

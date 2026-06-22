@@ -24,7 +24,7 @@ export default async function UsersAndGroupsPage() {
     const session = await getAdminUserSession();
     const users = await userService.getAllUsers();
     const userGroups = await userGroupService.getAll();
-    const allApps = await projectService.getAllProjects();
+    const allApps = await projectService.getAll();
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle

@@ -12,7 +12,7 @@ export async function AppSidebar() {
     return <></>
   }
 
-  const projects = await projectService.getAllProjects();
+  const projects = await projectService.getAll();
   const newVersionInfo = await quickStackUpdateService.getNewVersionInfo();
   const relevantProjectsForUser = projects.filter((project) =>
     UserGroupUtils.sessionHasReadAccessToProject(session, project.id));

@@ -227,6 +227,16 @@ export const setCanaryChannel = async (useCanaryChannel: boolean) =>
     return new SuccessActionResult(undefined, `Turned ${useCanaryChannel ? 'on' : 'off'} the canary channel.`);
   });
 
+export const setOpenApiSpecEnabled = async (enabled: boolean) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await paramService.save({
+      name: ParamService.API_OPEN_API_SPEC_ENABLED,
+      value: enabled ? 'true' : 'false'
+    });
+    return new SuccessActionResult(undefined, `Turned ${enabled ? 'on' : 'off'} OpenAPI spec access.`);
+  });
+
 export const setRegistryStorageLocation = async (prevState: any, inputData: RegistryStorageLocationSettingsModel) =>
   saveFormAction(inputData, registryStorageLocationSettingsZodModel, async (validatedData) => {
     await getAdminUserSession();

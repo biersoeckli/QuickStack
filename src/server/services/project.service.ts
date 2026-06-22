@@ -30,7 +30,7 @@ class ProjectService {
         }
     }
 
-    async getAllProjects(): Promise<ProjectExtendedModel[]> {
+    async getAll(): Promise<ProjectExtendedModel[]> {
         return await unstable_cache(() => dataAccess.client.project.findMany({
             include: {
                 apps: true
@@ -46,6 +46,14 @@ class ProjectService {
 
     async getById(id: string) {
         return dataAccess.client.project.findFirstOrThrow({
+            where: {
+                id
+            }
+        });
+    }
+
+    async getByIdOrUndefined(id: string) {
+        return dataAccess.client.project.findFirst({
             where: {
                 id
             }

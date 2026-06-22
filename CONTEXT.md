@@ -35,7 +35,75 @@ The named Git ref selected as the source revision stream for an **App**.
 _Avoid_: branch name when referring to the selected source branch
 
 **App Node Port**:
-A direct node-level exposure that maps a cluster node port to one container port and protocol on an 
+A direct node-level exposure that maps a cluster node port to one container port and protocol on an
+
+**REST API Key**:
+A user-owned credential for authenticating REST API requests with exactly the same permissions as its owning **User**.
+_Avoid_: token, secret, API token (when this specific credential type is meant)
+
+**REST API Key Name**:
+A mandatory user-defined label used to identify one **REST API Key** among a user's keys.
+_Avoid_: description, alias
+
+**REST API Client**:
+An external automation or tool that calls QuickStack via the REST API using a **REST API Key**.
+_Avoid_: integration user, bot user
+
+**Deploy Action**:
+A REST-triggered action that applies the currently available deployment input for an **App** without forcing a new build.
+_Avoid_: redeploy job (when this domain action is meant)
+
+**Build-And-Deploy Action**:
+A REST-triggered action that forces a new build for an **App** and deploys that build output.
+_Avoid_: deploy, rebuild (when this exact combined action is meant)
+
+**Deployment Request**:
+An asynchronous REST request that starts a deployment-related action and returns immediately with a tracking identifier.
+_Avoid_: synchronous deploy call, blocking deployment
+
+**Deployment Webhook**:
+An existing deployment trigger endpoint that starts deployment by webhook identifier.
+_Avoid_: API key deploy endpoint
+
+**API Key Hard Deletion**:
+The permanent removal of a **REST API Key** record so it can no longer be used or recovered.
+_Avoid_: revoke, deactivate
+
+**POST Upsert**:
+A POST-based write operation that creates a resource when no id is provided and updates it when an id is provided.
+_Avoid_: strict REST update, PATCH update (when this specific behavior is meant)
+
+**Full Schema Write**:
+A **POST Upsert** where every required business field must be provided on every create and update; partial field writes are not supported and all sub-collections are fully replaced by the supplied list.
+_Avoid_: partial update, PATCH-style update
+
+**API Key Self-Management**:
+Management of a **REST API Key** by its owning **User** through authenticated profile interactions.
+_Avoid_: machine-managed keys
+
+**Direct Success Payload**:
+A REST success response returns the resource payload directly without a wrapper envelope.
+_Avoid_: success envelope, wrapped success response
+
+**Problem Details Error**:
+A REST error response follows RFC 9457 Problem Details format.
+_Avoid_: custom error envelope
+
+**API Key HMAC Hash**:
+A deterministic server-side HMAC-SHA-256 digest of a **REST API Key** used for storage and lookup.
+_Avoid_: bcrypt key hash, reversible encryption
+
+**Shared Authorization Check**:
+A transport-independent permission check used consistently by both server-side UI actions and REST API handlers.
+_Avoid_: duplicate auth logic per endpoint type
+
+**App Project Assignment**:
+The project linkage of an **App** set at creation time and immutable afterwards.
+_Avoid_: moving app between projects
+
+**Default App Port**:
+The automatically created initial app port `80` when a new **App** is created.
+_Avoid_: manual initial port requirement
 
 ## Relationships
 
@@ -49,6 +117,32 @@ A direct node-level exposure that maps a cluster node port to one container port
 - A **Git Source** has exactly one selected **Git Branch** before it can be saved.
 - A **Git SSH Source** requires a **Deploy Key** before QuickStack offers **Git Branch** selection.
 - An **App Node Port** belongs to exactly one **App** and exposes exactly one container port/protocol.
+- A **User** can create zero or more **REST API Keys**.
+- A **REST API Key** belongs to exactly one **User**.
+- A **REST API Key** has exactly one **REST API Key Name**.
+- A **REST API Key Name** is unique per **User**.
+- A **REST API Key** is persisted as an **API Key HMAC Hash**.
+- A **REST API Client** authenticates with exactly one **REST API Key** per request.
+- A **REST API Client** can trigger a **Deploy Action** for an **App**.
+- A **REST API Client** can trigger a **Build-And-Deploy Action** for an **App**.
+- A **Deploy Action** is triggered through a **Deployment Request**.
+- A **Build-And-Deploy Action** is triggered through a **Deployment Request**.
+- An **App** can be deployed through a **Deployment Webhook** or a REST API deployment action.
+- A deleted **REST API Key** uses **API Key Hard Deletion**.
+- A **Project** write via REST API uses **POST Upsert**.
+- An **App** write via REST API uses **POST Upsert**.
+- An **App** created through REST API receives its id from server-side generation.
+- An **App Project Assignment** is set once on create and cannot be changed by update.
+- An **App** write via REST API uses **Full Schema Write** semantics: all required business fields must be present on every create and update, and all sub-collections are fully replaced.
+- An **App** update must include `projectId` and its value must equal the existing **App Project Assignment**.
+- A **User** performs **API Key Self-Management** only for their own **REST API Keys**.
+- **API Key Self-Management** is implemented through profile UI and Next.js Server Actions, not REST API endpoints.
+- A successful **REST API** response uses **Direct Success Payload**.
+- A failed **REST API** response uses **Problem Details Error**.
+- Each REST API route declares a **Route Input Schema** for every accepted `query`, `params`, or `body` input.
+- Each REST API route declares a **Route Response Model** instead of writing success and error schemas inline.
+- REST API handlers throw an **API Exception** for expected authorization and not-found failures.
+- A **Shared Authorization Check** is used by server actions and REST API handlers.
 
 ## Example Dialogue
 
@@ -80,3 +174,9 @@ A direct node-level exposure that maps a cluster node port to one container port
 - "Docker Container Image" is the UI label for a **Container Image Source**.
 - "branch" means the selected **Git Branch**, not a build branch or deployment branch.
 - "node portforwarding" means an **App Node Port**, not an ad hoc developer port-forward session.
+- "CRUD REST API" for projects and apps means REST reads/deletes plus **POST Upsert** for create and update.
+- "uniform JSON schema with status/data/error" was superseded by **Direct Success Payload** for success and **Problem Details Error** for failures.
+- "bcrypt for API key hashing" was superseded by **API Key HMAC Hash**.
+- "deployment trigger endpoint" may refer to **Deployment Webhook** or REST deployment endpoints and must be named explicitly.
+- "API key management API" is not part of REST `/api/v1`; API key management is UI + Server Actions only.
+- "immutable app projectId on update" means the field must always be provided and must equal the existing **App Project Assignment**; it can never be changed or omitted.

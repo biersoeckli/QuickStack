@@ -26,7 +26,7 @@ describe('project.service', () => {
             await projectService.save({ name: 'Test Project' });
 
             const projectsDirectlyFromDatabase = await dbCtx.getDataAccess().client.project.findMany();
-            const projectsFromService = await projectService.getAllProjects();
+            const projectsFromService = await projectService.getAll();
 
             expect(projectsFromService).toHaveLength(1);
             expect(projectsFromService[0].name).toBe('Test Project');
@@ -71,7 +71,7 @@ describe('project.service', () => {
             await projectService.save({ name: 'Zulu' });
             await projectService.save({ name: 'Alpha' });
 
-            const projects = await projectService.getAllProjects();
+            const projects = await projectService.getAll();
 
             expect(projects).toHaveLength(2);
             expect(projects.map((item) => item.name)).toEqual(['Alpha', 'Zulu']);

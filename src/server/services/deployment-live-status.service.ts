@@ -14,7 +14,7 @@ export interface AppLookupInfo {
 class DeploymentLiveStatusService {
 
     async getAppLookup(session?: UserSession): Promise<Map<string, AppLookupInfo>> {
-        const projects = await projectService.getAllProjects();
+        const projects = await projectService.getAll();
         const appLookup = new Map<string, AppLookupInfo>();
 
         for (const project of projects) {

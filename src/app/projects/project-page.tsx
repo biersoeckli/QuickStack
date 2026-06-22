@@ -23,7 +23,7 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 export default async function ProjectPage() {
 
     const session = await getAuthUserSession();
-    const data = await projectService.getAllProjects();
+    const data = await projectService.getAll();
     const relevantProjectsForUser = data.filter((project) =>
         UserGroupUtils.sessionHasReadAccessToProject(session, project.id));
 

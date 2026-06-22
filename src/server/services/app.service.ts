@@ -2,7 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppPort, AppVolume, Prisma } from "@prisma/client";
-import { AppExtendedModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppExtendedWriteModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
@@ -20,7 +20,7 @@ class AppService {
 
     async buildAndDeploy(appId: string, forceBuild: boolean = false) {
         const deploymentId = crypto.randomUUID();
-        return await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
+        await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
             const app = await this.getExtendedById(appId);
 
             await dlog(deploymentId, `
@@ -50,6 +50,7 @@ class AppService {
                 await deploymentService.createDeployment(deploymentId, app);
             }
         });
+        return deploymentId;
     }
 
     async deleteById(id: string) {
@@ -78,14 +79,19 @@ class AppService {
         }
     }
 
-    async getAllAppsByProjectID(projectId: string) {
+    async getAllAppsByProjectID(projectId: string): Promise<AppExtendedModel[]> {
         return await unstable_cache(async (projectId: string) => await dataAccess.client.app.findMany({
             where: {
                 projectId
             },
             include: {
                 appPorts: true,
-                appDomains: true
+                appDomains: true,
+                appNodePorts: true,
+                appFileMounts: true,
+                appVolumes: true,
+                appBasicAuths: true,
+                project: true
             },
             orderBy: {
                 name: 'asc'
@@ -129,6 +135,17 @@ class AppService {
 
     async getById(appId: string) {
         return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirstOrThrow({
+            where: {
+                id
+            }
+        }),
+            [Tags.app(appId)], {
+            tags: [Tags.app(appId)]
+        })(appId);
+    }
+
+    async getByIdOrUndefined(appId: string) {
+        return await unstable_cache(async (id: string) => await dataAccess.client.app.findFirst({
             where: {
                 id
             }
@@ -182,13 +199,7 @@ class AppService {
         return savedItem;
     }
 
-    async saveAppExtendedModel(app: AppExtendedModel, tx?: Prisma.TransactionClient) {
-
-        const parsedAppModel = AppModel.parse(app);
-        await this.save({
-            ...parsedAppModel,
-            id: app.id
-        }, false, tx);
+    async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient) {
 
         // for new objects, make sure some params are optional, wich will be created by prisma
         const optionalParam = z.object({
@@ -198,11 +209,19 @@ class AppService {
             updatedAt: z.date().optional(),
         });
 
+        const parsedAppModel = AppModel.merge(optionalParam).parse(app);
+        const savedApp = await this.save({
+            ...parsedAppModel,
+            id: app.id
+        }, false, tx);
+
+        const savedAppId = savedApp.id;
+
         const parsedDomains = AppDomainModel.merge(optionalParam).array().parse(app.appDomains);
         for (const domain of parsedDomains) {
             await this.saveDomain({
                 ...domain,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -210,7 +229,7 @@ class AppService {
         for (const volume of parsedVolumes) {
             await this.saveVolume({
                 ...volume,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -218,7 +237,7 @@ class AppService {
         for (const fileMount of parsedFileMounts) {
             await this.saveFileMount({
                 ...fileMount,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -226,7 +245,7 @@ class AppService {
         for (const port of parsedPorts) {
             await this.savePort({
                 ...port,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -234,7 +253,7 @@ class AppService {
         for (const nodePort of parsedNodePorts) {
             await this.saveNodePort({
                 ...nodePort,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
 
@@ -242,9 +261,11 @@ class AppService {
         for (const basicAuth of parsedBasicAuths) {
             await this.saveBasicAuth({
                 ...basicAuth,
-                appId: app.id
+                appId: savedAppId
             }, tx);
         }
+
+        return await this.getExtendedById(savedAppId, false, tx);
     }
 
     async regenerateWebhookId(appId: string) {
@@ -620,9 +641,15 @@ class AppService {
                 name: 'asc'
             },
             include: {
-                project: true,
+                appPorts: true,
+                appDomains: true,
+                appNodePorts: true,
+                appFileMounts: true,
+                appVolumes: true,
+                appBasicAuths: true,
+                project: true
             }
-        }) as AppWithProjectModel[];
+        }) as AppExtendedModel[];
 
         apps.sort((a, b) => {
             if (a.project.name.toLocaleLowerCase() < b.project.name.toLocaleLowerCase()) {

@@ -20,6 +20,7 @@ export class ParamService {
     static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
     static readonly BUILD_NODE = 'buildNode';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
+    static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({

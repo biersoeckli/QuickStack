@@ -23,6 +23,12 @@ export const deploymentInfoZodModel = z.object({
     buildMethod: appBuildMethodZodModel.optional(),
 });
 
+export const deploymentDetailsResponseZodModel = deploymentInfoZodModel.omit({
+    replicasetName: true,
+    buildJobName: true
+}).extend({
+    appId: z.string(),
+});
+
 export type DeploymentInfoModel = z.infer<typeof deploymentInfoZodModel>;
 export type DeploymentStatus = z.infer<typeof deploymentStatusEnumZod>;
-

@@ -1,3 +1,8 @@
+import k3s from '@/server/adapter/kubernetes-api.adapter';
+import paramService, { ParamService } from '@/server/services/param.service';
+import podService from '@/server/services/pod.service';
+import registryService, { BUILD_NAMESPACE } from '@/server/services/registry.service';
+import { Constants } from '@/shared/utils/constants';
 import * as k8s from '@kubernetes/client-node';
 import { K3sContainer, StartedK3sContainer } from '@testcontainers/k3s';
 import { beforeAll, afterAll } from 'vitest';
@@ -17,6 +22,29 @@ export interface K3sTestClients {
     network: k8s.NetworkingV1Api;
     customObjects: k8s.CustomObjectsApi;
     metrics: k8s.Metrics;
+}
+
+
+export async function deployRegistry() {
+    await paramService.save({
+        name: ParamService.BUILD_NODE,
+        value: Constants.BUILD_NODE_K3S_NATIVE_VALUE,
+    });
+
+    await registryService.deployRegistry(Constants.INTERNAL_REGISTRY_LOCATION, true);
+
+    await expect.poll(async () => {
+        const pods = await podService.getPodsForApp(BUILD_NAMESPACE, 'registry');
+        if (pods.length !== 1) {
+            return 'MISSING';
+        }
+
+        const pod = await k3s.core.readNamespacedPod(pods[0].podName, BUILD_NAMESPACE);
+        return pod.body.status?.phase ?? 'UNKNOWN';
+    }, {
+        timeout: 120_000,
+        interval: 2_000,
+    }).toBe('Running');
 }
 
 /**
@@ -151,6 +179,5 @@ export function createK3sTestContext(image = DEFAULT_IMAGE) {
         }
         return container;
     }
-
-    return { getKubeConfig, getClients, getContainer };
+    return { getKubeConfig, getClients, getContainer, deployRegistry };
 }
