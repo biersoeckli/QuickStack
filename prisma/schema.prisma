@@ -210,6 +210,14 @@ model Agent {
   llmGateway   LlmGateway @relation(fields: [llmGatewayId], references: [id], onDelete: Restrict)
   modelAlias   String
 
+  image              String?
+  cpuRequest         String?
+  cpuLimit           String?
+  memoryRequest      String?
+  memoryLimit        String?
+  systemPrompt       String?
+  encryptedEnvVars   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

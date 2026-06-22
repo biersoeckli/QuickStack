@@ -8,6 +8,13 @@ export const AgentModel = z.object({
   projectId: z.string(),
   llmGatewayId: z.string(),
   modelAlias: z.string(),
+  image: z.string().nullish(),
+  cpuRequest: z.string().nullish(),
+  cpuLimit: z.string().nullish(),
+  memoryRequest: z.string().nullish(),
+  memoryLimit: z.string().nullish(),
+  systemPrompt: z.string().nullish(),
+  encryptedEnvVars: z.string().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

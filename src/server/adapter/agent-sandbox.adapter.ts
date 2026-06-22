@@ -25,8 +25,28 @@ const SANDBOX_API_GROUP = 'sandbox.quickstack.dev';
 const SANDBOX_API_VERSION = 'v1beta1';
 const TEMPLATE_PLURAL = 'sandboxtemplates';
 const WARMPOOL_PLURAL = 'sandboxwarmpools';
+const CLAIM_PLURAL = 'sandboxclaims';
 
 class AgentSandboxAdapter {
+
+    /**
+     * Checks whether an active SandboxClaim exists for the given agent.
+     * Returns false when the claim does not exist (404) or on any lookup error.
+     */
+    async hasActiveClaim(name: string, namespace: string): Promise<boolean> {
+        try {
+            await k3s.customObjects.getNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                namespace,
+                CLAIM_PLURAL,
+                name,
+            );
+            return true;
+        } catch {
+            return false;
+        }
+    }
 
     /**
      * Creates or updates a SandboxTemplate custom resource.

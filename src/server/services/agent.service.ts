@@ -6,7 +6,10 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
-import { AgentModel } from "@/shared/model/generated-zod";
+import { CryptoUtils } from "../utils/crypto.utils";
+import { FormValidationException } from "@/shared/model/form-validation-exception.model";
+import { AgentConfigModel, agentConfigZodModel, isQuickStackReservedEnvName, AgentConfigInputModel } from "@/shared/model/agent-config.model";
+import { z } from "zod";
 
 const DEFAULT_AGENT_IMAGE = 'ghcr.io/quickstack-dev/agent-sandbox:latest';
 
@@ -136,6 +139,124 @@ class AgentService {
             revalidateTag(Tags.agents(input.projectId));
             revalidateTag(Tags.projects());
         }
+    }
+
+    /**
+     * Saves runtime configuration for a stopped Agent.
+     *
+     * - Validates K8s resource quantities and env var names.
+     * - Encrypts environment variable values via CryptoUtils.
+     * - Rejects QuickStack-reserved env var names.
+     * - Locks runtime-relevant config while the Agent has an active SandboxClaim (running).
+     * - Invalidates stored virtual-key state on gateway/model changes.
+     * - Reconciles SandboxTemplate with the saved config.
+     * - Reconciles SandboxWarmPool to preserve zero-replica state.
+     */
+    async saveConfig(agentId: string, config: AgentConfigInputModel): Promise<Agent> {
+        const existing = await dataAccess.client.agent.findUnique({
+            where: { id: agentId },
+            include: { project: { select: { name: true, id: true } } },
+        });
+        if (!existing) {
+            throw new ServiceException('Agent not found.');
+        }
+
+        const isRunning = await agentSandboxAdapter.hasActiveClaim(
+            existing.id,
+            existing.project.name,
+        );
+
+        const configFields: string[] = [];
+        if (config.image !== undefined && config.image !== existing.image) {
+            configFields.push('image');
+        }
+        if (config.cpuRequest !== undefined && config.cpuRequest !== existing.cpuRequest) {
+            configFields.push('cpuRequest');
+        }
+        if (config.cpuLimit !== undefined && config.cpuLimit !== existing.cpuLimit) {
+            configFields.push('cpuLimit');
+        }
+        if (config.memoryRequest !== undefined && config.memoryRequest !== existing.memoryRequest) {
+            configFields.push('memoryRequest');
+        }
+        if (config.memoryLimit !== undefined && config.memoryLimit !== existing.memoryLimit) {
+            configFields.push('memoryLimit');
+        }
+        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit'];
+
+        if (isRunning) {
+            const changedRuntime = configFields.some((f) => runtimeRelevant.includes(f));
+            if (changedRuntime) {
+                throw new ServiceException(
+                    'Runtime configuration cannot be changed while the Agent is running. Stop the Agent first.',
+                );
+            }
+        }
+
+        const isGatewayChanged =
+            config.llmGatewayId !== undefined && config.llmGatewayId !== existing.llmGatewayId;
+        const isModelChanged =
+            config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias;
+
+        let encryptedEnvVars: string | null = null;
+        if (config.envVars !== undefined) {
+            encryptedEnvVars = JSON.stringify(
+                config.envVars.map((ev) => ({
+                    name: ev.name,
+                    value: CryptoUtils.encrypt(ev.value),
+                })),
+            );
+        }
+
+        const systemPromptValue =
+            config.systemPrompt !== undefined
+                ? (config.systemPrompt || null)
+                : undefined;
+
+        const updated = await dataAccess.client.agent.update({
+            where: { id: agentId },
+            data: {
+                ...(config.image !== undefined ? { image: config.image || null } : {}),
+                ...(config.cpuRequest !== undefined ? { cpuRequest: config.cpuRequest || null } : {}),
+                ...(config.cpuLimit !== undefined ? { cpuLimit: config.cpuLimit || null } : {}),
+                ...(config.memoryRequest !== undefined ? { memoryRequest: config.memoryRequest || null } : {}),
+                ...(config.memoryLimit !== undefined ? { memoryLimit: config.memoryLimit || null } : {}),
+                ...(systemPromptValue !== undefined ? { systemPrompt: systemPromptValue } : {}),
+                ...(config.envVars !== undefined ? { encryptedEnvVars: encryptedEnvVars! } : {}),
+                ...(isGatewayChanged ? { llmGatewayId: config.llmGatewayId! } : {}),
+                ...(isModelChanged ? { modelAlias: config.modelAlias! } : {}),
+            },
+        });
+
+        const effectiveImage = updated.image || DEFAULT_AGENT_IMAGE;
+
+        try {
+            await agentSandboxAdapter.reconcileSandboxTemplate({
+                name: updated.id,
+                namespace: existing.project.name,
+                image: effectiveImage,
+                cpuRequest: updated.cpuRequest || undefined,
+                cpuLimit: updated.cpuLimit || undefined,
+                memoryRequest: updated.memoryRequest || undefined,
+                memoryLimit: updated.memoryLimit || undefined,
+            });
+
+            await agentSandboxAdapter.reconcileSandboxWarmPool({
+                name: updated.id,
+                namespace: existing.project.name,
+                templateName: updated.id,
+                replicas: 0,
+            });
+        } catch (error: any) {
+            throw new ServiceException(
+                `Failed to reconcile sandbox resources: ${error?.message || error}`,
+            );
+        } finally {
+            revalidateTag(Tags.agent(agentId));
+            revalidateTag(Tags.agents(existing.projectId));
+        }
+
+        return updated;
     }
 
     /**
