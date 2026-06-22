@@ -5,6 +5,7 @@ import { CompleteApp, RelatedAppModel, CompleteRoleProjectPermission, RelatedRol
 export const ProjectModel = z.object({
   id: z.string(),
   name: z.string(),
+  projectType: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

@@ -180,6 +180,7 @@ model RoleAppPermission {
 model Project {
   id                     String                  @id @default(uuid())
   name                   String
+  projectType            String                  @default("APP") // APP, AGENT
   apps                   App[]
   roleProjectPermissions RoleProjectPermission[]
 

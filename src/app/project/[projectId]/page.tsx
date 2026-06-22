@@ -24,19 +24,27 @@ export default async function AppsPage({
         return <p>Could not find project with id {projectId}</p>
     }
     const project = await projectService.getById(projectId);
-    const data = await appService.getAllAppsByProjectID(projectId);
+    const isAgentProject = project.projectType === 'AGENT';
+    const data = isAgentProject ? [] : await appService.getAllAppsByProjectID(projectId);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
 
     return (
         <div className="flex-1 space-y-4 pt-6">
             <PageTitle
-                title="Apps"
-                subtitle={`All Apps for Project "${project.name}"`}>
-                {UserGroupUtils.sessionCanCreateNewAppsForProject(session, params.projectId) &&
+                title={isAgentProject ? "Agents" : "Apps"}
+                subtitle={`${isAgentProject ? 'Agent' : 'App'} Project "${project.name}"`}>
+                {!isAgentProject && UserGroupUtils.sessionCanCreateNewAppsForProject(session, params.projectId) &&
                     <CreateProjectActions projectId={projectId} />}
             </PageTitle>
-            <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />
+            {isAgentProject
+                ? <div className="rounded-lg border border-dashed p-12 text-center">
+                    <h3 className="text-lg font-semibold">No Agents yet</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Agents created in this Agent Project will appear here.
+                    </p>
+                </div>
+                : <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />}
             <ProjectBreadcrumbs project={project} />
         </div>
     )

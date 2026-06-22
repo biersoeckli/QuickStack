@@ -36,7 +36,10 @@ export default function ProjectsTable({ data, session }: { data: Project[]; sess
         <SimpleDataTable columns={[
             ['id', 'ID', false],
             ['name', 'Name', true],
-            ['status', 'Status', true, (item) => <ProjectStatusIndicator projectId={item.id} />],
+            ['projectType', 'Type', true, (item) => item.projectType === 'AGENT' ? 'Agent' : 'App'],
+            ['status', 'Status', true, (item) => item.projectType === 'APP'
+                ? <ProjectStatusIndicator projectId={item.id} />
+                : <span className="text-muted-foreground">No Agents</span>],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}
@@ -57,7 +60,7 @@ export default function ProjectsTable({ data, session }: { data: Project[]; sess
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <Link href={`/project/${item.id}`}>
                                     <DropdownMenuItem>
-                                        <Eye /> <span>Show Apps of Project</span>
+                                        <Eye /> <span>Show {item.projectType === 'AGENT' ? 'Agents' : 'Apps'} of Project</span>
                                     </DropdownMenuItem>
                                 </Link>
                                 <DropdownMenuSeparator />

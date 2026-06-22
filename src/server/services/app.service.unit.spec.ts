@@ -7,7 +7,15 @@ vi.mock('next/cache', () => ({
     ),
 }));
 
-vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+vi.mock('@/server/adapter/db.client', () => ({
+    default: {
+        client: {
+            project: { findUnique: vi.fn() },
+            app: { create: vi.fn(), update: vi.fn() },
+            appPort: { create: vi.fn() },
+        },
+    },
+}));
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 vi.mock('@/server/services/deployment.service', () => ({ default: {} }));
 vi.mock('@/server/services/build.service', () => ({ default: {} }));
@@ -19,6 +27,7 @@ vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
 
 import appService from './app.service';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import dataAccess from '@/server/adapter/db.client';
 
 describe('app.service', () => {
     beforeEach(() => {
@@ -60,6 +69,23 @@ describe('app.service', () => {
             undefined
         );
     });
+
+    it('rejects App creation in an Agent Project', async () => {
+        vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
+            id: 'proj-agents',
+            name: 'Agents',
+            projectType: 'AGENT',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        await expect(appService.save({
+            name: 'Wrong Workload',
+            projectId: 'proj-agents',
+        })).rejects.toThrow('Apps can only be created in App Projects.');
+
+        expect(dataAccess.client.app.create).not.toHaveBeenCalled();
+    });
 });
 
 function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
@@ -71,6 +97,7 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         project: {
             id: 'demo-project',
             name: 'Demo Project',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

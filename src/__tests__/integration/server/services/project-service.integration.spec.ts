@@ -23,7 +23,7 @@ describe('project.service', () => {
     describe('save', () => {
 
         it('creates a new project in database', async () => {
-            await projectService.save({ name: 'Test Project' });
+            await projectService.save({ name: 'Test Project', projectType: 'APP' });
 
             const projectsDirectlyFromDatabase = await dbCtx.getDataAccess().client.project.findMany();
             const projectsFromService = await projectService.getAll();
@@ -33,20 +33,21 @@ describe('project.service', () => {
 
             expect(projectsDirectlyFromDatabase).toHaveLength(1);
             expect(projectsDirectlyFromDatabase[0].name).toBe('Test Project');
+            expect(projectsDirectlyFromDatabase[0].projectType).toBe('APP');
             expect(projectsDirectlyFromDatabase[0].id).toMatch(/^proj-/);
             expect(revalidateTag).toHaveBeenCalledWith(Tags.projects());
         });
 
         it('creates a new namespace in k3s cluster', async () => {
             const projectName = 'Test Project 2';
-            const savedProject = await projectService.save({ name: projectName });
+            const savedProject = await projectService.save({ name: projectName, projectType: 'APP' });
 
             const allNamespaces = await namespaceService.getNamespaces();
             expect(allNamespaces.find(namespace => namespace === savedProject.id)).toBeTruthy();
         });
 
         it('updates an existing project', async () => {
-            const created = await projectService.save({ name: 'Initial Project' });
+            const created = await projectService.save({ name: 'Initial Project', projectType: 'APP' });
 
             const updated = await projectService.save({
                 id: created.id,
@@ -68,8 +69,8 @@ describe('project.service', () => {
 
     describe('getAllProjects', () => {
         it('returns projects sorted by name asc', async () => {
-            await projectService.save({ name: 'Zulu' });
-            await projectService.save({ name: 'Alpha' });
+            await projectService.save({ name: 'Zulu', projectType: 'APP' });
+            await projectService.save({ name: 'Alpha', projectType: 'APP' });
 
             const projects = await projectService.getAll();
 
@@ -81,7 +82,7 @@ describe('project.service', () => {
 
     describe('getById', () => {
         it('returns an existing project by id', async () => {
-            const created = await projectService.save({ name: 'By Id Project' });
+            const created = await projectService.save({ name: 'By Id Project', projectType: 'APP' });
 
             const loaded = await projectService.getById(created.id);
 
@@ -96,7 +97,7 @@ describe('project.service', () => {
 
     describe('deleteById', () => {
         it('deletes existing project and triggers side effects', async () => {
-            const created = await projectService.save({ name: 'Project To Delete' });
+            const created = await projectService.save({ name: 'Project To Delete', projectType: 'APP' });
 
             await projectService.deleteById(created.id);
 

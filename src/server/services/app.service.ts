@@ -175,6 +175,13 @@ class AppService {
                     data: item
                 });
             } else {
+                const project = await client.project.findUnique({
+                    where: { id: item.projectId as string },
+                    select: { projectType: true },
+                });
+                if (!project || project.projectType !== 'APP') {
+                    throw new ServiceException("Apps can only be created in App Projects.");
+                }
                 item.id = KubeObjectNameUtils.toAppId(item.name as string);
                 savedItem = await client.app.create({
                     data: item as Prisma.AppUncheckedCreateInput

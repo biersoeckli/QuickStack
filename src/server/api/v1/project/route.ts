@@ -7,10 +7,14 @@ import { ProjectModel } from '@/shared/model/generated-zod';
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { Project } from '@prisma/client';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
+import { ProjectTypeModel } from '@/shared/model/project-type.model';
 
 const projectWriteSchema = ProjectModel
     .omit({ createdAt: true, updatedAt: true })
-    .extend({ id: z.string().optional() });
+    .extend({
+        id: z.string().optional(),
+        projectType: ProjectTypeModel,
+    });
 
 export const projectRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
@@ -57,7 +61,11 @@ export const projectRoutes = new Elysia()
             existing = await projectService.getByIdOrUndefined(body.id);
             if (!existing) throw new ApiNotFoundException();
         }
-        return await projectService.save({ id: existing?.id, name: body.name });
+        return await projectService.save({
+            id: existing?.id,
+            name: body.name,
+            projectType: body.projectType,
+        });
     }, {
         body: projectWriteSchema,
         response: ApiUtils.mapReponseModel(ProjectModel),

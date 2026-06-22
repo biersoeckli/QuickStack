@@ -119,6 +119,7 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         project: {
             id: 'demo-project',
             name: 'Demo Project',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

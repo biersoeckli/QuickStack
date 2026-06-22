@@ -47,7 +47,7 @@ describe('REST API v1 integration', () => {
         const updatedProject = await expectApiJson(
             await apiFetch('/api/v1/projects', apiKey, {
                 method: 'POST',
-                body: { id: createdProject.id, name: `${projectName} Updated` },
+                body: { id: createdProject.id, name: `${projectName} Updated`, projectType: 'APP' },
             }),
         );
         expect(updatedProject).toMatchObject({
@@ -219,7 +219,7 @@ async function createApiProject(apiKey: string) {
     const createdProject = await expectApiJson(
         await apiFetch('/api/v1/projects', apiKey, {
             method: 'POST',
-            body: { name: projectName },
+            body: { name: projectName, projectType: 'APP' },
         })
     ) as Project;
     expect(createdProject.name).toBe(projectName);
