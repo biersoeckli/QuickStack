@@ -25,10 +25,9 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar"
-import { App, Project } from "@prisma/client"
+import { Agent, App, Project } from "@prisma/client"
 import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
-import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
@@ -39,7 +38,7 @@ export function SidebarCient({
   session,
   newVersionInfo
 }: {
-  projects: (Project & { apps: App[] })[];
+  projects: (Project & { apps: App[]; agents: Agent[] })[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
 }) {
@@ -48,6 +47,7 @@ export function SidebarCient({
 
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
+  const [currentlySelectedAgentId, setCurrentlySelectedAgentId] = useState<string | null>(null);
 
   const settingsMenu = [
     {
@@ -81,20 +81,29 @@ export function SidebarCient({
   ]
 
   useEffect(() => {
-    if (path.startsWith('/project/app/')) {
+    if (path.startsWith('/project/agent/')) {
+      const agentId = path.split('/')[3];
+      const project = projects.find(p => p.agents?.some(a => a.id === agentId));
+      setCurrentlySelectedProjectId(project?.id || null);
+      setCurrentlySelectedAgentId(agentId);
+      setCurrentlySelectedAppId(null);
+    } else if (path.startsWith('/project/app/')) {
       const appId = path.split('/')[3];
       const project = projects.find(p => p.apps.some(a => a.id === appId));
       setCurrentlySelectedProjectId(project?.id || null);
       setCurrentlySelectedAppId(appId);
+      setCurrentlySelectedAgentId(null);
 
     } else if (path.startsWith("/project")) {
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(null);
+      setCurrentlySelectedAgentId(null);
 
     } else {
       setCurrentlySelectedProjectId(null);
       setCurrentlySelectedAppId(null);
+      setCurrentlySelectedAgentId(null);
 
     }
   }, [path]);
@@ -169,7 +178,13 @@ export function SidebarCient({
                   </SidebarMenuAction>
                 </EditProjectDialog>}
                 <SidebarMenu>
-                  {projects.map((item) => (
+                  {projects.map((item) => {
+                    const isAgentProject = item.projectType === 'AGENT';
+                    const workloads = isAgentProject ? (item.agents || []) : item.apps;
+                    const workloadPath = isAgentProject ? '/project/agent/' : '/project/app/';
+                    const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
+
+                    return (
                     <DropdownMenu key={item.id}>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip={{
@@ -182,7 +197,7 @@ export function SidebarCient({
                             <Dot />  <span>{item.name}</span>
                           </Link>
                         </SidebarMenuButton>
-                        {item.apps.length ? (<>
+                        {workloads.length ? (<>
                           <DropdownMenuTrigger asChild>
                             <SidebarMenuAction className="">
                               <ChevronRight />
@@ -195,17 +210,17 @@ export function SidebarCient({
                             align={isMobile ? "end" : "start"}
                             className="min-w-56 rounded-lg"
                           >
-                            {item.apps.map((app) => (
-                              <DropdownMenuItem asChild key={app.name}
-                                className={currentlySelectedAppId === app.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
-                                <a href={`/project/app/${app.id}`}>{app.name}</a>
+                            {workloads.map((workload) => (
+                              <DropdownMenuItem asChild key={workload.name}
+                                className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
+                                <a href={`${workloadPath}${workload.id}`}>{workload.name}</a>
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
                         </>) : null}
                       </SidebarMenuItem>
                     </DropdownMenu>
-                  ))}
+                  )})}
                 </SidebarMenu>
               </SidebarMenuItem>
             </SidebarMenu>

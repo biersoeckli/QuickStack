@@ -129,6 +129,7 @@ Rules:
 
 - Use `saveFormAction` for validated form submissions.
 - Use `simpleAction` for non-form actions.
+- Older server actions used `return new SuccessActionResult(returnData, "App created successfully.");` but this is no longer needed; if theres a return value, just return the variable directly and success messages should be handled in component not server action.
 - Put authorization checks inside the callback before service calls.
 - Let the wrappers produce success payloads; do not manually construct them unless returning data.
 

@@ -18,6 +18,7 @@ export async function AppSidebar() {
     UserGroupUtils.sessionHasReadAccessToProject(session, project.id));
   for (const project of relevantProjectsForUser) {
     project.apps = project.apps.filter((app) => UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
+    project.agents = project.agents.filter((agent) => UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, agent.id));
   }
 
   return <SidebarCient newVersionInfo={newVersionInfo} projects={relevantProjectsForUser} session={session} />

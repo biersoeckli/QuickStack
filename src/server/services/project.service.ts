@@ -41,7 +41,8 @@ class ProjectService {
     async getAll(): Promise<ProjectExtendedModel[]> {
         return await unstable_cache(() => dataAccess.client.project.findMany({
             include: {
-                apps: true
+                apps: true,
+                agents: true,
             },
             orderBy: {
                 name: 'asc'

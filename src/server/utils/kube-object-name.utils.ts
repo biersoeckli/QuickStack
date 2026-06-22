@@ -35,6 +35,11 @@ export class KubeObjectNameUtils {
         return `app-${KubeObjectNameUtils.toObjectId(str)}`;
     }
 
+    static toAgentId(str: string): `agent-${string}` {
+        str = str.substring(0, KubeObjectNameUtils.MAX_OBJECT_NAME_LENGTH).trim();
+        return `agent-${KubeObjectNameUtils.toObjectId(str)}`;
+    }
+
     static toJobName(appId: string): `build-${string}` {
         return `build-${appId}`;
     }

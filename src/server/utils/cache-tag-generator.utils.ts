@@ -36,6 +36,14 @@ export class Tags {
         return `app-${appId}`;
     }
 
+    static agents(projectId: string) {
+        return `agents-${projectId}`;
+    }
+
+    static agent(agentId: string) {
+        return `agent-${agentId}`;
+    }
+
     static apiKey(userId: string) {
         return `api-key-${userId}`;
     }

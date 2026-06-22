@@ -14,6 +14,10 @@ type RoleProjectPermissionRecord = {
             id: string;
             name: string;
         }[];
+        agents: {
+            id: string;
+            name: string;
+        }[];
     };
     createApps: boolean;
     deleteApps: boolean;
@@ -27,13 +31,19 @@ type RoleProjectPermissionRecord = {
 
 export class UserGroupService {
     private mapProjectRolePermission(permission: RoleProjectPermissionRecord): ProjectRolePermission {
+        const appWorkloads = permission.project.apps.map((app) => ({
+            id: app.id,
+            name: app.name,
+        }));
+        const agentWorkloads = permission.project.agents?.map((agent) => ({
+            id: agent.id,
+            name: agent.name,
+        })) ?? [];
+
         return {
             projectId: permission.projectId,
             project: {
-                projectWorkloads: permission.project.apps.map((app) => ({
-                    id: app.id,
-                    name: app.name,
-                })),
+                projectWorkloads: [...appWorkloads, ...agentWorkloads],
             },
             createWorkloads: permission.createApps,
             deleteWorkloads: permission.deleteApps,
@@ -60,6 +70,12 @@ export class UserGroupService {
                                 project: {
                                     select: {
                                         apps: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                            }
+                                        },
+                                        agents: {
                                             select: {
                                                 id: true,
                                                 name: true,
@@ -203,6 +219,12 @@ export class UserGroupService {
                                         id: true,
                                         name: true,
                                     }
+                                },
+                                agents: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    }
                                 }
                             }
                         },
@@ -234,6 +256,12 @@ export class UserGroupService {
                         project: {
                             select: {
                                 apps: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    }
+                                },
+                                agents: {
                                     select: {
                                         id: true,
                                         name: true,
