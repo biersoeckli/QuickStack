@@ -23,6 +23,18 @@ _Avoid_: public agent config, plain environment config
 A user-defined environment value for an **Agent** whose value is stored encrypted by QuickStack.
 _Avoid_: plain env var, app env var
 
+**Agent Rate Limits**:
+CPU and memory requests and limits stored as integers (millicores for CPU, MB for memory) that control Kubernetes resource allocation per sandbox container instance.
+_Avoid_: resource quantities, K8s resource strings
+
+**Agent Source**:
+The collection of container image, **LLM Gateway**, and **LiteLLM Model Alias** that defines where an Agent's runtime comes from and which model it uses.
+_Avoid_: agent config, general settings
+
+**Deploy (Agent)**:
+The explicit action that reconciles a saved **Agent** configuration from the database to Kubernetes SandboxTemplate and SandboxWarmPool resources.
+_Avoid_: auto-save, save-and-apply
+
 **LLM Gateway**:
 A QuickStack-managed connection to a LiteLLM-compatible service that brokers model access for **Agents**.
 _Avoid_: built-in model provider, hidden control-plane service
@@ -166,6 +178,9 @@ _Avoid_: manual initial port requirement
 - An **Agent Project** can contain zero or more **Agents** and no **Apps**.
 - An **Agent** belongs to exactly one **Agent Project**.
 - An **Agent** has exactly one **Agent Name**.
+- An **Agent** has exactly one **Agent Source** (image, **LLM Gateway**, and **LiteLLM Model Alias**).
+- An **Agent** has exactly one set of **Agent Rate Limits** that apply per sandbox container instance.
+- A **Deploy (Agent)** reconciles the saved **Agent** configuration to its Kubernetes SandboxTemplate and SandboxWarmPool.
 - An **Agent** can have zero or more **Agent Environment Variables**.
 - A running **Agent** has exactly one **Agent Runtime Secret**.
 - An **Agent** uses exactly one **LLM Gateway**.

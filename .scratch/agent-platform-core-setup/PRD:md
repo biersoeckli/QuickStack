@@ -52,7 +52,7 @@ Users manage Agents through a UI that mirrors the existing App structure but sho
 32. As an admin, I want token budgets managed by LiteLLM rather than QuickStack, so that budget policy stays in the Gateway.
 33. As a user, I want changing Gateway or model to invalidate the old virtual key while stopped, so that stale credentials are not reused.
 34. As a user, I want runtime-relevant Agent configuration locked while running, so that Kubernetes and Gateway state cannot drift.
-35. As a user, I want Agent save to reconcile SandboxTemplate and SandboxWarmPool, so that the Kubernetes definition matches the saved Agent.
+35. As a user, I want saving Agent configuration to persist to the database, and deploying to reconcile SandboxTemplate and SandboxWarmPool, so that configuration can be reviewed before Kubernetes changes are applied.
 36. As a user, I want Agent creation to roll back if Kubernetes definition creation fails, so that half-created Agents do not remain in the UI.
 37. As a user, I want starting an Agent to create a runtime Secret, so that runtime credentials and prompt context are injected safely.
 38. As a user, I want starting an Agent to create a SandboxClaim, so that Kubernetes Agent Sandbox creates the running Sandbox.
@@ -109,10 +109,10 @@ Users manage Agents through a UI that mirrors the existing App structure but sho
 - Start OpenCode directly in the fullscreen Agent terminal.
 - Use the default Agent image configured in the Constants class.
 - Support custom images without registry credential handling or validation in Phase 1.
-- Use Kubernetes Quantity strings for Agent CPU and memory requests and limits.
+- Use Kubernetes Quantity strings for Agent CPU and memory requests and limits. Store CPU values as integers in millicores and memory as integers in MB, converting to Kubernetes quantity strings only at the K8s adapter boundary.
 - Do not add Agent persistent storage in Phase 1.
 - Do not synthesize gateway-specific NetworkPolicy rules in Phase 1; rely on Agent Sandbox defaults.
-- Add Server Actions and UI flows for Agent Projects, Agents, Agent terminal, Agent logs, Agent events, and LLM Gateway settings.
+- Add Server Actions and UI flows for Agent Projects, Agents, Agent terminal, Agent logs, Agent events, and LLM Gateway settings. Agent configuration is split into independent per-card forms (Source, Rate Limits, System Prompt, Environment Variables) each with its own save action. A separate "Deploy" button reconciles the saved configuration to Kubernetes.
 - Do not add external Agent REST endpoints in Phase 1.
 
 ## Testing Decisions
@@ -122,7 +122,7 @@ Users manage Agents through a UI that mirrors the existing App structure but sho
 - Test workload-neutral authorization helpers, following the style of existing role and shared authorization tests.
 - Test Agent naming and Agent resource naming through Kubernetes object name utility tests.
 - Test Agent service create behavior with mocked DB, Kubernetes adapter, and rollback on Kubernetes failure.
-- Test Agent save behavior, including running-state restrictions and SandboxTemplate/SandboxWarmPool reconciliation.
+- Test Agent save behavior, including running-state restrictions, per-card persistence to DB, and separate deploy-time SandboxTemplate/SandboxWarmPool reconciliation.
 - Test Agent start behavior with mocked LLM Gateway and Kubernetes adapter, including virtual key creation, runtime Secret content, SandboxClaim creation, readiness success, and readiness timeout/error.
 - Test Agent stop behavior, including SandboxClaim and runtime Secret deletion.
 - Test Agent delete behavior, including cleanup order at the service boundary and failure when virtual key deletion fails.

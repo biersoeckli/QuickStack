@@ -29,4 +29,6 @@ export class Constants {
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
+    static readonly QS_DEFAULT_AGENT_IMAGE = 'ghcr.io/quickstack-dev/agent-sandbox:latest';
+
 }

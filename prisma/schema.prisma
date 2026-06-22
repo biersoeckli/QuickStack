@@ -226,10 +226,10 @@ model Agent {
   modelAlias   String
 
   image              String?
-  cpuRequest         String?
-  cpuLimit           String?
-  memoryRequest      String?
-  memoryLimit        String?
+  cpuRequest         Int?
+  cpuLimit           Int?
+  memoryRequest      Int?
+  memoryLimit        Int?
   systemPrompt       String?
   encryptedEnvVars   String?
 

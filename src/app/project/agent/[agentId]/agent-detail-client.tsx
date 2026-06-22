@@ -9,9 +9,12 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { Play, Square } from "lucide-react";
-import AgentConfigForm from "./general/agent-config-form";
-import { getAgentStatus, startAgent, stopAgent } from "./overview/actions";
+import { Play, Rocket, Square } from "lucide-react";
+import { getAgentStatus, startAgent, stopAgent, deployAgent } from "./overview/actions";
+import AgentSourceCard from "./general/agent-source-card";
+import AgentRateLimitsCard from "./general/agent-rate-limits-card";
+import AgentSystemPromptCard from "./general/agent-system-prompt-card";
+import AgentEnvVarsCard from "./general/agent-env-vars-card";
 
 function getStatusColor(status: DeploymentStatus): string {
     switch (status) {
@@ -80,6 +83,16 @@ export default function AgentDetailClient({ agent, role }: {
         fetchStatus();
     };
 
+    const handleDeploy = async () => {
+        setLoading(true);
+        await Toast.fromAction(
+            () => deployAgent(agent.id),
+            'Configuration deployed',
+            'Deploying configuration...',
+        );
+        setLoading(false);
+    };
+
     const isRunning = status === 'DEPLOYED' || status === 'DEPLOYING';
     const isStopped = status === 'SHUTDOWN' || status === 'ERROR';
 
@@ -91,7 +104,12 @@ export default function AgentDetailClient({ agent, role }: {
             </TabsList>
 
             <TabsContent value="general" className="pt-4">
-                <AgentConfigForm agent={agent} readonly={readonly} />
+                <div className="space-y-6">
+                    <AgentSourceCard agent={agent} readonly={readonly} />
+                    <AgentRateLimitsCard agent={agent} readonly={readonly} />
+                    <AgentSystemPromptCard agent={agent} readonly={readonly} />
+                    <AgentEnvVarsCard agent={agent} readonly={readonly} />
+                </div>
             </TabsContent>
 
             <TabsContent value="overview" className="pt-4">
@@ -134,6 +152,15 @@ export default function AgentDetailClient({ agent, role }: {
                                 </div>
                                 {!readonly && (
                                     <div className="flex gap-2">
+                                        <Button
+                                            onClick={handleDeploy}
+                                            disabled={loading}
+                                            variant="secondary"
+                                            size="sm"
+                                        >
+                                            <Rocket className="h-4 w-4 mr-1" />
+                                            Deploy
+                                        </Button>
                                         <Button
                                             onClick={handleStart}
                                             disabled={isRunning || loading}

@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-export const KUBERNETES_QUANTITY_REGEX = /^[0-9]+(\.[0-9]+)?(m|[KkMGTPE]i?)?$/;
+import { stringToOptionalNumber } from "@/shared/utils/zod.utils";
 
 export const agentEnvVarModel = z.object({
     name: z
@@ -25,26 +24,10 @@ export const agentEnvVarFormModel = z.object({
 
 export const agentConfigZodModel = z.object({
     image: z.string().trim().nullish(),
-    cpuRequest: z
-        .string()
-        .regex(KUBERNETES_QUANTITY_REGEX, 'Must be a valid Kubernetes quantity (e.g. 100m, 1, 0.5).')
-        .nullish()
-        .or(z.literal('')),
-    cpuLimit: z
-        .string()
-        .regex(KUBERNETES_QUANTITY_REGEX, 'Must be a valid Kubernetes quantity (e.g. 100m, 1, 2).')
-        .nullish()
-        .or(z.literal('')),
-    memoryRequest: z
-        .string()
-        .regex(KUBERNETES_QUANTITY_REGEX, 'Must be a valid Kubernetes quantity (e.g. 128Mi, 1Gi).')
-        .nullish()
-        .or(z.literal('')),
-    memoryLimit: z
-        .string()
-        .regex(KUBERNETES_QUANTITY_REGEX, 'Must be a valid Kubernetes quantity (e.g. 512Mi, 2Gi).')
-        .nullish()
-        .or(z.literal('')),
+    cpuRequest: stringToOptionalNumber,
+    cpuLimit: stringToOptionalNumber,
+    memoryRequest: stringToOptionalNumber,
+    memoryLimit: stringToOptionalNumber,
     systemPrompt: z.string().nullish(),
     envVars: z
         .array(
@@ -85,3 +68,30 @@ export const agentConfigZodModel = z.object({
 
 export type AgentConfigModel = z.infer<typeof agentConfigZodModel>;
 export type AgentConfigInputModel = z.input<typeof agentConfigZodModel>;
+
+// ── Per-card schemas ──────────────────────────────────────────────
+
+export const agentSourceZodModel = agentConfigZodModel.pick({
+    image: true,
+    llmGatewayId: true,
+    modelAlias: true,
+});
+export type AgentSourceModel = z.infer<typeof agentSourceZodModel>;
+
+export const agentRateLimitsZodModel = agentConfigZodModel.pick({
+    cpuRequest: true,
+    cpuLimit: true,
+    memoryRequest: true,
+    memoryLimit: true,
+});
+export type AgentRateLimitsModel = z.infer<typeof agentRateLimitsZodModel>;
+
+export const agentSystemPromptZodModel = agentConfigZodModel.pick({
+    systemPrompt: true,
+});
+export type AgentSystemPromptModel = z.infer<typeof agentSystemPromptZodModel>;
+
+export const agentEnvVarsZodModel = agentConfigZodModel.pick({
+    envVars: true,
+});
+export type AgentEnvVarsModel = z.infer<typeof agentEnvVarsZodModel>;

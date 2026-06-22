@@ -319,10 +319,10 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.update).mockResolvedValue({
                 ...existingAgent,
                 image: 'my-custom-image:latest',
-                cpuRequest: '200m',
-                cpuLimit: '1',
-                memoryRequest: '256Mi',
-                memoryLimit: '1Gi',
+                cpuRequest: 200,
+                cpuLimit: 1000,
+                memoryRequest: 256,
+                memoryLimit: 1024,
             } as any);
             vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
             vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mockResolvedValue(undefined);
@@ -332,10 +332,10 @@ describe('agent.service', () => {
         it('saves image, cpu, memory, and system prompt config', async () => {
             const result = await agentService.saveConfig(agentId, {
                 image: 'my-custom-image:latest',
-                cpuRequest: '200m',
-                cpuLimit: '1',
-                memoryRequest: '256Mi',
-                memoryLimit: '1Gi',
+                cpuRequest: 200,
+                cpuLimit: 1000,
+                memoryRequest: 256,
+                memoryLimit: 1024,
                 systemPrompt: 'You are a helpful assistant.',
             });
 
@@ -343,10 +343,10 @@ describe('agent.service', () => {
                 where: { id: agentId },
                 data: {
                     image: 'my-custom-image:latest',
-                    cpuRequest: '200m',
-                    cpuLimit: '1',
-                    memoryRequest: '256Mi',
-                    memoryLimit: '1Gi',
+                    cpuRequest: 200,
+                    cpuLimit: 1000,
+                    memoryRequest: 256,
+                    memoryLimit: 1024,
                     systemPrompt: 'You are a helpful assistant.',
                 },
             });
@@ -357,18 +357,18 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({
                 ...existingAgent,
                 image: 'old-image:latest',
-                cpuRequest: '500m',
-                cpuLimit: '2',
-                memoryRequest: '512Mi',
-                memoryLimit: '2Gi',
+                cpuRequest: 500,
+                cpuLimit: 2000,
+                memoryRequest: 512,
+                memoryLimit: 2048,
             } as any);
 
             await agentService.saveConfig(agentId, {
                 image: '',
-                cpuRequest: '',
-                cpuLimit: '',
-                memoryRequest: '',
-                memoryLimit: '',
+                cpuRequest: '' as any,
+                cpuLimit: '' as any,
+                memoryRequest: '' as any,
+                memoryLimit: '' as any,
                 systemPrompt: '',
             });
 
@@ -451,7 +451,7 @@ describe('agent.service', () => {
             await expect(
                 agentService.saveConfig(agentId, {
                     image: 'new-image:latest',
-                    cpuRequest: '100m',
+                    cpuRequest: 100,
                     systemPrompt: undefined,
                     envVars: undefined,
                 }),
