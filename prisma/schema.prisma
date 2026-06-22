@@ -188,6 +188,16 @@ model Project {
   updatedAt DateTime @updatedAt
 }
 
+model LlmGateway {
+  id                String   @id @default(uuid())
+  name              String
+  baseUrl           String
+  encryptedAdminKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model App {
   id         String  @id @default(uuid())
   name       String

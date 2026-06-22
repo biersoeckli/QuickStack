@@ -68,6 +68,12 @@ export function SidebarCient({
       adminOnly: true,
     },
     {
+      title: "LLM Gateways",
+      url: "/settings/llm-gateways",
+      icon: Boxes,
+      adminOnly: true,
+    },
+    {
       title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
       url: "/settings/server",
       adminOnly: true,

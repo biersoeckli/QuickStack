@@ -16,6 +16,10 @@ export class Tags {
         return `targets`;
     }
 
+    static llmGateways() {
+        return `llm-gateways`;
+    }
+
     static volumeBackups() {
         return `volume-backups`;
     }
