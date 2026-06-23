@@ -1,6 +1,8 @@
+import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import k3s from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { V1Secret } from "@kubernetes/client-node";
+import { Constants } from "@/shared/utils/constants";
+import { V1ObjectMeta, V1Secret } from "@kubernetes/client-node";
 
 export interface SandboxTemplateSpec {
     name: string;
@@ -61,16 +63,40 @@ class AgentSandboxAdapter {
         }
     }
 
+    async getSandboxTemplate(name: string, namespace: string): Promise<KubernetesResource> {
+        try {
+            const response = await k3s.customObjects.getNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                namespace,
+                TEMPLATE_PLURAL,
+                name,
+            );
+            return (response as any).body;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                throw new ServiceException(`SandboxTemplate "${name}" not found in namespace "${namespace}".`);
+            }
+            console.error(`Failed to get SandboxTemplate "${name}":`, error);
+            throw new ServiceException(
+                `Failed to get SandboxTemplate "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
     /**
      * Creates or updates a SandboxTemplate custom resource.
      */
     async reconcileSandboxTemplate(spec: SandboxTemplateSpec): Promise<void> {
-        const resource = {
+        const resource: KubernetesResource = {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxTemplate',
             metadata: {
                 name: spec.name,
                 namespace: spec.namespace,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+                }
             },
             spec: {
                 podTemplate: {
@@ -111,12 +137,15 @@ class AgentSandboxAdapter {
      * Creates or updates a SandboxWarmPool custom resource.
      */
     async reconcileSandboxWarmPool(spec: SandboxWarmPoolSpec): Promise<void> {
-        const resource = {
+        const resource: KubernetesResource = {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxWarmPool',
             metadata: {
                 name: spec.name,
                 namespace: spec.namespace,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
+                }
             },
             spec: {
                 sandboxTemplateRef: {
@@ -185,7 +214,7 @@ class AgentSandboxAdapter {
     async listSandboxClaims(
         namespace: string,
         labelSelector?: string,
-    ): Promise<any[]> {
+    ): Promise<KubernetesResource[]> {
         try {
             const response = await k3s.customObjects.listNamespacedCustomObject(
                 SANDBOX_API_GROUP,
@@ -208,7 +237,7 @@ class AgentSandboxAdapter {
     }
 
     async createSandboxClaim(spec: SandboxClaimSpec): Promise<void> {
-        const resource = {
+        const resource: KubernetesResource = {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxClaim',
             metadata: {
@@ -261,7 +290,7 @@ class AgentSandboxAdapter {
         }
     }
 
-    async getSandboxClaim(name: string, namespace: string): Promise<any | null> {
+    async getSandboxClaim(name: string, namespace: string): Promise<KubernetesResource | null> {
         try {
             const response = await k3s.customObjects.getNamespacedCustomObject(
                 SANDBOX_API_GROUP,
@@ -403,11 +432,11 @@ class AgentSandboxAdapter {
      * Applies a custom resource (create or patch) using the Kubernetes API.
      */
     private async applyCustomResource(
-        resource: any,
+        resource: KubernetesResource,
         namespace: string,
         plural: string,
     ): Promise<void> {
-        const name = resource.metadata.name;
+        const name = resource.metadata.name!;
 
         try {
             // Try to read existing resource

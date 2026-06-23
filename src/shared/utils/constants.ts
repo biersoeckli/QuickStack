@@ -12,6 +12,7 @@ export class Constants {
     static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
     static readonly QS_ANNOTATION_GIT_SSH_SECRET = 'qs-git-ssh-secret';
     static readonly QS_ANNOTATION_AGENT_INSTANCE_LABEL = 'qs-agent-id';
+    static readonly QS_ANNOTATION_UPDATED_AT = 'qs-ressource-updated-at';
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';

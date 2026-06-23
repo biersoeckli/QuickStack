@@ -12,6 +12,7 @@ import namespaceService from "./namespace.service";
 import agentRuntimeService from "./agent-runtime.service";
 import { AgentConfigInputModel } from "@/shared/model/agent-config.model";
 import { Constants } from "@/shared/utils/constants";
+import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 
 
 class AgentService {
@@ -251,6 +252,20 @@ class AgentService {
         revalidateTag(Tags.agents(existing.projectId));
 
         return updated;
+    }
+
+    async getSandboxTemplateDeployInfo(agentId: string) {
+        return await unstable_cache(
+            async (agentId: string) => {
+                const agent = await this.getById(agentId);
+                const agentTemplate = await agentSandboxAdapter.getSandboxTemplate(agentId, agent.projectId);
+                return {
+                    lastDeployedAt: agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT] ? new Date(agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT]) : null,
+                } as AgentSanboxTemplateInfo;
+            },
+            [Tags.agent(agentId)],
+            { tags: [Tags.agent(agentId)] },
+        )(agentId);
     }
 
     /**

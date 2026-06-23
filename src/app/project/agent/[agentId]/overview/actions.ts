@@ -35,14 +35,6 @@ export const deleteAgent = async (agentId: string) =>
         await agentService.deleteById(agentId);
     });
 
-export const getAgentStatus = async (agentId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedReadForAgent(agentId);
-        const status = await agentRuntimeService.getAgentStatus(agentId);
-        const statusText = agentRuntimeService.statusTextFor(status);
-        return { status, statusText };
-    });
-
 export const getPodsForAgent = async (agentId: string) =>
     simpleAction(async () => {
         await isAuthorizedReadForAgent(agentId);
