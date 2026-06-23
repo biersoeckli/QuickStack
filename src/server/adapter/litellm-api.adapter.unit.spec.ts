@@ -147,4 +147,62 @@ describe('LiteLlmApiAdapter', () => {
             ).rejects.toThrow('LiteLLM virtual key response did not contain a key field.');
         });
     });
+
+    describe('deleteVirtualKey', () => {
+        it('sends DELETE request with the key in body', async () => {
+            let capturedUrl: string | null = null;
+            let capturedBody: string | null = null;
+            vi.spyOn(global, 'fetch').mockImplementation(async (url: any, init?: any) => {
+                capturedUrl = url as string;
+                capturedBody = init?.body ?? null;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: vi.fn().mockResolvedValue({}),
+                } as any;
+            });
+
+            await liteLlmApiAdapter.deleteVirtualKey(
+                'https://litellm.example.com',
+                'admin-secret',
+                'sk-v-key-to-delete',
+            );
+
+            expect(capturedUrl).toBe('https://litellm.example.com/key/delete');
+            const parsed = JSON.parse(capturedBody!);
+            expect(parsed.keys).toEqual(['sk-v-key-to-delete']);
+        });
+
+        it('maps non-200 status to ServiceException', async () => {
+            vi.spyOn(global, 'fetch').mockResolvedValue({
+                ok: false,
+                status: 500,
+                text: vi.fn().mockResolvedValue('Internal Server Error'),
+            } as any);
+
+            await expect(
+                liteLlmApiAdapter.deleteVirtualKey('https://litellm.example.com', 'admin', 'sk-v-key'),
+            ).rejects.toThrow('LiteLLM request failed with status 500: Internal Server Error');
+        });
+
+        it('maps auth failures to actionable message', async () => {
+            vi.spyOn(global, 'fetch').mockResolvedValue({
+                ok: false,
+                status: 403,
+                text: vi.fn().mockResolvedValue('Forbidden'),
+            } as any);
+
+            await expect(
+                liteLlmApiAdapter.deleteVirtualKey('https://litellm.example.com', 'admin', 'sk-v-key'),
+            ).rejects.toThrow('LiteLLM authentication failed. Please check the LiteLLM Admin Key.');
+        });
+
+        it('maps network failures to actionable messages', async () => {
+            vi.spyOn(global, 'fetch').mockRejectedValue(new Error('connect ECONNREFUSED'));
+
+            await expect(
+                liteLlmApiAdapter.deleteVirtualKey('https://litellm.example.com', 'admin', 'sk-v-key'),
+            ).rejects.toThrow('Could not reach LiteLLM Gateway: connect ECONNREFUSED');
+        });
+    });
 });

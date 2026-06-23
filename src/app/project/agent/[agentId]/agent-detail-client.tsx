@@ -9,12 +9,13 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { Play, Rocket, Square } from "lucide-react";
-import { getAgentStatus, startAgent, stopAgent, deployAgent } from "./overview/actions";
+import { Play, Rocket, Square, Trash2 } from "lucide-react";
+import { getAgentStatus, startAgent, stopAgent, deployAgent, deleteAgent } from "./overview/actions";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
+import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
 function getStatusColor(status: DeploymentStatus): string {
     switch (status) {
@@ -34,6 +35,8 @@ export default function AgentDetailClient({ agent, role }: {
     const searchParams = useSearchParams();
     const tabName = searchParams.get('tabName') || 'general';
     const readonly = role !== RolePermissionEnum.READWRITE;
+
+    const { openConfirmDialog } = useConfirmDialog();
 
     const [status, setStatus] = useState<DeploymentStatus>('SHUTDOWN');
     const [statusText, setStatusText] = useState('Shut Down');
@@ -91,6 +94,22 @@ export default function AgentDetailClient({ agent, role }: {
             'Deploying configuration...',
         );
         setLoading(false);
+    };
+
+    const handleDelete = async () => {
+        const confirmed = await openConfirmDialog({
+            title: "Delete Agent",
+            description: "Are you sure you want to delete this agent? All runtime resources, sandbox definitions, and credentials will be removed. This action cannot be undone.",
+            okButton: "Delete Agent",
+        });
+        if (confirmed) {
+            await Toast.fromAction(
+                () => deleteAgent(agent.id),
+                'Agent deleted successfully.',
+                'Deleting Agent...',
+            );
+            router.push(`/project/${agent.projectId}`);
+        }
     };
 
     const isRunning = status === 'DEPLOYED' || status === 'DEPLOYING';
@@ -178,6 +197,15 @@ export default function AgentDetailClient({ agent, role }: {
                                         >
                                             <Square className="h-4 w-4 mr-1" />
                                             Stop
+                                        </Button>
+                                        <Button
+                                            onClick={handleDelete}
+                                            disabled={loading}
+                                            variant="destructive"
+                                            size="sm"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-1" />
+                                            Delete
                                         </Button>
                                     </div>
                                 )}

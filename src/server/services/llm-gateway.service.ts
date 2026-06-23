@@ -65,6 +65,15 @@ class LlmGatewayService {
     }
 
     async deleteById(id: string) {
+        const agentCount = await dataAccess.client.agent.count({
+            where: { llmGatewayId: id },
+        });
+        if (agentCount > 0) {
+            throw new ServiceException(
+                'Cannot delete this LLM Gateway because it is still referenced by one or more Agents. Remove all Agents using this Gateway first.',
+            );
+        }
+
         try {
             await this.llmGatewayClient.deleteMany({
                 where: { id },

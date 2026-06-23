@@ -294,6 +294,25 @@ class AgentSandboxAdapter {
         }
     }
 
+    async getSecret(name: string, namespace: string): Promise<Record<string, string> | null> {
+        try {
+            const response = await k3s.core.readNamespacedSecret(name, namespace);
+            const data = response.body.data || {};
+            const decoded: Record<string, string> = {};
+            for (const [key, value] of Object.entries(data)) {
+                decoded[key] = value ? Buffer.from(value, 'base64').toString('utf-8') : '';
+            }
+            return decoded;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return null;
+            }
+            throw new ServiceException(
+                `Failed to read Secret "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
     async deleteSecret(name: string, namespace: string): Promise<void> {
         try {
             await k3s.core.deleteNamespacedSecret(name, namespace);

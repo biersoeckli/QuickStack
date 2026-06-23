@@ -52,6 +52,13 @@ class LiteLlmApiAdapter {
         return response.key;
     }
 
+    async deleteVirtualKey(baseUrl: string, adminKey: string, key: string): Promise<void> {
+        await this.fetchJson<unknown>(baseUrl, adminKey, '/key/delete', {
+            method: 'POST',
+            body: JSON.stringify({ keys: [key] }),
+        });
+    }
+
     async listModelAliases(baseUrl: string, adminKey: string): Promise<string[]> {
         const response = await this.fetchJson<LiteLlmModelInfoResponse>(baseUrl, adminKey, '/model/info');
         if (!response.data || !Array.isArray(response.data)) {

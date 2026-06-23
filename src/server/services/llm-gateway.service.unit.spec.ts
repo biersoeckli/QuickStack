@@ -11,6 +11,10 @@ const dbMock = vi.hoisted(() => ({
     deleteMany: vi.fn(),
 }));
 
+const agentDbMock = vi.hoisted(() => ({
+    count: vi.fn(),
+}));
+
 const adapterMock = vi.hoisted(() => ({
     listModelAliases: vi.fn(),
 }));
@@ -19,6 +23,7 @@ vi.mock('@/server/adapter/db.client', () => ({
     default: {
         client: {
             llmGateway: dbMock,
+            agent: agentDbMock,
         },
     },
 }));
@@ -133,5 +138,24 @@ describe('LlmGatewayService', () => {
         await llmGatewayService.getModelAliasesById('gw-1');
 
         expect(adapterMock.listModelAliases).toHaveBeenCalledTimes(2);
+    });
+
+    describe('deleteById', () => {
+        it('blocks deletion when agents reference the gateway', async () => {
+            agentDbMock.count.mockResolvedValue(3);
+
+            await expect(llmGatewayService.deleteById('gw-1')).rejects.toThrow(
+                'Cannot delete this LLM Gateway because it is still referenced by one or more Agents.',
+            );
+            expect(dbMock.deleteMany).not.toHaveBeenCalled();
+        });
+
+        it('deletes when no agents reference the gateway', async () => {
+            agentDbMock.count.mockResolvedValue(0);
+
+            await llmGatewayService.deleteById('gw-1');
+
+            expect(dbMock.deleteMany).toHaveBeenCalledWith({ where: { id: 'gw-1' } });
+        });
     });
 });

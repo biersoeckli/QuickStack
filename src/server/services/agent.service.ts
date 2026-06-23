@@ -6,8 +6,10 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
+import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import namespaceService from "./namespace.service";
+import agentRuntimeService from "./agent-runtime.service";
 import { AgentConfigInputModel } from "@/shared/model/agent-config.model";
 import { Constants } from "@/shared/utils/constants";
 
@@ -313,26 +315,80 @@ class AgentService {
     }
 
     /**
-     * Deletes an agent and its sandbox resources.
+     * Deletes an Agent and all associated resources using a safe cleanup order:
+     *
+     * 1. Extract virtual key from runtime secret if the agent is running.
+     * 2. Stop runtime resources (SandboxClaim + runtime Secret) — idempotent.
+     * 3. Delete the LiteLLM virtual key via the Gateway API.
+     *    If this fails the DB Agent is preserved so cleanup can be retried.
+     * 4. Delete SandboxWarmPool and SandboxTemplate from K8s.
+     * 5. Delete the DB Agent record in a transaction.
      */
     async deleteById(agentId: string): Promise<void> {
-        // Read agent first — needed for K8s namespace and cache tag invalidation
         const existing = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: { select: { id: true } } },
+            include: {
+                project: { select: { id: true } },
+                llmGateway: true,
+            },
         });
         if (!existing) {
             return;
         }
 
-        const projectId = existing.projectId;
-        const namespace = existing.projectId;
+        const namespace = existing.project.id;
 
-        // Delete K8s sandbox resources (best-effort before DB cleanup)
+        // 1. Extract virtual key from runtime secret before stopping
+        let virtualKey: string | null = null;
+        try {
+            const secretData = await agentSandboxAdapter.getSecret(
+                KubeObjectNameUtils.toSecretId(agentId),
+                namespace,
+            );
+            if (secretData?.QS_VIRTUAL_KEY) {
+                virtualKey = secretData.QS_VIRTUAL_KEY;
+            }
+        } catch {
+            // Secret not found or inaccessible — key already cleaned up or never existed
+        }
+
+        // 2. Stop runtime resources (idempotent — adapters handle 404 silently)
+        try {
+            await agentRuntimeService.stopAgent(agentId);
+        } catch (error: any) {
+            // Allow stopAgent "Agent not found." to silently pass (agent still exists per our read)
+            if (!(error instanceof ServiceException && error.message.includes('Agent not found'))) {
+                throw error;
+            }
+        }
+
+        // 3. Delete LiteLLM virtual key if we extracted one
+        if (virtualKey && existing.llmGateway?.encryptedAdminKey) {
+            try {
+                const adminKey = CryptoUtils.decrypt(existing.llmGateway.encryptedAdminKey);
+                await liteLlmApiAdapter.deleteVirtualKey(
+                    existing.llmGateway.baseUrl,
+                    adminKey,
+                    virtualKey,
+                );
+            } catch (error: any) {
+                // Preserve DB Agent when virtual key deletion fails — retryable
+                revalidateTag(Tags.agents(existing.projectId));
+                revalidateTag(Tags.agent(agentId));
+                if (error instanceof ServiceException) {
+                    throw error;
+                }
+                throw new ServiceException(
+                    `Failed to delete Agent virtual key: ${error?.message || error}`,
+                );
+            }
+        }
+
+        // 4. Delete K8s sandbox resources (best-effort before DB cleanup)
         await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
         await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
 
-        // Transactional DB delete — re-reads inside tx to prevent TOCTOU races
+        // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
         await dataAccess.client.$transaction(async (tx) => {
             const current = await tx.agent.findUnique({
                 where: { id: agentId },
@@ -344,7 +400,7 @@ class AgentService {
             }
         });
 
-        revalidateTag(Tags.agents(projectId));
+        revalidateTag(Tags.agents(existing.projectId));
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.projects());
     }
