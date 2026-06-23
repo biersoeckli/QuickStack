@@ -25,7 +25,8 @@ export interface SandboxWarmPoolSpec {
 export interface SandboxClaimSpec {
     name: string;
     namespace: string;
-    warmPoolName: string;
+    sanboxTemplateRef: string;
+    labels?: Record<string, string>;
 }
 
 const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
@@ -178,6 +179,34 @@ class AgentSandboxAdapter {
         }
     }
 
+    /**
+     * Lists all SandboxClaims in a namespace, optionally filtered by label selector.
+     */
+    async listSandboxClaims(
+        namespace: string,
+        labelSelector?: string,
+    ): Promise<any[]> {
+        try {
+            const response = await k3s.customObjects.listNamespacedCustomObject(
+                SANDBOX_API_GROUP,
+                SANDBOX_API_VERSION,
+                namespace,
+                CLAIM_PLURAL,
+                undefined, // pretty
+                undefined, // allowWatchBookmarks
+                undefined, // continue
+                undefined, // fieldSelector
+                labelSelector,
+            );
+            return (response as any).body?.items || [];
+        } catch (error: any) {
+            console.error(`Failed to list SandboxClaims in namespace "${namespace}":`, error);
+            throw new ServiceException(
+                `Failed to list SandboxClaims: ${error?.message || error}`,
+            );
+        }
+    }
+
     async createSandboxClaim(spec: SandboxClaimSpec): Promise<void> {
         const resource = {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
@@ -185,11 +214,15 @@ class AgentSandboxAdapter {
             metadata: {
                 name: spec.name,
                 namespace: spec.namespace,
+                ...(spec.labels ? { labels: spec.labels } : {}),
             },
             spec: {
-                warmPoolRef: {
+               /* warmPoolRef: {
                     name: spec.warmPoolName,
-                },
+                },*/
+                sandboxTemplateRef: {
+                    name: spec.sanboxTemplateRef,
+                }
             },
         };
 
@@ -224,6 +257,7 @@ class AgentSandboxAdapter {
                 resource,
             );
         } catch (error: any) {
+            console.error(`Failed to create SandboxClaim "${spec.name}":`, error);
             throw new ServiceException(
                 `Failed to create SandboxClaim "${spec.name}": ${error?.message || error}`,
             );
@@ -244,6 +278,7 @@ class AgentSandboxAdapter {
             if (error?.response?.statusCode === 404) {
                 return null;
             }
+            console.error(`Failed to get SandboxClaim "${name}":`, error);
             throw new ServiceException(
                 `Failed to get SandboxClaim "${name}": ${error?.message || error}`,
             );
@@ -263,6 +298,7 @@ class AgentSandboxAdapter {
             if (error?.response?.statusCode === 404) {
                 return;
             }
+            console.error(`Failed to delete SandboxClaim "${name}":`, error);
             throw new ServiceException(
                 `Failed to delete SandboxClaim "${name}": ${error?.message || error}`,
             );

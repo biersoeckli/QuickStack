@@ -12,21 +12,18 @@ export const startAgent = async (agentId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForAgent(agentId);
         await agentRuntimeService.startAgent(agentId);
-        return new SuccessActionResult(undefined, 'Agent started successfully.');
     });
 
 export const stopAgent = async (agentId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForAgent(agentId);
         await agentRuntimeService.stopAgent(agentId);
-        return new SuccessActionResult(undefined, 'Agent stopped successfully.');
     });
 
 export const deployAgent = async (agentId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForAgent(agentId);
         await agentService.deploy(agentId);
-        return new SuccessActionResult(undefined, 'Agent configuration deployed successfully.');
     });
 
 export const deleteAgent = async (agentId: string) =>
@@ -36,7 +33,6 @@ export const deleteAgent = async (agentId: string) =>
         const agent = await agentService.getById(agentId);
         ensureDeleteAgentInProject(identity, agent.projectId);
         await agentService.deleteById(agentId);
-        return new SuccessActionResult(undefined, 'Agent deleted successfully.');
     });
 
 export const getAgentStatus = async (agentId: string) =>
@@ -44,7 +40,7 @@ export const getAgentStatus = async (agentId: string) =>
         await isAuthorizedReadForAgent(agentId);
         const status = await agentRuntimeService.getAgentStatus(agentId);
         const statusText = agentRuntimeService.statusTextFor(status);
-        return { status, statusText } as any;
+        return { status, statusText };
     });
 
 export const getPodsForAgent = async (agentId: string) =>

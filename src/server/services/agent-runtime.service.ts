@@ -8,42 +8,9 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
-
-interface AgentRuntimeSecretData {
-    QS_GATEWAY_URL: string;
-    QS_VIRTUAL_KEY: string;
-    QS_SYSTEM_PROMPT?: string;
-    [envName: string]: string | undefined;
-}
+import { Constants } from "@/shared/utils/constants";
 
 class AgentRuntimeService {
-
-    /**
-     * Status text mapping for user-facing display.
-     * DEPLOYED maps to "Running" (not "Deployed") for Agents.
-     */
-    statusTextFor(status: DeploymentStatus): string {
-        switch (status) {
-            case 'DEPLOYED':
-                return 'Running';
-            case 'SHUTDOWN':
-                return 'Shut Down';
-            case 'DEPLOYING':
-                return 'Deploying';
-            case 'ERROR':
-                return 'Error';
-            case 'SHUTTING_DOWN':
-                return 'Shutting Down';
-            case 'PENDING':
-                return 'Pending';
-            case 'UNKNOWN':
-                return 'Unknown';
-            case 'BUILDING':
-                return 'Building';
-            default:
-                return 'Unknown';
-        }
-    }
 
     private async getAgentOrThrow(agentId: string): Promise<AgentWithRelationsModel> {
         const agent = await dataAccess.client.agent.findUnique({
@@ -92,26 +59,26 @@ class AgentRuntimeService {
     }
 
     /**
-     * Starts an Agent:
-     * - Creates a model-restricted LiteLLM virtual key
-     * - Assembles and creates the Agent Runtime Secret
-     * - Creates a SandboxClaim targeting the Agent's warm pool
-     * - Waits for sandbox readiness
+     * Ensures the agent runtime secret exists.
+     * Creates a new LiteLLM virtual key and secret if missing; reuses existing if present.
      */
-    async startAgent(agentId: string): Promise<void> {
-        const agent = await this.getAgentOrThrow(agentId);
+    private async ensureRuntimeSecret(agent: AgentWithRelationsModel): Promise<void> {
+        const namespace = agent.project.id;
+        const secretName = this.toSecretName(agent.id);
+        const existingSecret = await agentSandboxAdapter.getSecret(secretName, namespace);
+        if (existingSecret) {
+            return; // Secret already exists, reuse it
+        }
 
         if (!agent.llmGateway) {
             throw new ServiceException('LLM Gateway not found for Agent.');
         }
-
         const gateway = agent.llmGateway;
         if (!gateway.encryptedAdminKey) {
             throw new ServiceException('LLM Gateway admin key is missing.');
         }
 
         const adminKey = CryptoUtils.decrypt(gateway.encryptedAdminKey);
-
         const virtualKey = await liteLlmApiAdapter.createVirtualKey(
             gateway.baseUrl,
             adminKey,
@@ -126,17 +93,46 @@ class AgentRuntimeService {
             decryptedEnvVars,
         );
 
-        const namespace = agent.project.id;
-        await agentSandboxAdapter.createOrReplaceSecret(
-            this.toSecretName(agentId),
-            namespace,
-            secretData,
+        await agentSandboxAdapter.createOrReplaceSecret(secretName, namespace, secretData);
+    }
+
+    private resolveClaimStatus(claim: any): DeploymentStatus {
+        const conditions: Array<{ type: string; status: string; message?: string }> =
+            claim?.status?.conditions || [];
+
+        const ready = conditions.find((c) => c.type === 'Ready' && c.status === 'True');
+        if (ready) {
+            return 'DEPLOYED';
+        }
+
+        const failed = conditions.find((c) =>
+            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
         );
+        if (failed) {
+            return 'ERROR';
+        }
+
+        return 'DEPLOYING';
+    }
+
+    /**
+     * Starts an Agent:
+     * - Creates a model-restricted LiteLLM virtual key
+     * - Assembles and creates the Agent Runtime Secret
+     * - Creates a SandboxClaim targeting the Agent's warm pool
+     * - Waits for sandbox readiness
+     */
+    async startAgent(agentId: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+
+        await this.ensureRuntimeSecret(agent);
 
         await agentSandboxAdapter.createSandboxClaim({
             name: agentId,
             namespace,
-            warmPoolName: agentId,
+            sanboxTemplateRef: agentId,
+            labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
         });
 
         try {
@@ -153,14 +149,27 @@ class AgentRuntimeService {
 
     /**
      * Stops a running Agent:
-     * - Deletes the SandboxClaim
+     * - Deletes all SandboxClaims for the agent
      * - Deletes the Agent Runtime Secret
      */
     async stopAgent(agentId: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
+        // Delete all instance claims for this agent
+        const claims = await agentSandboxAdapter.listSandboxClaims(
+            namespace,
+            `${Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL}=${agentId}`,
+        );
+        for (const claim of claims) {
+            const claimName = claim.metadata?.name;
+            if (claimName) {
+                await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
+            }
+        }
+        // Also delete legacy single claim (named after agentId) for backward compat
         await agentSandboxAdapter.deleteSandboxClaim(agentId, namespace);
+
         await agentSandboxAdapter.deleteSecret(this.toSecretName(agentId), namespace);
 
         revalidateTag(Tags.agent(agentId));
@@ -184,22 +193,96 @@ class AgentRuntimeService {
             return 'SHUTDOWN';
         }
 
-        const conditions: Array<{ type: string; status: string; message?: string }> =
-            claim?.status?.conditions || [];
+        return this.resolveClaimStatus(claim);
+    }
 
-        const available = conditions.find((c) => c.type === 'Available' && c.status === 'True');
-        if (available) {
-            return 'DEPLOYED';
+    /**
+     * Starts a new SandboxClaim instance for the given agent.
+     * - Ensures the runtime secret exists (creates if missing)
+     * - Generates a unique claim name via addRandomSuffix
+     * - Creates claim with agent instance label
+     * - Waits for sandbox readiness
+     */
+    async startInstance(agentId: string): Promise<{ claimName: string }> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+
+        await this.ensureRuntimeSecret(agent);
+
+        const claimName = KubeObjectNameUtils.addRandomSuffix(agentId);
+
+        await agentSandboxAdapter.createSandboxClaim({
+            name: claimName,
+            namespace,
+            sanboxTemplateRef: agentId,
+            labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
+        });
+
+        try {
+            await agentSandboxAdapter.waitForSandboxReady(claimName, namespace);
+        } catch (error) {
+            revalidateTag(Tags.agent(agentId));
+            revalidateTag(Tags.agents(agent.projectId));
+            throw error;
         }
 
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
+        revalidateTag(Tags.agent(agentId));
+        revalidateTag(Tags.agents(agent.projectId));
+
+        return { claimName };
+    }
+
+    /**
+     * Stops a specific SandboxClaim instance.
+     */
+    async stopInstance(agentId: string, claimName: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+
+        await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
+
+        revalidateTag(Tags.agent(agentId));
+        revalidateTag(Tags.agents(agent.projectId));
+    }
+
+    /**
+     * Maps a raw k8s SandboxClaim object to an AgentInstanceInfo DTO.
+     * Reusable by both listInstances and SSE watch delta events.
+     */
+    mapClaimToInstance(claim: any, namespace: string): {
+        name: string;
+        status: DeploymentStatus;
+        namespace: string;
+        createdAt: string | null;
+    } {
+        const status = this.resolveClaimStatus(claim);
+        return {
+            name: claim.metadata?.name || 'unknown',
+            status,
+            namespace,
+            createdAt: claim.metadata?.creationTimestamp || null,
+        };
+    }
+
+    /**
+     * Lists all SandboxClaim instances for a given agent.
+     * Returns instance info including name, status, and creation timestamp.
+     */
+    async listInstances(agentId: string): Promise<Array<{
+        name: string;
+        status: DeploymentStatus;
+        namespace: string;
+        createdAt: string | null;
+    }>> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+
+        const claims = await agentSandboxAdapter.listSandboxClaims(
+            namespace,
+            `${Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL}=${agentId}`,
         );
-        if (failed) {
-            return 'ERROR';
-        }
 
-        return 'DEPLOYING';
+        return claims.map((claim: any) => this.mapClaimToInstance(claim, namespace));
     }
 }
 

@@ -71,7 +71,7 @@ import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import agentService from './agent.service';
 
-const DEFAULT_IMAGE = 'ghcr.io/quickstack-dev/agent-sandbox:latest';
+const DEFAULT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
 
 function mockAgent(id: string, name: string, projectId: string = 'proj-test-agent') {
     return {

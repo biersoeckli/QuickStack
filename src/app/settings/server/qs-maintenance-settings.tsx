@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, updateRegistry } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { LogsDialog } from "@/components/custom/logs-overlay";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
+import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import { Constants } from "@/shared/utils/constants";
 import { RotateCcw, SquareTerminal, Trash, ShieldOff } from "lucide-react";
 
@@ -16,6 +16,7 @@ export default function QuickStackMaintenanceSettings({
 }) {
 
     const useConfirm = useConfirmDialog();
+    const { openDialog } = useDialog();
 
     return <div className="space-y-4">
         <Card>
@@ -81,9 +82,7 @@ export default function QuickStackMaintenanceSettings({
             </CardHeader>
             <CardContent className="flex gap-4 flex-wrap">
 
-                {qsPodName && <LogsDialog namespace={Constants.QS_NAMESPACE} podName={qsPodName}>
-                    <Button variant="secondary" ><SquareTerminal /> Open QuickStack Logs</Button>
-                </LogsDialog>}
+                {qsPodName && <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={Constants.QS_NAMESPACE} podName={qsPodName} />, { maxWidth: '1300px' })}><SquareTerminal /> Open QuickStack Logs</Button>}
 
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({

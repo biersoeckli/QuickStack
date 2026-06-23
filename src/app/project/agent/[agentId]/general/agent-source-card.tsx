@@ -14,15 +14,19 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { toast } from "sonner";
 import { saveAgentSource } from "./actions";
-import { getLlmGateways } from "../../../[projectId]/actions";
+import { getLlmGateways, getModelAliasesForGateway } from "../../../[projectId]/actions";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { LlmGatewayModel } from "@/shared/model/llm-gateway.model";
+import { Loader2 } from "lucide-react";
 
 export default function AgentSourceCard({ agent, readonly }: {
     agent: AgentWithRelationsModel;
     readonly: boolean;
 }) {
     const [gateways, setGateways] = useState<LlmGatewayModel[]>([]);
+    const [modelAliases, setModelAliases] = useState<string[]>([]);
+    const [loadingAliases, setLoadingAliases] = useState(false);
+    const [selectedGatewayId, setSelectedGatewayId] = useState(agent.llmGatewayId || '');
 
     useEffect(() => {
         getLlmGateways().then((r: any) => {
@@ -39,6 +43,32 @@ export default function AgentSourceCard({ agent, readonly }: {
         },
         disabled: readonly,
     });
+
+    useEffect(() => {
+        if (!selectedGatewayId) {
+            setModelAliases([]);
+            return;
+        }
+        loadModelAliases(selectedGatewayId);
+    }, [selectedGatewayId]);
+
+    const loadModelAliases = async (gatewayId: string) => {
+        setLoadingAliases(true);
+        try {
+            const result = await getModelAliasesForGateway(gatewayId);
+            if (result?.data) {
+                setModelAliases(result.data as string[]);
+            } else if (Array.isArray(result)) {
+                setModelAliases(result as string[]);
+            } else {
+                setModelAliases([]);
+            }
+        } catch {
+            setModelAliases([]);
+        } finally {
+            setLoadingAliases(false);
+        }
+    };
 
     const [state, formAction] = useFormState(
         (state: ServerActionResult<any, any>, payload: AgentSourceModel) =>
@@ -72,7 +102,7 @@ export default function AgentSourceCard({ agent, readonly }: {
                                     <FormLabel>Custom Image</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="Default: ghcr.io/quickstack-dev/agent-sandbox:latest"
+                                            placeholder="Default: ghcr.io/anomalyco/opencode:latest"
                                             {...field}
                                             value={field.value ?? ''}
                                         />
@@ -89,7 +119,10 @@ export default function AgentSourceCard({ agent, readonly }: {
                                 <FormItem>
                                     <FormLabel>LLM Gateway</FormLabel>
                                     <Select
-                                        onValueChange={field.onChange}
+                                        onValueChange={(value) => {
+                                            field.onChange(value);
+                                            setSelectedGatewayId(value);
+                                        }}
                                         defaultValue={field.value ?? ''}
                                         disabled={readonly}
                                     >
@@ -117,13 +150,34 @@ export default function AgentSourceCard({ agent, readonly }: {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Model Alias</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder="e.g. gpt-4o"
-                                            {...field}
-                                            value={field.value ?? ''}
-                                        />
-                                    </FormControl>
+                                    {!selectedGatewayId ? (
+                                        <p className="text-sm text-muted-foreground">Select a gateway first</p>
+                                    ) : loadingAliases ? (
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Loading model aliases...
+                                        </div>
+                                    ) : modelAliases.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">No model aliases available</p>
+                                    ) : (
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value ?? ''}
+                                            disabled={readonly}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a model alias" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {modelAliases.map((alias) => (
+                                                    <SelectItem key={alias} value={alias}>
+                                                        {alias}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}

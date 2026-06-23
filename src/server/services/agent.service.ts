@@ -274,8 +274,6 @@ class AgentService {
             agent.project.id,
         );
 
-        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit'];
-
         if (isRunning) {
             throw new ServiceException(
                 'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
@@ -289,6 +287,7 @@ class AgentService {
                 name: agent.id,
                 namespace: agent.project.id,
                 image: effectiveImage,
+                command: ['/bin/sh', '-c', 'while true; do sleep 30; done'],
                 cpuRequest: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
                 cpuLimit: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
                 memoryRequest: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,

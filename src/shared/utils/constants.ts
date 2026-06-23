@@ -11,6 +11,7 @@ export class Constants {
     static readonly QS_ANNOTATION_BUILD_QUEUED_AT = 'qs-build-queued-at';
     static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
     static readonly QS_ANNOTATION_GIT_SSH_SECRET = 'qs-git-ssh-secret';
+    static readonly QS_ANNOTATION_AGENT_INSTANCE_LABEL = 'qs-agent-id';
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';
@@ -29,6 +30,6 @@ export class Constants {
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
-    static readonly QS_DEFAULT_AGENT_IMAGE = 'ghcr.io/quickstack-dev/agent-sandbox:latest';
+    static readonly QS_DEFAULT_AGENT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
 
 }
