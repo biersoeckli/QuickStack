@@ -9,14 +9,15 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { Play, Rocket, Square, Trash2, ScrollText } from "lucide-react";
-import { getAgentStatus, startAgent, stopAgent, deployAgent, deleteAgent } from "./overview/actions";
+import { Play, Rocket, Square, Trash2, ScrollText, Terminal } from "lucide-react";
+import { getAgentStatus, startAgent, stopAgent, deployAgent, deleteAgent, getAgentPodForTerminal } from "./overview/actions";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
 import AgentLogsCard from "./overview/agent-logs-card";
 import { AgentEventsDialog } from "./overview/agent-events-dialog";
+import { AgentTerminalDialog } from "./overview/agent-terminal-dialog";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
 function getStatusColor(status: DeploymentStatus): string {
@@ -43,6 +44,8 @@ export default function AgentDetailClient({ agent, role }: {
     const [status, setStatus] = useState<DeploymentStatus>('SHUTDOWN');
     const [statusText, setStatusText] = useState('Shut Down');
     const [loading, setLoading] = useState(false);
+    const [terminalPodInfo, setTerminalPodInfo] = useState<{ podName: string; containerName: string; namespace: string } | null>(null);
+    const [terminalOpen, setTerminalOpen] = useState(false);
 
     const fetchStatus = useCallback(async () => {
         try {
@@ -114,10 +117,32 @@ export default function AgentDetailClient({ agent, role }: {
         }
     };
 
+    const handleOpenTerminal = async () => {
+        setLoading(true);
+        try {
+            const result = await getAgentPodForTerminal(agent.id);
+            if (result.status === 'success' && result.data) {
+                setTerminalPodInfo(result.data);
+                setTerminalOpen(true);
+            } else {
+                await Toast.fromAction(
+                    async () => { throw new Error(result.message || 'No agent pod running.'); },
+                    '',
+                    '',
+                );
+            }
+        } catch {
+            // error shown by toast
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const isRunning = status === 'DEPLOYED' || status === 'DEPLOYING';
     const isStopped = status === 'SHUTDOWN' || status === 'ERROR';
 
     return (
+        <>
         <Tabs value={tabName} onValueChange={openTab}>
             <TabsList>
                 <TabsTrigger value="general">General</TabsTrigger>
@@ -181,6 +206,17 @@ export default function AgentDetailClient({ agent, role }: {
                                             Events
                                         </Button>
                                     </AgentEventsDialog>
+                                    {status === 'DEPLOYED' && (
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleOpenTerminal}
+                                            disabled={loading}
+                                        >
+                                            <Terminal className="h-4 w-4 mr-1" />
+                                            Terminal
+                                        </Button>
+                                    )}
                                 </div>
                                 {!readonly && (
                                     <div className="flex gap-2">
@@ -231,5 +267,15 @@ export default function AgentDetailClient({ agent, role }: {
                 </div>
             </TabsContent>
         </Tabs>
+        {terminalPodInfo && (
+            <AgentTerminalDialog
+                open={terminalOpen}
+                onOpenChange={setTerminalOpen}
+                podName={terminalPodInfo.podName}
+                containerName={terminalPodInfo.containerName}
+                namespace={terminalPodInfo.namespace}
+            />
+        )}
+        </>
     );
 }

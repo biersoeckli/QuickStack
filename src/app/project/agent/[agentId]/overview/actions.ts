@@ -60,3 +60,18 @@ export const getAgentEvents = async (agentId: string) =>
         const agent = await agentService.getById(agentId);
         return eventService.getEventsForAgent(agent.projectId, agentId);
     });
+
+export const getAgentPodForTerminal = async (agentId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForAgent(agentId);
+        const agent = await agentService.getById(agentId);
+        const pods = await podService.getPodsForAgent(agent.projectId, agentId);
+        if (pods.length === 0) {
+            throw new Error('No agent pod running.');
+        }
+        return {
+            podName: pods[0].podName,
+            containerName: pods[0].containerName,
+            namespace: agent.projectId,
+        };
+    });

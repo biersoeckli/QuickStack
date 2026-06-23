@@ -13,10 +13,20 @@ import { podTerminalSocket } from "@/frontend/sockets/sockets";
 import { StreamUtils } from "@/shared/utils/stream.utils";
 import { Button } from "@/components/ui/button";
 
+const terminalTypeLabels: Record<string, string> = {
+    sh: 'Start sh',
+    bash: 'Start bash',
+    opencode: 'Start OpenCode',
+};
+
+type TerminalType = NonNullable<TerminalSetupInfoModel['terminalType']>;
+
 export default function TerminalStreamed({
     terminalInfo,
+    terminalTypes = ['sh', 'bash'] as TerminalType[],
 }: {
     terminalInfo: TerminalSetupInfoModel;
+    terminalTypes?: TerminalType[];
 }) {
     const [isConnected, setIsConnected] = useState(false);
     const terminalWindow = useRef<HTMLDivElement>(null);
@@ -24,12 +34,12 @@ export default function TerminalStreamed({
     const [terminal, setTerminal] = useState<Terminal | undefined>(undefined);
     const [sessionTerminalInfo, setSessionTerminalInfo] = useState<TerminalSetupInfoModel | undefined>(undefined);
 
-    const startTerminalSession = (terminalType: 'sh' | 'bash') => {
+    const startTerminalSession = (terminalType: TerminalType) => {
         if (!terminalInfo || !terminalWindow || !terminalWindow.current) {
             return;
         }
         const terminalSessionKey = `${terminalInfo.namespace}-${terminalInfo.podName}-${terminalInfo.containerName}-${terminalType}-${new Date().getTime()}`;
-        const termInfo = {
+        const termInfo: TerminalSetupInfoModel = {
             ...terminalInfo,
             terminalSessionKey,
             terminalType,
@@ -66,8 +76,11 @@ export default function TerminalStreamed({
         <div className="space-y-4">
             {!sessionTerminalInfo ? <>
                 <div className="flex gap-4">
-                    <Button variant="secondary" onClick={() => startTerminalSession('sh')}>Start sh</Button>
-                    <Button variant="secondary" onClick={() => startTerminalSession('bash')}>Start bash</Button>
+                    {terminalTypes.map((t) => (
+                        <Button key={t} variant="secondary" onClick={() => startTerminalSession(t)}>
+                            {terminalTypeLabels[t] || `Start ${t}`}
+                        </Button>
+                    ))}
                 </div>
             </> : <Button variant="secondary" onClick={() => disconnectTerminalSession()}>Disconnect Session</Button>}
 
