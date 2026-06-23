@@ -51,6 +51,10 @@ class PodService {
         return await standalonePodService.cpFromPod(namespace, podName, containerName, srcPath, zipOutputPath, cwd);
     }
 
+    async getPodsForAgent(projectId: string, agentId: string): Promise<PodsInfoModel[]> {
+        return standalonePodService.getPodsForAgent(projectId, agentId);
+    }
+
     async deleteRestorePodIfExists(namespace: string, name: string) {
         const existingPods = await k3s.core.listNamespacedPod(namespace);
         const pod = existingPods.body.items.find((item) => item.metadata?.labels?.app === name);

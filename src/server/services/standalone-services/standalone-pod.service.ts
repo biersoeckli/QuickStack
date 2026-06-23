@@ -271,6 +271,28 @@ class SetupPodService {
         });
     }
 
+    async getPodsForAgent(projectId: string, agentId: string): Promise<{
+        podName: string;
+        containerName: string;
+        uid?: string;
+        status?: string;
+    }[]> {
+        const res = await k3s.core.listNamespacedPod(projectId);
+        return res.body.items
+            .filter((item) => {
+                const name = item.metadata?.name || '';
+                const containers = item.spec?.containers || [];
+                return name.includes(agentId) || containers.some((c) => c.name === 'agent');
+            })
+            .map((item) => ({
+                podName: item.metadata?.name!,
+                containerName: item.spec?.containers?.[0]?.name!,
+                uid: item.metadata?.uid,
+                status: item.status?.phase,
+            }))
+            .filter((item) => !!item.podName && !!item.containerName);
+    }
+
     async deleteAllFailedAndSuccededPods() {
         const projects = await dataAccess.client.project.findMany();
 

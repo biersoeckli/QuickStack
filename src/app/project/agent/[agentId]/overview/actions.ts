@@ -5,6 +5,8 @@ import { isAuthorizedWriteForAgent, isAuthorizedReadForAgent, getAuthUserSession
 import { ensureDeleteAgentInProject, RequesterIdentity } from "@/server/utils/shared-authorization.utils";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
+import podService from "@/server/services/pod.service";
+import eventService from "@/server/services/event.service";
 
 export const startAgent = async (agentId: string) =>
     simpleAction(async () => {
@@ -43,4 +45,18 @@ export const getAgentStatus = async (agentId: string) =>
         const status = await agentRuntimeService.getAgentStatus(agentId);
         const statusText = agentRuntimeService.statusTextFor(status);
         return { status, statusText } as any;
+    });
+
+export const getPodsForAgent = async (agentId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForAgent(agentId);
+        const agent = await agentService.getById(agentId);
+        return podService.getPodsForAgent(agent.projectId, agentId);
+    });
+
+export const getAgentEvents = async (agentId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForAgent(agentId);
+        const agent = await agentService.getById(agentId);
+        return eventService.getEventsForAgent(agent.projectId, agentId);
     });

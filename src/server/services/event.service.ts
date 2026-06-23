@@ -60,6 +60,70 @@ class EventService {
         });
         return returnVal;
     }
+
+    async getEventsForAgent(projectId: string, agentId: string): Promise<EventInfoModel[]> {
+        const pods = await podService.getPodsForAgent(projectId, agentId);
+        const returnVal: EventInfoModel[] = [];
+
+        for (let podInfo of pods) {
+            const result = await k3s.core.listNamespacedEvent(projectId,
+                undefined,
+                undefined,
+                undefined,
+                `involvedObject.namespace=${projectId},involvedObject.uid=${podInfo.uid},involvedObject.name=${podInfo.podName}`,
+                undefined,
+                50);
+
+            const events: CoreV1Event[] = result.body.items;
+
+            for (const event of events) {
+                returnVal.push({
+                    podName: podInfo.podName,
+                    action: event.action,
+                    eventTime: event.eventTime ?? event.lastTimestamp,
+                    note: event.message,
+                    reason: event.reason,
+                    type: event.type,
+                } as EventInfoModel);
+            }
+        }
+
+        try {
+            const claimEvents = await k3s.core.listNamespacedEvent(projectId,
+                undefined,
+                undefined,
+                undefined,
+                `involvedObject.kind=SandboxClaim,involvedObject.name=${agentId},involvedObject.namespace=${projectId}`,
+                undefined,
+                50);
+            for (const event of claimEvents.body.items) {
+                returnVal.push({
+                    podName: `SandboxClaim/${agentId}`,
+                    action: event.action,
+                    eventTime: event.eventTime ?? event.lastTimestamp,
+                    note: event.message,
+                    reason: event.reason,
+                    type: event.type,
+                } as EventInfoModel);
+            }
+        } catch {
+            // Claim events are best-effort — controller may not emit them
+        }
+
+        returnVal.sort((a, b) => {
+            if (!isDate(b.eventTime)) {
+                b.eventTime = new Date(b.eventTime);
+            }
+            if (!isDate(a.eventTime)) {
+                a.eventTime = new Date(a.eventTime);
+            }
+            if (a.eventTime && b.eventTime) {
+                return b.eventTime.getTime() - a.eventTime.getTime();
+            }
+            return 0;
+        });
+        return returnVal;
+    }
 }
 
 const eventService = new EventService();

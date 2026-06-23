@@ -9,12 +9,14 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { Play, Rocket, Square, Trash2 } from "lucide-react";
+import { Play, Rocket, Square, Trash2, ScrollText } from "lucide-react";
 import { getAgentStatus, startAgent, stopAgent, deployAgent, deleteAgent } from "./overview/actions";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
+import AgentLogsCard from "./overview/agent-logs-card";
+import { AgentEventsDialog } from "./overview/agent-events-dialog";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
 function getStatusColor(status: DeploymentStatus): string {
@@ -169,6 +171,17 @@ export default function AgentDetailClient({ agent, role }: {
                                         {statusText}
                                     </span>
                                 </div>
+                                <div className="flex gap-2 flex-wrap">
+                                    <AgentEventsDialog agentId={agent.id}>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                        >
+                                            <ScrollText className="h-4 w-4 mr-1" />
+                                            Events
+                                        </Button>
+                                    </AgentEventsDialog>
+                                </div>
                                 {!readonly && (
                                     <div className="flex gap-2">
                                         <Button
@@ -212,6 +225,9 @@ export default function AgentDetailClient({ agent, role }: {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+                <div className="mt-6">
+                    <AgentLogsCard agentId={agent.id} projectId={agent.projectId} />
                 </div>
             </TabsContent>
         </Tabs>
