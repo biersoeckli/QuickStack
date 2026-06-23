@@ -131,7 +131,7 @@ class AgentRuntimeService {
         await agentSandboxAdapter.createSandboxClaim({
             name: agentId,
             namespace,
-            sanboxTemplateRef: agentId,
+            warmPoolName: agentId,
             labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
         });
 
@@ -214,7 +214,7 @@ class AgentRuntimeService {
         await agentSandboxAdapter.createSandboxClaim({
             name: claimName,
             namespace,
-            sanboxTemplateRef: agentId,
+            warmPoolName: agentId,
             labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
         });
 

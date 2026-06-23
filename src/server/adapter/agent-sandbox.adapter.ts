@@ -25,12 +25,12 @@ export interface SandboxWarmPoolSpec {
 export interface SandboxClaimSpec {
     name: string;
     namespace: string;
-    sanboxTemplateRef: string;
+    warmPoolName: string;
     labels?: Record<string, string>;
 }
 
 const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
-const SANDBOX_API_VERSION = 'v1alpha1'; // or 'v1beta1'?
+const SANDBOX_API_VERSION = 'v1beta1';
 const TEMPLATE_PLURAL = 'sandboxtemplates';
 const WARMPOOL_PLURAL = 'sandboxwarmpools';
 const CLAIM_PLURAL = 'sandboxclaims';
@@ -83,12 +83,12 @@ class AgentSandboxAdapter {
                             ...(spec.env ? { env: spec.env } : {}),
                             resources: {
                                 requests: {
-                                    cpu: spec.cpuRequest || '100m',
-                                    memory: spec.memoryRequest || '128Mi',
+                                    cpu: spec.cpuRequest,
+                                    memory: spec.memoryRequest,
                                 },
                                 limits: {
-                                    cpu: spec.cpuLimit || '500m',
-                                    memory: spec.memoryLimit || '512Mi',
+                                    cpu: spec.cpuLimit,
+                                    memory: spec.memoryLimit,
                                 },
                             },
                         }],
@@ -217,11 +217,8 @@ class AgentSandboxAdapter {
                 ...(spec.labels ? { labels: spec.labels } : {}),
             },
             spec: {
-               /* warmPoolRef: {
+                warmPoolRef: {
                     name: spec.warmPoolName,
-                },*/
-                sandboxTemplateRef: {
-                    name: spec.sanboxTemplateRef,
                 }
             },
         };

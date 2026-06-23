@@ -269,6 +269,8 @@ class AgentService {
             throw new ServiceException('Agent not found.');
         }
 
+        await namespaceService.createNamespaceIfNotExists(agent.project.id);
+
         const isRunning = await agentSandboxAdapter.hasActiveClaim(
             agent.id,
             agent.project.id,

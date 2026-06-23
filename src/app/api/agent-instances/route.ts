@@ -49,7 +49,7 @@ export async function POST(request: Request) {
                 const watch = new k8s.Watch(kc);
                 console.log("[START] Starting watch for agent instances in namespace", namespace);
                 watchRequest = await watch.watch(
-                    `/apis/extensions.agents.x-k8s.io/v1alpha1/namespaces/${namespace}/sandboxclaims`,
+                    `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`,
                     { labelSelector: `${Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL}=${inputParam.agentId}` },
                     async (type, apiObj) => {
                         if (shouldStopStreaming) return;

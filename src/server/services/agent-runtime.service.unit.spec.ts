@@ -19,6 +19,7 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
         createSandboxClaim: vi.fn(),
         deleteSandboxClaim: vi.fn(),
         getSandboxClaim: vi.fn(),
+        listSandboxClaims: vi.fn(),
         hasActiveClaim: vi.fn(),
         createOrReplaceSecret: vi.fn(),
         deleteSecret: vi.fn(),
@@ -78,7 +79,7 @@ function mockAgent(overrides: Record<string, any> = {}) {
     };
 }
 
-function mockClaim(ready: boolean, conditions?: Array<{type: string; status: string; message?: string}>) {
+function mockClaim(ready: boolean, conditions?: Array<{ type: string; status: string; message?: string }>) {
     return {
         metadata: { name: AGENT_ID },
         spec: { warmPoolRef: { name: AGENT_ID } },
@@ -169,6 +170,7 @@ describe('agent-runtime.service', () => {
                 name: AGENT_ID,
                 namespace: SANDBOX_NAMESPACE,
                 warmPoolName: AGENT_ID,
+                labels: { 'qs-agent-id': AGENT_ID },
             });
         });
 
