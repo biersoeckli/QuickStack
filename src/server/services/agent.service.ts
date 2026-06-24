@@ -21,6 +21,7 @@ import secretService from "./secret.service";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
+const FILEBROWSER_PORT = 80;
 const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
 
 type AgentSandboxTemplateConfig = {
@@ -89,6 +90,10 @@ class AgentService {
             spec: {
                 podTemplate: {
                     spec: {
+                        volumes: [{
+                            name: 'workspace',
+                            emptyDir: {},
+                        }],
                         containers: [{
                             name: 'agent',
                             image: effectiveImage,
@@ -99,6 +104,10 @@ class AgentService {
                                 name: 'opencode-web',
                                 containerPort: OPENCODE_WEB_PORT,
                                 protocol: 'TCP',
+                            }],
+                            volumeMounts: [{
+                                name: 'workspace',
+                                mountPath: OPENCODE_WORKDIR,
                             }],
                             envFrom: [{ secretRef: { name: secretName } }],
                             env: [{
@@ -115,6 +124,24 @@ class AgentService {
                                     memory: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
                                 },
                             },
+                        }, {
+                            name: 'filebrowser',
+                            image: 'filebrowser/filebrowser:v2.31.2',
+                            imagePullPolicy: 'Always',
+                            args: [
+                                '--noauth',
+                                '--root', '/srv',
+                                '--port', `${FILEBROWSER_PORT}`,
+                            ],
+                            ports: [{
+                                name: 'filebrowser-web',
+                                containerPort: FILEBROWSER_PORT,
+                                protocol: 'TCP',
+                            }],
+                            volumeMounts: [{
+                                name: 'workspace',
+                                mountPath: '/srv',
+                            }],
                         }],
                     },
                 },
