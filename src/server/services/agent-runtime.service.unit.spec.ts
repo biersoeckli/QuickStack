@@ -18,6 +18,7 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
     default: {
         createSandboxClaim: vi.fn(),
         deleteSandboxClaim: vi.fn(),
+        getSecret: vi.fn(),
         getSandboxClaim: vi.fn(),
         listSandboxClaims: vi.fn(),
         hasActiveClaim: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock('@/server/utils/crypto.utils', () => ({
     CryptoUtils: {
         encrypt: vi.fn((value: string) => `encrypted:${value}`),
         decrypt: vi.fn((value: string) => value.replace('encrypted:', '')),
+        generateStrongPasswort: vi.fn(() => 'generated-password-123'),
     },
 }));
 
@@ -81,6 +83,8 @@ function mockAgent(overrides: Record<string, any> = {}) {
 
 function mockClaim(ready: boolean, conditions?: Array<{ type: string; status: string; message?: string }>) {
     return {
+        apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+        kind: 'SandboxClaim',
         metadata: { name: AGENT_ID },
         spec: { warmPoolRef: { name: AGENT_ID } },
         status: {
@@ -96,6 +100,8 @@ function mockClaim(ready: boolean, conditions?: Array<{ type: string; status: st
 describe('agent-runtime.service', () => {
     beforeEach(() => {
         vi.resetAllMocks();
+        vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue(null);
+        vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
     });
 
     describe('startAgent', () => {
@@ -128,6 +134,7 @@ describe('agent-runtime.service', () => {
                 expect.objectContaining({
                     QS_GATEWAY_URL: 'https://litellm.example.com',
                     QS_VIRTUAL_KEY: 'sk-v-test-key',
+                    OPENCODE_SERVER_PASSWORD: 'generated-password-123',
                     MY_KEY: 'my-secret',
                     QS_SYSTEM_PROMPT: 'You are helpful.',
                 }),
@@ -155,7 +162,23 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.startAgent(AGENT_ID);
 
             const callArgs = vi.mocked(agentSandboxAdapter.createOrReplaceSecret).mock.calls[0][2] as Record<string, string>;
-            expect(Object.keys(callArgs)).toHaveLength(2); // only QS_GATEWAY_URL + QS_VIRTUAL_KEY
+            expect(Object.keys(callArgs)).toHaveLength(3); // QS_GATEWAY_URL + QS_VIRTUAL_KEY + OPENCODE_SERVER_PASSWORD
+            expect(callArgs.OPENCODE_SERVER_PASSWORD).toBe('generated-password-123');
+        });
+
+        it('reuses existing runtime secret without overwriting it', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({
+                QS_GATEWAY_URL: 'https://litellm.example.com',
+                QS_VIRTUAL_KEY: 'existing-key',
+                OPENCODE_SERVER_PASSWORD: 'existing-password',
+            });
+            vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
+
+            await agentRuntimeService.startAgent(AGENT_ID);
+
+            expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
+            expect(agentSandboxAdapter.createOrReplaceSecret).not.toHaveBeenCalled();
         });
 
         it('creates SandboxClaim targeting the agent warm pool', async () => {
@@ -278,6 +301,8 @@ describe('agent-runtime.service', () => {
         it('returns DEPLOYING when claim exists but not ready', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
+                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+                kind: 'SandboxClaim',
                 metadata: { name: AGENT_ID },
                 spec: { warmPoolRef: { name: AGENT_ID } },
                 status: { conditions: [] },

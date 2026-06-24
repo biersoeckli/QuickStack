@@ -11,6 +11,9 @@ export interface SandboxTemplateSpec {
     command?: string[];
     args?: string[];
     env?: { name: string; value: string }[];
+    envFrom?: { secretRef: { name: string } }[];
+    ports?: { name?: string; containerPort: number; protocol?: string }[];
+    workingDir?: string;
     cpuRequest?: string;
     cpuLimit?: string;
     memoryRequest?: string;
@@ -107,6 +110,9 @@ class AgentSandboxAdapter {
                             ...(spec.command ? { command: spec.command } : {}),
                             ...(spec.args ? { args: spec.args } : {}),
                             ...(spec.env ? { env: spec.env } : {}),
+                            ...(spec.envFrom ? { envFrom: spec.envFrom } : {}),
+                            ...(spec.ports ? { ports: spec.ports } : {}),
+                            ...(spec.workingDir ? { workingDir: spec.workingDir } : {}),
                             resources: {
                                 requests: {
                                     cpu: spec.cpuRequest,

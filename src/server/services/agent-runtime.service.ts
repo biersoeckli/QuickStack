@@ -48,6 +48,7 @@ class AgentRuntimeService {
         const data: Record<string, string> = {
             QS_GATEWAY_URL: gatewayBaseUrl,
             QS_VIRTUAL_KEY: virtualKey,
+            OPENCODE_SERVER_PASSWORD: CryptoUtils.generateStrongPasswort(),
         };
         if (systemPrompt) {
             data.QS_SYSTEM_PROMPT = systemPrompt;
@@ -100,7 +101,9 @@ class AgentRuntimeService {
         const conditions: Array<{ type: string; status: string; message?: string }> =
             claim?.status?.conditions || [];
 
-        const ready = conditions.find((c) => c.type === 'Ready' && c.status === 'True');
+        const ready = conditions.find((c) =>
+            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
+        );
         if (ready) {
             return 'DEPLOYED';
         }
@@ -194,6 +197,21 @@ class AgentRuntimeService {
         }
 
         return this.resolveClaimStatus(claim);
+    }
+
+    statusTextFor(status: DeploymentStatus): string {
+        switch (status) {
+            case 'DEPLOYED':
+                return 'Running';
+            case 'SHUTDOWN':
+                return 'Shut Down';
+            case 'DEPLOYING':
+                return 'Deploying';
+            case 'ERROR':
+                return 'Error';
+            default:
+                return status;
+        }
     }
 
     /**

@@ -22,6 +22,7 @@ const sandboxMocks = vi.hoisted(() => ({
     deleteSandboxTemplate: vi.fn(),
     deleteSandboxWarmPool: vi.fn(),
     hasActiveClaim: vi.fn(),
+    listSandboxClaims: vi.fn(),
     getSecret: vi.fn(),
     deleteSandboxClaim: vi.fn(),
     deleteSecret: vi.fn(),
@@ -92,9 +93,22 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
     };
 }
 
+function getOpenCodeConfigFromTemplateCall(callIndex = 0) {
+    const templateSpec = vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mock.calls[callIndex][0] as any;
+    const configEnv = templateSpec.env.find((item: { name: string }) => item.name === 'OPENCODE_CONFIG_CONTENT');
+    return {
+        templateSpec,
+        config: JSON.parse(configEnv.value),
+    };
+}
+
 describe('agent.service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mockResolvedValue(undefined);
+        vi.mocked(agentSandboxAdapter.reconcileSandboxWarmPool).mockResolvedValue(undefined);
+        vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
+        vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
     });
 
     describe('create', () => {
@@ -143,7 +157,7 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
@@ -165,7 +179,7 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
@@ -189,18 +203,30 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({
+                id: 'gateway-1',
+                baseUrl: 'https://litellm.example.com',
+            } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
 
             await agentService.create(validInput);
 
-            expect(agentSandboxAdapter.reconcileSandboxTemplate).toHaveBeenCalledWith({
+            const { templateSpec, config } = getOpenCodeConfigFromTemplateCall();
+
+            expect(templateSpec).toEqual(expect.objectContaining({
                 name: expect.stringMatching(/^agent-/),
                 namespace: 'proj-test-agent',
                 image: DEFAULT_IMAGE,
-            });
+                command: ['/bin/sh', '-lc'],
+                args: ['cd /workspace && exec opencode web --hostname 0.0.0.0 --port 4096'],
+                workingDir: '/workspace',
+                ports: [{ name: 'opencode-web', containerPort: 4096, protocol: 'TCP' }],
+                envFrom: [{ secretRef: { name: expect.stringContaining('secret-') } }],
+            }));
+            expect(config.model).toBe('quickstack-litellm/gpt-4o');
+            expect(config.provider['quickstack-litellm'].options.baseURL).toBe('https://litellm.example.com/v1');
         });
 
         it('reconciles zero-replica SandboxWarmPool', async () => {
@@ -209,7 +235,7 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
@@ -230,7 +256,7 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
@@ -251,7 +277,7 @@ describe('agent.service', () => {
                 name: 'Agent Project',
                 projectType: 'AGENT',
             } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1' } as any);
+            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
 
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
@@ -298,6 +324,71 @@ describe('agent.service', () => {
         });
     });
 
+    describe('deploy', () => {
+        it('reconciles SandboxTemplate for OpenCode Web runtime', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({
+                ...mockAgent('agent-1', 'Agent One'),
+                image: 'custom/opencode:latest',
+                cpuRequest: 250,
+                cpuLimit: 1000,
+                memoryRequest: 512,
+                memoryLimit: 1024,
+                project: { id: 'proj-test-agent' },
+                llmGateway: { baseUrl: 'https://litellm.example.com' },
+            } as any);
+            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
+
+            await agentService.deploy('agent-1');
+
+            const { templateSpec, config } = getOpenCodeConfigFromTemplateCall();
+
+            expect(templateSpec).toEqual(expect.objectContaining({
+                name: 'agent-1',
+                namespace: 'proj-test-agent',
+                image: 'custom/opencode:latest',
+                command: ['/bin/sh', '-lc'],
+                args: ['cd /workspace && exec opencode web --hostname 0.0.0.0 --port 4096'],
+                workingDir: '/workspace',
+                ports: [{ name: 'opencode-web', containerPort: 4096, protocol: 'TCP' }],
+                envFrom: [{ secretRef: { name: expect.stringContaining('secret-') } }],
+                cpuRequest: '250m',
+                cpuLimit: '1000m',
+                memoryRequest: '512M',
+                memoryLimit: '1024M',
+            }));
+            expect(config).toEqual(expect.objectContaining({
+                $schema: 'https://opencode.ai/config.json',
+                model: 'quickstack-litellm/gpt-4o',
+                server: { hostname: '0.0.0.0', port: 4096 },
+            }));
+            expect(config.provider['quickstack-litellm']).toEqual(expect.objectContaining({
+                npm: '@ai-sdk/openai-compatible',
+                name: 'QuickStack LiteLLM',
+                options: {
+                    baseURL: 'https://litellm.example.com/v1',
+                    apiKey: '{env:QS_VIRTUAL_KEY}',
+                },
+                models: {
+                    'gpt-4o': { name: 'gpt-4o' },
+                },
+            }));
+        });
+
+        it('does not duplicate /v1 in LiteLLM baseURL', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({
+                ...mockAgent('agent-1', 'Agent One'),
+                project: { id: 'proj-test-agent' },
+                llmGateway: { baseUrl: 'https://litellm.example.com/v1/' },
+            } as any);
+            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
+
+            await agentService.deploy('agent-1');
+
+            const { config } = getOpenCodeConfigFromTemplateCall();
+            expect(config.provider['quickstack-litellm'].options.baseURL).toBe('https://litellm.example.com/v1');
+        });
+    });
+
     describe('deleteById', () => {
         const gatewayInfo = {
             id: 'gateway-1',
@@ -314,7 +405,7 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            agentSandboxAdapter.getSecret.mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
+            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
             liteLlmMocks.deleteVirtualKey.mockResolvedValue(undefined);
 
             await agentService.deleteById('agent-1');
@@ -354,7 +445,7 @@ describe('agent.service', () => {
                 llmGateway: gatewayInfo,
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
-            agentSandboxAdapter.getSecret.mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
+            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
             liteLlmMocks.deleteVirtualKey.mockRejectedValue(new ServiceException('LiteLLM key deletion failed'));
 
             await expect(agentService.deleteById('agent-1')).rejects.toThrow('LiteLLM key deletion failed');
@@ -369,7 +460,7 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            agentSandboxAdapter.getSecret.mockResolvedValue(null);
+            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue(null);
 
             await agentService.deleteById('agent-1');
 
@@ -387,7 +478,7 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            agentSandboxAdapter.getSecret.mockRejectedValue(new Error('K8s API unreachable'));
+            vi.mocked(agentSandboxAdapter.getSecret).mockRejectedValue(new Error('K8s API unreachable'));
 
             await agentService.deleteById('agent-1');
 
@@ -543,6 +634,19 @@ describe('agent.service', () => {
                     envVars: undefined,
                 }),
             ).resolves.toBeDefined();
+        });
+
+        it('rejects gateway and model changes while running', async () => {
+            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(true);
+
+            await expect(
+                agentService.saveConfig(agentId, {
+                    llmGatewayId: 'new-gateway',
+                    modelAlias: 'new-model',
+                }),
+            ).rejects.toThrow(
+                'Runtime configuration cannot be changed while the Agent is running.',
+            );
         });
 
         it('persists gateway and model alias changes', async () => {

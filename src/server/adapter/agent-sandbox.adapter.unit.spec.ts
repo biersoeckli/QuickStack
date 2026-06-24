@@ -43,6 +43,9 @@ describe('AgentSandboxAdapter', () => {
                 command: ['node'],
                 args: ['server.js'],
                 env: [{ name: 'NODE_ENV', value: 'production' }],
+                envFrom: [{ secretRef: { name: 'secret-agent-test' } }],
+                ports: [{ name: 'http', containerPort: 4096, protocol: 'TCP' }],
+                workingDir: '/workspace',
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
@@ -62,6 +65,9 @@ describe('AgentSandboxAdapter', () => {
                                     command: ['node'],
                                     args: ['server.js'],
                                     env: [{ name: 'NODE_ENV', value: 'production' }],
+                                    envFrom: [{ secretRef: { name: 'secret-agent-test' } }],
+                                    ports: [{ name: 'http', containerPort: 4096, protocol: 'TCP' }],
+                                    workingDir: '/workspace',
                                 })],
                             },
                         },

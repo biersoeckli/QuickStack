@@ -14,8 +14,86 @@ import { AgentConfigInputModel } from "@/shared/model/agent-config.model";
 import { Constants } from "@/shared/utils/constants";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 
+const OPENCODE_WORKDIR = '/workspace';
+const OPENCODE_WEB_PORT = 4096;
+const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
+
+type AgentSandboxTemplateConfig = {
+    id: string;
+    projectId: string;
+    image: string | null;
+    modelAlias: string;
+    llmGateway?: { baseUrl: string } | null;
+    cpuRequest?: number | null;
+    cpuLimit?: number | null;
+    memoryRequest?: number | null;
+    memoryLimit?: number | null;
+};
 
 class AgentService {
+
+    private normalizeLiteLlmBaseUrl(baseUrl: string): string {
+        const trimmed = baseUrl.trim().replace(/\/+$/, '');
+        if (!trimmed) {
+            throw new ServiceException('LLM Gateway base URL is missing for Agent.');
+        }
+        return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+    }
+
+    private buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
+        const modelAlias = agent.modelAlias;
+        return {
+            $schema: 'https://opencode.ai/config.json',
+            model: `${OPENCODE_PROVIDER_ID}/${modelAlias}`,
+            provider: {
+                [OPENCODE_PROVIDER_ID]: {
+                    npm: '@ai-sdk/openai-compatible',
+                    name: 'QuickStack LiteLLM',
+                    options: {
+                        baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
+                        apiKey: '{env:QS_VIRTUAL_KEY}',
+                    },
+                    models: {
+                        [modelAlias]: {
+                            name: modelAlias,
+                        },
+                    },
+                },
+            },
+            server: {
+                hostname: '0.0.0.0',
+                port: OPENCODE_WEB_PORT,
+            },
+        };
+    }
+
+    private buildSandboxTemplateSpec(agent: AgentSandboxTemplateConfig) {
+        const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+
+        return {
+            name: agent.id,
+            namespace: agent.projectId,
+            image: effectiveImage,
+            command: ['/bin/sh', '-lc'],
+            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
+            workingDir: OPENCODE_WORKDIR,
+            ports: [{
+                name: 'opencode-web',
+                containerPort: OPENCODE_WEB_PORT,
+                protocol: 'TCP',
+            }],
+            envFrom: [{ secretRef: { name: secretName } }],
+            env: [{
+                name: 'OPENCODE_CONFIG_CONTENT',
+                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
+            }],
+            cpuRequest: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
+            cpuLimit: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
+            memoryRequest: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
+            memoryLimit: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
+        };
+    }
 
     /**
      * Returns all agents for a given project, with project and llmGateway relations.
@@ -108,11 +186,14 @@ class AgentService {
         try {
 
             // Reconcile SandboxTemplate
-            await agentSandboxAdapter.reconcileSandboxTemplate({
-                name: agentId,
-                namespace: createdAgent.projectId,
-                image: Constants.QS_DEFAULT_AGENT_IMAGE,
+            const llmGateway = await dataAccess.client.llmGateway.findUnique({
+                where: { id: createdAgent.llmGatewayId },
+                select: { baseUrl: true },
             });
+            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateSpec({
+                ...createdAgent,
+                llmGateway,
+            }));
 
             // Reconcile zero-replica SandboxWarmPool
             await agentSandboxAdapter.reconcileSandboxWarmPool({
@@ -187,7 +268,13 @@ class AgentService {
         if (config.memoryLimit !== undefined && config.memoryLimit !== existing.memoryLimit) {
             configFields.push('memoryLimit');
         }
-        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit'];
+        if (config.llmGatewayId !== undefined && config.llmGatewayId !== existing.llmGatewayId) {
+            configFields.push('llmGatewayId');
+        }
+        if (config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias) {
+            configFields.push('modelAlias');
+        }
+        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'llmGatewayId', 'modelAlias'];
 
         if (isRunning) {
             const changedRuntime = configFields.some((f) => runtimeRelevant.includes(f));
@@ -278,7 +365,10 @@ class AgentService {
     async deploy(agentId: string): Promise<Agent> {
         const agent = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: { select: { id: true } } },
+            include: {
+                project: { select: { id: true } },
+                llmGateway: { select: { baseUrl: true } },
+            },
         });
         if (!agent) {
             throw new ServiceException('Agent not found.');
@@ -297,19 +387,11 @@ class AgentService {
             );
         }
 
-        const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
-
         try {
-            await agentSandboxAdapter.reconcileSandboxTemplate({
-                name: agent.id,
-                namespace: agent.project.id,
-                image: effectiveImage,
-                command: ['/bin/sh', '-c', 'while true; do sleep 30; done'],
-                cpuRequest: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
-                cpuLimit: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
-                memoryRequest: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
-                memoryLimit: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
-            });
+            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateSpec({
+                ...agent,
+                projectId: agent.project.id,
+            }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool({
                 name: agent.id,
