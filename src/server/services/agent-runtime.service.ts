@@ -1,6 +1,9 @@
 import { revalidateTag } from "next/cache";
 import dataAccess from "../adapter/db.client";
-import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
+import agentSandboxAdapter, {
+    SANDBOX_API_GROUP,
+    SANDBOX_API_VERSION,
+} from "../adapter/agent-sandbox.adapter";
 import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -9,6 +12,8 @@ import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
+import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
+import secretService from "./secret.service";
 
 class AgentRuntimeService {
 
@@ -66,7 +71,7 @@ class AgentRuntimeService {
     private async ensureRuntimeSecret(agent: AgentWithRelationsModel): Promise<void> {
         const namespace = agent.project.id;
         const secretName = this.toSecretName(agent.id);
-        const existingSecret = await agentSandboxAdapter.getSecret(secretName, namespace);
+        const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
         if (existingSecret) {
             return; // Secret already exists, reuse it
         }
@@ -94,7 +99,7 @@ class AgentRuntimeService {
             decryptedEnvVars,
         );
 
-        await agentSandboxAdapter.createOrReplaceSecret(secretName, namespace, secretData);
+        await secretService.createOrReplaceGenericSecret(secretName, namespace, secretData);
     }
 
     private resolveClaimStatus(claim: any): DeploymentStatus {
@@ -118,6 +123,28 @@ class AgentRuntimeService {
         return 'DEPLOYING';
     }
 
+    private buildSandboxClaimResource(
+        claimName: string,
+        namespace: string,
+        warmPoolName: string,
+        labels?: Record<string, string>,
+    ): KubernetesResource {
+        return {
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxClaim',
+            metadata: {
+                name: claimName,
+                namespace,
+                ...(labels ? { labels } : {}),
+            },
+            spec: {
+                warmPoolRef: {
+                    name: warmPoolName,
+                },
+            },
+        };
+    }
+
     /**
      * Starts an Agent:
      * - Creates a model-restricted LiteLLM virtual key
@@ -131,12 +158,11 @@ class AgentRuntimeService {
 
         await this.ensureRuntimeSecret(agent);
 
-        await agentSandboxAdapter.createSandboxClaim({
-            name: agentId,
-            namespace,
-            warmPoolName: agentId,
-            labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
-        });
+        await agentSandboxAdapter.createSandboxClaim(
+            this.buildSandboxClaimResource(agentId, namespace, agentId, {
+                [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId,
+            }),
+        );
 
         try {
             await agentSandboxAdapter.waitForSandboxReady(agentId, namespace);
@@ -173,7 +199,7 @@ class AgentRuntimeService {
         // Also delete legacy single claim (named after agentId) for backward compat
         await agentSandboxAdapter.deleteSandboxClaim(agentId, namespace);
 
-        await agentSandboxAdapter.deleteSecret(this.toSecretName(agentId), namespace);
+        await secretService.deleteSecretSafe(this.toSecretName(agentId), namespace);
 
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.agents(agent.projectId));
@@ -229,12 +255,11 @@ class AgentRuntimeService {
 
         const claimName = KubeObjectNameUtils.addRandomSuffix(agentId);
 
-        await agentSandboxAdapter.createSandboxClaim({
-            name: claimName,
-            namespace,
-            warmPoolName: agentId,
-            labels: { [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId },
-        });
+        await agentSandboxAdapter.createSandboxClaim(
+            this.buildSandboxClaimResource(claimName, namespace, agentId, {
+                [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId,
+            }),
+        );
 
         try {
             await agentSandboxAdapter.waitForSandboxReady(claimName, namespace);

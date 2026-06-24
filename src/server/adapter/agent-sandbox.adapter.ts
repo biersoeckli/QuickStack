@@ -1,44 +1,12 @@
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import k3s from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { Constants } from "@/shared/utils/constants";
-import { V1ObjectMeta, V1Secret } from "@kubernetes/client-node";
 
-export interface SandboxTemplateSpec {
-    name: string;
-    namespace: string;
-    image: string;
-    command?: string[];
-    args?: string[];
-    env?: { name: string; value: string }[];
-    envFrom?: { secretRef: { name: string } }[];
-    ports?: { name?: string; containerPort: number; protocol?: string }[];
-    workingDir?: string;
-    cpuRequest?: string;
-    cpuLimit?: string;
-    memoryRequest?: string;
-    memoryLimit?: string;
-}
-
-export interface SandboxWarmPoolSpec {
-    name: string;
-    namespace: string;
-    templateName: string;
-    replicas: number;
-}
-
-export interface SandboxClaimSpec {
-    name: string;
-    namespace: string;
-    warmPoolName: string;
-    labels?: Record<string, string>;
-}
-
-const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
-const SANDBOX_API_VERSION = 'v1beta1';
-const TEMPLATE_PLURAL = 'sandboxtemplates';
-const WARMPOOL_PLURAL = 'sandboxwarmpools';
-const CLAIM_PLURAL = 'sandboxclaims';
+export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
+export const SANDBOX_API_VERSION = 'v1beta1';
+export const TEMPLATE_PLURAL = 'sandboxtemplates';
+export const WARMPOOL_PLURAL = 'sandboxwarmpools';
+export const CLAIM_PLURAL = 'sandboxclaims';
 
 class AgentSandboxAdapter {
 
@@ -89,83 +57,32 @@ class AgentSandboxAdapter {
 
     /**
      * Creates or updates a SandboxTemplate custom resource.
+     * The caller is responsible for constructing the full KubernetesResource.
      */
-    async reconcileSandboxTemplate(spec: SandboxTemplateSpec): Promise<void> {
-        const resource: KubernetesResource = {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxTemplate',
-            metadata: {
-                name: spec.name,
-                namespace: spec.namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
-                }
-            },
-            spec: {
-                podTemplate: {
-                    spec: {
-                        containers: [{
-                            name: 'agent',
-                            image: spec.image,
-                            ...(spec.command ? { command: spec.command } : {}),
-                            ...(spec.args ? { args: spec.args } : {}),
-                            ...(spec.env ? { env: spec.env } : {}),
-                            ...(spec.envFrom ? { envFrom: spec.envFrom } : {}),
-                            ...(spec.ports ? { ports: spec.ports } : {}),
-                            ...(spec.workingDir ? { workingDir: spec.workingDir } : {}),
-                            resources: {
-                                requests: {
-                                    cpu: spec.cpuRequest,
-                                    memory: spec.memoryRequest,
-                                },
-                                limits: {
-                                    cpu: spec.cpuLimit,
-                                    memory: spec.memoryLimit,
-                                },
-                            },
-                        }],
-                    },
-                },
-            },
-        };
-
+    async reconcileSandboxTemplate(resource: KubernetesResource): Promise<void> {
+        this.assertResourceKind(resource, 'SandboxTemplate', TEMPLATE_PLURAL);
         try {
-            await this.applyCustomResource(resource, spec.namespace, TEMPLATE_PLURAL);
+            await this.applyCustomResource(resource, resource.metadata.namespace!, TEMPLATE_PLURAL);
         } catch (error: any) {
-            console.error(`Failed to reconcile SandboxTemplate "${spec.name}":`, error);
+            console.error(`Failed to reconcile SandboxTemplate "${resource.metadata.name}":`, error);
             throw new ServiceException(
-                `Failed to reconcile SandboxTemplate "${spec.name}": ${error?.message || error}`,
+                `Failed to reconcile SandboxTemplate "${resource.metadata.name}": ${error?.message || error}`,
             );
         }
     }
 
     /**
      * Creates or updates a SandboxWarmPool custom resource.
+     * The caller is responsible for constructing the full KubernetesResource.
      */
-    async reconcileSandboxWarmPool(spec: SandboxWarmPoolSpec): Promise<void> {
-        const resource: KubernetesResource = {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxWarmPool',
-            metadata: {
-                name: spec.name,
-                namespace: spec.namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
-                }
-            },
-            spec: {
-                sandboxTemplateRef: {
-                    name: spec.templateName,
-                },
-                replicas: spec.replicas,
-            },
-        };
-
+    async reconcileSandboxWarmPool(resource: KubernetesResource): Promise<void> {
+        this.assertResourceKind(resource, 'SandboxWarmPool', WARMPOOL_PLURAL);
         try {
-            await this.applyCustomResource(resource, spec.namespace, WARMPOOL_PLURAL);
+            await this.applyCustomResource(resource, resource.metadata.namespace!, WARMPOOL_PLURAL);
         } catch (error: any) {
+            console.error(`Failed to reconcile SandboxWarmPool "${resource.metadata.name}":`, error);
             throw new ServiceException(
-                `Failed to reconcile SandboxWarmPool "${spec.name}": ${error?.message || error}`,
+                `Failed to reconcile SandboxWarmPool "${resource.metadata.name}": ${error?.message || error}`,
             );
         }
     }
@@ -186,6 +103,7 @@ class AgentSandboxAdapter {
             if (error?.response?.statusCode === 404) {
                 return; // Already deleted
             }
+            console.error(`Failed to delete SandboxTemplate "${name}":`, error);
             throw new ServiceException(
                 `Failed to delete SandboxTemplate "${name}": ${error?.message || error}`,
             );
@@ -208,6 +126,7 @@ class AgentSandboxAdapter {
             if (error?.response?.statusCode === 404) {
                 return; // Already deleted
             }
+            console.error(`Failed to delete SandboxWarmPool "${name}":`, error);
             throw new ServiceException(
                 `Failed to delete SandboxWarmPool "${name}": ${error?.message || error}`,
             );
@@ -242,40 +161,34 @@ class AgentSandboxAdapter {
         }
     }
 
-    async createSandboxClaim(spec: SandboxClaimSpec): Promise<void> {
-        const resource: KubernetesResource = {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxClaim',
-            metadata: {
-                name: spec.name,
-                namespace: spec.namespace,
-                ...(spec.labels ? { labels: spec.labels } : {}),
-            },
-            spec: {
-                warmPoolRef: {
-                    name: spec.warmPoolName,
-                }
-            },
-        };
+    /**
+     * Creates a SandboxClaim custom resource.
+     * The caller is responsible for constructing the full KubernetesResource.
+     */
+    async createSandboxClaim(resource: KubernetesResource): Promise<void> {
+        this.assertResourceKind(resource, 'SandboxClaim', CLAIM_PLURAL);
+        const name = resource.metadata.name!;
+        const namespace = resource.metadata.namespace!;
 
         try {
             await k3s.customObjects.getNamespacedCustomObject(
                 SANDBOX_API_GROUP,
                 SANDBOX_API_VERSION,
-                spec.namespace,
+                namespace,
                 CLAIM_PLURAL,
-                spec.name,
+                name,
             );
             throw new ServiceException(
-                `SandboxClaim "${spec.name}" already exists. Stop the Agent before starting again.`,
+                `SandboxClaim "${name}" already exists. Stop the Agent before starting again.`,
             );
         } catch (error: any) {
             if (error instanceof ServiceException) {
                 throw error;
             }
+            console.error(`Failed to check existing SandboxClaim "${name}":`, error);
             if (error?.response?.statusCode !== 404) {
                 throw new ServiceException(
-                    `Failed to check existing SandboxClaim "${spec.name}": ${error?.message || error}`,
+                    `Failed to check existing SandboxClaim "${name}": ${error?.message || error}`,
                 );
             }
         }
@@ -284,14 +197,14 @@ class AgentSandboxAdapter {
             await k3s.customObjects.createNamespacedCustomObject(
                 SANDBOX_API_GROUP,
                 SANDBOX_API_VERSION,
-                spec.namespace,
+                namespace,
                 CLAIM_PLURAL,
                 resource,
             );
         } catch (error: any) {
-            console.error(`Failed to create SandboxClaim "${spec.name}":`, error);
+            console.error(`Failed to create SandboxClaim "${name}":`, error);
             throw new ServiceException(
-                `Failed to create SandboxClaim "${spec.name}": ${error?.message || error}`,
+                `Failed to create SandboxClaim "${name}": ${error?.message || error}`,
             );
         }
     }
@@ -337,63 +250,6 @@ class AgentSandboxAdapter {
         }
     }
 
-    async createOrReplaceSecret(name: string, namespace: string, data: Record<string, string>): Promise<void> {
-        const base64Data: Record<string, string> = {};
-        for (const [key, value] of Object.entries(data)) {
-            base64Data[key] = Buffer.from(value).toString('base64');
-        }
-
-        const secretManifest: V1Secret = {
-            metadata: { name },
-            data: base64Data,
-        };
-
-        try {
-            const existingResponse = await k3s.core.readNamespacedSecret(name, namespace);
-            secretManifest.metadata!.resourceVersion = existingResponse.body.metadata?.resourceVersion;
-            await k3s.core.replaceNamespacedSecret(name, namespace, secretManifest);
-        } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
-                throw new ServiceException(
-                    `Failed to read Secret "${name}": ${error?.message || error}`,
-                );
-            }
-            await k3s.core.createNamespacedSecret(namespace, secretManifest);
-        }
-    }
-
-    async getSecret(name: string, namespace: string): Promise<Record<string, string> | null> {
-        try {
-            const response = await k3s.core.readNamespacedSecret(name, namespace);
-            const data = response.body.data || {};
-            const decoded: Record<string, string> = {};
-            for (const [key, value] of Object.entries(data)) {
-                decoded[key] = value ? Buffer.from(value, 'base64').toString('utf-8') : '';
-            }
-            return decoded;
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
-                return null;
-            }
-            throw new ServiceException(
-                `Failed to read Secret "${name}": ${error?.message || error}`,
-            );
-        }
-    }
-
-    async deleteSecret(name: string, namespace: string): Promise<void> {
-        try {
-            await k3s.core.deleteNamespacedSecret(name, namespace);
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
-                return;
-            }
-            throw new ServiceException(
-                `Failed to delete Secret "${name}": ${error?.message || error}`,
-            );
-        }
-    }
-
     async waitForSandboxReady(name: string, namespace: string, timeoutMs = 300_000, pollIntervalMs = 2_000): Promise<void> {
         const deadline = Date.now() + timeoutMs;
 
@@ -432,6 +288,27 @@ class AgentSandboxAdapter {
             `Sandbox "${name}" did not become ready within ${timeoutMs / 1000}s. ` +
             `Check sandbox controller logs and Pod events for details.`,
         );
+    }
+
+    /**
+     * Validates that the resource has the expected apiVersion and kind.
+     */
+    private assertResourceKind(
+        resource: KubernetesResource,
+        expectedKind: string,
+        displayName: string,
+    ): void {
+        const expectedApiVersion = `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`;
+        if (resource.apiVersion !== expectedApiVersion) {
+            throw new ServiceException(
+                `Invalid apiVersion for ${displayName}: expected "${expectedApiVersion}", got "${resource.apiVersion}".`,
+            );
+        }
+        if (resource.kind !== expectedKind) {
+            throw new ServiceException(
+                `Invalid kind for ${displayName}: expected "${expectedKind}", got "${resource.kind}".`,
+            );
+        }
     }
 
     /**
@@ -479,6 +356,7 @@ class AgentSandboxAdapter {
                     resource,
                 );
             } else {
+                console.error(`Failed to apply custom resource "${name}" in namespace "${namespace}":`, error);
                 throw error;
             }
         }

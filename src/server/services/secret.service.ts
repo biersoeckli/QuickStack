@@ -2,6 +2,7 @@ import { V1Secret } from "@kubernetes/client-node";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 class SecretService {
 
@@ -48,7 +49,7 @@ class SecretService {
         return secretName;
     }
 
-    async delteUnusedSecrets(app: AppExtendedModel) {
+    async deleteUnusedSecrets(app: AppExtendedModel) {
         if (this.appNeedsNoSecret(app)) {
             const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toSecretId(app.id));
             if (existingSecret) {
@@ -104,6 +105,81 @@ class SecretService {
         const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
         const existingSecret = existingSecrets.body.items.find(s => s.metadata?.name === secretName);
         return existingSecret;
+    }
+
+    /**
+     * Creates or replaces a generic (Opaque) Secret with base64-encoded string data.
+     * Does NOT handle 404 on read gracefully — surfaces all non-404 errors.
+     */
+    async createOrReplaceGenericSecret(
+        name: string,
+        namespace: string,
+        data: Record<string, string>,
+    ): Promise<void> {
+        const base64Data: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+            base64Data[key] = Buffer.from(value).toString('base64');
+        }
+
+        const secretManifest: V1Secret = {
+            metadata: { name },
+            data: base64Data,
+        };
+
+        try {
+            const existingResponse = await k3s.core.readNamespacedSecret(name, namespace);
+            secretManifest.metadata!.resourceVersion = existingResponse.body.metadata?.resourceVersion;
+            await k3s.core.replaceNamespacedSecret(name, namespace, secretManifest);
+        } catch (error: any) {
+            if (error?.response?.statusCode !== 404) {
+                console.error(`Failed to read Secret "${name}":`, error);
+                throw new ServiceException(
+                    `Failed to read Secret "${name}": ${error?.message || error}`,
+                );
+            }
+            await k3s.core.createNamespacedSecret(namespace, secretManifest);
+        }
+    }
+
+    /**
+     * Reads a Secret and returns its decoded data as key-value pairs.
+     * Returns null when the Secret does not exist (404).
+     */
+    async getDecodedSecret(name: string, namespace: string): Promise<Record<string, string> | null> {
+        try {
+            const response = await k3s.core.readNamespacedSecret(name, namespace);
+            const data = response.body.data || {};
+            const decoded: Record<string, string> = {};
+            for (const [key, value] of Object.entries(data)) {
+                decoded[key] = value ? Buffer.from(value, 'base64').toString('utf-8') : '';
+            }
+            return decoded;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return null;
+            }
+            console.error(`Failed to read Secret "${name}":`, error);
+            throw new ServiceException(
+                `Failed to read Secret "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    /**
+     * Deletes a Secret, silently ignoring 404 (not found).
+     */
+    async deleteSecretSafe(name: string, namespace: string): Promise<void> {
+        try {
+            await k3s.core.deleteNamespacedSecret(name, namespace);
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return;
+            }
+            console.error(`Failed to delete Secret "${name}":`, error);
+            throw new ServiceException(
+                `Failed to delete Secret "${name}": ${error?.message || error}`,
+            );
+        }
     }
 }
 

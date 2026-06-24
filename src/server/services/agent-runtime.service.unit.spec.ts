@@ -18,17 +18,23 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
     default: {
         createSandboxClaim: vi.fn(),
         deleteSandboxClaim: vi.fn(),
-        getSecret: vi.fn(),
         getSandboxClaim: vi.fn(),
         listSandboxClaims: vi.fn(),
         hasActiveClaim: vi.fn(),
-        createOrReplaceSecret: vi.fn(),
-        deleteSecret: vi.fn(),
         waitForSandboxReady: vi.fn(),
         reconcileSandboxTemplate: vi.fn(),
         reconcileSandboxWarmPool: vi.fn(),
         deleteSandboxTemplate: vi.fn(),
         deleteSandboxWarmPool: vi.fn(),
+    },
+    SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
+    SANDBOX_API_VERSION: 'v1beta1',
+}));
+vi.mock('@/server/services/secret.service', () => ({
+    default: {
+        getDecodedSecret: vi.fn(),
+        createOrReplaceGenericSecret: vi.fn(),
+        deleteSecretSafe: vi.fn(),
     },
 }));
 vi.mock('@/server/adapter/litellm-api.adapter', () => ({
@@ -48,6 +54,7 @@ vi.mock('@/server/utils/crypto.utils', () => ({
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
+import secretService from '@/server/services/secret.service';
 import { CryptoUtils } from '@/server/utils/crypto.utils';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
@@ -100,7 +107,7 @@ function mockClaim(ready: boolean, conditions?: Array<{ type: string; status: st
 describe('agent-runtime.service', () => {
     beforeEach(() => {
         vi.resetAllMocks();
-        vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue(null);
+        vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
         vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
     });
 
@@ -128,7 +135,7 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startAgent(AGENT_ID);
 
-            expect(agentSandboxAdapter.createOrReplaceSecret).toHaveBeenCalledWith(
+            expect(secretService.createOrReplaceGenericSecret).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 SANDBOX_NAMESPACE,
                 expect.objectContaining({
@@ -149,7 +156,7 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startAgent(AGENT_ID);
 
-            const callArgs = vi.mocked(agentSandboxAdapter.createOrReplaceSecret).mock.calls[0][2] as Record<string, string>;
+            const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).not.toContain('QS_SYSTEM_PROMPT');
         });
 
@@ -161,14 +168,14 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startAgent(AGENT_ID);
 
-            const callArgs = vi.mocked(agentSandboxAdapter.createOrReplaceSecret).mock.calls[0][2] as Record<string, string>;
+            const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).toHaveLength(3); // QS_GATEWAY_URL + QS_VIRTUAL_KEY + OPENCODE_SERVER_PASSWORD
             expect(callArgs.OPENCODE_SERVER_PASSWORD).toBe('generated-password-123');
         });
 
         it('reuses existing runtime secret without overwriting it', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({
+            vi.mocked(secretService.getDecodedSecret).mockResolvedValue({
                 QS_GATEWAY_URL: 'https://litellm.example.com',
                 QS_VIRTUAL_KEY: 'existing-key',
                 OPENCODE_SERVER_PASSWORD: 'existing-password',
@@ -178,7 +185,7 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.startAgent(AGENT_ID);
 
             expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
-            expect(agentSandboxAdapter.createOrReplaceSecret).not.toHaveBeenCalled();
+            expect(secretService.createOrReplaceGenericSecret).not.toHaveBeenCalled();
         });
 
         it('creates SandboxClaim targeting the agent warm pool', async () => {
@@ -189,12 +196,18 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startAgent(AGENT_ID);
 
-            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith({
-                name: AGENT_ID,
-                namespace: SANDBOX_NAMESPACE,
-                warmPoolName: AGENT_ID,
-                labels: { 'qs-agent-id': AGENT_ID },
-            });
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+                    kind: 'SandboxClaim',
+                    metadata: expect.objectContaining({
+                        name: AGENT_ID,
+                        namespace: SANDBOX_NAMESPACE,
+                        labels: { 'qs-agent-id': AGENT_ID },
+                    }),
+                    spec: { warmPoolRef: { name: AGENT_ID } },
+                }),
+            );
         });
 
         it('waits for sandbox readiness', async () => {
@@ -269,19 +282,19 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.stopAgent(AGENT_ID);
 
-            expect(agentSandboxAdapter.deleteSecret).toHaveBeenCalledWith(
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 SANDBOX_NAMESPACE,
             );
         });
 
-        it('delegates deletion to adapters which handle 404 internally', async () => {
+        it('delegates deletion to services which handle 404 internally', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
 
             await agentRuntimeService.stopAgent(AGENT_ID);
 
             expect(agentSandboxAdapter.deleteSandboxClaim).toHaveBeenCalledWith(AGENT_ID, SANDBOX_NAMESPACE);
-            expect(agentSandboxAdapter.deleteSecret).toHaveBeenCalledWith(
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 SANDBOX_NAMESPACE,
             );

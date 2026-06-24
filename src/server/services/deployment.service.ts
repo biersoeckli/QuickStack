@@ -287,7 +287,7 @@ class DeploymentService {
         await configMapService.deleteUnusedConfigMaps(app);
         await pvcService.deleteUnusedPvcOfApp(app);
         await svcService.createOrUpdateServiceForApp(deploymentId, app);
-        await secretService.delteUnusedSecrets(app);
+        await secretService.deleteUnusedSecrets(app);
         dlog(deploymentId, `Updating ingress...`);
         await ingressService.createOrUpdateIngressForApp(deploymentId, app);
         dlog(deploymentId, `Deployment applied`);

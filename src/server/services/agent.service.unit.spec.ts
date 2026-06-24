@@ -23,9 +23,12 @@ const sandboxMocks = vi.hoisted(() => ({
     deleteSandboxWarmPool: vi.fn(),
     hasActiveClaim: vi.fn(),
     listSandboxClaims: vi.fn(),
-    getSecret: vi.fn(),
     deleteSandboxClaim: vi.fn(),
-    deleteSecret: vi.fn(),
+}));
+
+const secretServiceMocks = vi.hoisted(() => ({
+    getDecodedSecret: vi.fn(),
+    deleteSecretSafe: vi.fn(),
 }));
 
 const liteLlmMocks = vi.hoisted(() => ({
@@ -54,6 +57,11 @@ vi.mock('@/server/adapter/db.client', () => ({
 }));
 vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
     default: sandboxMocks,
+    SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
+    SANDBOX_API_VERSION: 'v1beta1',
+}));
+vi.mock('@/server/services/secret.service', () => ({
+    default: secretServiceMocks,
 }));
 vi.mock('@/server/adapter/litellm-api.adapter', () => ({
     default: liteLlmMocks,
@@ -70,6 +78,7 @@ import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
 import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
+import secretService from '@/server/services/secret.service';
 import agentService from './agent.service';
 
 const DEFAULT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
@@ -94,10 +103,11 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
 }
 
 function getOpenCodeConfigFromTemplateCall(callIndex = 0) {
-    const templateSpec = vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mock.calls[callIndex][0] as any;
-    const configEnv = templateSpec.env.find((item: { name: string }) => item.name === 'OPENCODE_CONFIG_CONTENT');
+    const resource = vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mock.calls[callIndex][0] as any;
+    const container = resource.spec.podTemplate.spec.containers[0];
+    const configEnv = container.env.find((item: { name: string }) => item.name === 'OPENCODE_CONFIG_CONTENT');
     return {
-        templateSpec,
+        resource,
         config: JSON.parse(configEnv.value),
     };
 }
@@ -213,11 +223,17 @@ describe('agent.service', () => {
 
             await agentService.create(validInput);
 
-            const { templateSpec, config } = getOpenCodeConfigFromTemplateCall();
+            const { resource, config } = getOpenCodeConfigFromTemplateCall();
 
-            expect(templateSpec).toEqual(expect.objectContaining({
+            expect(resource.apiVersion).toBe('extensions.agents.x-k8s.io/v1beta1');
+            expect(resource.kind).toBe('SandboxTemplate');
+            expect(resource.metadata).toEqual(expect.objectContaining({
                 name: expect.stringMatching(/^agent-/),
                 namespace: 'proj-test-agent',
+            }));
+            const container = resource.spec.podTemplate.spec.containers[0];
+            expect(container).toEqual(expect.objectContaining({
+                name: 'agent',
                 image: DEFAULT_IMAGE,
                 command: ['/bin/sh', '-lc'],
                 args: ['cd /workspace && exec opencode web --hostname 0.0.0.0 --port 4096'],
@@ -242,12 +258,20 @@ describe('agent.service', () => {
 
             await agentService.create(validInput);
 
-            expect(agentSandboxAdapter.reconcileSandboxWarmPool).toHaveBeenCalledWith({
-                name: expect.stringMatching(/^agent-/),
-                namespace: 'proj-test-agent',
-                templateName: expect.stringMatching(/^agent-/),
-                replicas: 0,
-            });
+            expect(agentSandboxAdapter.reconcileSandboxWarmPool).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+                    kind: 'SandboxWarmPool',
+                    metadata: expect.objectContaining({
+                        name: expect.stringMatching(/^agent-/),
+                        namespace: 'proj-test-agent',
+                    }),
+                    spec: {
+                        sandboxTemplateRef: { name: expect.stringMatching(/^agent-/) },
+                        replicas: 0,
+                    },
+                }),
+            );
         });
 
         it('rolls back DB record on K8s SandboxTemplate failure', async () => {
@@ -340,22 +364,28 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { templateSpec, config } = getOpenCodeConfigFromTemplateCall();
+            const { resource, config } = getOpenCodeConfigFromTemplateCall();
 
-            expect(templateSpec).toEqual(expect.objectContaining({
+            expect(resource.apiVersion).toBe('extensions.agents.x-k8s.io/v1beta1');
+            expect(resource.kind).toBe('SandboxTemplate');
+            expect(resource.metadata).toEqual(expect.objectContaining({
                 name: 'agent-1',
                 namespace: 'proj-test-agent',
+            }));
+            const container = resource.spec.podTemplate.spec.containers[0];
+            expect(container).toEqual(expect.objectContaining({
+                name: 'agent',
                 image: 'custom/opencode:latest',
                 command: ['/bin/sh', '-lc'],
                 args: ['cd /workspace && exec opencode web --hostname 0.0.0.0 --port 4096'],
                 workingDir: '/workspace',
                 ports: [{ name: 'opencode-web', containerPort: 4096, protocol: 'TCP' }],
                 envFrom: [{ secretRef: { name: expect.stringContaining('secret-') } }],
-                cpuRequest: '250m',
-                cpuLimit: '1000m',
-                memoryRequest: '512M',
-                memoryLimit: '1024M',
             }));
+            expect(container.resources).toEqual({
+                requests: { cpu: '250m', memory: '512M' },
+                limits: { cpu: '1000m', memory: '1024M' },
+            });
             expect(config).toEqual(expect.objectContaining({
                 $schema: 'https://opencode.ai/config.json',
                 model: 'quickstack-litellm/gpt-4o',
@@ -405,17 +435,17 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
+            vi.mocked(secretService.getDecodedSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
             liteLlmMocks.deleteVirtualKey.mockResolvedValue(undefined);
 
             await agentService.deleteById('agent-1');
 
-            expect(agentSandboxAdapter.getSecret).toHaveBeenCalledWith(
+            expect(secretService.getDecodedSecret).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 'proj-test-agent',
             );
             expect(agentSandboxAdapter.deleteSandboxClaim).toHaveBeenCalledWith('agent-1', 'proj-test-agent');
-            expect(agentSandboxAdapter.deleteSecret).toHaveBeenCalledWith(
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 'proj-test-agent',
             );
@@ -445,7 +475,7 @@ describe('agent.service', () => {
                 llmGateway: gatewayInfo,
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
-            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
+            vi.mocked(secretService.getDecodedSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
             liteLlmMocks.deleteVirtualKey.mockRejectedValue(new ServiceException('LiteLLM key deletion failed'));
 
             await expect(agentService.deleteById('agent-1')).rejects.toThrow('LiteLLM key deletion failed');
@@ -460,7 +490,7 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            vi.mocked(agentSandboxAdapter.getSecret).mockResolvedValue(null);
+            vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
 
             await agentService.deleteById('agent-1');
 
@@ -478,7 +508,7 @@ describe('agent.service', () => {
             } as any;
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(agentMock);
             vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
-            vi.mocked(agentSandboxAdapter.getSecret).mockRejectedValue(new Error('K8s API unreachable'));
+            vi.mocked(secretService.getDecodedSecret).mockRejectedValue(new Error('K8s API unreachable'));
 
             await agentService.deleteById('agent-1');
 

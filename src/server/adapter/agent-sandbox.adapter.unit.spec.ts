@@ -1,11 +1,6 @@
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
-        core: {
-            createNamespacedSecret: vi.fn(),
-            replaceNamespacedSecret: vi.fn(),
-            readNamespacedSecret: vi.fn(),
-            deleteNamespacedSecret: vi.fn(),
-        },
+        core: {},
         customObjects: {
             getNamespacedCustomObject: vi.fn(),
             createNamespacedCustomObject: vi.fn(),
@@ -37,15 +32,25 @@ describe('AgentSandboxAdapter', () => {
             );
 
             await agentSandboxAdapter.reconcileSandboxTemplate({
-                name,
-                namespace,
-                image: 'example/agent:latest',
-                command: ['node'],
-                args: ['server.js'],
-                env: [{ name: 'NODE_ENV', value: 'production' }],
-                envFrom: [{ secretRef: { name: 'secret-agent-test' } }],
-                ports: [{ name: 'http', containerPort: 4096, protocol: 'TCP' }],
-                workingDir: '/workspace',
+                apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                kind: 'SandboxTemplate',
+                metadata: { name, namespace },
+                spec: {
+                    podTemplate: {
+                        spec: {
+                            containers: [{
+                                name: 'agent',
+                                image: 'example/agent:latest',
+                                command: ['node'],
+                                args: ['server.js'],
+                                env: [{ name: 'NODE_ENV', value: 'production' }],
+                                envFrom: [{ secretRef: { name: 'secret-agent-test' } }],
+                                ports: [{ name: 'http', containerPort: 4096, protocol: 'TCP' }],
+                                workingDir: '/workspace',
+                            }],
+                        },
+                    },
+                },
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
@@ -82,10 +87,13 @@ describe('AgentSandboxAdapter', () => {
             );
 
             await agentSandboxAdapter.reconcileSandboxWarmPool({
-                name,
-                namespace,
-                templateName: 'agent-template',
-                replicas: 2,
+                apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                kind: 'SandboxWarmPool',
+                metadata: { name, namespace },
+                spec: {
+                    sandboxTemplateRef: { name: 'agent-template' },
+                    replicas: 2,
+                },
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
@@ -100,6 +108,80 @@ describe('AgentSandboxAdapter', () => {
                     },
                 }),
             );
+        });
+
+        it('rejects SandboxTemplate with wrong apiVersion', async () => {
+            await expect(
+                agentSandboxAdapter.reconcileSandboxTemplate({
+                    apiVersion: 'wrong.group/v1',
+                    kind: 'SandboxTemplate',
+                    metadata: { name, namespace },
+                    spec: {},
+                }),
+            ).rejects.toThrow('Invalid apiVersion for sandboxtemplates');
+        });
+
+        it('rejects SandboxTemplate with wrong kind', async () => {
+            await expect(
+                agentSandboxAdapter.reconcileSandboxTemplate({
+                    apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                    kind: 'WrongKind',
+                    metadata: { name, namespace },
+                    spec: {},
+                }),
+            ).rejects.toThrow('Invalid kind for sandboxtemplates');
+        });
+
+        it('rejects SandboxWarmPool with wrong apiVersion', async () => {
+            await expect(
+                agentSandboxAdapter.reconcileSandboxWarmPool({
+                    apiVersion: 'wrong.group/v1',
+                    kind: 'SandboxWarmPool',
+                    metadata: { name, namespace },
+                    spec: {},
+                }),
+            ).rejects.toThrow('Invalid apiVersion for sandboxwarmpools');
+        });
+
+        it('rejects SandboxWarmPool with wrong kind', async () => {
+            await expect(
+                agentSandboxAdapter.reconcileSandboxWarmPool({
+                    apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                    kind: 'WrongKind',
+                    metadata: { name, namespace },
+                    spec: {},
+                }),
+            ).rejects.toThrow('Invalid kind for sandboxwarmpools');
+        });
+
+        it('rejects SandboxClaim with wrong apiVersion', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+            );
+
+            await expect(
+                agentSandboxAdapter.createSandboxClaim({
+                    apiVersion: 'wrong.group/v1',
+                    kind: 'SandboxClaim',
+                    metadata: { name, namespace },
+                    spec: { warmPoolRef: { name: 'agent-test' } },
+                }),
+            ).rejects.toThrow('Invalid apiVersion for sandboxclaims');
+        });
+
+        it('rejects SandboxClaim with wrong kind', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+            );
+
+            await expect(
+                agentSandboxAdapter.createSandboxClaim({
+                    apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                    kind: 'WrongKind',
+                    metadata: { name, namespace },
+                    spec: { warmPoolRef: { name: 'agent-test' } },
+                }),
+            ).rejects.toThrow('Invalid kind for sandboxclaims');
         });
     });
 
@@ -127,9 +209,10 @@ describe('AgentSandboxAdapter', () => {
             );
 
             await agentSandboxAdapter.createSandboxClaim({
-                name,
-                namespace,
-                warmPoolName: 'agent-test',
+                apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                kind: 'SandboxClaim',
+                metadata: { name, namespace },
+                spec: { warmPoolRef: { name: 'agent-test' } },
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
@@ -150,7 +233,12 @@ describe('AgentSandboxAdapter', () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({} as any);
 
             await expect(
-                agentSandboxAdapter.createSandboxClaim({ name, namespace, warmPoolName: 'agent-test' }),
+                agentSandboxAdapter.createSandboxClaim({
+                    apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                    kind: 'SandboxClaim',
+                    metadata: { name, namespace },
+                    spec: { warmPoolRef: { name: 'agent-test' } },
+                }),
             ).rejects.toThrow('SandboxClaim "agent-test" already exists');
         });
 
@@ -193,60 +281,6 @@ describe('AgentSandboxAdapter', () => {
             const result = await agentSandboxAdapter.getSandboxClaim(name, namespace);
 
             expect(result).toBeNull();
-        });
-    });
-
-    describe('Secret operations', () => {
-        it('creates a new Secret when none exists', async () => {
-            vi.mocked(k3s.core.readNamespacedSecret).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
-            );
-
-            await agentSandboxAdapter.createOrReplaceSecret(name, namespace, {
-                QS_GATEWAY_URL: 'https://gw.example.com',
-                QS_VIRTUAL_KEY: 'sk-v-123',
-            });
-
-            expect(k3s.core.createNamespacedSecret).toHaveBeenCalledWith(namespace, expect.objectContaining({
-                metadata: { name },
-                data: expect.objectContaining({
-                    QS_GATEWAY_URL: expect.any(String),
-                    QS_VIRTUAL_KEY: expect.any(String),
-                }),
-            }));
-        });
-
-        it('replaces an existing Secret', async () => {
-            vi.mocked(k3s.core.readNamespacedSecret).mockResolvedValue({
-                body: { metadata: { name, resourceVersion: '42' } },
-            } as any);
-
-            await agentSandboxAdapter.createOrReplaceSecret(name, namespace, {
-                QS_GATEWAY_URL: 'https://gw.example.com',
-            });
-
-            expect(k3s.core.replaceNamespacedSecret).toHaveBeenCalledWith(
-                name,
-                namespace,
-                expect.objectContaining({ metadata: { name, resourceVersion: '42' } }),
-            );
-            expect(k3s.core.createNamespacedSecret).not.toHaveBeenCalled();
-        });
-
-        it('deletes a Secret', async () => {
-            await agentSandboxAdapter.deleteSecret(name, namespace);
-
-            expect(k3s.core.deleteNamespacedSecret).toHaveBeenCalledWith(name, namespace);
-        });
-
-        it('handles 404 silently on deleteSecret', async () => {
-            vi.mocked(k3s.core.deleteNamespacedSecret).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
-            );
-
-            await expect(
-                agentSandboxAdapter.deleteSecret(name, namespace),
-            ).resolves.toBeUndefined();
         });
     });
 

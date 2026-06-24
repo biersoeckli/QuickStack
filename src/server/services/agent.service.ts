@@ -5,7 +5,10 @@ import { Agent } from "@prisma/client";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
+import agentSandboxAdapter, {
+    SANDBOX_API_GROUP,
+    SANDBOX_API_VERSION,
+} from "../adapter/agent-sandbox.adapter";
 import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import namespaceService from "./namespace.service";
@@ -13,6 +16,8 @@ import agentRuntimeService from "./agent-runtime.service";
 import { AgentConfigInputModel } from "@/shared/model/agent-config.model";
 import { Constants } from "@/shared/utils/constants";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
+import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
+import secretService from "./secret.service";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -67,31 +72,73 @@ class AgentService {
         };
     }
 
-    private buildSandboxTemplateSpec(agent: AgentSandboxTemplateConfig) {
+    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
         const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
 
         return {
-            name: agent.id,
-            namespace: agent.projectId,
-            image: effectiveImage,
-            command: ['/bin/sh', '-lc'],
-            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
-            workingDir: OPENCODE_WORKDIR,
-            ports: [{
-                name: 'opencode-web',
-                containerPort: OPENCODE_WEB_PORT,
-                protocol: 'TCP',
-            }],
-            envFrom: [{ secretRef: { name: secretName } }],
-            env: [{
-                name: 'OPENCODE_CONFIG_CONTENT',
-                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
-            }],
-            cpuRequest: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
-            cpuLimit: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
-            memoryRequest: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
-            memoryLimit: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxTemplate',
+            metadata: {
+                name: agent.id,
+                namespace: agent.projectId,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+                },
+            },
+            spec: {
+                podTemplate: {
+                    spec: {
+                        containers: [{
+                            name: 'agent',
+                            image: effectiveImage,
+                            command: ['/bin/sh', '-lc'],
+                            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
+                            workingDir: OPENCODE_WORKDIR,
+                            ports: [{
+                                name: 'opencode-web',
+                                containerPort: OPENCODE_WEB_PORT,
+                                protocol: 'TCP',
+                            }],
+                            envFrom: [{ secretRef: { name: secretName } }],
+                            env: [{
+                                name: 'OPENCODE_CONFIG_CONTENT',
+                                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
+                            }],
+                            resources: {
+                                requests: {
+                                    cpu: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
+                                    memory: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
+                                },
+                                limits: {
+                                    cpu: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
+                                    memory: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
+                                },
+                            },
+                        }],
+                    },
+                },
+            },
+        };
+    }
+
+    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): KubernetesResource {
+        return {
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxWarmPool',
+            metadata: {
+                name: agentId,
+                namespace,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
+                },
+            },
+            spec: {
+                sandboxTemplateRef: {
+                    name: agentId,
+                },
+                replicas,
+            },
         };
     }
 
@@ -190,18 +237,15 @@ class AgentService {
                 where: { id: createdAgent.llmGatewayId },
                 select: { baseUrl: true },
             });
-            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateSpec({
+            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
                 ...createdAgent,
                 llmGateway,
             }));
 
             // Reconcile zero-replica SandboxWarmPool
-            await agentSandboxAdapter.reconcileSandboxWarmPool({
-                name: agentId,
-                namespace: createdAgent.projectId,
-                templateName: agentId,
-                replicas: 0,
-            });
+            await agentSandboxAdapter.reconcileSandboxWarmPool(
+                this.buildSandboxWarmPoolResource(agentId, createdAgent.projectId, 0),
+            );
 
             return createdAgent;
         } catch (error: any) {
@@ -388,17 +432,14 @@ class AgentService {
         }
 
         try {
-            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateSpec({
+            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
                 ...agent,
                 projectId: agent.project.id,
             }));
 
-            await agentSandboxAdapter.reconcileSandboxWarmPool({
-                name: agent.id,
-                namespace: agent.project.id,
-                templateName: agent.id,
-                replicas: 0,
-            });
+            await agentSandboxAdapter.reconcileSandboxWarmPool(
+                this.buildSandboxWarmPoolResource(agent.id, agent.project.id, 0),
+            );
         } catch (error: any) {
             console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);
             throw new ServiceException(
@@ -439,7 +480,7 @@ class AgentService {
         // 1. Extract virtual key from runtime secret before stopping
         let virtualKey: string | null = null;
         try {
-            const secretData = await agentSandboxAdapter.getSecret(
+            const secretData = await secretService.getDecodedSecret(
                 KubeObjectNameUtils.toSecretId(agentId),
                 namespace,
             );
