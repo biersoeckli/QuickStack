@@ -11,15 +11,16 @@ import AgentDetailClient from "./agent-detail-client";
 export default async function AgentDetailPage({
     params,
 }: {
-    params: { agentId: string };
+    params: Promise<{ agentId: string }>;
 }) {
+    const resolvedParams = await params;
     const session = await getAuthUserSession();
     const identity: RequesterIdentity = { type: 'session', session };
-    ensureReadProjectWorkload(identity, params.agentId);
+    ensureReadProjectWorkload(identity, resolvedParams.agentId);
 
-    const agent = await agentService.getById(params.agentId);
+    const agent = await agentService.getById(resolvedParams.agentId);
     const templateDeploymentDetails = await agentService.getSandboxTemplateDeployInfo(agent.id);
-    const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, params.agentId);
+    const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, resolvedParams.agentId);
 
     return (
         <div className="flex-1 space-y-4 pt-6">

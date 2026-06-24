@@ -127,7 +127,7 @@ export default function K3sUpdateInfo({
                                         Once installed, the controller can keep your cluster on a chosen minor-version channel (for example <strong>v1.32</strong> or <strong>v1.33</strong>) and will automatically apply the latest patch releases within that channel. Moving between minor versions (for example <strong>v1.32 → v1.33</strong>) is a manual action you must trigger via the Update workflow (this UI).
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Before performing any upgrades, ensure QuickStack's System-Backup and Volume-Backup features are enabled to protect your cluster state and data.
+                                        Before performing any upgrades, ensure QuickStack&apos;s System-Backup and Volume-Backup features are enabled to protect your cluster state and data.
                                     </p>
                                     <div className="flex items-center gap-2 text-sm">
                                         <Link
@@ -220,7 +220,7 @@ export default function K3sUpdateInfo({
                                 <RefreshCw className="h-4 w-4 animate-spin" />
                                 <AlertDescription>
                                     An upgrade is currently in progress.
-                                    You can monitor the progress in the "Cluster" settings tab.
+                                    You can monitor the progress in the &quot;Cluster&quot; settings tab.
                                     Do not start another upgrade until the current one is complete.
                                     Refresh this page to check the overall completion status.
                                     This message will disappear once the upgrade is finished.

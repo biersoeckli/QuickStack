@@ -10,7 +10,7 @@ export class FormUtils {
 
     static mapValidationErrorsToForm<T extends ZodType<any, any, any>, TReturnData = any>(
         state: ServerActionResult<z.infer<T>, TReturnData>,
-        form: UseFormReturn<z.infer<T>, any, undefined>) {
+        form: UseFormReturn<z.infer<T>, any, z.infer<T>>) {
 
         form.clearErrors();
         if (state && state.errors) {

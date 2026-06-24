@@ -15,12 +15,13 @@ export default async function AppsPage({
     searchParams,
     params
 }: {
-    searchParams?: { [key: string]: string | undefined };
-    params: { projectId: string }
+    searchParams?: Promise<{ [key: string]: string | undefined }>;
+    params: Promise<{ projectId: string }>
 }) {
+    const resolvedParams = await params;
     const session = await getAuthUserSession();
 
-    const projectId = params?.projectId;
+    const projectId = resolvedParams?.projectId;
     if (!projectId) {
         return <p>Could not find project with id {projectId}</p>
     }
@@ -52,7 +53,7 @@ export default async function AppsPage({
             <PageTitle
                 title="Apps"
                 subtitle={`App Project "${project.name}"`}>
-                {UserGroupUtils.sessionCanCreateNewAppsForProject(session, params.projectId) &&
+                {UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId) &&
                     <CreateProjectActions projectId={projectId} />}
             </PageTitle>
             <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />

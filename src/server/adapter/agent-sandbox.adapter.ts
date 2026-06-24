@@ -396,8 +396,8 @@ class AgentSandboxAdapter {
             if (!claim) {
                 throw new ServiceException(`Sandbox Claim "${name}" not found while waiting for readiness.`);
             }
-            const conditions: Array<{ type: string; status: string; message?: string; reason?: string }> =
-                claim?.status?.conditions || [];
+            const claimStatus = claim.status as { conditions?: Array<{ type: string; status: string; message?: string; reason?: string }> } | undefined;
+            const conditions = claimStatus?.conditions || [];
 
             const ready = conditions.find((c) => c.type === 'Ready');
             if (ready?.status === 'True') {

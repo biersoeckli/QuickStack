@@ -26,7 +26,7 @@ export function MultiselectDropdownField<TFormType extends FieldValues>(
     name,
     options
   }: {
-    form: UseFormReturn<TFormType, any, undefined>,
+    form: UseFormReturn<TFormType, any, TFormType>,
     label: string | React.ReactNode,
     name: keyof TFormType
     options: string[]

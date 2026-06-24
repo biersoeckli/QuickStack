@@ -42,9 +42,6 @@ export default async function RootLayout({
   const session = await getUserSession();
   const userIsLoggedIn = !!session;
 
-  // todo remove in future versions and handle migrations in an other way
-  await userGroupService.createDefaultRolesIfNotExists();
-
   return (
     <html lang="en">
       <body className={cn(

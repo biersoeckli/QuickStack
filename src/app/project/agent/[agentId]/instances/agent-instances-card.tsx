@@ -191,7 +191,7 @@ export default function AgentInstancesCard({
                                 </EmptyMedia>
                                 <EmptyTitle>No running Instances</EmptyTitle>
                                 <EmptyDescription>
-                                    There are currently no running instances for this agent. Click "Start New Instance" to create one.
+                                    There are currently no running instances for this agent. Click &quot;Start New Instance&quot; to create one.
                                 </EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent className="flex-row justify-center gap-2">

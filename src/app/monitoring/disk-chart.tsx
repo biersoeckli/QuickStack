@@ -60,10 +60,11 @@ export default function ChartDiskRessources({
                     content={<ChartTooltipContent hideLabel formatter={(value, name) => {
                         // Convert the value from bytes to gigabytes
                         const formattedValue = KubeSizeConverter.convertBytesToReadableSize(value as number);
+                        const config = typeof name === 'string' ? chartConfig[name as keyof typeof chartConfig] : undefined;
                         // Optionally, you can customize the label (name) here if needed
                         return <div className='flex gap-2'>
-                            <div className='self-center rounded w-2 h-2' style={{ backgroundColor: (chartConfig as any)[name].color }}></div>
-                            <div className='flex-1'>{(chartConfig as any)[name].label}:</div>
+                            <div className='self-center rounded w-2 h-2' style={{ backgroundColor: config?.color }}></div>
+                            <div className='flex-1'>{config?.label ?? name}:</div>
                             <div>{formattedValue}</div>
                         </div>
                     }} />}
