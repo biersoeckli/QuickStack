@@ -23,6 +23,7 @@ import ingressService from "./ingress.service";
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
 const FILEBROWSER_PORT = 80;
+const FILEBROWSER_BASE_URL = '/files';
 const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
 
 type AgentSandboxTemplateConfig = {
@@ -484,6 +485,7 @@ class AgentService {
                             args: [
                                 '--noauth',
                                 '--root', '/srv',
+                                '--baseurl', FILEBROWSER_BASE_URL,
                                 '--port', `${FILEBROWSER_PORT}`,
                             ],
                             ports: [{

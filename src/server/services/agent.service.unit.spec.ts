@@ -241,6 +241,12 @@ describe('agent.service', () => {
                 ports: [{ name: 'opencode-web', containerPort: 4096, protocol: 'TCP' }],
                 envFrom: [{ secretRef: { name: expect.stringContaining('secret-') } }],
             }));
+            const fileBrowserContainer = resource.spec.podTemplate.spec.containers[1];
+            expect(fileBrowserContainer).toEqual(expect.objectContaining({
+                name: 'filebrowser',
+                args: ['--noauth', '--root', '/srv', '--baseurl', '/files', '--port', '80'],
+                ports: [{ name: 'filebrowser-web', containerPort: 80, protocol: 'TCP' }],
+            }));
             expect(config.model).toBe('quickstack-litellm/gpt-4o');
             expect(config.provider['quickstack-litellm'].options.baseURL).toBe('https://litellm.example.com/v1');
         });
@@ -386,6 +392,12 @@ describe('agent.service', () => {
                 requests: { cpu: '250m', memory: '512M' },
                 limits: { cpu: '1000m', memory: '1024M' },
             });
+            const fileBrowserContainer = resource.spec.podTemplate.spec.containers[1];
+            expect(fileBrowserContainer).toEqual(expect.objectContaining({
+                name: 'filebrowser',
+                args: ['--noauth', '--root', '/srv', '--baseurl', '/files', '--port', '80'],
+                ports: [{ name: 'filebrowser-web', containerPort: 80, protocol: 'TCP' }],
+            }));
             expect(config).toEqual(expect.objectContaining({
                 $schema: 'https://opencode.ai/config.json',
                 model: 'quickstack-litellm/gpt-4o',
