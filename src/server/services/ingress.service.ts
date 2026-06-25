@@ -7,336 +7,180 @@ import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
 import { CryptoUtils } from "../utils/crypto.utils";
-import namespaceService from "./namespace.service";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { AgentDomain } from "@prisma/client";
-import paramService from "./param.service";
+import qsAuthProxyService, { QS_AUTH_PROXY_SERVICE_NAME, QS_AUTH_PROXY_SERVICE_PORT } from "./qs-auth-proxy.service";
 
 class IngressService {
-    private readonly traefikGroup = 'traefik.io';
-    private readonly traefikVersion = 'v1alpha1';
-    private readonly sandboxRouterDeploymentName = 'sandbox-router-deployment';
-    private readonly sandboxRouterServiceName = 'sandbox-router-svc';
-    private readonly sandboxRouterAppLabel = 'sandbox-router';
-    private readonly sandboxRouterPort = 8080;
-    private readonly authProxyName = 'qs-auth-proxy';
-    private readonly authProxyPort = 3000;
-    private readonly agentSecretName = 'quickstack-agent-secrets';
+    private readonly clusterIssuerName = 'letsencrypt-production';
 
     private getAgentAccessResourceName(hostname: string): string {
         return `agent-access-${createHash('sha1').update(hostname).digest('hex').slice(0, 12)}`;
     }
 
-    private async applyCustomResource(
-        group: string,
-        version: string,
-        namespace: string,
-        plural: string,
-        name: string,
-        manifest: any,
-    ) {
-        try {
-            await k3s.customObjects.getNamespacedCustomObject(group, version, namespace, plural, name);
-            await k3s.customObjects.patchNamespacedCustomObject(
-                group,
-                version,
-                namespace,
-                plural,
-                name,
-                manifest,
-                undefined,
-                undefined,
-                undefined,
-                { headers: { 'Content-Type': 'application/merge-patch+json' } },
-            );
-        } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
-                throw new ServiceException(`Failed to apply ${plural}/${name}: ${error?.message || error}`);
-            }
-            await k3s.customObjects.createNamespacedCustomObject(group, version, namespace, plural, manifest);
-        }
+    private tlsSecretNameFor(resourceId: string): string {
+        return `secret-tls-${resourceId}`;
     }
 
-    async ensureSandboxRouter() {
-        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
-        await namespaceService.createNamespaceIfNotExists(namespace);
+    private buildIngressAnnotations(input: {
+        ownerAnnotations: Record<string, string>;
+        useSsl: boolean;
+        redirectHttps?: boolean;
+        middlewares?: string;
+    }): Record<string, string> {
+        const middlewareList = [
+            input.middlewares,
+            (input.useSsl && input.redirectHttps) ? 'kube-system-redirect-to-https@kubernetescrd' : undefined,
+        ].filter((middleware) => !!middleware).join(',') || undefined;
 
-        const serviceManifest = {
-            apiVersion: 'v1',
-            kind: 'Service',
-            metadata: {
-                name: this.sandboxRouterServiceName,
-                namespace,
-            },
-            spec: {
-                type: 'ClusterIP',
-                selector: {
-                    app: this.sandboxRouterAppLabel,
-                },
-                ports: [{
-                    name: 'http',
-                    protocol: 'TCP',
-                    port: this.sandboxRouterPort,
-                    targetPort: this.sandboxRouterPort,
-                }],
-            },
+        return {
+            ...input.ownerAnnotations,
+            ...(input.useSsl && { 'cert-manager.io/cluster-issuer': this.clusterIssuerName }),
+            ...(middlewareList && { 'traefik.ingress.kubernetes.io/router.middlewares': middlewareList }),
+            ...(!input.useSsl && { 'traefik.ingress.kubernetes.io/router.entrypoints': 'web' }),
         };
-
-        const deploymentManifest = {
-            apiVersion: 'apps/v1',
-            kind: 'Deployment',
-            metadata: {
-                name: this.sandboxRouterDeploymentName,
-                namespace,
-            },
-            spec: {
-                replicas: 1,
-                selector: {
-                    matchLabels: {
-                        app: this.sandboxRouterAppLabel,
-                    },
-                },
-                template: {
-                    metadata: {
-                        labels: {
-                            app: this.sandboxRouterAppLabel,
-                        },
-                    },
-                    spec: {
-                        containers: [{
-                            name: 'router',
-                            image: Constants.QS_SANDBOX_ROUTER_IMAGE,
-                            ports: [{
-                                containerPort: this.sandboxRouterPort,
-                            }],
-                            readinessProbe: {
-                                httpGet: {
-                                    path: '/healthz',
-                                    port: this.sandboxRouterPort,
-                                },
-                                initialDelaySeconds: 3,
-                                periodSeconds: 10,
-                            },
-                        }],
-                    },
-                },
-            },
-        };
-
-        await k3s.applyResource(serviceManifest, namespace);
-        await k3s.applyResource(deploymentManifest, namespace);
     }
 
-    async ensureAgentSecrets() {
-        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
-        await namespaceService.createNamespaceIfNotExists(namespace);
-
-        try {
-            await k3s.core.readNamespacedSecret(this.agentSecretName, namespace);
-            return;
-        } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
-                throw new ServiceException(`Failed to read Secret "${this.agentSecretName}": ${error?.message || error}`);
-            }
-        }
-
-        const secret = await paramService.getOrCreateAgentJwtSecret();
-
-        await k3s.core.createNamespacedSecret(namespace, {
+    private buildIngressDefinition(input: {
+        name: string;
+        namespace: string;
+        hostname: string;
+        serviceName: string;
+        servicePort: number;
+        useSsl: boolean;
+        redirectHttps?: boolean;
+        ownerAnnotations: Record<string, string>;
+        middlewares?: string;
+        tlsSecretId: string;
+    }): V1Ingress {
+        return {
+            apiVersion: 'networking.k8s.io/v1',
+            kind: 'Ingress',
             metadata: {
-                name: this.agentSecretName,
-                namespace,
-            },
-            type: 'Opaque',
-            data: {
-                AGENT_JWT_SECRET: Buffer.from(secret).toString('base64'),
-            },
-        });
-    }
-
-    async ensureAuthProxy() {
-        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
-        await namespaceService.createNamespaceIfNotExists(namespace);
-
-        const serviceManifest = {
-            apiVersion: 'v1',
-            kind: 'Service',
-            metadata: {
-                name: this.authProxyName,
-                namespace,
+                name: input.name,
+                namespace: input.namespace,
+                annotations: this.buildIngressAnnotations({
+                    ownerAnnotations: input.ownerAnnotations,
+                    useSsl: input.useSsl,
+                    redirectHttps: input.redirectHttps,
+                    middlewares: input.middlewares,
+                }),
             },
             spec: {
-                type: 'ClusterIP',
-                selector: {
-                    app: this.authProxyName,
-                },
-                ports: [{
-                    name: 'http',
-                    protocol: 'TCP',
-                    port: this.authProxyPort,
-                    targetPort: this.authProxyPort,
-                }],
-            },
-        };
-
-        const deploymentManifest = {
-            apiVersion: 'apps/v1',
-            kind: 'Deployment',
-            metadata: {
-                name: this.authProxyName,
-                namespace,
-            },
-            spec: {
-                replicas: 1,
-                selector: {
-                    matchLabels: {
-                        app: this.authProxyName,
-                    },
-                },
-                template: {
-                    metadata: {
-                        labels: {
-                            app: this.authProxyName,
-                        },
-                    },
-                    spec: {
-                        containers: [{
-                            name: 'auth-proxy',
-                            image: Constants.QS_AUTH_PROXY_IMAGE,
-                            imagePullPolicy: 'Always',
-                            ports: [{
-                                containerPort: this.authProxyPort,
-                            }],
-                            env: [
+                ingressClassName: 'traefik',
+                rules: [
+                    {
+                        host: input.hostname,
+                        http: {
+                            paths: [
                                 {
-                                    name: 'AGENT_JWT_SECRET',
-                                    valueFrom: {
-                                        secretKeyRef: {
-                                            name: this.agentSecretName,
-                                            key: 'AGENT_JWT_SECRET',
+                                    path: '/',
+                                    pathType: 'Prefix',
+                                    backend: {
+                                        service: {
+                                            name: input.serviceName,
+                                            port: {
+                                                number: input.servicePort,
+                                            },
                                         },
                                     },
                                 },
-                                {
-                                    name: 'AUTH_DISABLED',
-                                    value: 'false',
-                                },
                             ],
-                            resources: {
-                                requests: {
-                                    cpu: '50m',
-                                    memory: '64Mi',
-                                },
-                                limits: {
-                                    cpu: '200m',
-                                    memory: '128Mi',
-                                },
-                            },
-                        }],
+                        },
                     },
-                },
+                ],
+                ...(input.useSsl && {
+                    tls: [
+                        {
+                            hosts: [input.hostname],
+                            secretName: this.tlsSecretNameFor(input.tlsSecretId),
+                        },
+                    ],
+                }),
             },
         };
-
-        await k3s.applyResource(serviceManifest, namespace);
-        await k3s.applyResource(deploymentManifest, namespace);
     }
 
-    async ensureAgentIngress(agent: AgentWithRelationsModel, domain: AgentDomain) {
+    private async getIngressByResourceName(namespace: string, ingressName: string) {
+        const res = await k3s.network.listNamespacedIngress(namespace);
+        return res.body.items.find((item) => item.metadata?.name === ingressName);
+    }
+
+    private async applyIngress(namespace: string, ingressName: string, ingressDefinition: V1Ingress) {
+        const existingIngress = await this.getIngressByResourceName(namespace, ingressName);
+        if (existingIngress) {
+            await k3s.network.replaceNamespacedIngress(ingressName, namespace, ingressDefinition);
+            return;
+        }
+        await k3s.network.createNamespacedIngress(namespace, ingressDefinition);
+    }
+
+    async createOrUpdateAgentIngress(agent: AgentWithRelationsModel, domain: AgentDomain) {
         const hostname = domain.hostname;
         const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         const resourceName = this.getAgentAccessResourceName(hostname);
 
-        await this.ensureAgentSecrets();
-        await this.ensureAuthProxy();
+        await ingressSetupService.createTraefikRedirectMiddlewareIfNotExist();
+        await qsAuthProxyService.ensure();
 
-        const ingressRouteManifest = {
-            apiVersion: `${this.traefikGroup}/${this.traefikVersion}`,
-            kind: 'IngressRoute',
-            metadata: {
-                name: resourceName,
-                namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
-                },
+        const ingressDefinition = this.buildIngressDefinition({
+            name: resourceName,
+            namespace,
+            hostname,
+            serviceName: QS_AUTH_PROXY_SERVICE_NAME,
+            servicePort: QS_AUTH_PROXY_SERVICE_PORT,
+            useSsl: domain.useSsl,
+            redirectHttps: domain.redirectHttps,
+            ownerAnnotations: {
+                [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
             },
-            spec: {
-                entryPoints: [domain.useSsl ? 'websecure' : 'web'],
-                ...(domain.useSsl ? { tls: {} } : {}),
-                routes: [
-                    {
-                        match: `Host(\`${hostname}\`)`,
-                        kind: 'Rule',
-                        priority: 10,
-                        services: [{
-                            name: this.authProxyName,
-                            port: this.authProxyPort,
-                        }],
-                    },
-                ],
-            },
-        };
+            tlsSecretId: resourceName,
+        });
 
-        await this.applyCustomResource(this.traefikGroup, this.traefikVersion, namespace, 'ingressroutes', resourceName, ingressRouteManifest);
+        await this.applyIngress(namespace, resourceName, ingressDefinition);
     }
 
     async deleteAgentIngress(hostname: string) {
         const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         const resourceName = this.getAgentAccessResourceName(hostname);
-        for (const plural of ['ingressroutes', 'middlewares']) {
-            try {
-                await k3s.customObjects.deleteNamespacedCustomObject(this.traefikGroup, this.traefikVersion, namespace, plural, resourceName);
-            } catch (error: any) {
-                if (error?.response?.statusCode !== 404) {
-                    throw new ServiceException(`Failed to delete ${plural}/${resourceName}: ${error?.message || error}`);
-                }
+        try {
+            await k3s.network.deleteNamespacedIngress(resourceName, namespace);
+        } catch (error: any) {
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(`Failed to delete ingress/${resourceName}: ${error?.message || error}`);
             }
         }
     }
 
     /**
-     * Lists all Traefik IngressRoutes belonging to a specific Agent.
-     * Filters by the qs-agent-id annotation on the client side since
-     * K8s labelSelector only matches labels, not annotations.
-     * Returns an array of { hostname, resourceName } extracted from the IngressRoute spec.
+     * Lists all Kubernetes Ingresses belonging to a specific Agent.
      */
-    async listAgentIngressRoutes(agentId: string): Promise<{ hostname: string; resourceName: string }[]> {
+    async listAgentIngress(agentId: string): Promise<{ hostname: string; resourceName: string }[]> {
         const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        const result: { hostname: string; resourceName: string }[] = [];
+
         try {
-            const res = await k3s.customObjects.listNamespacedCustomObject(
-                this.traefikGroup,
-                this.traefikVersion,
-                namespace,
-                'ingressroutes',
-            );
-            const items = (res as any)?.items || [];
-            const result: { hostname: string; resourceName: string }[] = [];
-            for (const item of items) {
-                const itemAgentId = item.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
+            const ingresses = await k3s.network.listNamespacedIngress(namespace);
+            for (const ingress of ingresses.body.items) {
+                const itemAgentId = ingress.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
                 if (itemAgentId !== agentId) continue;
 
-                const resourceName = item.metadata?.name;
-                const routes = item.spec?.routes;
-                if (!resourceName || !Array.isArray(routes)) continue;
-                for (const route of routes) {
-                    const match: string = route?.match || '';
-                    const hostMatch = match.match(/Host\(`([^`]+)`\)/);
-                    if (hostMatch) {
-                        result.push({ hostname: hostMatch[1], resourceName });
-                        break;
-                    }
+                const resourceName = ingress.metadata?.name;
+                const hostname = ingress.spec?.rules?.[0]?.host;
+                if (resourceName && hostname) {
+                    result.push({ hostname, resourceName });
                 }
             }
-            return result;
         } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
-                return [];
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(
+                    `Failed to list agent Ingresses: ${error?.message || error}`,
+                );
             }
-            throw new ServiceException(
-                `Failed to list agent IngressRoutes: ${error?.message || error}`,
-            );
         }
+
+        return result;
     }
 
     async getAllIngressForApp(projectId: string, appId: string) {
@@ -345,8 +189,7 @@ class IngressService {
     }
 
     async getIngressByName(projectId: string, domainId: string) {
-        const res = await k3s.network.listNamespacedIngress(projectId);
-        return res.body.items.find((item) => item.metadata?.name === KubeObjectNameUtils.getIngressName(domainId));
+        return this.getIngressByResourceName(projectId, KubeObjectNameUtils.getIngressName(domainId));
     }
 
     async deleteUnusedIngressesOfApp(app: AppExtendedModel) {
@@ -397,65 +240,27 @@ class IngressService {
         const ingressName = KubeObjectNameUtils.getIngressName(domain.id);
         const existingIngress = await this.getIngressByName(app.projectId, domain.id);
 
-        const middlewares = [
-            basicAuthMiddlewareName,
-            (domain.useSsl && domain.redirectHttps) ? 'kube-system-redirect-to-https@kubernetescrd' : undefined,
-        ].filter((middleware) => !!middleware).join(',') ?? undefined;
-
-        const ingressDefinition: V1Ingress = {
-            apiVersion: 'networking.k8s.io/v1',
-            kind: 'Ingress',
-            metadata: {
-                name: ingressName,
-                namespace: app.projectId,
-                annotations: {
-                    [Constants.QS_ANNOTATION_APP_ID]: app.id,
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
-                    ...(domain.useSsl === true && { 'cert-manager.io/cluster-issuer': 'letsencrypt-production' }),
-                    ...(middlewares && { 'traefik.ingress.kubernetes.io/router.middlewares': middlewares }),
-                    ...(domain.useSsl === false && { 'traefik.ingress.kubernetes.io/router.entrypoints': 'web' }), // disable requests from https --> only http
-                },
+        const ingressDefinition = this.buildIngressDefinition({
+            name: ingressName,
+            namespace: app.projectId,
+            hostname,
+            serviceName: KubeObjectNameUtils.toServiceName(app.id),
+            servicePort: domain.port,
+            useSsl: domain.useSsl,
+            redirectHttps: domain.redirectHttps,
+            middlewares: basicAuthMiddlewareName,
+            ownerAnnotations: {
+                [Constants.QS_ANNOTATION_APP_ID]: app.id,
+                [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
             },
-            spec: {
-                ingressClassName: 'traefik',
-                rules: [
-                    {
-                        host: hostname,
-                        http: {
-                            paths: [
-                                {
-                                    path: '/',
-                                    pathType: 'Prefix',
-                                    backend: {
-                                        service: {
-                                            name: KubeObjectNameUtils.toServiceName(app.id),
-                                            port: {
-                                                number: domain.port,
-                                            },
-                                        },
-                                    },
-                                },
-                            ],
-                        },
-                    },
-                ],
-                ...(domain.useSsl === true && {
-                    tls: [
-                        {
-                            hosts: [hostname],
-                            secretName: `secret-tls-${domain.id}`,
-                        },
-                    ],
-                }),
-            },
-        };
+            tlsSecretId: domain.id,
+        });
 
         await dlog(deploymentId, `Configuring Ingress with Domain ${domain.useSsl ? 'https' : 'http'}://${hostname} --> ${app.id}:${domain.port}`);
+        await this.applyIngress(app.projectId, ingressName, ingressDefinition);
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(ingressName, app.projectId, ingressDefinition);
             console.log(`Ingress ${ingressName} for domain ${hostname} successfully updated.`);
         } else {
-            await k3s.network.createNamespacedIngress(app.projectId, ingressDefinition);
             console.log(`Ingress ${ingressName} for domain ${hostname} successfully created.`);
         }
     }

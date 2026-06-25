@@ -283,17 +283,14 @@ class AgentService {
 
             // Reconcile agent domain ingresses — clean up orphaned, then ensure current
             const currentHostnames = new Set(agent.agentDomains.map(d => d.hostname));
-            const existingRoutes = await ingressService.listAgentIngressRoutes(agent.id);
+            const existingRoutes = await ingressService.listAgentIngress(agent.id);
             for (const route of existingRoutes) {
                 if (!currentHostnames.has(route.hostname)) {
                     await ingressService.deleteAgentIngress(route.hostname);
                 }
             }
-            if (agent.agentDomains.length > 0) {
-                await ingressService.ensureSandboxRouter();
-                for (const domain of agent.agentDomains) {
-                    await ingressService.ensureAgentIngress(agent, domain);
-                }
+            for (const domain of agent.agentDomains) {
+                await ingressService.createOrUpdateAgentIngress(agent, domain);
             }
         } catch (error: any) {
             console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);

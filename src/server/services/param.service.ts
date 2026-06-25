@@ -22,7 +22,7 @@ export class ParamService {
     static readonly BUILD_NODE = 'buildNode';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
-    static readonly AGENT_JWT_SECRET = 'AGENT_JWT_SECRET';
+    static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({
@@ -70,9 +70,9 @@ export class ParamService {
     async getOrCreateAgentJwtSecret() {
         const param = await this.getOrCreate(
             ParamService.AGENT_JWT_SECRET,
-            CryptoUtils.generateStrongPasswort(64),
+            CryptoUtils.encrypt(CryptoUtils.generateStrongPasswort(64)),
         );
-        return param.value;
+        return CryptoUtils.decrypt(param.value);
     }
 
     async getOrUndefined(name: string) {
