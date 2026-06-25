@@ -44,3 +44,4 @@ export const saveAgentEnvVars = async (prevState: any, inputData: AgentEnvVarsMo
         await authorizeForAgent(agentId);
         await agentService.saveConfig(agentId, validatedData);
     });
+

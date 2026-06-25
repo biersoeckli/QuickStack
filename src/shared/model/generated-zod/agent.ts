@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel, CompleteAgentDomain, RelatedAgentDomainModel } from "./index"
 
 export const AgentModel = z.object({
   id: z.string(),
@@ -23,6 +23,7 @@ export interface CompleteAgent extends z.infer<typeof AgentModel> {
   project: CompleteProject
   llmGateway: CompleteLlmGateway
   roleAgentPermissions: CompleteRoleAgentPermission[]
+  agentDomains: CompleteAgentDomain[]
 }
 
 /**
@@ -34,4 +35,5 @@ export const RelatedAgentModel: z.ZodSchema<CompleteAgent> = z.lazy(() => AgentM
   project: RelatedProjectModel,
   llmGateway: RelatedLlmGatewayModel,
   roleAgentPermissions: RelatedRoleAgentPermissionModel.array(),
+  agentDomains: RelatedAgentDomainModel.array(),
 }))

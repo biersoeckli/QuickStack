@@ -279,3 +279,64 @@ jobs:
             quickstack/job-backup-mariadb:latest-amd64 \
             quickstack/job-backup-mariadb:latest-arm64
           docker buildx imagetools inspect quickstack/job-backup-mariadb:latest
+
+  build-and-push-quickstack-auth-proxy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and Push QuickStack Auth Proxy (amd64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./additional-containers/quickstack-auth-proxy
+          file: ./additional-containers/quickstack-auth-proxy/Dockerfile.amd64
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            VERSION_ARG=${{ github.ref_name }}
+          tags: |
+            quickstack/auth-proxy:latest-amd64
+            quickstack/auth-proxy:${{ github.ref_name }}-amd64
+
+      - name: Build and Push QuickStack Auth Proxy (arm64)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./additional-containers/quickstack-auth-proxy
+          file: ./additional-containers/quickstack-auth-proxy/Dockerfile.arm64
+          push: true
+          platforms: linux/arm64
+          build-args: |
+            VERSION_ARG=${{ github.ref_name }}
+          tags: |
+            quickstack/auth-proxy:latest-arm64
+            quickstack/auth-proxy:${{ github.ref_name }}-arm64
+
+      - name: Create multi-arch manifest (latest)
+        run: |
+          docker buildx imagetools create -t quickstack/auth-proxy:latest \
+            quickstack/auth-proxy:latest-amd64 \
+            quickstack/auth-proxy:latest-arm64
+          docker buildx imagetools inspect quickstack/auth-proxy:latest
+
+      - name: Create multi-arch manifest (versioned)
+        run: |
+          docker buildx imagetools create -t quickstack/auth-proxy:${{ github.ref_name }} \
+            quickstack/auth-proxy:${{ github.ref_name }}-amd64 \
+            quickstack/auth-proxy:${{ github.ref_name }}-arm64
+          docker buildx imagetools inspect quickstack/auth-proxy:${{ github.ref_name }}

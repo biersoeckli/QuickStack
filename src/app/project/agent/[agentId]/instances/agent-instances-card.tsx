@@ -7,9 +7,9 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { Bot, Logs, Play, Square, Terminal } from "lucide-react";
+import { Bot, ExternalLink, Files, Logs, Play, Square, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { startInstance, stopInstance } from "./actions";
+import { createAgentAccessUrl, startInstance, stopInstance } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { LogsDialogContent } from "@/components/custom/logs-overlay";
@@ -22,6 +22,9 @@ import {
     EmptyTitle,
 } from "@/components/ui/empty"
 import DeploymentStatusBadge from "@/app/project/app/[appId]/overview/deployment-status-badge";
+import { AgentDomain } from "@prisma/client";
+import { toast } from "sonner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface InstanceInfo {
     name: string;
@@ -34,10 +37,12 @@ export default function AgentInstancesCard({
     agentId,
     readonly,
     namespace,
+    agentDomains,
 }: {
     agentId: string;
     readonly: boolean;
     namespace: string;
+    agentDomains: AgentDomain[];
 }) {
     const { openDialog } = useDialog();
     const [instances, setInstances] = useState<InstanceInfo[]>([]);
@@ -159,6 +164,23 @@ export default function AgentInstancesCard({
         openDialog(<LogsDialogContent namespace={namespace} podName={claimName} />, { maxWidth: '1300px' });
     };
 
+    const handleOpenAgentAccess = async (claimName: string, view: 'agent' | 'files', domainId: string) => {
+        if (agentDomains.length === 0) {
+            toast.error('Configure an Agent access domain first.');
+            return;
+        }
+
+        try {
+            const result = await createAgentAccessUrl(agentId, claimName, view, domainId);
+            if (result.status !== 'success' || !result.data?.url) {
+                throw new Error(result.message || 'Could not create Agent access token.');
+            }
+            window.open(result.data.url, '_blank', 'noopener,noreferrer');
+        } catch (error: any) {
+            toast.error(error?.message || 'Could not open Agent access.');
+        }
+    };
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -240,21 +262,75 @@ export default function AgentInstancesCard({
                                             </TooltipContent>
                                         </Tooltip>
                                         {item.status === 'DEPLOYED' && (
-                                            <Tooltip delayDuration={300}>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleOpenTerminal(item.name)}
-                                                    >
-                                                        <Terminal className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Open Terminal</p>
-                                                </TooltipContent>
-                                            </Tooltip>
+                                            <>
+                                                <Tooltip delayDuration={300}>
+                                                    <TooltipTrigger asChild>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={agentDomains.length === 0}
+                                                                >
+                                                                    <ExternalLink className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                {agentDomains.map((domain) => (
+                                                                    <DropdownMenuItem key={domain.id} onClick={() => handleOpenAgentAccess(item.name, 'agent', domain.id)}>
+                                                                        {domain.hostname}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Open Agent UI</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip delayDuration={300}>
+                                                    <TooltipTrigger asChild>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={agentDomains.length === 0}
+                                                                >
+                                                                    <Files className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                {agentDomains.map((domain) => (
+                                                                    <DropdownMenuItem key={domain.id} onClick={() => handleOpenAgentAccess(item.name, 'files', domain.id)}>
+                                                                        {domain.hostname}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Open Files</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip delayDuration={300}>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleOpenTerminal(item.name)}
+                                                        >
+                                                            <Terminal className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Open Terminal</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </>
                                         )}
                                         {!readonly && (
                                             <Tooltip delayDuration={300}>

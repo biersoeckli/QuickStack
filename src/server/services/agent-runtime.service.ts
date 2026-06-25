@@ -20,7 +20,7 @@ class AgentRuntimeService {
     private async getAgentOrThrow(agentId: string): Promise<AgentWithRelationsModel> {
         const agent = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: true, llmGateway: true },
+            include: { project: true, llmGateway: true, agentDomains: true },
         });
         if (!agent) {
             throw new ServiceException('Agent not found.');
@@ -53,7 +53,6 @@ class AgentRuntimeService {
         const data: Record<string, string> = {
             QS_GATEWAY_URL: gatewayBaseUrl,
             QS_VIRTUAL_KEY: virtualKey,
-            OPENCODE_SERVER_PASSWORD: CryptoUtils.generateStrongPasswort(),
         };
         if (systemPrompt) {
             data.QS_SYSTEM_PROMPT = systemPrompt;
@@ -160,7 +159,7 @@ class AgentRuntimeService {
 
         await agentSandboxAdapter.createSandboxClaim(
             this.buildSandboxClaimResource(agentId, namespace, agentId, {
-                [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId,
+                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
             }),
         );
 
@@ -188,7 +187,7 @@ class AgentRuntimeService {
         // Delete all instance claims for this agent
         const claims = await agentSandboxAdapter.listSandboxClaims(
             namespace,
-            `${Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL}=${agentId}`,
+            `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`,
         );
         for (const claim of claims) {
             const claimName = claim.metadata?.name;
@@ -257,7 +256,7 @@ class AgentRuntimeService {
 
         await agentSandboxAdapter.createSandboxClaim(
             this.buildSandboxClaimResource(claimName, namespace, agentId, {
-                [Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL]: agentId,
+                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
             }),
         );
 
@@ -322,7 +321,7 @@ class AgentRuntimeService {
 
         const claims = await agentSandboxAdapter.listSandboxClaims(
             namespace,
-            `${Constants.QS_ANNOTATION_AGENT_INSTANCE_LABEL}=${agentId}`,
+            `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`,
         );
 
         return claims.map((claim: any) => this.mapClaimToInstance(claim, namespace));

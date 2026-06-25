@@ -121,7 +121,7 @@ const result = await Actions.run(() => getProjectDetails(projectId));
 Map validation errors back to the form with:
 
 ```tsx
-FormUtils.mapValidationErrorsToForm(serverActionResult, form);
+FormUtils.mapValidationErrorsToForm<typeof zodModel>(serverActionResult, form);
 ```
 
 ## Zustand State Stores
@@ -219,9 +219,9 @@ function MyFormDialog({ someProp }: { someProp: string }) {
         defaultValues: { name: someProp ?? '' },
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (prev, payload) => myServerAction(prev, payload),
-        FormUtils.getInitialFormState()
+        FormUtils.getInitialFormState<typeof mySchema>()
     );
 
     useEffect(() => {
@@ -229,7 +229,7 @@ function MyFormDialog({ someProp }: { someProp: string }) {
             toast.success(state.message ?? 'Saved.');
             closeDialog();
         }
-        FormUtils.mapValidationErrorsToForm(state, form);
+        FormUtils.mapValidationErrorsToForm<typeof mySchema>(state, form);
     }, [state]);
 
     return (

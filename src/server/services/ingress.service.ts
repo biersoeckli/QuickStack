@@ -7,8 +7,337 @@ import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
 import { CryptoUtils } from "../utils/crypto.utils";
+import namespaceService from "./namespace.service";
+import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { ServiceException } from "@/shared/model/service.exception.model";
+import { AgentDomain } from "@prisma/client";
+import paramService from "./param.service";
 
 class IngressService {
+    private readonly traefikGroup = 'traefik.io';
+    private readonly traefikVersion = 'v1alpha1';
+    private readonly sandboxRouterDeploymentName = 'sandbox-router-deployment';
+    private readonly sandboxRouterServiceName = 'sandbox-router-svc';
+    private readonly sandboxRouterAppLabel = 'sandbox-router';
+    private readonly sandboxRouterPort = 8080;
+    private readonly authProxyName = 'qs-auth-proxy';
+    private readonly authProxyPort = 3000;
+    private readonly agentSecretName = 'quickstack-agent-secrets';
+
+    private getAgentAccessResourceName(hostname: string): string {
+        return `agent-access-${createHash('sha1').update(hostname).digest('hex').slice(0, 12)}`;
+    }
+
+    private async applyCustomResource(
+        group: string,
+        version: string,
+        namespace: string,
+        plural: string,
+        name: string,
+        manifest: any,
+    ) {
+        try {
+            await k3s.customObjects.getNamespacedCustomObject(group, version, namespace, plural, name);
+            await k3s.customObjects.patchNamespacedCustomObject(
+                group,
+                version,
+                namespace,
+                plural,
+                name,
+                manifest,
+                undefined,
+                undefined,
+                undefined,
+                { headers: { 'Content-Type': 'application/merge-patch+json' } },
+            );
+        } catch (error: any) {
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(`Failed to apply ${plural}/${name}: ${error?.message || error}`);
+            }
+            await k3s.customObjects.createNamespacedCustomObject(group, version, namespace, plural, manifest);
+        }
+    }
+
+    async ensureSandboxRouter() {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        await namespaceService.createNamespaceIfNotExists(namespace);
+
+        const serviceManifest = {
+            apiVersion: 'v1',
+            kind: 'Service',
+            metadata: {
+                name: this.sandboxRouterServiceName,
+                namespace,
+            },
+            spec: {
+                type: 'ClusterIP',
+                selector: {
+                    app: this.sandboxRouterAppLabel,
+                },
+                ports: [{
+                    name: 'http',
+                    protocol: 'TCP',
+                    port: this.sandboxRouterPort,
+                    targetPort: this.sandboxRouterPort,
+                }],
+            },
+        };
+
+        const deploymentManifest = {
+            apiVersion: 'apps/v1',
+            kind: 'Deployment',
+            metadata: {
+                name: this.sandboxRouterDeploymentName,
+                namespace,
+            },
+            spec: {
+                replicas: 1,
+                selector: {
+                    matchLabels: {
+                        app: this.sandboxRouterAppLabel,
+                    },
+                },
+                template: {
+                    metadata: {
+                        labels: {
+                            app: this.sandboxRouterAppLabel,
+                        },
+                    },
+                    spec: {
+                        containers: [{
+                            name: 'router',
+                            image: Constants.QS_SANDBOX_ROUTER_IMAGE,
+                            ports: [{
+                                containerPort: this.sandboxRouterPort,
+                            }],
+                            readinessProbe: {
+                                httpGet: {
+                                    path: '/healthz',
+                                    port: this.sandboxRouterPort,
+                                },
+                                initialDelaySeconds: 3,
+                                periodSeconds: 10,
+                            },
+                        }],
+                    },
+                },
+            },
+        };
+
+        await k3s.applyResource(serviceManifest, namespace);
+        await k3s.applyResource(deploymentManifest, namespace);
+    }
+
+    async ensureAgentSecrets() {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        await namespaceService.createNamespaceIfNotExists(namespace);
+
+        try {
+            await k3s.core.readNamespacedSecret(this.agentSecretName, namespace);
+            return;
+        } catch (error: any) {
+            if (error?.response?.statusCode !== 404) {
+                throw new ServiceException(`Failed to read Secret "${this.agentSecretName}": ${error?.message || error}`);
+            }
+        }
+
+        const secret = await paramService.getOrCreateAgentJwtSecret();
+
+        await k3s.core.createNamespacedSecret(namespace, {
+            metadata: {
+                name: this.agentSecretName,
+                namespace,
+            },
+            type: 'Opaque',
+            data: {
+                AGENT_JWT_SECRET: Buffer.from(secret).toString('base64'),
+            },
+        });
+    }
+
+    async ensureAuthProxy() {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        await namespaceService.createNamespaceIfNotExists(namespace);
+
+        const serviceManifest = {
+            apiVersion: 'v1',
+            kind: 'Service',
+            metadata: {
+                name: this.authProxyName,
+                namespace,
+            },
+            spec: {
+                type: 'ClusterIP',
+                selector: {
+                    app: this.authProxyName,
+                },
+                ports: [{
+                    name: 'http',
+                    protocol: 'TCP',
+                    port: this.authProxyPort,
+                    targetPort: this.authProxyPort,
+                }],
+            },
+        };
+
+        const deploymentManifest = {
+            apiVersion: 'apps/v1',
+            kind: 'Deployment',
+            metadata: {
+                name: this.authProxyName,
+                namespace,
+            },
+            spec: {
+                replicas: 1,
+                selector: {
+                    matchLabels: {
+                        app: this.authProxyName,
+                    },
+                },
+                template: {
+                    metadata: {
+                        labels: {
+                            app: this.authProxyName,
+                        },
+                    },
+                    spec: {
+                        containers: [{
+                            name: 'auth-proxy',
+                            image: Constants.QS_AUTH_PROXY_IMAGE,
+                            imagePullPolicy: 'Always',
+                            ports: [{
+                                containerPort: this.authProxyPort,
+                            }],
+                            env: [
+                                {
+                                    name: 'AGENT_JWT_SECRET',
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: this.agentSecretName,
+                                            key: 'AGENT_JWT_SECRET',
+                                        },
+                                    },
+                                },
+                                {
+                                    name: 'AUTH_DISABLED',
+                                    value: 'false',
+                                },
+                            ],
+                            resources: {
+                                requests: {
+                                    cpu: '50m',
+                                    memory: '64Mi',
+                                },
+                                limits: {
+                                    cpu: '200m',
+                                    memory: '128Mi',
+                                },
+                            },
+                        }],
+                    },
+                },
+            },
+        };
+
+        await k3s.applyResource(serviceManifest, namespace);
+        await k3s.applyResource(deploymentManifest, namespace);
+    }
+
+    async ensureAgentIngress(agent: AgentWithRelationsModel, domain: AgentDomain) {
+        const hostname = domain.hostname;
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        const resourceName = this.getAgentAccessResourceName(hostname);
+
+        await this.ensureAgentSecrets();
+        await this.ensureAuthProxy();
+
+        const ingressRouteManifest = {
+            apiVersion: `${this.traefikGroup}/${this.traefikVersion}`,
+            kind: 'IngressRoute',
+            metadata: {
+                name: resourceName,
+                namespace,
+                annotations: {
+                    [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+                },
+            },
+            spec: {
+                entryPoints: [domain.useSsl ? 'websecure' : 'web'],
+                ...(domain.useSsl ? { tls: {} } : {}),
+                routes: [
+                    {
+                        match: `Host(\`${hostname}\`)`,
+                        kind: 'Rule',
+                        priority: 10,
+                        services: [{
+                            name: this.authProxyName,
+                            port: this.authProxyPort,
+                        }],
+                    },
+                ],
+            },
+        };
+
+        await this.applyCustomResource(this.traefikGroup, this.traefikVersion, namespace, 'ingressroutes', resourceName, ingressRouteManifest);
+    }
+
+    async deleteAgentIngress(hostname: string) {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        const resourceName = this.getAgentAccessResourceName(hostname);
+        for (const plural of ['ingressroutes', 'middlewares']) {
+            try {
+                await k3s.customObjects.deleteNamespacedCustomObject(this.traefikGroup, this.traefikVersion, namespace, plural, resourceName);
+            } catch (error: any) {
+                if (error?.response?.statusCode !== 404) {
+                    throw new ServiceException(`Failed to delete ${plural}/${resourceName}: ${error?.message || error}`);
+                }
+            }
+        }
+    }
+
+    /**
+     * Lists all Traefik IngressRoutes belonging to a specific Agent.
+     * Filters by the qs-agent-id annotation on the client side since
+     * K8s labelSelector only matches labels, not annotations.
+     * Returns an array of { hostname, resourceName } extracted from the IngressRoute spec.
+     */
+    async listAgentIngressRoutes(agentId: string): Promise<{ hostname: string; resourceName: string }[]> {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        try {
+            const res = await k3s.customObjects.listNamespacedCustomObject(
+                this.traefikGroup,
+                this.traefikVersion,
+                namespace,
+                'ingressroutes',
+            );
+            const items = (res as any)?.items || [];
+            const result: { hostname: string; resourceName: string }[] = [];
+            for (const item of items) {
+                const itemAgentId = item.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
+                if (itemAgentId !== agentId) continue;
+
+                const resourceName = item.metadata?.name;
+                const routes = item.spec?.routes;
+                if (!resourceName || !Array.isArray(routes)) continue;
+                for (const route of routes) {
+                    const match: string = route?.match || '';
+                    const hostMatch = match.match(/Host\(`([^`]+)`\)/);
+                    if (hostMatch) {
+                        result.push({ hostname: hostMatch[1], resourceName });
+                        break;
+                    }
+                }
+            }
+            return result;
+        } catch (error: any) {
+            if (error?.response?.statusCode === 404) {
+                return [];
+            }
+            throw new ServiceException(
+                `Failed to list agent IngressRoutes: ${error?.message || error}`,
+            );
+        }
+    }
 
     async getAllIngressForApp(projectId: string, appId: string) {
         const res = await k3s.network.listNamespacedIngress(projectId);

@@ -1,46 +1,57 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, EditIcon, Plus, TrashIcon, XIcon } from "lucide-react";
-import DialogEditDialog from "./domain-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteDomain } from "./actions";
 import { Code } from "@/components/custom/code";
 import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
+import { DomainEditModel } from "@/shared/model/domain-edit.model";
+import { WorkloadType } from "@/shared/model/runtime-type.model";
+import DomainEditOverlay from "@/components/custom/domain-edit-overlay";
+import { deleteDomain } from "@/app/project/actions";
 
-
-export default function DomainsList({ app, readonly }: {
-    app: AppExtendedModel;
+export default function DomainsCard({ domains, workloadId, workloadType, readonly }: {
+    domains: DomainEditModel[];
+    workloadId: string;
+    workloadType: WorkloadType;
     readonly: boolean;
 }) {
-
-    const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openConfirmDialog } = useConfirmDialog();
+    const { openDialog } = useDialog();
 
     const asyncDeleteDomain = async (domainId: string) => {
-        const confirm = await openDialog({
+        const confirm = await openConfirmDialog({
             title: "Delete Domain",
             description: "The domain will be removed and the changes will take effect, after you deploy the app. Are you sure you want to remove this domain?",
             okButton: "Delete Domain"
         });
         if (confirm) {
-            await Toast.fromAction(() => deleteDomain(domainId));
+            await Toast.fromAction(() => deleteDomain(domainId, workloadType));
         }
     };
+
+    const openEditDomainDialog = async (domain?: DomainEditModel) => {
+        const result = await openDialog(<DomainEditOverlay
+            existingDomain={domain}
+            workloadId={workloadId}
+            workloadType={workloadType} />, {
+                maxWidth: 'max-w-2xl',
+            });
+    }
 
     return <>
         <Card>
             <CardHeader>
                 <CardTitle>Domains</CardTitle>
-                <CardDescription>Add custom domains to your application. If your app has a domain configured, it will be public and accessible via the internet.
+                <CardDescription>Add custom domains. If a domain is configured, it will be public and accessible via the internet.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
-                    <TableCaption>{app.appDomains.length} Domains</TableCaption>
+                    <TableCaption>{domains.length} Domains</TableCaption>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
@@ -51,7 +62,7 @@ export default function DomainsList({ app, readonly }: {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {app.appDomains.map(domain => (
+                        {domains.map(domain => (
                             <TableRow key={domain.hostname}>
                                 <TableCell className="font-medium flex gap-2">
                                     <Code>{domain.hostname}</Code>
@@ -63,10 +74,8 @@ export default function DomainsList({ app, readonly }: {
                                 <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
                                 <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
                                 {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <DialogEditDialog appId={app.id} domain={domain}>
-                                        <Button variant="ghost"><EditIcon /></Button>
-                                    </DialogEditDialog>
-                                    <Button variant="ghost" onClick={() => asyncDeleteDomain(domain.id)}>
+                                    <Button variant="ghost" onClick={() => openEditDomainDialog(domain)}><EditIcon /></Button>
+                                    <Button variant="ghost" onClick={() => asyncDeleteDomain(domain.id!)}>
                                         <TrashIcon />
                                     </Button>
                                 </TableCell>}
@@ -76,9 +85,7 @@ export default function DomainsList({ app, readonly }: {
                 </Table>
             </CardContent>
             {!readonly && <CardFooter>
-                <DialogEditDialog appId={app.id}>
-                    <Button><Plus /> Add Domain</Button>
-                </DialogEditDialog>
+                <Button onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
             </CardFooter>}
         </Card >
 

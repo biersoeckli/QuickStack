@@ -2,6 +2,7 @@
 
 import { isAuthorizedWriteForAgent, isAuthorizedReadForAgent, simpleAction } from "@/server/utils/action-wrapper.utils";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
+import agentAccessService, { AgentAccessView } from "@/server/services/agent-access.service";
 
 export const startInstance = async (agentId: string) =>
     simpleAction(async () => {
@@ -20,3 +21,19 @@ export const getInstances = async (agentId: string) =>
         await isAuthorizedReadForAgent(agentId);
         return agentRuntimeService.listInstances(agentId);
     });
+
+export const createAgentAccessUrl = async (
+    agentId: string,
+    claimName: string,
+    view: AgentAccessView,
+    domainId: string,
+) => simpleAction(async () => {
+    const session = await isAuthorizedReadForAgent(agentId);
+    return agentAccessService.createAccessUrl({
+        agentId,
+        claimName,
+        view,
+        domainId,
+        session,
+    });
+});

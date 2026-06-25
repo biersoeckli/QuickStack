@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { updatePublicIpv4Settings, updatePublicIpv4SettingsAutomatically } from "./actions";
 import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
@@ -28,7 +28,7 @@ export default function QuickStackPublicIpSettings({
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: QsPublicIpv4SettingsModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: QsPublicIpv4SettingsModel) =>
         updatePublicIpv4Settings(state, payload), FormUtils.getInitialFormState<typeof qsPublicIpv4SettingsZodModel>());
 
     useEffect(() => {

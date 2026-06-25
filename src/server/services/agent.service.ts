@@ -18,6 +18,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
+import ingressService from "./ingress.service";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -38,140 +39,6 @@ type AgentSandboxTemplateConfig = {
 
 class AgentService {
 
-    private normalizeLiteLlmBaseUrl(baseUrl: string): string {
-        const trimmed = baseUrl.trim().replace(/\/+$/, '');
-        if (!trimmed) {
-            throw new ServiceException('LLM Gateway base URL is missing for Agent.');
-        }
-        return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
-    }
-
-    private buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
-        const modelAlias = agent.modelAlias;
-        return {
-            $schema: 'https://opencode.ai/config.json',
-            model: `${OPENCODE_PROVIDER_ID}/${modelAlias}`,
-            provider: {
-                [OPENCODE_PROVIDER_ID]: {
-                    npm: '@ai-sdk/openai-compatible',
-                    name: 'QuickStack LiteLLM',
-                    options: {
-                        baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
-                        apiKey: '{env:QS_VIRTUAL_KEY}',
-                    },
-                    models: {
-                        [modelAlias]: {
-                            name: modelAlias,
-                        },
-                    },
-                },
-            },
-            server: {
-                hostname: '0.0.0.0',
-                port: OPENCODE_WEB_PORT,
-            },
-        };
-    }
-
-    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
-        const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
-        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
-
-        return {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxTemplate',
-            metadata: {
-                name: agent.id,
-                namespace: agent.projectId,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
-                },
-            },
-            spec: {
-                podTemplate: {
-                    spec: {
-                        volumes: [{
-                            name: 'workspace',
-                            emptyDir: {},
-                        }],
-                        containers: [{
-                            name: 'agent',
-                            image: effectiveImage,
-                            command: ['/bin/sh', '-lc'],
-                            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
-                            workingDir: OPENCODE_WORKDIR,
-                            ports: [{
-                                name: 'opencode-web',
-                                containerPort: OPENCODE_WEB_PORT,
-                                protocol: 'TCP',
-                            }],
-                            volumeMounts: [{
-                                name: 'workspace',
-                                mountPath: OPENCODE_WORKDIR,
-                            }],
-                            envFrom: [{ secretRef: { name: secretName } }],
-                            env: [{
-                                name: 'OPENCODE_CONFIG_CONTENT',
-                                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
-                            }],
-                            resources: {
-                                requests: {
-                                    cpu: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
-                                    memory: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
-                                },
-                                limits: {
-                                    cpu: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
-                                    memory: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
-                                },
-                            },
-                        }, {
-                            name: 'filebrowser',
-                            image: 'filebrowser/filebrowser:v2.31.2',
-                            imagePullPolicy: 'Always',
-                            args: [
-                                '--noauth',
-                                '--root', '/srv',
-                                '--port', `${FILEBROWSER_PORT}`,
-                            ],
-                            ports: [{
-                                name: 'filebrowser-web',
-                                containerPort: FILEBROWSER_PORT,
-                                protocol: 'TCP',
-                            }],
-                            volumeMounts: [{
-                                name: 'workspace',
-                                mountPath: '/srv',
-                            }],
-                        }],
-                    },
-                },
-            },
-        };
-    }
-
-    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): KubernetesResource {
-        return {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxWarmPool',
-            metadata: {
-                name: agentId,
-                namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
-                },
-            },
-            spec: {
-                sandboxTemplateRef: {
-                    name: agentId,
-                },
-                replicas,
-            },
-        };
-    }
-
-    /**
-     * Returns all agents for a given project, with project and llmGateway relations.
-     */
     async getAllByProjectId(projectId: string): Promise<AgentWithRelationsModel[]> {
         return await unstable_cache(
             async (pid: string) => dataAccess.client.agent.findMany({
@@ -179,6 +46,7 @@ class AgentService {
                 include: {
                     project: true,
                     llmGateway: true,
+                    agentDomains: true,
                 },
                 orderBy: { name: 'asc' },
             }),
@@ -187,9 +55,6 @@ class AgentService {
         )(projectId);
     }
 
-    /**
-     * Returns a single agent by id with all relations.
-     */
     async getById(agentId: string): Promise<AgentWithRelationsModel> {
         return await unstable_cache(
             async (id: string) => dataAccess.client.agent.findFirstOrThrow({
@@ -197,6 +62,7 @@ class AgentService {
                 include: {
                     project: true,
                     llmGateway: true,
+                    agentDomains: true,
                 },
             }),
             [Tags.agent(agentId)],
@@ -204,93 +70,52 @@ class AgentService {
         )(agentId);
     }
 
-    /**
-     * Creates a new Agent in an Agent Project.
-     *
-     * - Validates project exists and is of type AGENT.
-     * - Validates llmGateway exists.
-     * - Generates a stable Kubernetes-safe agent id.
-     * - Persists the agent record.
-     * - Reconciles one SandboxTemplate and one zero-replica SandboxWarmPool.
-     * - Rolls back DB record on K8s failure.
-     */
+
     async create(input: {
         name: string;
         projectId: string;
         llmGatewayId: string;
         modelAlias: string;
     }): Promise<Agent> {
-        const agentId = KubeObjectNameUtils.toAgentId(input.name);
-
-        // Validate project, gateway and create agent in a single DB transaction
-        const createdAgent = await dataAccess.client.$transaction(async (tx) => {
-            const project = await tx.project.findUnique({
-                where: { id: input.projectId },
-                select: { projectType: true, id: true },
-            });
-            if (!project) {
-                throw new ServiceException('Project not found.');
-            }
-            if (project.projectType !== 'AGENT') {
-                throw new ServiceException('Agents can only be created in Agent Projects.');
-            }
-
-            const gateway = await tx.llmGateway.findUnique({
-                where: { id: input.llmGatewayId },
-                select: { id: true },
-            });
-            if (!gateway) {
-                throw new ServiceException('LLM Gateway not found.');
-            }
-
-            return tx.agent.create({
-                data: {
-                    id: agentId,
-                    name: input.name,
-                    projectId: input.projectId,
-                    llmGatewayId: input.llmGatewayId,
-                    modelAlias: input.modelAlias,
-                },
-            });
-        });
-
-        // Ensure the project namespace exists in K8s
-        await namespaceService.createNamespaceIfNotExists(createdAgent.projectId);
-
         try {
+            const agentId = KubeObjectNameUtils.toAgentId(input.name);
 
-            // Reconcile SandboxTemplate
-            const llmGateway = await dataAccess.client.llmGateway.findUnique({
-                where: { id: createdAgent.llmGatewayId },
-                select: { baseUrl: true },
+            // Validate project, gateway and create agent in a single DB transaction
+            const createdAgent = await dataAccess.client.$transaction(async (tx) => {
+                const project = await tx.project.findUnique({
+                    where: { id: input.projectId },
+                    select: { projectType: true, id: true },
+                });
+                if (!project) {
+                    throw new ServiceException('Project not found.');
+                }
+                if (project.projectType !== 'AGENT') {
+                    throw new ServiceException('Agents can only be created in Agent Projects.');
+                }
+
+                const gateway = await tx.llmGateway.findUnique({
+                    where: { id: input.llmGatewayId },
+                    select: { id: true },
+                });
+                if (!gateway) {
+                    throw new ServiceException('LLM Gateway not found.');
+                }
+
+                return tx.agent.create({
+                    data: {
+                        id: agentId,
+                        name: input.name,
+                        projectId: input.projectId,
+                        llmGatewayId: input.llmGatewayId,
+                        modelAlias: input.modelAlias,
+                    },
+                });
             });
-            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
-                ...createdAgent,
-                llmGateway,
-            }));
 
-            // Reconcile zero-replica SandboxWarmPool
-            await agentSandboxAdapter.reconcileSandboxWarmPool(
-                this.buildSandboxWarmPoolResource(agentId, createdAgent.projectId, 0),
-            );
+            // Ensure the project namespace exists in K8s
+            await namespaceService.createNamespaceIfNotExists(createdAgent.projectId);
 
             return createdAgent;
-        } catch (error: any) {
-            // Rollback DB record on K8s failure
-            try {
-                await dataAccess.client.agent.delete({
-                    where: { id: agentId },
-                });
-            } catch {
-                // Best-effort cleanup — log but don't mask original error
-                console.error(`Failed to rollback agent ${agentId} after K8s failure:`, error);
-            }
-            if (error instanceof ServiceException) {
-                throw error;
-            }
-            throw new ServiceException(
-                `Failed to create agent: ${error?.message || error}`,
-            );
         } finally {
             revalidateTag(Tags.agents(input.projectId));
             revalidateTag(Tags.projects());
@@ -309,13 +134,7 @@ class AgentService {
      */
     async saveConfig(agentId: string, config: AgentConfigInputModel): Promise<Agent> {
         // Read agent for K8s runtime check
-        const existing = await dataAccess.client.agent.findUnique({
-            where: { id: agentId },
-            include: { project: { select: { id: true } } },
-        });
-        if (!existing) {
-            throw new ServiceException('Agent not found.');
-        }
+        const existing = await this.getById(agentId);
 
         const isRunning = await agentSandboxAdapter.hasActiveClaim(
             existing.id,
@@ -434,13 +253,7 @@ class AgentService {
      * - Reconciles the SandboxTemplate and zero-replica SandboxWarmPool in K8s.
      */
     async deploy(agentId: string): Promise<Agent> {
-        const agent = await dataAccess.client.agent.findUnique({
-            where: { id: agentId },
-            include: {
-                project: { select: { id: true } },
-                llmGateway: { select: { baseUrl: true } },
-            },
-        });
+        const agent = await this.getById(agentId);
         if (!agent) {
             throw new ServiceException('Agent not found.');
         }
@@ -467,6 +280,21 @@ class AgentService {
             await agentSandboxAdapter.reconcileSandboxWarmPool(
                 this.buildSandboxWarmPoolResource(agent.id, agent.project.id, 0),
             );
+
+            // Reconcile agent domain ingresses — clean up orphaned, then ensure current
+            const currentHostnames = new Set(agent.agentDomains.map(d => d.hostname));
+            const existingRoutes = await ingressService.listAgentIngressRoutes(agent.id);
+            for (const route of existingRoutes) {
+                if (!currentHostnames.has(route.hostname)) {
+                    await ingressService.deleteAgentIngress(route.hostname);
+                }
+            }
+            if (agent.agentDomains.length > 0) {
+                await ingressService.ensureSandboxRouter();
+                for (const domain of agent.agentDomains) {
+                    await ingressService.ensureAgentIngress(agent, domain);
+                }
+            }
         } catch (error: any) {
             console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);
             throw new ServiceException(
@@ -491,13 +319,7 @@ class AgentService {
      * 5. Delete the DB Agent record in a transaction.
      */
     async deleteById(agentId: string): Promise<void> {
-        const existing = await dataAccess.client.agent.findUnique({
-            where: { id: agentId },
-            include: {
-                project: { select: { id: true } },
-                llmGateway: true,
-            },
-        });
+        const existing = await this.getById(agentId).catch(() => null);
         if (!existing) {
             return;
         }
@@ -569,6 +391,138 @@ class AgentService {
         revalidateTag(Tags.agents(existing.projectId));
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.projects());
+    }
+
+    private normalizeLiteLlmBaseUrl(baseUrl: string): string {
+        const trimmed = baseUrl.trim().replace(/\/+$/, '');
+        if (!trimmed) {
+            throw new ServiceException('LLM Gateway base URL is missing for Agent.');
+        }
+        return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+    }
+
+    private buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
+        const modelAlias = agent.modelAlias;
+        return {
+            $schema: 'https://opencode.ai/config.json',
+            model: `${OPENCODE_PROVIDER_ID}/${modelAlias}`,
+            provider: {
+                [OPENCODE_PROVIDER_ID]: {
+                    npm: '@ai-sdk/openai-compatible',
+                    name: 'QuickStack LiteLLM',
+                    options: {
+                        baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
+                        apiKey: '{env:QS_VIRTUAL_KEY}',
+                    },
+                    models: {
+                        [modelAlias]: {
+                            name: modelAlias,
+                        },
+                    },
+                },
+            },
+            server: {
+                hostname: '0.0.0.0',
+                port: OPENCODE_WEB_PORT,
+            },
+        };
+    }
+
+    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
+        const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+
+        return {
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxTemplate',
+            metadata: {
+                name: agent.id,
+                namespace: agent.projectId,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+                },
+            },
+            spec: {
+                service: true,
+                podTemplate: {
+                    spec: {
+                        volumes: [{
+                            name: 'workspace',
+                            emptyDir: {},
+                        }],
+                        containers: [{
+                            name: 'agent',
+                            image: effectiveImage,
+                            command: ['/bin/sh', '-lc'],
+                            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
+                            workingDir: OPENCODE_WORKDIR,
+                            ports: [{
+                                name: 'opencode-web',
+                                containerPort: OPENCODE_WEB_PORT,
+                                protocol: 'TCP',
+                            }],
+                            volumeMounts: [{
+                                name: 'workspace',
+                                mountPath: OPENCODE_WORKDIR,
+                            }],
+                            envFrom: [{ secretRef: { name: secretName } }],
+                            env: [{
+                                name: 'OPENCODE_CONFIG_CONTENT',
+                                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
+                            }],
+                            resources: {
+                                requests: {
+                                    cpu: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
+                                    memory: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
+                                },
+                                limits: {
+                                    cpu: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
+                                    memory: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
+                                },
+                            },
+                        }, {
+                            name: 'filebrowser',
+                            image: 'filebrowser/filebrowser:v2.31.2',
+                            imagePullPolicy: 'Always',
+                            args: [
+                                '--noauth',
+                                '--root', '/srv',
+                                '--port', `${FILEBROWSER_PORT}`,
+                            ],
+                            ports: [{
+                                name: 'filebrowser-web',
+                                containerPort: FILEBROWSER_PORT,
+                                protocol: 'TCP',
+                            }],
+                            volumeMounts: [{
+                                name: 'workspace',
+                                mountPath: '/srv',
+                            }],
+                        }],
+                    },
+                },
+            },
+        };
+    }
+
+    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): KubernetesResource {
+        return {
+            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'SandboxWarmPool',
+            metadata: {
+                name: agentId,
+                namespace,
+                annotations: {
+                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
+                },
+            },
+            spec: {
+                sandboxTemplateRef: {
+                    name: agentId,
+                },
+                replicas,
+            },
+        };
     }
 }
 

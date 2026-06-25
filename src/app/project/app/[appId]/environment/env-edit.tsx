@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { saveEnvVariables } from "./actions";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { AppEnvVariablesModel, appEnvVariablesZodModel } from "@/shared/model/env-edit.model";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +26,7 @@ export default function EnvEdit({ app, readonly }: {
         disabled: readonly,
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppEnvVariablesModel) => saveEnvVariables(state, payload, app.id), FormUtils.getInitialFormState<typeof appEnvVariablesZodModel>());
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppEnvVariablesModel) => saveEnvVariables(state, payload, app.id), FormUtils.getInitialFormState<typeof appEnvVariablesZodModel>());
     useEffect(() => {
         if (state.status === 'success') {
             toast.success('Env Variables Limits Saved', {

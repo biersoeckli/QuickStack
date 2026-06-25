@@ -14,7 +14,7 @@ import { Trash, Plus } from "lucide-react";
 import FormLabelWithQuestion from "@/components/custom/form-label-with-question";
 import { useFormState } from "react-dom";
 import { saveHealthCheck } from "./actions";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -58,7 +58,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
     const enabled = form.watch("enabled");
     const probeTypeWatch = form.watch("probeType");
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: HealthCheckModel) => saveHealthCheck(state, payload),
         FormUtils.getInitialFormState<typeof healthCheckZodModel>()
     );

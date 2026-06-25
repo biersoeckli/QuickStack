@@ -234,6 +234,20 @@ model Agent {
   encryptedEnvVars   String?
 
   roleAgentPermissions RoleAgentPermission[]
+  agentDomains         AgentDomain[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentDomain {
+  id            String  @id @default(uuid())
+  hostname      String  @unique
+  useSsl        Boolean @default(true)
+  redirectHttps Boolean @default(true)
+  port          Int
+  agentId       String
+  agent         Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

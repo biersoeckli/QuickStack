@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +33,7 @@ function LlmGatewayForm({ gateway }: { gateway?: LlmGatewayModel }) {
         },
     });
 
-    const [state, formAction] = useFormState((actionState: ServerActionResult<any, any>, payload: LlmGatewayEditModel) =>
+    const [state, formAction] = useActionState((actionState: ServerActionResult<any, any>, payload: LlmGatewayEditModel) =>
         saveLlmGateway(actionState, {
             ...payload,
             id: gateway?.id,

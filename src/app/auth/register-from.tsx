@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect } from "react";
+
+import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AuthFormInputSchema, authFormInputSchemaZod, RegisterFormInputSchema, registgerFormInputSchemaZod } from "@/shared/model/auth-form"
@@ -29,7 +29,7 @@ export default function UserRegistrationForm() {
         resolver: zodResolver(registgerFormInputSchemaZod)
     });
 
-    const [state, formAction] = useFormState(registerUser, FormUtils.getInitialFormState<typeof registgerFormInputSchemaZod>());
+    const [state, formAction] = useActionState(registerUser, FormUtils.getInitialFormState<typeof registgerFormInputSchemaZod>());
 
     useEffect(() => {
         if (state.status === 'success') {

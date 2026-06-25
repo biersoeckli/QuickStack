@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
+
 import { Fragment, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
@@ -40,7 +40,7 @@ export default function CreateTemplateAppSetupDialog({
         defaultValues: appTemplate
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: AppTemplateModel) => createAppFromTemplate(state, payload, projectId!),
         FormUtils.getInitialFormState<typeof appTemplateZodModel>());
 

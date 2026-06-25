@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  quickstack-auth-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.amd64
+    ports:
+      - "3000:3000"
+    environment:
+      AGENT_JWT_SECRET: "change-me-change-me-change-me-change-me"
+      AUTH_DISABLED: "true"
+      QS_DEV_CLAIM_ID: "dev-claim"
+      QS_DEV_PORT: "4096"
+      QS_DEV_NAMESPACE: "default"

@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolumeEditModel, appVolumeEditZodModel } from "@/shared/model/volume-edit.model"
@@ -54,7 +54,7 @@ export default function SharedStorageEditDialog({ children, app }: {
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
         saveVolume(state, {
             ...payload,
             appId: app.id,

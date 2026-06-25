@@ -7,7 +7,7 @@ import GeneralAppSource from "./general/app-source";
 import GeneralAppContainerConfig from "./general/app-container-config";
 import EnvEdit from "./environment/env-edit";
 import { S3Target } from "@prisma/client";
-import DomainsList from "./domains/domains";
+import DomainsCard from "../../../../components/custom/domains-card";
 import StorageList from "./volumes/storages";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import BuildsTab from "./overview/deployments";
@@ -93,7 +93,7 @@ export default function AppTabs({
                 <EnvEdit readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="domains" className="space-y-4">
-                <DomainsList readonly={readonly} app={app} />
+                <DomainsCard readonly={readonly} domains={app.appDomains} workloadId={app.id} workloadType={'app'} />
                 <InternalHostnames readonly={readonly} app={app} />
                 <NodePortsCard readonly={readonly} app={app} />
             </TabsContent>

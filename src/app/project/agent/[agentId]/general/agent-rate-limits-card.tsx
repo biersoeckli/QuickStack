@@ -8,7 +8,7 @@ import { FormUtils } from "@/frontend/utils/form.utilts";
 import { agentRateLimitsZodModel, AgentRateLimitsModel } from "@/shared/model/agent-config.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ export default function AgentRateLimitsCard({ agent, readonly }: {
         disabled: readonly,
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: AgentRateLimitsModel) =>
             saveAgentRateLimits(state, payload, agent.id),
         FormUtils.getInitialFormState<typeof agentRateLimitsZodModel>(),

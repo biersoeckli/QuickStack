@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AgentModel, LlmGatewayModel, ProjectModel } from "./generated-zod";
-import { Agent, LlmGateway, Project } from "@prisma/client";
+import { Agent, AgentDomain, LlmGateway, Project } from "@prisma/client";
 
 export const AgentExtendedZodModel = z.lazy(() => AgentModel.extend({
     project: ProjectModel,
@@ -16,4 +16,5 @@ export type AgentWithProjectModel = Agent & {
 export type AgentWithRelationsModel = Agent & {
     project: Project;
     llmGateway: LlmGateway;
+    agentDomains: AgentDomain[];
 };

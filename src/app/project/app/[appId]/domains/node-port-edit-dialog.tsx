@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppNodePort } from "@prisma/client"
@@ -36,7 +36,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
         } : { protocol: 'TCP' }
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: NodePortEditModel) =>
             saveNodePort(state, { ...payload, appId, id: appNodePort?.id }),
         FormUtils.getInitialFormState<typeof nodePortEditZodModel>()

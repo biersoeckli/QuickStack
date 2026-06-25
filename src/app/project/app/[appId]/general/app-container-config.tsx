@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";
@@ -77,7 +77,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
         name: "containerArgs",
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: AppContainerConfigInputModel) =>
             saveGeneralAppContainerConfig(state, payload, app.id),
         FormUtils.getInitialFormState<typeof appContainerConfigZodModel>()

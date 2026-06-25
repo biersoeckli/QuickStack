@@ -9,7 +9,7 @@ import { FormUtils } from "@/frontend/utils/form.utilts";
 import { agentEnvVarsZodModel, AgentEnvVarsModel } from "@/shared/model/agent-config.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { toast } from "sonner";
@@ -50,7 +50,7 @@ export default function AgentEnvVarsCard({ agent, readonly }: {
         name: "envVars",
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: AgentEnvVarsModel) =>
             saveAgentEnvVars(state, payload, agent.id),
         FormUtils.getInitialFormState<typeof agentEnvVarsZodModel>(),
