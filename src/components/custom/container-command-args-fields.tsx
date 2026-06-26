@@ -45,84 +45,110 @@ export default function ContainerCommandArgsFields({
     commandHint?: ReactNode;
     argsHint?: ReactNode;
 }) {
+    return (
+        <>
+            <ContainerStringArrayField
+                form={form}
+                readonly={readonly}
+                name="containerCommand"
+                label="Command"
+                emptyLabel="No command configured."
+                addLabel="Add Command"
+                placeholderPrefix="Command"
+                hint={commandHint}
+            />
+
+            <ContainerStringArrayField
+                form={form}
+                readonly={readonly}
+                name="containerArgs"
+                label="Arguments"
+                emptyLabel="No arguments configured."
+                addLabel="Add Argument"
+                placeholderPrefix="Argument"
+                hint={argsHint}
+            />
+        </>
+    );
+}
+
+function ContainerStringArrayField({
+    form,
+    readonly,
+    name,
+    label,
+    emptyLabel,
+    addLabel,
+    placeholderPrefix,
+    hint,
+}: {
+    form: UseFormReturn<any>;
+    readonly: boolean;
+    name: string;
+    label: string;
+    emptyLabel: string;
+    addLabel: string;
+    placeholderPrefix: string;
+    hint?: ReactNode;
+}) {
     const { fields, append, remove } = useFieldArray({
         control: form.control,
-        name: "containerArgs",
+        name,
     });
 
     return (
-        <>
-            <FormField
-                control={form.control}
-                name="containerCommand"
-                render={({ field }) => (
-                    <FormItem>
-                        <LabelWithHint hint={commandHint}>Command</LabelWithHint>
-                        <FormControl>
-                            <Input
-                                placeholder="e.g., /bin/sh or minio"
-                                {...field}
-                                value={field.value as string | number | readonly string[] | undefined}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
+        <div className="space-y-3">
+            <LabelWithHint hint={hint}>{label}</LabelWithHint>
+
+            <div className="space-y-2">
+                {fields.length === 0 && (
+                    <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+                        {emptyLabel}
+                    </div>
                 )}
-            />
 
-            <div className="space-y-3">
-                <LabelWithHint hint={argsHint}>Arguments</LabelWithHint>
-
-                <div className="space-y-2">
-                    {fields.length === 0 && (
-                        <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                            No arguments configured.
-                        </div>
-                    )}
-
-                    {fields.map((field, index) => (
-                        <div key={field.id} className="flex items-start gap-2">
-                            <FormField
-                                control={form.control}
-                                name={`containerArgs.${index}.value`}
-                                render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <FormControl>
-                                            <Input
-                                                placeholder={`Argument ${index + 1}`}
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="mt-0"
-                                onClick={() => remove(index)}
-                                disabled={readonly}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-
-                {!readonly && (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => append({ value: '' })}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Argument
-                    </Button>
-                )}
+                {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-start gap-2">
+                        <FormField
+                            control={form.control}
+                            name={`${name}.${index}.value`}
+                            render={({ field }) => (
+                                <FormItem className="flex-1">
+                                    <FormControl>
+                                        <Input
+                                            placeholder={`${placeholderPrefix} ${index + 1}`}
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="mt-0"
+                            onClick={() => remove(index)}
+                            disabled={readonly}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
             </div>
-        </>
+
+            {!readonly && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ value: '' })}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {addLabel}
+                </Button>
+            )}
+        </div>
     );
 }

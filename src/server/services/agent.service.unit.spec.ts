@@ -446,7 +446,7 @@ describe('agent.service', () => {
 
         it('uses custom agent container command and args when configured', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
-                containerCommand: 'sh',
+                containerCommand: '["sh"]',
                 containerArgs: '["-c","echo ready && sleep 3600"]',
             }) as any);
 
@@ -585,7 +585,7 @@ describe('agent.service', () => {
                 cpuLimit: 1000,
                 memoryRequest: 256,
                 memoryLimit: 1024,
-                containerCommand: 'sh',
+                containerCommand: [{ value: 'sh' }],
                 containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
                 warmPoolReplicas: 3,
                 systemPrompt: 'You are a helpful assistant.',
@@ -599,7 +599,7 @@ describe('agent.service', () => {
                     cpuLimit: 1000,
                     memoryRequest: 256,
                     memoryLimit: 1024,
-                    containerCommand: 'sh',
+                    containerCommand: '["sh"]',
                     containerArgs: '["-c","sleep 3600"]',
                     warmPoolReplicas: 3,
                     systemPrompt: 'You are a helpful assistant.',
@@ -620,7 +620,7 @@ describe('agent.service', () => {
             await agentService.saveConfig(agentId, {
                 image: '',
                 systemPrompt: '',
-                containerCommand: '',
+                containerCommand: [],
                 containerArgs: [],
             });
 
@@ -670,7 +670,7 @@ describe('agent.service', () => {
                     cpuLimit: undefined,
                     memoryRequest: undefined,
                     memoryLimit: undefined,
-                    containerCommand: 'sh',
+                    containerCommand: [{ value: 'sh' }],
                     systemPrompt: undefined,
                 }),
             ).rejects.toThrow(

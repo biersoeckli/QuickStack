@@ -18,18 +18,7 @@ import {
 } from "@/shared/model/agent-config.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { saveAgentContainerConfig } from "./actions";
-
-function parseContainerArgs(containerArgs: string | null | undefined) {
-    if (!containerArgs) {
-        return [];
-    }
-    try {
-        const parsed = JSON.parse(containerArgs);
-        return Array.isArray(parsed) ? parsed.map((arg: string) => ({ value: arg })) : [];
-    } catch {
-        return [];
-    }
-}
+import { parseStoredContainerCommandItems } from "@/shared/utils/container-command-args.utils";
 
 export default function AgentContainerConfigCard({ agent, readonly }: {
     agent: AgentWithRelationsModel;
@@ -38,8 +27,10 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
     const form = useForm<AgentContainerConfigModel>({
         resolver: zodResolver(agentContainerConfigZodModel),
         defaultValues: {
-            containerCommand: agent.containerCommand || '',
-            containerArgs: parseContainerArgs(agent.containerArgs),
+            containerCommand: parseStoredContainerCommandItems(agent.containerCommand),
+            containerArgs: agent.containerArgs
+                ? JSON.parse(agent.containerArgs).map((arg: string) => ({ value: arg }))
+                : [],
             warmPoolReplicas: agent.warmPoolReplicas ?? 0,
         },
         disabled: readonly,
@@ -74,13 +65,13 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium">Runtime</p>
                                     <p className="text-sm text-muted-foreground">
-                                        Leave command and arguments empty to use the QuickStack default opencode startup.
+                                        Leave command and arguments empty to use the QuickStack default container startup.
                                     </p>
                                 </div>
                                 <ContainerCommandArgsFields
                                     form={form}
                                     readonly={readonly}
-                                    commandHint="Overrides the agent container ENTRYPOINT. Leave command and arguments empty to use the QuickStack default opencode startup."
+                                    commandHint="Overrides the agent container ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
                                     argsHint="Overrides the agent container CMD. Add one item per argument in the order the process should receive them."
                                 />
                             </div>

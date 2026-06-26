@@ -22,6 +22,10 @@ import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
+import {
+    parseStoredContainerCommandArray,
+    serializeContainerCommandItems,
+} from "@/shared/utils/container-command-args.utils";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -32,7 +36,7 @@ const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
 type AgentSandboxTemplateConfig = {
     id: string;
     projectId: string;
-    image: string | null;
+    image: string;
     modelAlias: string;
     llmGateway?: { baseUrl: string } | null;
     cpuRequest?: number | null;
@@ -121,6 +125,7 @@ class AgentService {
                     data: {
                         id: agentId,
                         name: input.name,
+                        image: input,
                         projectId: input.projectId,
                         llmGatewayId: input.llmGatewayId,
                         modelAlias: input.modelAlias,
@@ -174,8 +179,11 @@ class AgentService {
         if (config.memoryLimit !== undefined && config.memoryLimit !== existing.memoryLimit) {
             configFields.push('memoryLimit');
         }
-        if (config.containerCommand !== undefined && (config.containerCommand || null) !== existing.containerCommand) {
-            configFields.push('containerCommand');
+        if (config.containerCommand !== undefined) {
+            const nextContainerCommand = serializeContainerCommandItems(config.containerCommand);
+            if (nextContainerCommand !== existing.containerCommand) {
+                configFields.push('containerCommand');
+            }
         }
         if (config.containerArgs !== undefined) {
             const nextContainerArgs = config.containerArgs.length > 0
@@ -226,7 +234,7 @@ class AgentService {
                 : undefined;
         const containerCommandValue =
             config.containerCommand !== undefined
-                ? (config.containerCommand || null)
+                ? serializeContainerCommandItems(config.containerCommand)
                 : undefined;
         const containerArgsValue =
             config.containerArgs !== undefined
@@ -488,8 +496,9 @@ class AgentService {
     }
 
     private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
-        const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
+        const effectiveImage = agent.image;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+        const customCommand = parseStoredContainerCommandArray(agent.containerCommand);
         const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;
         const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
 
@@ -546,7 +555,7 @@ class AgentService {
                                     args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
                                 }
                                 : {
-                                    ...(agent.containerCommand ? { command: [agent.containerCommand] } : {}),
+                                    ...(customCommand ? { command: customCommand } : {}),
                                     ...(customArgs ? { args: customArgs } : {}),
                                 }),
                             workingDir: OPENCODE_WORKDIR,

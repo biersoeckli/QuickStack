@@ -135,14 +135,14 @@ describe('agentConfigZodModel', () => {
 
         it('accepts container command, args, and warm pool replicas', () => {
             const result = agentConfigZodModel.safeParse({
-                containerCommand: 'sh',
+                containerCommand: [{ value: 'sh' }],
                 containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
                 warmPoolReplicas: '3',
             });
 
             expect(result.success).toBe(true);
             if (result.success) {
-                expect(result.data.containerCommand).toBe('sh');
+                expect(result.data.containerCommand).toEqual([{ value: 'sh' }]);
                 expect(result.data.containerArgs).toEqual([{ value: '-c' }, { value: 'sleep 3600' }]);
                 expect(result.data.warmPoolReplicas).toBe(3);
             }

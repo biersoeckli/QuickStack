@@ -225,16 +225,16 @@ model Agent {
   llmGateway   LlmGateway @relation(fields: [llmGatewayId], references: [id], onDelete: Restrict)
   modelAlias   String
 
-  image              String?
-  cpuRequest         Int?
-  cpuLimit           Int?
-  memoryRequest      Int?
-  memoryLimit        Int?
-  systemPrompt       String?
-  encryptedEnvVars   String?
-  containerCommand   String?
-  containerArgs      String?
-  warmPoolReplicas   Int     @default(0)
+  image            String?
+  cpuRequest       Int?
+  cpuLimit         Int?
+  memoryRequest    Int?
+  memoryLimit      Int?
+  systemPrompt     String?
+  encryptedEnvVars String?
+  containerCommand String?
+  containerArgs    String?
+  warmPoolReplicas Int     @default(0)
 
   roleAgentPermissions RoleAgentPermission[]
   agentDomains         AgentDomain[]
@@ -259,12 +259,12 @@ model AgentDomain {
 }
 
 model AgentVolume {
-  id                 String   @id @default(uuid())
+  id                 String @id @default(uuid())
   containerMountPath String
   size               Int
-  storageClassName   String   @default("longhorn")
+  storageClassName   String @default("longhorn")
   agentId            String
-  agent              Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent              Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

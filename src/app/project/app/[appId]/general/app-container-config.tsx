@@ -20,6 +20,7 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { z } from "zod";
 import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
 import ContainerCommandArgsFields, { LabelWithHint } from "@/components/custom/container-command-args-fields";
+import { parseStoredContainerCommandItems } from "@/shared/utils/container-command-args.utils";
 
 export type AppContainerConfigInputModel = z.infer<typeof appContainerConfigZodModel>;
 
@@ -28,15 +29,13 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
     readonly: boolean;
 }) {
     // Parse containerArgs from JSON string to array
-    const initialArgs = app.containerArgs
-        ? JSON.parse(app.containerArgs).map((arg: string) => ({ value: arg }))
-        : [];
-
     const form = useForm<AppContainerConfigInputModel>({
         resolver: zodResolver(appContainerConfigZodModel),
         defaultValues: {
-            containerCommand: app.containerCommand || '',
-            containerArgs: initialArgs,
+            containerCommand: parseStoredContainerCommandItems(app.containerCommand),
+            containerArgs: app.containerArgs
+                ? JSON.parse(app.containerArgs).map((arg: string) => ({ value: arg }))
+                : [],
             securityContextRunAsUser: app.securityContextRunAsUser ?? undefined,
             securityContextRunAsGroup: app.securityContextRunAsGroup ?? undefined,
             securityContextFsGroup: app.securityContextFsGroup ?? undefined,

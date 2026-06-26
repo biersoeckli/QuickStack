@@ -20,6 +20,7 @@ import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
 import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
+import { parseStoredContainerCommandArray } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 
 class DeploymentService {
@@ -61,7 +62,13 @@ class DeploymentService {
             throw new ServiceException("Deployment with more than one replica is not possible if access mode of one volume is ReadWriteOnce.");
         }
 
-        // Validate containerArgs is valid JSON array if provided
+        if (app.containerCommand) {
+            const validatedData = z.array(z.string()).safeParse(parseStoredContainerCommandArray(app.containerCommand));
+            if (!validatedData.success) {
+                throw new ServiceException("Container command must be a valid JSON array, e.g., [\"/bin/sh\", \"-lc\"]");
+            }
+        }
+
         if (app.containerArgs) {
             const parsed = JSON.parse(app.containerArgs);
             const validatedData = z.array(z.string()).safeParse(parsed);
@@ -145,7 +152,7 @@ class DeploymentService {
                                 name: app.id,
                                 image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
-                                ...(app.containerCommand ? { command: [app.containerCommand] } : {}),
+                                ...(app.containerCommand ? { command: parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
                                 ...(app.securityContextPrivileged ? { securityContext: { privileged: true } } : {}),
                                 ...(envVars.length > 0 ? { env: envVars } : {}),

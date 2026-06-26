@@ -2,7 +2,9 @@ import { stringToOptionalNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const containerCommandArgsZodModel = z.object({
-  containerCommand: z.string().trim().nullish(),
+  containerCommand: z.array(z.object({
+    value: z.string().trim()
+  })).optional(),
   containerArgs: z.array(z.object({
     value: z.string().trim()
   })).optional(),
