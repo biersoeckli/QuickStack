@@ -35,8 +35,10 @@ export async function getUserSession(): Promise<UserSession | null> {
     if (!!session?.user?.email) {
         userGroup = await userGroupService.getRoleByUserMail(session.user.email);
     }
+    const userSession = session?.user as UserSession;
     return {
-        email: session?.user?.email as string,
+        email: userSession?.email as string,
+        userId: userSession?.userId as string,
         userGroup: userGroup ?? undefined,
     };
 }

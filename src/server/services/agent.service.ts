@@ -1,7 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { Agent } from "@prisma/client";
+import { Agent, AgentVolume } from "@prisma/client";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -19,6 +19,8 @@ import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-i
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
 import ingressService from "./ingress.service";
+import pvcService from "./pvc.service";
+import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -36,6 +38,10 @@ type AgentSandboxTemplateConfig = {
     cpuLimit?: number | null;
     memoryRequest?: number | null;
     memoryLimit?: number | null;
+    volumePvcData: {
+        volume: V1Volume;
+        volumeMount: V1VolumeMount;
+    }[]
 };
 
 class AgentService {
@@ -48,6 +54,7 @@ class AgentService {
                     project: true,
                     llmGateway: true,
                     agentDomains: true,
+                    agentVolumes: true,
                 },
                 orderBy: { name: 'asc' },
             }),
@@ -64,6 +71,7 @@ class AgentService {
                     project: true,
                     llmGateway: true,
                     agentDomains: true,
+                    agentVolumes: true,
                 },
             }),
             [Tags.agent(agentId)],
@@ -246,13 +254,6 @@ class AgentService {
         )(agentId);
     }
 
-    /**
-     * Deploys the Agent's saved configuration to Kubernetes.
-     *
-     * - Reads the latest agent config from the database.
-     * - Prevents deploying runtime-relevant changes while the Agent is running.
-     * - Reconciles the SandboxTemplate and zero-replica SandboxWarmPool in K8s.
-     */
     async deploy(agentId: string): Promise<Agent> {
         const agent = await this.getById(agentId);
         if (!agent) {
@@ -261,21 +262,43 @@ class AgentService {
 
         await namespaceService.createNamespaceIfNotExists(agent.project.id);
 
-        const isRunning = await agentSandboxAdapter.hasActiveClaim(
-            agent.id,
-            agent.project.id,
-        );
-
-        if (isRunning) {
+        const hasRunningInstances = await agentRuntimeService.listInstances(agentId).then(instances => instances.length > 0);
+        if (hasRunningInstances) {
             throw new ServiceException(
                 'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
             );
         }
 
+        const volumePvcData: {
+            volume: V1Volume;
+            volumeMount: V1VolumeMount;
+        }[] = [];
+        for (const volume of agent.agentVolumes) {
+            const volumePvcDataItem = await pvcService.ensurePvcForUserAgent(
+                agent.project.id,
+                volume,
+            );
+            volumePvcData.push(volumePvcDataItem);
+        }
+
+        await pvcService.deleteUnusedPvcForAgent(
+            agent.project.id,
+            agent.id,
+            agent.agentVolumes,
+        );
+
         try {
             await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
-                ...agent,
+                id: agent.id,
                 projectId: agent.project.id,
+                image: agent.image ?? null,
+                modelAlias: agent.modelAlias,
+                llmGateway: agent.llmGateway,
+                cpuRequest: agent.cpuRequest ?? null,
+                cpuLimit: agent.cpuLimit ?? null,
+                memoryRequest: agent.memoryRequest ?? null,
+                memoryLimit: agent.memoryLimit ?? null,
+                volumePvcData
             }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool(
@@ -303,7 +326,9 @@ class AgentService {
             revalidateTag(Tags.agents(agent.projectId));
         }
 
-        return agent;
+        return await dataAccess.client.agent.findUniqueOrThrow({
+            where: { id: agentId },
+        });
     }
 
     /**
@@ -338,15 +363,11 @@ class AgentService {
             // Secret not found or inaccessible — key already cleaned up or never existed
         }
 
-        // 2. Stop runtime resources (idempotent — adapters handle 404 silently)
-        try {
-            await agentRuntimeService.stopAgent(agentId);
-        } catch (error: any) {
-            // Allow stopAgent "Agent not found." to silently pass (agent still exists per our read)
-            if (!(error instanceof ServiceException && error.message.includes('Agent not found'))) {
-                throw error;
-            }
-        }
+        // 2. Stop runtime resources
+        await agentRuntimeService.stopAllInstances(agentId);
+
+        // Delete All PVCs associated with the agent
+        await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
 
         // 3. Delete LiteLLM virtual key if we extracted one
         if (virtualKey && existing.llmGateway?.encryptedAdminKey) {
@@ -373,7 +394,6 @@ class AgentService {
         // 4. Delete K8s sandbox resources (best-effort before DB cleanup)
         await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
         await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
-
         // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
         await dataAccess.client.$transaction(async (tx) => {
             const current = await tx.agent.findUnique({
@@ -430,6 +450,33 @@ class AgentService {
         const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
 
+        // Use PVC-based volumes when agent has volumes configured; otherwise fallback to emptyDir
+        const hasCustomVolumes = agent.volumePvcData.length > 0;
+        const volumes = hasCustomVolumes
+            ? agent.volumePvcData.map(v => v.volume)
+            : [{
+                name: 'workspace',
+                emptyDir: {},
+            }];
+
+        const agentVolumeMounts = hasCustomVolumes
+            ? agent.volumePvcData.map(v => v.volumeMount)
+            : [{
+                name: 'workspace',
+                mountPath: OPENCODE_WORKDIR,
+            }];
+
+        // Filebrowser mounts all volumes at /srv/<volume-id> if custom volumes, else workspace
+        const filebrowserVolumeMounts = hasCustomVolumes
+            ? agent.volumePvcData.map(v => ({
+                name: v.volume.name,
+                mountPath: `/srv/${v.volumeMount.name}`,
+            }))
+            : [{
+                name: 'workspace',
+                mountPath: '/srv',
+            }];
+
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxTemplate',
@@ -444,10 +491,7 @@ class AgentService {
                 service: true,
                 podTemplate: {
                     spec: {
-                        volumes: [{
-                            name: 'workspace',
-                            emptyDir: {},
-                        }],
+                        volumes,
                         containers: [{
                             name: 'agent',
                             image: effectiveImage,
@@ -459,10 +503,7 @@ class AgentService {
                                 containerPort: OPENCODE_WEB_PORT,
                                 protocol: 'TCP',
                             }],
-                            volumeMounts: [{
-                                name: 'workspace',
-                                mountPath: OPENCODE_WORKDIR,
-                            }],
+                            volumeMounts: agentVolumeMounts,
                             envFrom: [{ secretRef: { name: secretName } }],
                             env: [{
                                 name: 'OPENCODE_CONFIG_CONTENT',
@@ -493,14 +534,11 @@ class AgentService {
                                 containerPort: FILEBROWSER_PORT,
                                 protocol: 'TCP',
                             }],
-                            volumeMounts: [{
-                                name: 'workspace',
-                                mountPath: '/srv',
-                            }],
-                        }],
-                    },
-                },
-            },
+                            volumeMounts: filebrowserVolumeMounts,
+                        }]
+                    }
+                }
+            }
         };
     }
 

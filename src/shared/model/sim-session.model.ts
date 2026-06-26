@@ -3,6 +3,7 @@ import { RolePermissionEnum } from "./role-extended.model.ts";
 
 export interface UserSession {
     email: string;
+    userId: string;
     userGroup?: UserGroupExtended;
 }
 

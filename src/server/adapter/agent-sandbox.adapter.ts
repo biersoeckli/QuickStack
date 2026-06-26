@@ -64,7 +64,7 @@ class AgentSandboxAdapter {
         try {
             await this.applyCustomResource(resource, resource.metadata.namespace!, TEMPLATE_PLURAL);
         } catch (error: any) {
-            console.error(`Failed to reconcile SandboxTemplate "${resource.metadata.name}":`, error);
+            console.error(`Failed to reconcile SandboxTemplate "${resource.metadata.name}":`, JSON.stringify(error));
             throw new ServiceException(
                 `Failed to reconcile SandboxTemplate "${resource.metadata.name}": ${error?.message || error}`,
             );

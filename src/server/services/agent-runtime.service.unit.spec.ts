@@ -8,6 +8,9 @@ vi.mock('@/server/adapter/db.client', () => ({
             agent: {
                 findUnique: vi.fn(),
             },
+            user: {
+                findFirst: vi.fn(),
+            },
             llmGateway: {
                 findUnique: vi.fn(),
             },
@@ -37,6 +40,11 @@ vi.mock('@/server/services/secret.service', () => ({
         deleteSecretSafe: vi.fn(),
     },
 }));
+vi.mock('@/server/services/pvc.service', () => ({
+    default: {
+        ensureWorkspacePvcForUserAgent: vi.fn(),
+    },
+}));
 vi.mock('@/server/adapter/litellm-api.adapter', () => ({
     default: {
         createVirtualKey: vi.fn(),
@@ -55,6 +63,7 @@ import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
 import secretService from '@/server/services/secret.service';
+import pvcService from '@/server/services/pvc.service';
 import { CryptoUtils } from '@/server/utils/crypto.utils';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
@@ -63,6 +72,9 @@ const AGENT_ID = 'agent-test-runner';
 const PROJECT = { id: 'proj-1', name: 'test-project', projectType: 'AGENT' };
 const GATEWAY = { id: 'gw-1', name: 'My Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:adminkey' };
 const SANDBOX_NAMESPACE = 'proj-1';
+const USER_REF = 'user@example.com';
+const USER_ID = 'user-123';
+const WORKSPACE_PVC = 'agent-workspace-user-user-123-agent-test-runner';
 
 function mockAgent(overrides: Record<string, any> = {}) {
     return {
@@ -109,6 +121,8 @@ describe('agent-runtime.service', () => {
         vi.resetAllMocks();
         vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
         vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
+        vi.mocked(dataAccess.client.user.findFirst).mockResolvedValue({ id: USER_ID } as any);
+        vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({ pvcName: WORKSPACE_PVC });
     });
 
     describe('startAgent', () => {
@@ -118,7 +132,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
@@ -133,7 +147,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(secretService.createOrReplaceGenericSecret).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
@@ -154,7 +168,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).not.toContain('QS_SYSTEM_PROMPT');
@@ -166,7 +180,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).toHaveLength(3); // QS_GATEWAY_URL + QS_VIRTUAL_KEY + OPENCODE_SERVER_PASSWORD
@@ -182,7 +196,7 @@ describe('agent-runtime.service', () => {
             });
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
             expect(secretService.createOrReplaceGenericSecret).not.toHaveBeenCalled();
@@ -194,19 +208,37 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
                 expect.objectContaining({
                     apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
                     kind: 'SandboxClaim',
                     metadata: expect.objectContaining({
-                        name: AGENT_ID,
+                        name: `${AGENT_ID}-${USER_ID}`,
                         namespace: SANDBOX_NAMESPACE,
-                        labels: { 'qs-agent-id': AGENT_ID },
+                        labels: { 'qs-agent-id': AGENT_ID, 'qs-user-id': USER_ID },
                     }),
-                    spec: { warmPoolRef: { name: AGENT_ID } },
+                    spec: expect.objectContaining({
+                        warmPoolRef: { name: AGENT_ID },
+                        podTemplate: {
+                            spec: {
+                                volumes: [{
+                                    name: 'workspace',
+                                    persistentVolumeClaim: {
+                                        claimName: WORKSPACE_PVC,
+                                    },
+                                }],
+                            },
+                        },
+                    }),
                 }),
+            );
+
+            expect(pvcService.ensurePvcForUserAgent).toHaveBeenCalledWith(
+                SANDBOX_NAMESPACE,
+                USER_ID,
+                AGENT_ID,
             );
         });
 
@@ -216,10 +248,10 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(agentSandboxAdapter.waitForSandboxReady).toHaveBeenCalledWith(
-                AGENT_ID,
+                `${AGENT_ID}-${USER_ID}`,
                 SANDBOX_NAMESPACE,
             );
         });
@@ -227,7 +259,7 @@ describe('agent-runtime.service', () => {
         it('throws when agent not found', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(null);
 
-            await expect(agentRuntimeService.startAgent('nonexistent')).rejects.toThrow('Agent not found.');
+            await expect(agentRuntimeService.startAgent('nonexistent', USER_REF)).rejects.toThrow('Agent not found.');
         });
 
         it('throws when gateway not found on agent', async () => {
@@ -236,7 +268,7 @@ describe('agent-runtime.service', () => {
                 llmGatewayId: 'missing',
             }) as any);
 
-            await expect(agentRuntimeService.startAgent(AGENT_ID)).rejects.toThrow('LLM Gateway not found for Agent.');
+            await expect(agentRuntimeService.startAgent(AGENT_ID, USER_REF)).rejects.toThrow('LLM Gateway not found for Agent.');
         });
 
         it('throws when gateway admin key cannot be decrypted', async () => {
@@ -244,7 +276,7 @@ describe('agent-runtime.service', () => {
                 llmGateway: { ...GATEWAY, encryptedAdminKey: '' },
             }) as any);
 
-            await expect(agentRuntimeService.startAgent(AGENT_ID)).rejects.toThrow('LLM Gateway admin key is missing.');
+            await expect(agentRuntimeService.startAgent(AGENT_ID, USER_REF)).rejects.toThrow('LLM Gateway admin key is missing.');
         });
 
         it('throws when virtual key creation fails', async () => {
@@ -253,7 +285,7 @@ describe('agent-runtime.service', () => {
                 new ServiceException('LiteLLM unreachable'),
             );
 
-            await expect(agentRuntimeService.startAgent(AGENT_ID)).rejects.toThrow('LiteLLM unreachable');
+            await expect(agentRuntimeService.startAgent(AGENT_ID, USER_REF)).rejects.toThrow('LiteLLM unreachable');
         });
 
         it('always creates a new virtual key on each start', async () => {
@@ -262,7 +294,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
             vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
 
-            await agentRuntimeService.startAgent(AGENT_ID);
+            await agentRuntimeService.startAgent(AGENT_ID, USER_REF);
 
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalled();
         });
@@ -272,15 +304,18 @@ describe('agent-runtime.service', () => {
         it('deletes SandboxClaim', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
 
-            await agentRuntimeService.stopAgent(AGENT_ID);
+            await agentRuntimeService.stopAgent(AGENT_ID, USER_REF);
 
-            expect(agentSandboxAdapter.deleteSandboxClaim).toHaveBeenCalledWith(AGENT_ID, SANDBOX_NAMESPACE);
+            expect(agentSandboxAdapter.listSandboxClaims).toHaveBeenCalledWith(
+                SANDBOX_NAMESPACE,
+                `qs-agent-id=${AGENT_ID},qs-user-id=${USER_ID}`,
+            );
         });
 
         it('deletes runtime secret', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
 
-            await agentRuntimeService.stopAgent(AGENT_ID);
+            await agentRuntimeService.stopAgent(AGENT_ID, USER_REF);
 
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
@@ -291,9 +326,12 @@ describe('agent-runtime.service', () => {
         it('delegates deletion to services which handle 404 internally', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
 
-            await agentRuntimeService.stopAgent(AGENT_ID);
+            await agentRuntimeService.stopAgent(AGENT_ID, USER_REF);
 
-            expect(agentSandboxAdapter.deleteSandboxClaim).toHaveBeenCalledWith(AGENT_ID, SANDBOX_NAMESPACE);
+            expect(agentSandboxAdapter.listSandboxClaims).toHaveBeenCalledWith(
+                SANDBOX_NAMESPACE,
+                `qs-agent-id=${AGENT_ID},qs-user-id=${USER_ID}`,
+            );
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
                 SANDBOX_NAMESPACE,

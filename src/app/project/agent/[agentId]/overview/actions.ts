@@ -8,17 +8,6 @@ import agentService from "@/server/services/agent.service";
 import podService from "@/server/services/pod.service";
 import eventService from "@/server/services/event.service";
 
-export const startAgent = async (agentId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedWriteForAgent(agentId);
-        await agentRuntimeService.startAgent(agentId);
-    });
-
-export const stopAgent = async (agentId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedWriteForAgent(agentId);
-        await agentRuntimeService.stopAgent(agentId);
-    });
 
 export const deployAgent = async (agentId: string) =>
     simpleAction(async () => {

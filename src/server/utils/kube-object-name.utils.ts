@@ -62,6 +62,16 @@ export class KubeObjectNameUtils {
         return `pvc-${volumeId}`;
     }
 
+    static toAgentWorkspacePvcName(agentId: string, agentVolumeId: string): string {
+        const raw = `aw-${agentId}-${agentVolumeId}`;
+        const hash = crypto.createHash('sha256').update(raw).digest('hex');
+        return `aw-${hash.substring(0, 60)}`;
+    }
+
+    static toAgentClaimName(agentId: string): string {
+        return `ac-${this.addRandomSuffix(agentId.substring(0, 52))}`;
+    }
+
     static toRestorePodName(volumeId: string): `restore-${string}` {
         return `restore-${volumeId}`;
     }

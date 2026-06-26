@@ -14,6 +14,8 @@ import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
+import pvcService from "./pvc.service";
+import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 
 class AgentRuntimeService {
 
@@ -90,11 +92,11 @@ class AgentRuntimeService {
             agent.modelAlias,
         );
 
-        const decryptedEnvVars = this.decryptEnvVars(agent.encryptedEnvVars);
+        const decryptedEnvVars = this.decryptEnvVars(agent.encryptedEnvVars ?? null);
         const secretData = this.buildRuntimeSecretData(
             gateway.baseUrl,
             virtualKey,
-            agent.systemPrompt,
+            agent.systemPrompt ?? null,
             decryptedEnvVars,
         );
 
@@ -145,66 +147,6 @@ class AgentRuntimeService {
     }
 
     /**
-     * Starts an Agent:
-     * - Creates a model-restricted LiteLLM virtual key
-     * - Assembles and creates the Agent Runtime Secret
-     * - Creates a SandboxClaim targeting the Agent's warm pool
-     * - Waits for sandbox readiness
-     */
-    async startAgent(agentId: string): Promise<void> {
-        const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.id;
-
-        await this.ensureRuntimeSecret(agent);
-
-        await agentSandboxAdapter.createSandboxClaim(
-            this.buildSandboxClaimResource(agentId, namespace, agentId, {
-                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
-            }),
-        );
-
-        try {
-            await agentSandboxAdapter.waitForSandboxReady(agentId, namespace);
-        } catch (error) {
-            revalidateTag(Tags.agent(agentId));
-            revalidateTag(Tags.agents(agent.projectId));
-            throw error;
-        }
-
-        revalidateTag(Tags.agent(agentId));
-        revalidateTag(Tags.agents(agent.projectId));
-    }
-
-    /**
-     * Stops a running Agent:
-     * - Deletes all SandboxClaims for the agent
-     * - Deletes the Agent Runtime Secret
-     */
-    async stopAgent(agentId: string): Promise<void> {
-        const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.id;
-
-        // Delete all instance claims for this agent
-        const claims = await agentSandboxAdapter.listSandboxClaims(
-            namespace,
-            `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`,
-        );
-        for (const claim of claims) {
-            const claimName = claim.metadata?.name;
-            if (claimName) {
-                await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
-            }
-        }
-        // Also delete legacy single claim (named after agentId) for backward compat
-        await agentSandboxAdapter.deleteSandboxClaim(agentId, namespace);
-
-        await secretService.deleteSecretSafe(this.toSecretName(agentId), namespace);
-
-        revalidateTag(Tags.agent(agentId));
-        revalidateTag(Tags.agents(agent.projectId));
-    }
-
-    /**
      * Derives live Agent status from Kubernetes SandboxClaim conditions.
      * - No claim -> SHUTDOWN
      * - Claim exists, Available=True -> DEPLOYED
@@ -246,17 +188,19 @@ class AgentRuntimeService {
      * - Creates claim with agent instance label
      * - Waits for sandbox readiness
      */
-    async startInstance(agentId: string): Promise<{ claimName: string }> {
+    async startInstance(agentId: string, userId: string): Promise<{ claimName: string }> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
         await this.ensureRuntimeSecret(agent);
 
-        const claimName = KubeObjectNameUtils.addRandomSuffix(agentId);
+        const claimName = KubeObjectNameUtils.toAgentClaimName(agentId);
 
         await agentSandboxAdapter.createSandboxClaim(
             this.buildSandboxClaimResource(claimName, namespace, agentId, {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
+                [Constants.QS_ANNOTATION_USER_ID]: userId,
             }),
         );
 
@@ -287,6 +231,21 @@ class AgentRuntimeService {
         revalidateTag(Tags.agents(agent.projectId));
     }
 
+    async stopAllInstances(agentId: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+
+        const selector = `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`;
+        const claims = await agentSandboxAdapter.listSandboxClaims(namespace, selector);
+
+        for (const claim of claims) {
+            await agentSandboxAdapter.deleteSandboxClaim(claim.metadata.name!, namespace);
+        }
+
+        revalidateTag(Tags.agent(agentId));
+        revalidateTag(Tags.agents(agent.projectId));
+    }
+
     /**
      * Maps a raw k8s SandboxClaim object to an AgentInstanceInfo DTO.
      * Reusable by both listInstances and SSE watch delta events.
@@ -310,7 +269,7 @@ class AgentRuntimeService {
      * Lists all SandboxClaim instances for a given agent.
      * Returns instance info including name, status, and creation timestamp.
      */
-    async listInstances(agentId: string): Promise<Array<{
+    async listInstances(agentId: string, userId?: string): Promise<Array<{
         name: string;
         status: DeploymentStatus;
         namespace: string;
@@ -319,9 +278,13 @@ class AgentRuntimeService {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
+        const selector = userId
+            ? `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId},${Constants.QS_ANNOTATION_USER_ID}=${userId}`
+            : `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`;
+
         const claims = await agentSandboxAdapter.listSandboxClaims(
             namespace,
-            `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`,
+            selector,
         );
 
         return claims.map((claim: any) => this.mapClaimToInstance(claim, namespace));
