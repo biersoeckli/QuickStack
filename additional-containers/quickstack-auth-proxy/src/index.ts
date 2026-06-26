@@ -206,7 +206,6 @@ function rawResponseHeaders(rawHeaders: string[]): Headers {
   const headers = new Headers();
   const excludedHeaders = new Set([
     "connection",
-    "content-encoding",
     "content-length",
     "keep-alive",
     "proxy-authenticate",

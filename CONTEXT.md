@@ -55,6 +55,18 @@ _Avoid_: mixed project, project mode
 The kind of deployable resource allowed by a **Project Type**.
 _Avoid_: mixed workload, generic app
 
+**Volume**:
+A persistent storage mount attached to an **App** or **Agent**, backed by a Kubernetes PersistentVolumeClaim.
+_Avoid_: disk, storage, PVC when referring to the domain concept
+
+**App Volume**:
+A **Volume** attached to an **App**, optionally shareable with other Apps in the same project.
+_Avoid_: app storage, app disk
+
+**Agent Volume**:
+A **Volume** attached to an **Agent**, not shareable and without backup scheduling.
+_Avoid_: agent storage, agent disk
+
 **Workload Permission**:
 A permission grant for one specific **Project Workload** inside a **Project**.
 _Avoid_: app permission when the workload may be an Agent

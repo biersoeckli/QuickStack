@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { Bot, Settings } from "lucide-react";
+import { Bot, HardDrive, Settings } from "lucide-react";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
@@ -13,6 +13,7 @@ import AgentStatusBar from "./general/agent-status-bar";
 import AgentInstancesCard from "./instances/agent-instances-card";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import DomainsCard from "@/components/custom/domains-card";
+import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volumes-card";
 
 export default function AgentDetailClient({ agent, role, templateInfo }: {
     agent: AgentWithRelationsModel;
@@ -45,6 +46,11 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
                         <DomainsCard domains={agent.agentDomains}
                             workloadId={agent.id} workloadType={'agent'}
                             readonly={readonly} />
+                        <AgentVolumesCard
+                            volumes={agent.agentVolumes}
+                            projectId={agent.id}
+                            readonly={readonly}
+                        />
                         <AgentEnvVarsCard agent={agent} readonly={readonly} />
                     </div>
                 </TabsContent>
@@ -54,7 +60,7 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
                         agentId={agent.id}
                         readonly={readonly}
                         namespace={agent.projectId}
-                        agentDomains={agent.agentDomains || []}
+                        agentDomains={agent.agentDomains}
                     />
                 </TabsContent>
             </Tabs>
