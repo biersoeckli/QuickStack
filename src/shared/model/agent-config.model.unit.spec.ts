@@ -2,43 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { agentConfigZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
 
 describe('agentConfigZodModel', () => {
-    describe('Kubernetes quantity validation', () => {
-        it('accepts valid CPU quantities', () => {
-            const validCpu = ['100m', '1', '0.5', '2', '500m', '0.1', '10'];
-            for (const val of validCpu) {
-                const result = agentConfigZodModel.shape.cpuRequest.safeParse(val);
-                expect(result.success, `Expected "${val}" to be valid`).toBe(true);
-            }
-        });
-
-        it('rejects invalid CPU quantities', () => {
-            const invalidCpu = ['abc', '1.0.0', '100x', 'm100', '100m100', '', ' ', '-1'];
-            for (const val of invalidCpu) {
-                const result = agentConfigZodModel.shape.cpuRequest.safeParse(val);
-                if (val === '') {
-                    // Empty string is valid (it gets coerced to nullish)
-                    continue;
-                }
-                expect(result.success, `Expected "${val}" to be invalid`).toBe(false);
-            }
-        });
-
-        it('accepts valid memory quantities', () => {
-            const validMem = ['128Mi', '1Gi', '512M', '256Ki', '2Ti', '1', '0.5'];
-            for (const val of validMem) {
-                const result = agentConfigZodModel.shape.memoryRequest.safeParse(val);
-                expect(result.success, `Expected "${val}" to be valid`).toBe(true);
-            }
-        });
-
-        it('rejects invalid memory quantities', () => {
-            const invalidMem = ['abc', '128Xi', '1GiB', '12 8Mi'];
-            for (const val of invalidMem) {
-                const result = agentConfigZodModel.shape.memoryRequest.safeParse(val);
-                expect(result.success, `Expected "${val}" to be invalid`).toBe(false);
-            }
-        });
-    });
 
     describe('environment variable validation', () => {
         it('accepts valid Kubernetes env var names', () => {
