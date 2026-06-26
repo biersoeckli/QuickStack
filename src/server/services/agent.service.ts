@@ -20,6 +20,7 @@ import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
 import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
+import configMapService from "./config-map.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 
 const OPENCODE_WORKDIR = '/workspace';
@@ -41,7 +42,9 @@ type AgentSandboxTemplateConfig = {
     volumePvcData: {
         volume: V1Volume;
         volumeMount: V1VolumeMount;
-    }[]
+    }[];
+    fileVolumes: V1Volume[];
+    fileVolumeMounts: V1VolumeMount[];
 };
 
 class AgentService {
@@ -289,6 +292,8 @@ class AgentService {
             agent.agentVolumes,
         );
 
+        const { fileVolumeMounts, fileVolumes } = await configMapService.createOrUpdateConfigMapForAgent(agent);
+
         try {
             await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
                 id: agent.id,
@@ -300,7 +305,9 @@ class AgentService {
                 cpuLimit: agent.cpuLimit ?? null,
                 memoryRequest: agent.memoryRequest ?? null,
                 memoryLimit: agent.memoryLimit ?? null,
-                volumePvcData
+                volumePvcData,
+                fileVolumes,
+                fileVolumeMounts,
             }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool(
@@ -318,6 +325,7 @@ class AgentService {
             for (const domain of agent.agentDomains) {
                 await ingressService.createOrUpdateAgentIngress(agent, domain);
             }
+            await configMapService.deleteUnusedConfigMapsForAgent(agent);
         } catch (error: any) {
             console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);
             throw new ServiceException(
@@ -454,19 +462,21 @@ class AgentService {
 
         // Use PVC-based volumes when agent has volumes configured; otherwise fallback to emptyDir
         const hasCustomVolumes = agent.volumePvcData.length > 0;
-        const volumes = hasCustomVolumes
+        const workspaceVolumes = hasCustomVolumes
             ? agent.volumePvcData.map(v => v.volume)
             : [{
                 name: 'workspace',
                 emptyDir: {},
             }];
+        const volumes = [...workspaceVolumes, ...agent.fileVolumes];
 
-        const agentVolumeMounts = hasCustomVolumes
+        const agentWorkspaceVolumeMounts = hasCustomVolumes
             ? agent.volumePvcData.map(v => v.volumeMount)
             : [{
                 name: 'workspace',
                 mountPath: OPENCODE_WORKDIR,
             }];
+        const agentVolumeMounts = [...agentWorkspaceVolumeMounts, ...agent.fileVolumeMounts];
 
         // Filebrowser mounts all volumes at /srv/<volume-id> if custom volumes, else workspace
         const filebrowserVolumeMounts = hasCustomVolumes

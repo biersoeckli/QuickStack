@@ -1,4 +1,5 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
@@ -13,6 +14,15 @@ class ConfigMapService {
 
         return configMaps.body.items.filter(cm => {
             return cm.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId;
+        });
+    }
+
+    private async getConfigMapsForAgentFileMounts(projectId: string, agentId: string) {
+        const configMaps = await k3s.core.listNamespacedConfigMap(projectId);
+
+        return configMaps.body.items.filter(cm => {
+            return cm.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] === agentId
+                && !!cm.metadata?.annotations?.['qs-agent-file-mount-id'];
         });
     }
 
@@ -62,6 +72,52 @@ class ConfigMapService {
         return { fileVolumeMounts, fileVolumes };
     }
 
+    async createOrUpdateConfigMapForAgent(agent: AgentWithRelationsModel) {
+
+        if (agent.agentFileMounts.length === 0) {
+            return { fileVolumeMounts: [], fileVolumes: [] };
+        }
+
+        const fileVolumeMounts: k8s.V1VolumeMount[] = [];
+        const fileVolumes: k8s.V1Volume[] = [];
+
+        for (const fileMount of agent.agentFileMounts) {
+            const currentConfigMapName = KubeObjectNameUtils.getConfigMapName(fileMount.id);
+
+            let { folderPath, filePath } = PathUtils.splitPath(fileMount.containerMountPath);
+            if (!folderPath) {
+                folderPath = '/';
+            }
+
+            const configMapManifest = {
+                apiVersion: 'v1',
+                kind: 'ConfigMap',
+                metadata: {
+                    name: currentConfigMapName,
+                    namespace: agent.projectId,
+                    annotations: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+                        [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+                        'qs-agent-file-mount-id': fileMount.id,
+                    }
+                },
+                data: {
+                    [filePath]: fileMount.content
+                },
+            };
+
+            await this.createOrUpdateConfigMap(agent.projectId, configMapManifest);
+            const containerMountPath = fileMount.containerMountPath;
+
+            const { fileVolumeMount, fileVolume } = this.createFileVolumeConfig(currentConfigMapName, containerMountPath, filePath);
+
+            fileVolumeMounts.push(fileVolumeMount);
+            fileVolumes.push(fileVolume);
+        }
+
+        return { fileVolumeMounts, fileVolumes };
+    }
+
     createFileVolumeConfig(currentConfigMapName: string, containerMountPath: string, fileName: string, readOnly = true) {
         const fileVolumeMount = {
             name: currentConfigMapName,
@@ -99,6 +155,15 @@ class ConfigMapService {
         for (const cm of existingConfigMaps) {
             if (!app.appFileMounts.some(fm => KubeObjectNameUtils.getConfigMapName(fm.id) === cm.metadata?.name)) {
                 await k3s.core.deleteNamespacedConfigMap(cm.metadata!.name!, app.projectId);
+            }
+        }
+    }
+
+    async deleteUnusedConfigMapsForAgent(agent: AgentWithRelationsModel) {
+        const existingConfigMaps = await this.getConfigMapsForAgentFileMounts(agent.projectId, agent.id);
+        for (const cm of existingConfigMaps) {
+            if (!agent.agentFileMounts.some(fm => KubeObjectNameUtils.getConfigMapName(fm.id) === cm.metadata?.name)) {
+                await k3s.core.deleteNamespacedConfigMap(cm.metadata!.name!, agent.projectId);
             }
         }
     }

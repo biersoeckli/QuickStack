@@ -59,6 +59,11 @@ const pvcServiceMocks = vi.hoisted(() => ({
     deleteAllPvcForAgent: vi.fn(),
 }));
 
+const configMapServiceMocks = vi.hoisted(() => ({
+    createOrUpdateConfigMapForAgent: vi.fn(),
+    deleteUnusedConfigMapsForAgent: vi.fn(),
+}));
+
 const ingressServiceMocks = vi.hoisted(() => ({
     listAgentIngress: vi.fn(),
     deleteAgentIngress: vi.fn(),
@@ -109,6 +114,9 @@ vi.mock('@/server/services/agent-runtime.service', () => ({
 vi.mock('@/server/services/pvc.service', () => ({
     default: pvcServiceMocks,
 }));
+vi.mock('@/server/services/config-map.service', () => ({
+    default: configMapServiceMocks,
+}));
 vi.mock('@/server/services/ingress.service', () => ({
     default: ingressServiceMocks,
 }));
@@ -122,6 +130,7 @@ import secretService from '@/server/services/secret.service';
 import namespaceService from '@/server/services/namespace.service';
 import agentRuntimeService from '@/server/services/agent-runtime.service';
 import pvcService from '@/server/services/pvc.service';
+import configMapService from '@/server/services/config-map.service';
 import ingressService from '@/server/services/ingress.service';
 import agentService from './agent.service';
 
@@ -189,6 +198,8 @@ describe('agent.service', () => {
         vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({ volume: {} as any, volumeMount: {} as any });
         vi.mocked(pvcService.deleteUnusedPvcForAgent).mockResolvedValue(undefined);
         vi.mocked(pvcService.deleteAllPvcForAgent).mockResolvedValue(undefined);
+        vi.mocked(configMapService.createOrUpdateConfigMapForAgent).mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] });
+        vi.mocked(configMapService.deleteUnusedConfigMapsForAgent).mockResolvedValue(undefined);
         vi.mocked(ingressService.listAgentIngress).mockResolvedValue([]);
         vi.mocked(ingressService.deleteAgentIngress).mockResolvedValue(undefined);
         vi.mocked(ingressService.createOrUpdateAgentIngress).mockResolvedValue(undefined);
@@ -426,6 +437,40 @@ describe('agent.service', () => {
                     spec: { sandboxTemplateRef: { name: 'agent-1' }, replicas: 0 },
                 }),
             );
+        });
+
+        it('mounts agent file mounts from config maps into the agent container', async () => {
+            const agent = mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentFileMounts: [{
+                    id: 'file-mount-1',
+                    agentId: 'agent-1',
+                    containerMountPath: '/workspace/config.yaml',
+                    content: 'name: test',
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                }],
+            });
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agent as any);
+            vi.mocked(configMapService.createOrUpdateConfigMapForAgent).mockResolvedValue({
+                fileVolumes: [{ name: 'cm-file-mount-1', configMap: { name: 'cm-file-mount-1' } }] as any,
+                fileVolumeMounts: [{ name: 'cm-file-mount-1', mountPath: '/workspace/config.yaml', subPath: 'config.yaml', readOnly: true }] as any,
+            });
+
+            await agentService.deploy('agent-1');
+
+            expect(configMapService.createOrUpdateConfigMapForAgent).toHaveBeenCalledWith(agent);
+            expect(configMapService.deleteUnusedConfigMapsForAgent).toHaveBeenCalledWith(agent);
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'cm-file-mount-1', configMap: { name: 'cm-file-mount-1' } },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'cm-file-mount-1', mountPath: '/workspace/config.yaml', subPath: 'config.yaml', readOnly: true },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[1].volumeMounts).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({ name: 'cm-file-mount-1' }),
+            ]));
         });
     });
 
