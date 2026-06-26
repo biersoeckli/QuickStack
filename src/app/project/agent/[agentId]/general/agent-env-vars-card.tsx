@@ -35,7 +35,7 @@ export default function AgentEnvVarsCard({ agent, readonly }: {
     agent: AgentWithRelationsModel;
     readonly: boolean;
 }) {
-    const existingEnvVars = parseEncryptedEnvVars(agent.encryptedEnvVars);
+    const existingEnvVars = parseEncryptedEnvVars(agent.encryptedEnvVars ?? null);
 
     const form = useForm<AgentEnvVarsModel>({
         resolver: zodResolver(agentEnvVarsZodModel),

@@ -67,6 +67,18 @@ _Avoid_: app storage, app disk
 A **Volume** attached to an **Agent**, not shareable and without backup scheduling.
 _Avoid_: agent storage, agent disk
 
+**File Mount**:
+A text file mounted into an **App** or **Agent** container at a configured container path.
+_Avoid_: config map when referring to the domain concept, mounted file
+
+**App File Mount**:
+A **File Mount** attached to an **App**.
+_Avoid_: app config file, app mounted file
+
+**Agent File Mount**:
+A **File Mount** attached to an **Agent**.
+_Avoid_: agent config file, agent mounted file
+
 **Workload Permission**:
 A permission grant for one specific **Project Workload** inside a **Project**.
 _Avoid_: app permission when the workload may be an Agent

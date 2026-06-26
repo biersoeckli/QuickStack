@@ -15,7 +15,7 @@ import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
 import InternalHostnames from "./domains/ports-and-internal-hostnames";
 import NodePortsCard from "./domains/node-ports";
-import FileMount from "./volumes/file-mount";
+import FileMountsCard from "@/components/custom/file-mounts-card";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
 import VolumeBackupList from "./volumes/volume-backup";
@@ -99,7 +99,7 @@ export default function AppTabs({
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
                 <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
-                <FileMount readonly={readonly} app={app} />
+                <FileMountsCard readonly={readonly} fileMounts={app.appFileMounts} workloadId={app.id} workloadType={'app'} />
                 <VolumeBackupList
                     readonly={readonly}
                     app={app}

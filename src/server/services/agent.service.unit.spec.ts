@@ -143,6 +143,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         encryptedEnvVars: null,
         agentDomains: [],
         agentVolumes: [],
+        agentFileMounts: [],
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
     };
@@ -307,7 +308,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agents);
             expect(dataAccess.client.agent.findMany).toHaveBeenCalledWith({
                 where: { projectId: 'proj-test-agent' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true },
+                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true },
                 orderBy: { name: 'asc' },
             });
         });
@@ -323,7 +324,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agent);
             expect(dataAccess.client.agent.findFirstOrThrow).toHaveBeenCalledWith({
                 where: { id: 'agent-1' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true },
+                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true },
             });
         });
     });

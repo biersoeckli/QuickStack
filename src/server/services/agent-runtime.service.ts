@@ -22,7 +22,7 @@ class AgentRuntimeService {
     private async getAgentOrThrow(agentId: string): Promise<AgentWithRelationsModel> {
         const agent = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
-            include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true },
+            include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true },
         });
         if (!agent) {
             throw new ServiceException('Agent not found.');

@@ -462,6 +462,14 @@ class AppService {
         }
     }
 
+    async getFileMountById(fileMountId: string) {
+        return await dataAccess.client.appFileMount.findFirstOrThrow({
+            where: {
+                id: fileMountId
+            }
+        });
+    }
+
     async saveFileMount(fileMountToBeSaved: Prisma.AppFileMountUncheckedCreateInput | Prisma.AppFileMountUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppFileMount;
         const client = tx || dataAccess.client;

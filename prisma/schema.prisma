@@ -236,6 +236,7 @@ model Agent {
   roleAgentPermissions RoleAgentPermission[]
   agentDomains         AgentDomain[]
   agentVolumes         AgentVolume[]
+  agentFileMounts      AgentFileMount[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -261,6 +262,19 @@ model AgentVolume {
   storageClassName   String   @default("longhorn")
   agentId            String
   agent              Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, containerMountPath])
+}
+
+model AgentFileMount {
+  id                 String @id @default(uuid())
+  containerMountPath String
+  content            String
+  agentId            String
+  agent              Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

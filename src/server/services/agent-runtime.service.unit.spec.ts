@@ -96,6 +96,7 @@ function mockAgent(overrides: Record<string, any> = {}) {
         ]),
         agentDomains: [],
         agentVolumes: [],
+        agentFileMounts: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -375,7 +376,6 @@ describe('agent-runtime.service', () => {
         });
 
         it('never returns BUILDING', () => {
-            // @ts-expect-error - testing invalid status
             expect(agentRuntimeService.statusTextFor('BUILDING')).not.toBe('Building');
         });
     });
