@@ -11,6 +11,8 @@ import {
     AgentSystemPromptModel,
     agentEnvVarsZodModel,
     AgentEnvVarsModel,
+    agentContainerConfigZodModel,
+    AgentContainerConfigModel,
 } from "@/shared/model/agent-config.model";
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import { RequesterIdentity, ensureWriteProjectWorkload } from "@/server/utils/shared-authorization.utils";
@@ -31,6 +33,12 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceMode
 
 export const saveAgentRateLimits = async (prevState: any, inputData: AgentRateLimitsModel, agentId: string) =>
     saveFormAction(inputData, agentRateLimitsZodModel, async (validatedData) => {
+        await authorizeForAgent(agentId);
+        await agentService.saveConfig(agentId, validatedData);
+    });
+
+export const saveAgentContainerConfig = async (prevState: any, inputData: AgentContainerConfigModel, agentId: string) =>
+    saveFormAction(inputData, agentContainerConfigZodModel, async (validatedData) => {
         await authorizeForAgent(agentId);
         await agentService.saveConfig(agentId, validatedData);
     });

@@ -129,7 +129,28 @@ describe('agentConfigZodModel', () => {
             expect(result.success).toBe(true);
             if (result.success) {
                 expect(result.data.envVars).toEqual([]);
+                expect(result.data.warmPoolReplicas).toBe(0);
             }
+        });
+
+        it('accepts container command, args, and warm pool replicas', () => {
+            const result = agentConfigZodModel.safeParse({
+                containerCommand: 'sh',
+                containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
+                warmPoolReplicas: '3',
+            });
+
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data.containerCommand).toBe('sh');
+                expect(result.data.containerArgs).toEqual([{ value: '-c' }, { value: 'sleep 3600' }]);
+                expect(result.data.warmPoolReplicas).toBe(3);
+            }
+        });
+
+        it('rejects warm pool replicas outside the allowed range', () => {
+            expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '-1' }).success).toBe(false);
+            expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '11' }).success).toBe(false);
         });
     });
 });

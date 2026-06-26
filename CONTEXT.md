@@ -8,8 +8,8 @@ QuickStack deploys applications from container images or Git repositories into a
 A deployable workload managed by QuickStack.
 
 **Agent**:
-A long-lived, isolated AI workspace managed by QuickStack.
-_Avoid_: App, container workload, automation run
+A long-lived, isolated container workspace managed by QuickStack for AI-assisted work.
+_Avoid_: App, fixed opencode runtime, automation run
 
 **Agent Name**:
 A user-defined label for an **Agent** that does not have to be unique.
@@ -26,6 +26,14 @@ _Avoid_: plain env var, app env var
 **Agent Rate Limits**:
 CPU and memory requests and limits stored as integers (millicores for CPU, MB for memory) that control Kubernetes resource allocation per sandbox container instance.
 _Avoid_: resource quantities, K8s resource strings
+
+**Agent Container Configuration**:
+Runtime startup settings for an **Agent** container, including command, arguments, and pre-warmed sandbox count.
+_Avoid_: opencode config, app container config
+
+**Agent Warm Pool Replicas**:
+The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**.
+_Avoid_: app replicas, running agent instances
 
 **Agent Source**:
 The collection of container image, **LLM Gateway**, and **LiteLLM Model Alias** that defines where an Agent's runtime comes from and which model it uses.
@@ -204,6 +212,7 @@ _Avoid_: manual initial port requirement
 - An **Agent** has exactly one **Agent Name**.
 - An **Agent** has exactly one **Agent Source** (image, **LLM Gateway**, and **LiteLLM Model Alias**).
 - An **Agent** has exactly one set of **Agent Rate Limits** that apply per sandbox container instance.
+- An **Agent** has exactly one **Agent Container Configuration**.
 - A **Deploy (Agent)** reconciles the saved **Agent** configuration to its Kubernetes SandboxTemplate and SandboxWarmPool.
 - An **Agent** can have zero or more **Agent Environment Variables**.
 - A running **Agent** has exactly one **Agent Runtime Secret**.

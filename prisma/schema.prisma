@@ -232,6 +232,9 @@ model Agent {
   memoryLimit        Int?
   systemPrompt       String?
   encryptedEnvVars   String?
+  containerCommand   String?
+  containerArgs      String?
+  warmPoolReplicas   Int     @default(0)
 
   roleAgentPermissions RoleAgentPermission[]
   agentDomains         AgentDomain[]

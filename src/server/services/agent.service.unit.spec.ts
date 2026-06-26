@@ -150,6 +150,9 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         memoryLimit: null,
         systemPrompt: null,
         encryptedEnvVars: null,
+        containerCommand: null,
+        containerArgs: null,
+        warmPoolReplicas: 0,
         agentDomains: [],
         agentVolumes: [],
         agentFileMounts: [],
@@ -427,16 +430,32 @@ describe('agent.service', () => {
             );
         });
 
-        it('reconciles WarmPool with zero replicas', async () => {
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One') as any);
+        it('reconciles WarmPool with configured replicas', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                warmPoolReplicas: 2,
+            }) as any);
 
             await agentService.deploy('agent-1');
 
             expect(agentSandboxAdapter.reconcileSandboxWarmPool).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    spec: { sandboxTemplateRef: { name: 'agent-1' }, replicas: 0 },
+                    spec: { sandboxTemplateRef: { name: 'agent-1' }, replicas: 2 },
                 }),
             );
+        });
+
+        it('uses custom agent container command and args when configured', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                containerCommand: 'sh',
+                containerArgs: '["-c","echo ready && sleep 3600"]',
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const container = resource.spec.podTemplate.spec.containers[0];
+            expect(container.command).toEqual(['sh']);
+            expect(container.args).toEqual(['-c', 'echo ready && sleep 3600']);
         });
 
         it('mounts agent file mounts from config maps into the agent container', async () => {
@@ -566,6 +585,9 @@ describe('agent.service', () => {
                 cpuLimit: 1000,
                 memoryRequest: 256,
                 memoryLimit: 1024,
+                containerCommand: 'sh',
+                containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
+                warmPoolReplicas: 3,
                 systemPrompt: 'You are a helpful assistant.',
             });
 
@@ -577,6 +599,9 @@ describe('agent.service', () => {
                     cpuLimit: 1000,
                     memoryRequest: 256,
                     memoryLimit: 1024,
+                    containerCommand: 'sh',
+                    containerArgs: '["-c","sleep 3600"]',
+                    warmPoolReplicas: 3,
                     systemPrompt: 'You are a helpful assistant.',
                 },
             });
@@ -588,11 +613,15 @@ describe('agent.service', () => {
                 ...existingAgent,
                 image: 'old-image:latest',
                 systemPrompt: 'old prompt',
+                containerCommand: 'old-command',
+                containerArgs: '["old"]',
             } as any);
 
             await agentService.saveConfig(agentId, {
                 image: '',
                 systemPrompt: '',
+                containerCommand: '',
+                containerArgs: [],
             });
 
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
@@ -600,6 +629,8 @@ describe('agent.service', () => {
                 data: {
                     image: null,
                     systemPrompt: null,
+                    containerCommand: null,
+                    containerArgs: null,
                 },
             });
         });
@@ -639,6 +670,7 @@ describe('agent.service', () => {
                     cpuLimit: undefined,
                     memoryRequest: undefined,
                     memoryLimit: undefined,
+                    containerCommand: 'sh',
                     systemPrompt: undefined,
                 }),
             ).rejects.toThrow(

@@ -7,6 +7,7 @@ import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { Bot, Settings } from "lucide-react";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
+import AgentContainerConfigCard from "./general/agent-container-config-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
 import AgentStatusBar from "./general/agent-status-bar";
@@ -42,6 +43,7 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
                     <div className="space-y-4">
                         <AgentStatusBar agent={agent} readonly={readonly} templateInfo={templateInfo} />
                         <AgentSourceCard agent={agent} readonly={readonly} />
+                        <AgentContainerConfigCard agent={agent} readonly={readonly} />
                         <AgentSystemPromptCard agent={agent} readonly={readonly} />
                         <AgentRateLimitsCard agent={agent} readonly={readonly} />
                         <DomainsCard domains={agent.agentDomains}

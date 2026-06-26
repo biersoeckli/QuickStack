@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { stringToOptionalNumber } from "@/shared/utils/zod.utils";
+import { containerCommandArgsZodModel } from "@/shared/model/app-container-config.model";
 
 export const agentEnvVarModel = z.object({
     name: z
@@ -28,6 +29,17 @@ export const agentConfigZodModel = z.object({
     cpuLimit: stringToOptionalNumber,
     memoryRequest: stringToOptionalNumber,
     memoryLimit: stringToOptionalNumber,
+    containerCommand: containerCommandArgsZodModel.shape.containerCommand,
+    containerArgs: containerCommandArgsZodModel.shape.containerArgs,
+    warmPoolReplicas: z.preprocess((val) => {
+        if (val === null || val === undefined || val === '') {
+            return 0;
+        }
+        if (typeof val === 'string') {
+            return Number(val);
+        }
+        return val;
+    }, z.number().int().min(0, 'Warm Pool Replicas must be between 0 and 10').max(10, 'Warm Pool Replicas must be between 0 and 10').default(0)),
     systemPrompt: z.string().nullish(),
     envVars: z
         .array(
@@ -85,6 +97,13 @@ export const agentRateLimitsZodModel = agentConfigZodModel.pick({
     memoryLimit: true,
 });
 export type AgentRateLimitsModel = z.infer<typeof agentRateLimitsZodModel>;
+
+export const agentContainerConfigZodModel = agentConfigZodModel.pick({
+    containerCommand: true,
+    containerArgs: true,
+    warmPoolReplicas: true,
+});
+export type AgentContainerConfigModel = z.infer<typeof agentContainerConfigZodModel>;
 
 export const agentSystemPromptZodModel = agentConfigZodModel.pick({
     systemPrompt: true,

@@ -1,0 +1,3 @@
+ALTER TABLE "Agent" ADD COLUMN "containerCommand" TEXT;
+ALTER TABLE "Agent" ADD COLUMN "containerArgs" TEXT;
+ALTER TABLE "Agent" ADD COLUMN "warmPoolReplicas" INTEGER NOT NULL DEFAULT 0;

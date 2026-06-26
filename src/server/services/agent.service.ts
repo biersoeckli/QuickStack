@@ -13,7 +13,7 @@ import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import namespaceService from "./namespace.service";
 import agentRuntimeService from "./agent-runtime.service";
-import { AgentConfigInputModel } from "@/shared/model/agent-config.model";
+import { AgentConfigModel } from "@/shared/model/agent-config.model";
 import { Constants } from "@/shared/utils/constants";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
@@ -39,6 +39,8 @@ type AgentSandboxTemplateConfig = {
     cpuLimit?: number | null;
     memoryRequest?: number | null;
     memoryLimit?: number | null;
+    containerCommand?: string | null;
+    containerArgs?: string | null;
     volumePvcData: {
         volume: V1Volume;
         volumeMount: V1VolumeMount;
@@ -146,7 +148,7 @@ class AgentService {
      * - Locks runtime-relevant config while the Agent has an active SandboxClaim (running).
      * - Invalidates stored virtual-key state on gateway/model changes.
      */
-    async saveConfig(agentId: string, config: AgentConfigInputModel): Promise<Agent> {
+    async saveConfig(agentId: string, config: Partial<AgentConfigModel>): Promise<Agent> {
         // Read agent for K8s runtime check
         const existing = await this.getById(agentId);
 
@@ -172,13 +174,27 @@ class AgentService {
         if (config.memoryLimit !== undefined && config.memoryLimit !== existing.memoryLimit) {
             configFields.push('memoryLimit');
         }
+        if (config.containerCommand !== undefined && (config.containerCommand || null) !== existing.containerCommand) {
+            configFields.push('containerCommand');
+        }
+        if (config.containerArgs !== undefined) {
+            const nextContainerArgs = config.containerArgs.length > 0
+                ? JSON.stringify(config.containerArgs.map(arg => arg.value))
+                : null;
+            if (nextContainerArgs !== existing.containerArgs) {
+                configFields.push('containerArgs');
+            }
+        }
+        if (config.warmPoolReplicas !== undefined && config.warmPoolReplicas !== existing.warmPoolReplicas) {
+            configFields.push('warmPoolReplicas');
+        }
         if (config.llmGatewayId !== undefined && config.llmGatewayId !== existing.llmGatewayId) {
             configFields.push('llmGatewayId');
         }
         if (config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias) {
             configFields.push('modelAlias');
         }
-        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'llmGatewayId', 'modelAlias'];
+        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'containerCommand', 'containerArgs', 'warmPoolReplicas', 'llmGatewayId', 'modelAlias'];
 
         if (isRunning) {
             const changedRuntime = configFields.some((f) => runtimeRelevant.includes(f));
@@ -208,6 +224,16 @@ class AgentService {
             config.systemPrompt !== undefined
                 ? (config.systemPrompt || null)
                 : undefined;
+        const containerCommandValue =
+            config.containerCommand !== undefined
+                ? (config.containerCommand || null)
+                : undefined;
+        const containerArgsValue =
+            config.containerArgs !== undefined
+                ? (config.containerArgs.length > 0
+                    ? JSON.stringify(config.containerArgs.map(arg => arg.value))
+                    : null)
+                : undefined;
 
         // Transactional read-then-write to prevent lost updates
         const updated = await dataAccess.client.$transaction(async (tx) => {
@@ -232,6 +258,9 @@ class AgentService {
                     ...(config.memoryRequest !== undefined ? { memoryRequest: config.memoryRequest ?? null } : {}),
                     ...(config.memoryLimit !== undefined ? { memoryLimit: config.memoryLimit ?? null } : {}),
                     ...(systemPromptValue !== undefined ? { systemPrompt: systemPromptValue } : {}),
+                    ...(containerCommandValue !== undefined ? { containerCommand: containerCommandValue } : {}),
+                    ...(containerArgsValue !== undefined ? { containerArgs: containerArgsValue } : {}),
+                    ...(config.warmPoolReplicas !== undefined ? { warmPoolReplicas: config.warmPoolReplicas } : {}),
                     ...(config.envVars !== undefined ? { encryptedEnvVars: encryptedEnvVars! } : {}),
                     ...(isGatewayChanged ? { llmGatewayId: config.llmGatewayId! } : {}),
                     ...(isModelChanged ? { modelAlias: config.modelAlias! } : {}),
@@ -305,13 +334,15 @@ class AgentService {
                 cpuLimit: agent.cpuLimit ?? null,
                 memoryRequest: agent.memoryRequest ?? null,
                 memoryLimit: agent.memoryLimit ?? null,
+                containerCommand: agent.containerCommand ?? null,
+                containerArgs: agent.containerArgs ?? null,
                 volumePvcData,
                 fileVolumes,
                 fileVolumeMounts,
             }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool(
-                this.buildSandboxWarmPoolResource(agent.id, agent.project.id, 0),
+                this.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
             );
 
             // Reconcile agent domain ingresses — clean up orphaned, then ensure current
@@ -459,6 +490,8 @@ class AgentService {
     private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
         const effectiveImage = agent.image || Constants.QS_DEFAULT_AGENT_IMAGE;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+        const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;
+        const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
 
         // Use PVC-based volumes when agent has volumes configured; otherwise fallback to emptyDir
         const hasCustomVolumes = agent.volumePvcData.length > 0;
@@ -507,8 +540,15 @@ class AgentService {
                         containers: [{
                             name: 'agent',
                             image: effectiveImage,
-                            command: ['/bin/sh', '-lc'],
-                            args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
+                            ...(usesDefaultOpenCodeStartup
+                                ? {
+                                    command: ['/bin/sh', '-lc'],
+                                    args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
+                                }
+                                : {
+                                    ...(agent.containerCommand ? { command: [agent.containerCommand] } : {}),
+                                    ...(customArgs ? { args: customArgs } : {}),
+                                }),
                             workingDir: OPENCODE_WORKDIR,
                             ports: [{
                                 name: 'opencode-web',

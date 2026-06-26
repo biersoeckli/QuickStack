@@ -1,54 +1,27 @@
 'use client';
 
 import { SubmitButton } from "@/components/custom/submit-button";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { saveGeneralAppContainerConfig } from "./actions";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { type ReactNode, useActionState, useEffect } from "react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { HelpCircle, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
+import ContainerCommandArgsFields, { LabelWithHint } from "@/components/custom/container-command-args-fields";
 
 export type AppContainerConfigInputModel = z.infer<typeof appContainerConfigZodModel>;
-
-function LabelWithHint({ children, hint }: { children: ReactNode; hint?: ReactNode }) {
-    return (
-        <div className="flex items-center gap-1.5">
-            <FormLabel className="m-0">{children}</FormLabel>
-            {hint && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-muted-foreground hover:text-foreground"
-                        >
-                            <HelpCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only">More information</span>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-80">
-                        <div className="text-sm leading-relaxed">{hint}</div>
-                    </TooltipContent>
-                </Tooltip>
-            )}
-        </div>
-    );
-}
 
 export default function GeneralAppContainerConfig({ app, readonly }: {
     app: AppExtendedModel;
@@ -70,11 +43,6 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
             securityContextPrivileged: app.securityContextPrivileged ?? false,
         },
         disabled: readonly,
-    });
-
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "containerArgs",
     });
 
     const [state, formAction] = useActionState(
@@ -116,81 +84,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                     </p>
                                 </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="containerCommand"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <LabelWithHint hint="Overrides the image ENTRYPOINT. Leave empty to keep the command defined by the container image.">
-                                                Command
-                                            </LabelWithHint>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="e.g., /bin/sh or minio"
-                                                    {...field}
-                                                    value={field.value as string | number | readonly string[] | undefined}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="space-y-3">
-                                    <LabelWithHint hint="Overrides the image CMD. Add one item per argument in the order the process should receive them.">
-                                        Arguments
-                                    </LabelWithHint>
-
-                                    <div className="space-y-2">
-                                        {fields.length === 0 && (
-                                            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                                                No arguments configured.
-                                            </div>
-                                        )}
-
-                                        {fields.map((field, index) => (
-                                            <div key={field.id} className="flex items-start gap-2">
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`containerArgs.${index}.value`}
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex-1">
-                                                            <FormControl>
-                                                                <Input
-                                                                    placeholder={`Argument ${index + 1}`}
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="mt-0"
-                                                    onClick={() => remove(index)}
-                                                    disabled={readonly}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {!readonly && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => append({ value: '' })}
-                                        >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Argument
-                                        </Button>
-                                    )}
-                                </div>
+                                <ContainerCommandArgsFields form={form} readonly={readonly} />
                             </div>
 
                             <Separator />
