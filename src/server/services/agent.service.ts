@@ -26,10 +26,14 @@ import agentDomainService from "./agent-domain.service";
 import agentVolumeService from "./agent-volume.service";
 import agentFileMountService from "./agent-file-mount.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
+import crypto from "crypto";
 import {
     parseStoredContainerCommandArray,
     serializeContainerCommandItems,
 } from "@/shared/utils/container-command-args.utils";
+import buildService from "./build.service";
+import registryService from "./registry.service";
+import deploymentLogService, { dlog } from "./deployment-logs.service";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -544,13 +548,66 @@ class AgentService {
         )(agentId);
     }
 
-    async deploy(agentId: string): Promise<Agent> {
+    async deploy(agentId: string, forceBuild = false): Promise<string> {
+        const deploymentId = crypto.randomUUID();
+        await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
+            const agent = await this.getById(agentId);
+            await dlog(deploymentId, `
+-----------------------------------------------
+ Deployment:   ${deploymentId}
+ Agent:        ${agent.id}
+ Project:      ${agent.projectId}
+-----------------------------------------------`, false);
+
+            const hasRunningInstances = await agentRuntimeService.listInstances(agentId).then(instances => instances.length > 0);
+            if (hasRunningInstances) {
+                throw new ServiceException(
+                    'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
+                );
+            }
+
+            if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
+                const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildAgent(deploymentId, agent, forceBuild);
+                if (shouldDeployImmediately) {
+                    await dlog(deploymentId, `Starting agent deployment with output from build "${buildJobName}"`);
+                    await this.reconcileSandboxTemplateDeployment(agent.id, registryService.createContainerRegistryUrlForAppId(agent.id), deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
+                }
+                return;
+            }
+
+            await this.reconcileSandboxTemplateDeployment(agentId, undefined, deploymentId);
+        });
+        return deploymentId;
+    }
+
+    async deployBuiltAgent(
+        agentId: string,
+        deploymentId: string,
+        buildJobName: string,
+        gitCommitHash?: string,
+        gitCommitMessage?: string,
+    ): Promise<Agent> {
+        return this.reconcileSandboxTemplateDeployment(
+            agentId,
+            registryService.createContainerRegistryUrlForAppId(agentId),
+            deploymentId,
+            buildJobName,
+            gitCommitHash,
+            gitCommitMessage,
+        );
+    }
+
+    private async reconcileSandboxTemplateDeployment(
+        agentId: string,
+        containerImageOverride?: string,
+        deploymentId?: string,
+        buildJobName?: string,
+        gitCommitHash?: string,
+        gitCommitMessage?: string,
+    ): Promise<Agent> {
         const agent = await this.getById(agentId);
         if (!agent) {
             throw new ServiceException('Agent not found.');
-        }
-        if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
-            throw new ServiceException('Git sources for Agents are saved but cannot be deployed yet. Use a container image source or wait for Agent build support.');
         }
 
         await namespaceService.createNamespaceIfNotExists(agent.project.id);
@@ -583,10 +640,13 @@ class AgentService {
         const { fileVolumeMounts, fileVolumes } = await configMapService.createOrUpdateConfigMapForAgent(agent);
 
         try {
+            const dockerPullSecretName = containerImageOverride
+                ? undefined
+                : await secretService.createOrUpdateAgentDockerPullSecret(agent);
             await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
                 id: agent.id,
                 projectId: agent.project.id,
-                containerImageSource: agent.containerImageSource ?? DEFAULT_AGENT_IMAGE,
+                containerImageSource: containerImageOverride ?? agent.containerImageSource ?? DEFAULT_AGENT_IMAGE,
                 modelAlias: agent.modelAlias,
                 llmGateway: agent.llmGateway,
                 cpuRequest: agent.cpuRequest ?? null,
@@ -598,6 +658,12 @@ class AgentService {
                 volumePvcData,
                 fileVolumes,
                 fileVolumeMounts,
+            }, {
+                dockerPullSecretName,
+                deploymentId,
+                buildJobName,
+                gitCommitHash,
+                gitCommitMessage,
             }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool(
@@ -616,6 +682,7 @@ class AgentService {
                 await ingressService.createOrUpdateAgentIngress(agent, domain);
             }
             await configMapService.deleteUnusedConfigMapsForAgent(agent);
+            await secretService.deleteUnusedAgentDockerPullSecret(agent);
         } catch (error: any) {
             console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);
             throw new ServiceException(
@@ -668,6 +735,7 @@ class AgentService {
 
         // Delete All PVCs associated with the agent
         await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
+        await buildService.deleteAllBuildsOfAgent(agentId);
 
         // 3. Delete LiteLLM virtual key if we extracted one
         if (virtualKey && existing.llmGateway?.encryptedAdminKey) {
@@ -746,7 +814,13 @@ class AgentService {
         };
     }
 
-    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
+    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: {
+        dockerPullSecretName?: string;
+        deploymentId?: string;
+        buildJobName?: string;
+        gitCommitHash?: string;
+        gitCommitMessage?: string;
+    }): KubernetesResource {
         const effectiveImage = agent.containerImageSource;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const customCommand = parseStoredContainerCommandArray(agent.containerCommand);
@@ -790,6 +864,12 @@ class AgentService {
                 namespace: agent.projectId,
                 annotations: {
                     [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+                    [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+                    ...(deploymentInfo?.deploymentId ? { [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentInfo.deploymentId } : {}),
+                    ...(deploymentInfo?.buildJobName ? { buildJobName: deploymentInfo.buildJobName } : {}),
+                    ...(deploymentInfo?.gitCommitHash ? { [Constants.QS_ANNOTATION_GIT_COMMIT]: deploymentInfo.gitCommitHash } : {}),
+                    ...(deploymentInfo?.gitCommitMessage ? { [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: deploymentInfo.gitCommitMessage } : {}),
                 },
             },
             spec: {
@@ -797,6 +877,7 @@ class AgentService {
                 podTemplate: {
                     spec: {
                         volumes,
+                        ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),
                         containers: [{
                             name: 'agent',
                             image: effectiveImage,

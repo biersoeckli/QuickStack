@@ -12,6 +12,7 @@ const dbGatewayMocks = vi.hoisted(() => ({
 
 const dbAgentMocks = vi.hoisted(() => ({
     create: vi.fn(),
+    findUnique: vi.fn(),
     findFirstOrThrow: vi.fn(),
     update: vi.fn(),
 }));
@@ -19,16 +20,19 @@ const dbAgentMocks = vi.hoisted(() => ({
 const dbAgentDomainMocks = vi.hoisted(() => ({
     create: vi.fn(),
     deleteMany: vi.fn(),
+    findMany: vi.fn(),
 }));
 
 const dbAgentVolumeMocks = vi.hoisted(() => ({
     create: vi.fn(),
     deleteMany: vi.fn(),
+    findMany: vi.fn(),
 }));
 
 const dbAgentFileMountMocks = vi.hoisted(() => ({
     create: vi.fn(),
     deleteMany: vi.fn(),
+    findMany: vi.fn(),
 }));
 
 const namespaceServiceMocks = vi.hoisted(() => ({
@@ -76,7 +80,11 @@ describe("agent-template.service", () => {
         vi.clearAllMocks();
         dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1", projectType: "AGENT" });
         dbGatewayMocks.findUnique.mockResolvedValue({ id: "gateway-1" });
+        dbAgentMocks.findUnique.mockResolvedValue(null);
         dbAgentMocks.create.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
+        dbAgentDomainMocks.findMany.mockResolvedValue([]);
+        dbAgentVolumeMocks.findMany.mockResolvedValue([]);
+        dbAgentFileMountMocks.findMany.mockResolvedValue([]);
         dbAgentMocks.findFirstOrThrow.mockResolvedValue({
             id: "agent-opencode",
             name: "OpenCode",
@@ -136,7 +144,7 @@ describe("agent-template.service", () => {
                 containerMountPath: "/workspace",
                 size: 10000,
                 storageClassName: "longhorn",
-                agentId: "agent-opencode",
+                agentId: expect.stringMatching(/^agent-open-code-/),
             },
         });
         expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith("project-1");

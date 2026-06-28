@@ -1,7 +1,7 @@
 'use server'
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
-import { isAuthorizedWriteForAgent, isAuthorizedReadForAgent, getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedWriteForAgent, isAuthorizedReadForAgent, getAuthUserSession, simpleAction, isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload } from "@/server/utils/action-wrapper.utils";
 import { ensureDeleteAgentInProject, RequesterIdentity } from "@/server/utils/shared-authorization.utils";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
@@ -9,10 +9,11 @@ import podService from "@/server/services/pod.service";
 import eventService from "@/server/services/event.service";
 
 
-export const deployAgent = async (agentId: string) =>
+export const deployAgent = async (agentId: string, forceBuild = false) =>
     simpleAction(async () => {
-        await isAuthorizedWriteForAgent(agentId);
-        await agentService.deploy(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
+        const deploymentId = await agentService.deploy(agentId, forceBuild);
+        return new SuccessActionResult({ deploymentId }, 'Successfully started agent deployment.');
     });
 
 export const deleteAgent = async (agentId: string) =>
@@ -26,29 +27,14 @@ export const deleteAgent = async (agentId: string) =>
 
 export const getPodsForAgent = async (agentId: string) =>
     simpleAction(async () => {
-        await isAuthorizedReadForAgent(agentId);
+        await isAuthorizedReadForWorkload(agentId);
         const agent = await agentService.getById(agentId);
         return podService.getPodsForAgent(agent.projectId, agentId);
     });
 
 export const getAgentEvents = async (agentId: string) =>
     simpleAction(async () => {
-        await isAuthorizedReadForAgent(agentId);
+        await isAuthorizedReadForWorkload(agentId);
         const agent = await agentService.getById(agentId);
         return eventService.getEventsForAgent(agent.projectId, agentId);
-    });
-
-export const getAgentPodForTerminal = async (agentId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedReadForAgent(agentId);
-        const agent = await agentService.getById(agentId);
-        const pods = await podService.getPodsForAgent(agent.projectId, agentId);
-        if (pods.length === 0) {
-            throw new Error('No agent pod running.');
-        }
-        return {
-            podName: pods[0].podName,
-            containerName: pods[0].containerName,
-            namespace: agent.projectId,
-        };
     });

@@ -138,13 +138,13 @@ describe('agent-runtime.service', () => {
     });
 
     describe('startInstance', () => {
-        it('rejects Git sources until Agent build support exists', async () => {
+        it('starts Git source agents after the sandbox template has been deployed', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ sourceType: 'GIT' }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await expect(agentRuntimeService.startInstance(AGENT_ID, USER_ID)).rejects.toThrow(
-                'Git sources for Agents are saved but cannot be started yet.',
-            );
-            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalled();
         });
 
         it('creates virtual key restricted to agent model alias', async () => {

@@ -12,10 +12,20 @@ import agentGitSshKeyService from "./agent-git-ssh-key.service";
 type GitWorkloadType = 'app' | 'agent';
 type GitConnectionInfo = AppGitBranchesLookupModel & Pick<AppExtendedModel, 'id'> & { workloadType?: GitWorkloadType };
 type GitDockerfileDetectionInfo = GitConnectionInfo & Pick<AppExtendedModel, 'gitBranch'>;
+type GitContextInfo = {
+    id: string;
+    sourceType: string;
+    gitUrl?: string | null;
+    gitUsername?: string | null;
+    gitToken?: string | null;
+    gitBranch?: string | null;
+    dockerfilePath?: string | null;
+    workloadType?: GitWorkloadType;
+};
 
 class GitService {
 
-    async openGitContext<T>(app: AppExtendedModel, action: (ctx: InternalGitService) => Promise<T>): Promise<T> {
+    async openGitContext<T>(app: GitContextInfo, action: (ctx: InternalGitService) => Promise<T>): Promise<T> {
         try {
             let git: SimpleGit | undefined = undefined;
             let internalGitService: InternalGitService | undefined = undefined;
@@ -60,13 +70,13 @@ class GitService {
         return await this.openGitContext(input as AppExtendedModel, async (ctx) => ctx.detectDockerfilePath());
     }
 
-    private async cleanupLocalGitDataForApp(app: AppExtendedModel) {
+    private async cleanupLocalGitDataForApp(app: GitContextInfo) {
         const gitPath = PathUtils.gitRootPathForApp(app.id);
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
         await this.cleanupTempKeyFile(app);
     }
 
-    private async pullLatestChangesFromRepo(app: AppExtendedModel) {
+    private async pullLatestChangesFromRepo(app: GitContextInfo) {
         console.log(`Pulling latest source for app ${app.id}...`);
         const gitPath = PathUtils.gitRootPathForApp(app.id);
 
@@ -116,7 +126,7 @@ class GitService {
         await appGitSshKeyService.cleanupTempKeyFile(input.id);
     }
 
-    private mapGitConnectionError(error: unknown, sourceType: AppExtendedModel['sourceType']) {
+    private mapGitConnectionError(error: unknown, sourceType: string) {
         if (error instanceof Error) {
             if (error.message.includes('Permission denied')) {
                 if (sourceType === 'GIT_SSH') {
@@ -177,7 +187,7 @@ class GitService {
 class InternalGitService {
 
     constructor(private readonly git: SimpleGit,
-        private readonly app: AppExtendedModel
+        private readonly app: GitContextInfo
     ) { }
 
     async checkIfDockerfileExists() {

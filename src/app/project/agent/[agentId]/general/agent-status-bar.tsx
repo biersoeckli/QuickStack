@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Rocket, Trash2 } from "lucide-react";
+import { Hammer, Rocket, Trash2 } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -45,12 +45,12 @@ export default function AgentStatusBar({
         return () => clearInterval(interval);
     }, [fetchStatus]);
 
-    const handleDeploy = async () => {
+    const handleDeploy = async (forceBuild = false) => {
         try {
             await Toast.fromAction(
-                () => deployAgent(agent.id),
-                'Configuration deployed',
-                'Deploying configuration...',
+                () => deployAgent(agent.id, forceBuild),
+                forceBuild ? 'Rebuild started' : 'Configuration deployment started',
+                forceBuild ? 'Starting rebuild...' : 'Deploying configuration...',
             );
         } finally {
             fetchStatus();
@@ -78,6 +78,7 @@ export default function AgentStatusBar({
     }
 
     const hasInstances = instanceCount > 0;
+    const isGitSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH';
 
     return (
         <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg border bg-muted/30">
@@ -89,13 +90,19 @@ export default function AgentStatusBar({
                     {hasInstances ? `${runningCount}/${instanceCount} running` : "No instances"}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                    Last Deployment: {formatDateTime(templateInfo?.lastDeployedAt) || 'not deloyed yet'}</span>
+                    Last Deployment: {formatDateTime(templateInfo?.lastDeployedAt) || 'not deployed yet'}</span>
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={handleDeploy} disabled={loading} size="sm">
+                <Button onClick={() => handleDeploy(false)} disabled={loading} size="sm">
                     <Rocket className="h-4 w-4 mr-1" />
                     Deploy Configuration
                 </Button>
+                {isGitSource && (
+                    <Button onClick={() => handleDeploy(true)} disabled={loading} variant="secondary" size="sm">
+                        <Hammer className="h-4 w-4 mr-1" />
+                        Rebuild
+                    </Button>
+                )}
                 <Button onClick={handleDelete} disabled={loading} variant="destructive" size="sm">
                     <Trash2 className="h-4 w-4 mr-1" />
                     Delete

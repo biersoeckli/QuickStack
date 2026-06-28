@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { Bot, Settings } from "lucide-react";
+import { Bot, Hammer, Settings } from "lucide-react";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentModelConfigurationCard from "./general/agent-model-configuration-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
@@ -17,6 +17,7 @@ import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-i
 import DomainsCard from "@/components/custom/domains-card";
 import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volumes-card";
 import FileMountsCard from "@/components/custom/file-mounts-card";
+import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
 
 export default function AgentDetailClient({ agent, role, templateInfo }: {
     agent: AgentExtendedModel;
@@ -27,6 +28,7 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
     const searchParams = useSearchParams();
     const tabName = searchParams.get('tabName') || 'instances';
     const readonly = role !== RolePermissionEnum.READWRITE;
+    const hasGitSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH';
 
     const openTab = (tab: string) => {
         router.push(`/project/agent/${agent.id}?tabName=${tab}`);
@@ -37,6 +39,7 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
             <Tabs value={tabName} onValueChange={openTab}>
                 <TabsList>
                     <TabsTrigger value="instances"><Bot className="mr-2 h-4 w-4" /> Instances</TabsTrigger>
+                    {hasGitSource && <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>}
                     <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />Configuration</TabsTrigger>
                 </TabsList>
 
@@ -74,6 +77,18 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
                         agentDomains={agent.agentDomains}
                     />
                 </TabsContent>
+                {hasGitSource && (
+                    <TabsContent value="builds" className="pt-4">
+                        <WorkloadBuildsTable
+                            workloadId={agent.id}
+                            workloadType="agent"
+                            card
+                            title="Builds"
+                            description="Overview of build jobs for this Agent."
+                            hideSearchBar
+                        />
+                    </TabsContent>
+                )}
             </Tabs>
         </>
     );

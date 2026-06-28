@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession, isAuthorizedWriteForWorkload, saveFormAction, workloadExecutor } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload, saveFormAction, workloadExecutor } from "@/server/utils/action-wrapper.utils";
 import { simpleAction } from "@/server/utils/action-wrapper.utils";
 import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -13,6 +13,10 @@ import { FileMountEditModel, fileMountEditZodModel } from "@/shared/model/file-m
 import agentFileMountService from "@/server/services/agent-file-mount.service";
 import dataAccess from "@/server/adapter/db.client";
 import { z } from "zod";
+import buildService from "@/server/services/build.service";
+import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
+import { zodWorkloadType } from "@/shared/model/runtime-type.model";
+import { UserGroupUtils } from "@/shared/utils/role.utils";
 
 export const getQuickstackDomainSuffix = async () => simpleAction(async () => {
     await getAuthUserSession();
@@ -104,4 +108,41 @@ export const deleteFileMount = async (fileMountId: string, type: WorkloadType) =
                 await agentFileMountService.deleteFileMount(fileMountId);
             }
         });
+    });
+
+const workloadBuildsInputZod = z.object({
+    workloadId: z.string().optional(),
+    workloadType: zodWorkloadType.optional(),
+});
+
+export type WorkloadBuildsInput = z.infer<typeof workloadBuildsInputZod>;
+
+export const getWorkloadBuildsAction = async (input: WorkloadBuildsInput = {}) =>
+    simpleAction(async () => {
+        const validatedInput = workloadBuildsInputZod.parse(input);
+        if (validatedInput.workloadId) {
+            await isAuthorizedReadForWorkload(validatedInput.workloadId);
+            return buildService.getBuildsForWorkload(validatedInput.workloadId);
+        }
+
+        const session = await getAuthUserSession();
+        const builds = await buildService.getAllBuilds();
+        return builds.filter((build) => UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, build.workloadId));
+    });
+
+export const deleteWorkloadBuildAction = async (buildName: string, input: WorkloadBuildsInput = {}) =>
+    simpleAction(async () => {
+        const validatedInput = workloadBuildsInputZod.parse(input);
+        const buildWorkload = await buildService.getWorkloadByBuildName(buildName);
+
+        if (validatedInput.workloadId && buildWorkload.workloadId !== validatedInput.workloadId) {
+            throw new ServiceException('Build does not belong to this workload.');
+        }
+        if (validatedInput.workloadType && buildWorkload.workloadType !== validatedInput.workloadType) {
+            throw new ServiceException('Build does not belong to this workload type.');
+        }
+
+        await isAuthorizedWriteForWorkload(buildWorkload.workloadId);
+        await buildService.deleteBuild(buildName);
+        return new SuccessActionResult(undefined, 'Successfully stopped and deleted build.');
     });

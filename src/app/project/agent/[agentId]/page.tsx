@@ -7,6 +7,7 @@ import { RequesterIdentity, ensureReadProjectWorkload } from "@/server/utils/sha
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import AgentDetailClient from "./agent-detail-client";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 export default async function AgentDetailPage({
     params,
@@ -19,12 +20,7 @@ export default async function AgentDetailPage({
     ensureReadProjectWorkload(identity, resolvedParams.agentId);
 
     const agent = await agentService.getById(resolvedParams.agentId);
-    let templateDeploymentDetails = null;
-    try {
-        templateDeploymentDetails = await agentService.getSandboxTemplateDeployInfo(agent.id);
-    } catch (error) {
-        console.error("Error fetching template deployment details:", error);
-    }
+    const templateDeploymentDetails = await CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id));
     const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, resolvedParams.agentId);
 
     return (

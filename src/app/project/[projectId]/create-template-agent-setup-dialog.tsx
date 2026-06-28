@@ -120,10 +120,10 @@ export default function CreateTemplateAgentSetupDialog({
                                         <Fragment key={templateIndex}>
                                             {templateIndex > 0 && <div className="border-t pb-4"></div>}
                                             {agentTemplate.templates.length > 1 &&
-                                                <div className="text-xl font-semibold">{t.agentModel.name}</div>}
+                                                <div className="text-xl font-semibold">{t.name}</div>}
                                             <FormField
                                                 control={form.control}
-                                                name={`templates.${templateIndex}.agentModel.name` as any}
+                                                name={`templates.${templateIndex}.name` as any}
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Agent Name</FormLabel>

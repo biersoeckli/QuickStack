@@ -191,9 +191,6 @@ class AgentRuntimeService {
     async startInstance(agentId: string, userId: string): Promise<{ claimName: string }> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
-        if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
-            throw new ServiceException('Git sources for Agents are saved but cannot be started yet. Use a container image source or wait for Agent build support.');
-        }
 
         await this.ensureRuntimeSecret(agent);
 

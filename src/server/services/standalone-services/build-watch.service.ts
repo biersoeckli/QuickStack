@@ -5,10 +5,12 @@ import k3s from '../../adapter/kubernetes-api.adapter';
 import buildService from '../build.service';
 import deploymentService from '../deployment.service';
 import appService from '../app.service';
+import agentService from '../agent.service';
 import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
+import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -50,7 +52,9 @@ class BuildWatchService {
             }
         );
     }
-
+    /**
+     * TODO: Investigate this func for wrong behaviour: https://github.com/biersoeckli/QuickStack/issues/100
+     */
     private async scanExistingJobs() {
         console.log('[BuildWatch] Scanning existing build jobs...');
         try {
@@ -69,18 +73,22 @@ class BuildWatchService {
 
                 if (status === 'SUCCEEDED') {
                     // Check if deployment already reflects this build via git commit comparison
+                    const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE]
+                        ?? (job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] ? 'agent' : 'app');
                     const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+                    const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
                     const projectId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
                     const jobGitCommit = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
 
-                    if (!appId || !projectId) {
+                    if (!projectId || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
                         this.processedJobs.add(jobName);
                         continue;
                     }
 
                     try {
-                        const deployment = await deploymentService.getDeployment(projectId, appId);
-                        const deployedGitCommit = deployment?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
+                        const deployedGitCommit = workloadType === 'agent'
+                            ? (await agentSandboxAdapter.getSandboxTemplate(agentId!, projectId))?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT]
+                            : (await deploymentService.getDeployment(projectId, appId!))?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
 
                         if (jobGitCommit && deployedGitCommit && jobGitCommit === deployedGitCommit) {
                             // Already deployed with this commit
@@ -93,7 +101,7 @@ class BuildWatchService {
                             await this.handleSucceeded(job);
                         }
                     } catch (e) {
-                        console.error(`[BuildWatch] Error checking deployment for app ${appId}:`, e);
+                        console.error(`[BuildWatch] Error checking deployment for ${workloadType} ${appId ?? agentId}:`, e);
                         this.processedJobs.add(jobName);
                     }
                 }
@@ -122,34 +130,41 @@ class BuildWatchService {
     private async handleSucceeded(job: V1Job) {
         const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
         const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+        const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
+        const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE]
+            ?? (agentId ? 'agent' : 'app');
         const gitCommitHash = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
         const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
         const buildJobName = job.metadata?.name;
         const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
         const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
 
-        if (!deploymentId || !appId || !buildJobName) {
+        if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
             return;
         }
 
         try {
-            console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for app ${appId}`);
+            console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for ${workloadType} ${appId ?? agentId}`);
             await dlog(deploymentId, `*************************************`);
             await dlog(deploymentId, ` ✓ Build job completed successfully. `);
             await dlog(deploymentId, `*************************************`);
             await dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-            const app = await appService.getExtendedById(appId, false);
-            await deploymentService.createDeployment(
-                deploymentId,
-                app,
-                buildJobName,
-                gitCommitHash,
-                gitCommitMessage,
-                buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
-            );
+            if (workloadType === 'agent') {
+                await agentService.deployBuiltAgent(agentId!, deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
+            } else {
+                const app = await appService.getExtendedById(appId!, false);
+                await deploymentService.createDeployment(
+                    deploymentId,
+                    app,
+                    buildJobName,
+                    gitCommitHash,
+                    gitCommitMessage,
+                    buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+                );
+            }
         } catch (e) {
-            console.error(`[BuildWatch] Error triggering deployment for app ${appId}:`, e);
+            console.error(`[BuildWatch] Error triggering deployment for ${workloadType} ${appId ?? agentId}:`, e);
             if (deploymentId) {
                 await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
             }

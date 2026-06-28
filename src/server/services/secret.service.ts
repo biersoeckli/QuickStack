@@ -1,21 +1,34 @@
 import { V1Secret } from "@kubernetes/client-node";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
 class SecretService {
 
     async createOrUpdateDockerPullSecret(app: AppExtendedModel) {
-        if (this.appNeedsNoSecret(app)) {
+        if (this.workloadNeedsNoPullSecret(app)) {
             return;
         }
-        const dockerImage = app.containerImageSource;
-        const dockerUsername = app.containerRegistryUsername;
-        const dockerPassword = app.containerRegistryPassword;
+        return this.createOrUpdateDockerPullSecretForWorkload(app, KubeObjectNameUtils.toSecretId(app.id));
+    }
 
-        const secretName = KubeObjectNameUtils.toSecretId(app.id);
-        const namespace = app.projectId;
+    async createOrUpdateAgentDockerPullSecret(agent: AgentExtendedModel) {
+        if (this.workloadNeedsNoPullSecret(agent)) {
+            return;
+        }
+        return this.createOrUpdateDockerPullSecretForWorkload(agent, KubeObjectNameUtils.toSecretId(agent.id));
+    }
+
+    private async createOrUpdateDockerPullSecretForWorkload(
+        workload: Pick<AppExtendedModel, 'id' | 'projectId' | 'containerImageSource' | 'containerRegistryUsername' | 'containerRegistryPassword'>,
+        secretName: string,
+    ) {
+        const dockerImage = workload.containerImageSource;
+        const dockerUsername = workload.containerRegistryUsername;
+        const dockerPassword = workload.containerRegistryPassword;
+        const namespace = workload.projectId;
         let dockerServer = dockerImage!.split("/")[0];
 
         // if no registry url is provided, use Docker Hub
@@ -50,7 +63,7 @@ class SecretService {
     }
 
     async deleteUnusedSecrets(app: AppExtendedModel) {
-        if (this.appNeedsNoSecret(app)) {
+        if (this.workloadNeedsNoPullSecret(app)) {
             const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toSecretId(app.id));
             if (existingSecret) {
                 console.log(`Deleting secret ${existingSecret.metadata?.name}...`);
@@ -59,8 +72,14 @@ class SecretService {
         }
     }
 
-    private appNeedsNoSecret(app: { id: string; name: string; appType: string; projectId: string; sourceType: string; dockerfilePath: string; replicas: number; envVars: string; createdAt: Date; updatedAt: Date; project: { id: string; name: string; createdAt: Date; updatedAt: Date; }; appDomains: { id: string; createdAt: Date; updatedAt: Date; hostname: string; port: number; useSsl: boolean; redirectHttps: boolean; appId: string; }[]; appVolumes: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; size: number; accessMode: string; storageClassName: string; }[]; appPorts: { id: string; createdAt: Date; updatedAt: Date; port: number; appId: string; }[]; appFileMounts: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; content: string; }[]; containerImageSource?: string | null | undefined; containerRegistryUsername?: string | null | undefined; containerRegistryPassword?: string | null | undefined; gitUrl?: string | null | undefined; gitBranch?: string | null | undefined; gitUsername?: string | null | undefined; gitToken?: string | null | undefined; memoryReservation?: number | null | undefined; memoryLimit?: number | null | undefined; cpuReservation?: number | null | undefined; cpuLimit?: number | null | undefined; }) {
-        return app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH' || !app.containerImageSource || !app.containerRegistryUsername || !app.containerRegistryPassword;
+    async deleteUnusedAgentDockerPullSecret(agent: AgentExtendedModel) {
+        if (this.workloadNeedsNoPullSecret(agent)) {
+            await this.deleteSecretIfExists(agent.projectId, KubeObjectNameUtils.toSecretId(agent.id));
+        }
+    }
+
+    private workloadNeedsNoPullSecret(workload: { sourceType: string; containerImageSource?: string | null | undefined; containerRegistryUsername?: string | null | undefined; containerRegistryPassword?: string | null | undefined; }) {
+        return workload.sourceType === 'GIT' || workload.sourceType === 'GIT_SSH' || !workload.containerImageSource || !workload.containerRegistryUsername || !workload.containerRegistryPassword;
     }
 
     async createSecret(namespace: string, secretManifest: V1Secret) {

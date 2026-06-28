@@ -10,7 +10,7 @@ export class AgentTemplateUtils {
     ) {
         this.populateRandomValues(inputValues);
 
-        const agent = { ...agentTemplate.agentModel };
+        const { inputSettings, ...agent } = agentTemplate;
         const envVars: AgentEnvVarModel[] = [];
 
         for (const input of inputValues) {

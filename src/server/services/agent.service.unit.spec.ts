@@ -36,6 +36,8 @@ const sandboxMocks = vi.hoisted(() => ({
 const secretServiceMocks = vi.hoisted(() => ({
     getDecodedSecret: vi.fn(),
     deleteSecretSafe: vi.fn(),
+    createOrUpdateAgentDockerPullSecret: vi.fn(),
+    deleteUnusedAgentDockerPullSecret: vi.fn(),
 }));
 
 const liteLlmMocks = vi.hoisted(() => ({
@@ -68,6 +70,15 @@ const ingressServiceMocks = vi.hoisted(() => ({
     listAgentIngress: vi.fn(),
     deleteAgentIngress: vi.fn(),
     createOrUpdateAgentIngress: vi.fn(),
+}));
+
+const buildServiceMocks = vi.hoisted(() => ({
+    buildAgent: vi.fn(),
+    deleteAllBuildsOfAgent: vi.fn(),
+}));
+
+const registryServiceMocks = vi.hoisted(() => ({
+    createContainerRegistryUrlForAppId: vi.fn((id?: string) => id ? `localhost:30100/${id}:latest` : undefined),
 }));
 
 vi.mock('next/cache', () => ({
@@ -120,6 +131,12 @@ vi.mock('@/server/services/config-map.service', () => ({
 vi.mock('@/server/services/ingress.service', () => ({
     default: ingressServiceMocks,
 }));
+vi.mock('@/server/services/build.service', () => ({
+    default: buildServiceMocks,
+}));
+vi.mock('@/server/services/registry.service', () => ({
+    default: registryServiceMocks,
+}));
 
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
@@ -132,6 +149,7 @@ import agentRuntimeService from '@/server/services/agent-runtime.service';
 import pvcService from '@/server/services/pvc.service';
 import configMapService from '@/server/services/config-map.service';
 import ingressService from '@/server/services/ingress.service';
+import buildService from '@/server/services/build.service';
 import agentService from './agent.service';
 
 function mockAgent(id: string, name: string, projectId: string = 'proj-test-agent') {
@@ -429,17 +447,18 @@ describe('agent.service', () => {
             await expect(agentService.deploy('nonexistent')).rejects.toThrow();
         });
 
-        it('rejects deploy for Git sources until Agent build support exists', async () => {
+        it('schedules a build for Git sources and waits for BuildWatch to deploy', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
                 sourceType: 'GIT',
                 gitUrl: 'https://github.com/acme/agent.git',
                 gitBranch: 'main',
                 dockerfilePath: './Dockerfile',
             }) as any);
+            vi.mocked(buildService.buildAgent).mockResolvedValue(['build-agent-1', 'abc123', 'feat: test', false]);
 
-            await expect(agentService.deploy('agent-1')).rejects.toThrow(
-                'Git sources for Agents are saved but cannot be deployed yet.',
-            );
+            await agentService.deploy('agent-1');
+
+            expect(buildService.buildAgent).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ id: 'agent-1' }), false);
             expect(agentSandboxAdapter.reconcileSandboxTemplate).not.toHaveBeenCalled();
         });
 

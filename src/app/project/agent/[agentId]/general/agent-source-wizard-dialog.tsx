@@ -8,7 +8,7 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentDockerfileDetectionModel, AgentGitBranchesLookupModel, AgentSourceInfoInputModel } from "@/shared/model/agent-config.model";
-import { ChevronLeft, Loader2, Save } from "lucide-react";
+import { ChevronLeft, Loader2, Rocket, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import {
     getAgentGitBranches,
     saveAgentSource,
 } from "./actions";
+import { deployAgent } from "../overview/actions";
 import { ContainerImageStep } from "@/app/project/app/[appId]/general/app-source-wizard/container-image-step";
 import { DockerfilePathStep } from "@/app/project/app/[appId]/general/app-source-wizard/dockerfile-path-step";
 import { GitBranchStep } from "@/app/project/app/[appId]/general/app-source-wizard/git-branch-step";
@@ -195,8 +196,15 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
         }
     };
 
-    const save = async () => {
+    const save = async (deployAfterSave: boolean) => {
         await Toast.fromAction(() => saveAgentSource(null, formData, agent.id), 'Source saved', 'Saving source...');
+        if (deployAfterSave) {
+            await Toast.fromAction(() => deployAgent(agent.id, true), 'Deployment started', 'Starting deployment...');
+            closeDialog(true);
+            router.refresh();
+            router.push(`/project/agent/${agent.id}?tabName=general`);
+            return;
+        }
         closeDialog(true);
         router.refresh();
     };
@@ -291,12 +299,18 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
                             </Button>
                         )}
                     </div>
-                    <div>
+                    <div className="grid md:grid-cols-1 gap-2">
                         {step === 'summary' ? (
-                            <Button type="button" onClick={save}>
-                                <Save className="h-4 w-4" />
-                                Save
-                            </Button>
+                            <>
+                                <Button type="button" variant="secondary" onClick={() => save(false)}>
+                                    <Save className="h-4 w-4" />
+                                    Save
+                                </Button>
+                                <Button type="button" onClick={() => save(true)}>
+                                    <Rocket className="h-4 w-4" />
+                                    Save & Deploy
+                                </Button>
+                            </>
                         ) : step === 'branch' ? null : (
                             <Button type="button" onClick={next} disabled={nextDisabled}>
                                 {isLoadingBranches || isDetectingDockerfile ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
