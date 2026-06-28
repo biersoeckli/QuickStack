@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { stringToOptionalNumber } from "@/shared/utils/zod.utils";
 import { containerCommandArgsZodModel } from "@/shared/model/app-container-config.model";
+import {
+    appDockerfileDetectionZodModel,
+    appGitBranchesLookupZodModel,
+    appSourceInfoContainerZodModel,
+    appSourceInfoGitSshZodModel,
+    appSourceInfoGitZodModel,
+} from "@/shared/model/app-source-info.model";
 
 export const agentEnvVarModel = z.object({
     name: z
@@ -24,7 +31,16 @@ export const agentEnvVarFormModel = z.object({
 });
 
 export const agentConfigZodModel = z.object({
-    image: z.string().trim().nullish(),
+    sourceType: z.enum(["GIT", "GIT_SSH", "CONTAINER"]).default("CONTAINER"),
+    buildMethod: z.literal("DOCKERFILE").default("DOCKERFILE"),
+    containerImageSource: z.string().trim().nullish(),
+    containerRegistryUsername: z.string().trim().nullish(),
+    containerRegistryPassword: z.string().trim().nullish(),
+    gitUrl: z.string().trim().nullish(),
+    gitBranch: z.string().trim().nullish(),
+    gitUsername: z.string().trim().nullish(),
+    gitToken: z.string().trim().nullish(),
+    dockerfilePath: z.string().trim().nullish(),
     cpuRequest: stringToOptionalNumber,
     cpuLimit: stringToOptionalNumber,
     memoryRequest: stringToOptionalNumber,
@@ -83,12 +99,49 @@ export type AgentConfigInputModel = z.input<typeof agentConfigZodModel>;
 
 // ── Per-card schemas ──────────────────────────────────────────────
 
-export const agentSourceZodModel = agentConfigZodModel.pick({
-    image: true,
+export const agentModelConfigurationZodModel = agentConfigZodModel.pick({
     llmGatewayId: true,
     modelAlias: true,
 });
-export type AgentSourceModel = z.infer<typeof agentSourceZodModel>;
+export type AgentModelConfigurationModel = z.infer<typeof agentModelConfigurationZodModel>;
+
+export const agentSourceInfoGitZodModel = appSourceInfoGitZodModel.extend({
+    buildMethod: z.literal("DOCKERFILE").default("DOCKERFILE"),
+    dockerfilePath: z.string().trim().min(1, 'Path to Dockerfile is required.'),
+});
+export type AgentSourceInfoGitModel = z.infer<typeof agentSourceInfoGitZodModel>;
+
+export const agentSourceInfoGitSshZodModel = appSourceInfoGitSshZodModel.extend({
+    buildMethod: z.literal("DOCKERFILE").default("DOCKERFILE"),
+    dockerfilePath: z.string().trim().min(1, 'Path to Dockerfile is required.'),
+});
+export type AgentSourceInfoGitSshModel = z.infer<typeof agentSourceInfoGitSshZodModel>;
+
+export const agentSourceInfoContainerZodModel = appSourceInfoContainerZodModel;
+export type AgentSourceInfoContainerModel = z.infer<typeof agentSourceInfoContainerZodModel>;
+
+export const agentGitBranchesLookupZodModel = appGitBranchesLookupZodModel;
+export type AgentGitBranchesLookupModel = z.infer<typeof agentGitBranchesLookupZodModel>;
+
+export const agentDockerfileDetectionZodModel = appDockerfileDetectionZodModel;
+export type AgentDockerfileDetectionModel = z.infer<typeof agentDockerfileDetectionZodModel>;
+
+export const agentSourceInfoInputZodModel = z.object({
+    sourceType: z.enum(["GIT", "GIT_SSH", "CONTAINER"]),
+    buildMethod: z.literal("DOCKERFILE").default("DOCKERFILE"),
+    containerImageSource: z.string().nullish(),
+    containerRegistryUsername: z.string().nullish(),
+    containerRegistryPassword: z.string().nullish(),
+    gitUrl: z.string().trim().nullish(),
+    gitBranch: z.string().trim().nullish(),
+    gitUsername: z.string().trim().nullish(),
+    gitToken: z.string().trim().nullish(),
+    dockerfilePath: z.string().trim().nullish(),
+});
+export type AgentSourceInfoInputModel = z.infer<typeof agentSourceInfoInputZodModel>;
+
+export const agentSourceZodModel = agentSourceInfoInputZodModel;
+export type AgentSourceModel = AgentSourceInfoInputModel;
 
 export const agentRateLimitsZodModel = agentConfigZodModel.pick({
     cpuRequest: true,

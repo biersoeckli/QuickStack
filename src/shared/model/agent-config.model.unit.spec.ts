@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { agentConfigZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
+import { agentConfigZodModel, agentSourceInfoGitZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
 
 describe('agentConfigZodModel', () => {
 
@@ -110,7 +110,7 @@ describe('agentConfigZodModel', () => {
     describe('full config parsing', () => {
         it('accepts a complete valid config', () => {
             const result = agentConfigZodModel.safeParse({
-                image: 'my/image:latest',
+                containerImageSource: 'my/image:latest',
                 cpuRequest: '100m',
                 cpuLimit: '500m',
                 memoryRequest: '128Mi',
@@ -151,6 +151,30 @@ describe('agentConfigZodModel', () => {
         it('rejects warm pool replicas outside the allowed range', () => {
             expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '-1' }).success).toBe(false);
             expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '11' }).success).toBe(false);
+        });
+    });
+
+    describe('agent source parsing', () => {
+        it('requires Dockerfile path for Git source', () => {
+            const result = agentSourceInfoGitZodModel.safeParse({
+                gitUrl: 'https://github.com/acme/agent.git',
+                gitBranch: 'main',
+                buildMethod: 'DOCKERFILE',
+                dockerfilePath: '',
+            });
+
+            expect(result.success).toBe(false);
+        });
+
+        it('accepts Dockerfile Git source', () => {
+            const result = agentSourceInfoGitZodModel.safeParse({
+                gitUrl: 'https://github.com/acme/agent.git',
+                gitBranch: 'main',
+                buildMethod: 'DOCKERFILE',
+                dockerfilePath: './Dockerfile',
+            });
+
+            expect(result.success).toBe(true);
         });
     });
 });

@@ -17,6 +17,9 @@ All frontend rules are stored in `.agents/skills/frontend-ui-patterns/SKILL.md`,
 ## Testing
 All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, covering Vitest patterns, mocking, integration tests, and naming conventions.
 
+## Other
+When working with constants in application, use `src/shared/utils/constants.ts` for shared constants across frontend and backend.
+
 ## Development Setup
 
 1. Use provided devcontainer (includes Node, Bun, Prisma extension)
@@ -27,6 +30,9 @@ All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, cover
    - `yarn dev-live` - Custom server with WebSocket support (rebuilds TypeScript)
    - `yarn build` - Production build (Next.js + custom server compilation)
    - `yarn start-prod` - Run production build with custom server
+5. Database migrations (use always these commands):
+   - `yarn prisma-generate` - Generate Prisma client (with fix script for issues with generated zod schemas)
+   - `yarn prisma-migrate` - Generate and apply Prisma migrations to database
 
 ## Commit Convention
 

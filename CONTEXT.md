@@ -36,8 +36,16 @@ The number of pre-warmed idle sandbox instances QuickStack keeps available for a
 _Avoid_: app replicas, running agent instances
 
 **Agent Source**:
-The collection of container image, **LLM Gateway**, and **LiteLLM Model Alias** that defines where an Agent's runtime comes from and which model it uses.
+The **Source** QuickStack uses to build or run an **Agent**.
 _Avoid_: agent config, general settings
+
+**Agent Model Configuration**:
+The **LLM Gateway** and **LiteLLM Model Alias** selected for an **Agent**.
+_Avoid_: agent source when only model access is meant
+
+**Agent Template**:
+A reusable definition that can create one or more preconfigured **Agents** and their supporting Agent-specific resources.
+_Avoid_: fixed opencode runtime, app template when referring to Agent creation
 
 **Deploy (Agent)**:
 The explicit action that reconciles a saved **Agent** configuration from the database to Kubernetes SandboxTemplate and SandboxWarmPool resources.
@@ -119,7 +127,7 @@ A Git repository accessed through an SSH clone URL using an app-specific deploy 
 _Avoid_: SSH repo
 
 **Container Image Source**:
-A container image reference QuickStack uses to run an **App** without building from Git.
+A container image reference QuickStack uses to run an **App** or **Agent** without building from Git.
 _Avoid_: Docker Container when referring to the domain concept
 
 **Deploy Key**:
@@ -127,7 +135,7 @@ A public SSH key registered with a Git provider to grant repository access to a 
 _Avoid_: SSH key when specifically referring to the provider-side access grant
 
 **Git Branch**:
-The named Git ref selected as the source revision stream for an **App**.
+The named Git ref selected as the source revision stream for an **App** or **Agent**.
 _Avoid_: branch name when referring to the selected source branch
 
 **App Node Port**:
@@ -210,9 +218,11 @@ _Avoid_: manual initial port requirement
 - An **Agent Project** can contain zero or more **Agents** and no **Apps**.
 - An **Agent** belongs to exactly one **Agent Project**.
 - An **Agent** has exactly one **Agent Name**.
-- An **Agent** has exactly one **Agent Source** (image, **LLM Gateway**, and **LiteLLM Model Alias**).
+- An **Agent** has exactly one **Agent Source**.
+- An **Agent** has exactly one **Agent Model Configuration**.
 - An **Agent** has exactly one set of **Agent Rate Limits** that apply per sandbox container instance.
 - An **Agent** has exactly one **Agent Container Configuration**.
+- An **Agent Template** can create one or more **Agents**.
 - A **Deploy (Agent)** reconciles the saved **Agent** configuration to its Kubernetes SandboxTemplate and SandboxWarmPool.
 - An **Agent** can have zero or more **Agent Environment Variables**.
 - A running **Agent** has exactly one **Agent Runtime Secret**.

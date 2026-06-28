@@ -7,8 +7,10 @@ import { FsUtils } from "../utils/fs.utils";
 import path from "path";
 import appGitSshKeyService from "./app-git-ssh-key.service";
 import fs from "fs";
+import agentGitSshKeyService from "./agent-git-ssh-key.service";
 
-type GitConnectionInfo = AppGitBranchesLookupModel & Pick<AppExtendedModel, 'id'>;
+type GitWorkloadType = 'app' | 'agent';
+type GitConnectionInfo = AppGitBranchesLookupModel & Pick<AppExtendedModel, 'id'> & { workloadType?: GitWorkloadType };
 type GitDockerfileDetectionInfo = GitConnectionInfo & Pick<AppExtendedModel, 'gitBranch'>;
 
 class GitService {
@@ -36,7 +38,7 @@ class GitService {
         try {
             const git = simpleGit();
             const sshKeyPath = input.sourceType === 'GIT_SSH'
-                ? await appGitSshKeyService.writePrivateKeyToTempFile(input.id)
+                ? await this.writePrivateKeyToTempFile(input)
                 : undefined;
             if (sshKeyPath) {
                 git.env('GIT_SSH_COMMAND', this.getGitSshCommand(sshKeyPath));
@@ -49,7 +51,7 @@ class GitService {
             throw this.mapGitConnectionError(error, input.sourceType);
         } finally {
             if (input.sourceType === 'GIT_SSH') {
-                await appGitSshKeyService.cleanupTempKeyFile(input.id);
+                await this.cleanupTempKeyFile(input);
             }
         }
     }
@@ -61,7 +63,7 @@ class GitService {
     private async cleanupLocalGitDataForApp(app: AppExtendedModel) {
         const gitPath = PathUtils.gitRootPathForApp(app.id);
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
-        await appGitSshKeyService.cleanupTempKeyFile(app.id);
+        await this.cleanupTempKeyFile(app);
     }
 
     private async pullLatestChangesFromRepo(app: AppExtendedModel) {
@@ -73,7 +75,7 @@ class GitService {
 
         const git = simpleGit(gitPath);
         const sshKeyPath = app.sourceType === 'GIT_SSH'
-            ? await appGitSshKeyService.writePrivateKeyToTempFile(app.id)
+            ? await this.writePrivateKeyToTempFile(app)
             : undefined;
         if (sshKeyPath) {
             git.env('GIT_SSH_COMMAND', this.getGitSshCommand(sshKeyPath));
@@ -97,6 +99,21 @@ class GitService {
 
     private getGitSshCommand(sshConfigPath: string) {
         return `ssh -i ${sshConfigPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`;
+    }
+
+    private async writePrivateKeyToTempFile(input: { id: string; workloadType?: GitWorkloadType }) {
+        if (input.workloadType === 'agent') {
+            return agentGitSshKeyService.writePrivateKeyToTempFile(input.id);
+        }
+        return appGitSshKeyService.writePrivateKeyToTempFile(input.id);
+    }
+
+    private async cleanupTempKeyFile(input: { id: string; workloadType?: GitWorkloadType }) {
+        if (input.workloadType === 'agent') {
+            await agentGitSshKeyService.cleanupTempKeyFile(input.id);
+            return;
+        }
+        await appGitSshKeyService.cleanupTempKeyFile(input.id);
     }
 
     private mapGitConnectionError(error: unknown, sourceType: AppExtendedModel['sourceType']) {

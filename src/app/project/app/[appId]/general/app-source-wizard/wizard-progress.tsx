@@ -1,8 +1,7 @@
 import { cn } from "@/frontend/utils/utils";
-import { AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
-import { StepId, SourceType } from "./types";
+import { SourceType, SourceWizardInput, StepId } from "./types";
 
-export function WizardProgress({ step, formData }: { step: StepId; formData: AppSourceInfoInputModel }) {
+export function WizardProgress({ step, formData }: { step: StepId; formData: SourceWizardInput }) {
     const steps = getProgressSteps(formData.sourceType as SourceType);
     const currentIndex = Math.max(0, steps.findIndex((item) => item.id === step));
 

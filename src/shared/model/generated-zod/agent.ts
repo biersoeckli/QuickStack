@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel, CompleteAgentDomain, RelatedAgentDomainModel, CompleteAgentVolume, RelatedAgentVolumeModel, CompleteAgentFileMount, RelatedAgentFileMountModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel, CompleteAgentDomain, RelatedAgentDomainModel, CompleteAgentVolume, RelatedAgentVolumeModel, CompleteAgentFileMount, RelatedAgentFileMountModel, CompleteAgentGitSshKey, RelatedAgentGitSshKeyModel } from "./index"
 
 export const AgentModel = z.object({
   id: z.string(),
@@ -8,7 +8,16 @@ export const AgentModel = z.object({
   projectId: z.string(),
   llmGatewayId: z.string(),
   modelAlias: z.string(),
-  image: z.string().nullish(),
+  sourceType: z.string(),
+  buildMethod: z.string(),
+  containerImageSource: z.string().nullish(),
+  containerRegistryUsername: z.string().nullish(),
+  containerRegistryPassword: z.string().nullish(),
+  gitUrl: z.string().nullish(),
+  gitBranch: z.string().nullish(),
+  gitUsername: z.string().nullish(),
+  gitToken: z.string().nullish(),
+  dockerfilePath: z.string(),
   cpuRequest: z.number().int().nullish(),
   cpuLimit: z.number().int().nullish(),
   memoryRequest: z.number().int().nullish(),
@@ -29,6 +38,7 @@ export interface CompleteAgent extends z.infer<typeof AgentModel> {
   agentDomains: CompleteAgentDomain[]
   agentVolumes: CompleteAgentVolume[]
   agentFileMounts: CompleteAgentFileMount[]
+  agentGitSshKey?: CompleteAgentGitSshKey | null
 }
 
 /**
@@ -43,4 +53,5 @@ export const RelatedAgentModel: z.ZodSchema<CompleteAgent> = z.lazy(() => AgentM
   agentDomains: RelatedAgentDomainModel.array(),
   agentVolumes: RelatedAgentVolumeModel.array(),
   agentFileMounts: RelatedAgentFileMountModel.array(),
+  agentGitSshKey: RelatedAgentGitSshKeyModel.nullish(),
 }))

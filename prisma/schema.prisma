@@ -225,7 +225,19 @@ model Agent {
   llmGateway   LlmGateway @relation(fields: [llmGatewayId], references: [id], onDelete: Restrict)
   modelAlias   String
 
-  image            String?
+  sourceType       String @default("CONTAINER") // GIT, GIT_SSH, CONTAINER
+  buildMethod      String @default("DOCKERFILE") // DOCKERFILE
+
+  containerImageSource      String?
+  containerRegistryUsername String?
+  containerRegistryPassword String?
+
+  gitUrl         String?
+  gitBranch      String?
+  gitUsername    String?
+  gitToken       String?
+  dockerfilePath String  @default("./Dockerfile")
+
   cpuRequest       Int?
   cpuLimit         Int?
   memoryRequest    Int?
@@ -240,6 +252,18 @@ model Agent {
   agentDomains         AgentDomain[]
   agentVolumes         AgentVolume[]
   agentFileMounts      AgentFileMount[]
+  agentGitSshKey       AgentGitSshKey?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentGitSshKey {
+  id                  String @id @default(uuid())
+  agentId             String @unique
+  agent               Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  publicKey           String
+  encryptedPrivateKey String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

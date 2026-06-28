@@ -85,7 +85,16 @@ function mockAgent(overrides: Record<string, any> = {}) {
         llmGatewayId: GATEWAY.id,
         llmGateway: GATEWAY,
         modelAlias: 'gpt-4o',
-        image: null,
+        sourceType: 'CONTAINER',
+        buildMethod: 'DOCKERFILE',
+        containerImageSource: null,
+        containerRegistryUsername: null,
+        containerRegistryPassword: null,
+        gitUrl: null,
+        gitBranch: null,
+        gitUsername: null,
+        gitToken: null,
+        dockerfilePath: './Dockerfile',
         cpuRequest: null,
         cpuLimit: null,
         memoryRequest: null,
@@ -97,6 +106,7 @@ function mockAgent(overrides: Record<string, any> = {}) {
         agentDomains: [],
         agentVolumes: [],
         agentFileMounts: [],
+        agentGitSshKey: null,
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -128,6 +138,15 @@ describe('agent-runtime.service', () => {
     });
 
     describe('startInstance', () => {
+        it('rejects Git sources until Agent build support exists', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ sourceType: 'GIT' }) as any);
+
+            await expect(agentRuntimeService.startInstance(AGENT_ID, USER_ID)).rejects.toThrow(
+                'Git sources for Agents are saved but cannot be started yet.',
+            );
+            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+        });
+
         it('creates virtual key restricted to agent model alias', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');

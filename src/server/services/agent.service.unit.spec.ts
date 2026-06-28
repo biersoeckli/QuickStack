@@ -134,8 +134,6 @@ import configMapService from '@/server/services/config-map.service';
 import ingressService from '@/server/services/ingress.service';
 import agentService from './agent.service';
 
-const DEFAULT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
-
 function mockAgent(id: string, name: string, projectId: string = 'proj-test-agent') {
     return {
         id,
@@ -143,7 +141,16 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         projectId,
         llmGatewayId: 'gateway-1',
         modelAlias: 'gpt-4o',
-        image: null,
+        sourceType: 'CONTAINER',
+        buildMethod: 'DOCKERFILE',
+        containerImageSource: null,
+        containerRegistryUsername: null,
+        containerRegistryPassword: null,
+        gitUrl: null,
+        gitBranch: null,
+        gitUsername: null,
+        gitToken: null,
+        dockerfilePath: './Dockerfile',
         cpuRequest: null,
         cpuLimit: null,
         memoryRequest: null,
@@ -156,6 +163,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         agentDomains: [],
         agentVolumes: [],
         agentFileMounts: [],
+        agentGitSshKey: null,
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
     };
@@ -322,7 +330,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agents);
             expect(dataAccess.client.agent.findMany).toHaveBeenCalledWith({
                 where: { projectId: 'proj-test-agent' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true },
+                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true, agentGitSshKey: true },
                 orderBy: { name: 'asc' },
             });
         });
@@ -338,7 +346,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agent);
             expect(dataAccess.client.agent.findFirstOrThrow).toHaveBeenCalledWith({
                 where: { id: 'agent-1' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true },
+                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true, agentGitSshKey: true },
             });
         });
     });
@@ -347,7 +355,7 @@ describe('agent.service', () => {
         it('reconciles SandboxTemplate for OpenCode Web runtime', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue({
                 ...mockAgentWithRelations('agent-1', 'Agent One'),
-                image: 'custom/opencode:latest',
+                containerImageSource: 'custom/opencode:latest',
                 cpuRequest: 250,
                 cpuLimit: 1000,
                 memoryRequest: 512,
@@ -419,6 +427,20 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockRejectedValue(new Error('Agent not found'));
 
             await expect(agentService.deploy('nonexistent')).rejects.toThrow();
+        });
+
+        it('rejects deploy for Git sources until Agent build support exists', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                sourceType: 'GIT',
+                gitUrl: 'https://github.com/acme/agent.git',
+                gitBranch: 'main',
+                dockerfilePath: './Dockerfile',
+            }) as any);
+
+            await expect(agentService.deploy('agent-1')).rejects.toThrow(
+                'Git sources for Agents are saved but cannot be deployed yet.',
+            );
+            expect(agentSandboxAdapter.reconcileSandboxTemplate).not.toHaveBeenCalled();
         });
 
         it('rejects deploy when agent has running instances', async () => {
@@ -569,7 +591,7 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(existingAgent as any);
             vi.mocked(dataAccess.client.agent.update).mockResolvedValue({
                 ...existingAgent,
-                image: 'my-custom-image:latest',
+                containerImageSource: 'my-custom-image:latest',
                 cpuRequest: 200,
                 cpuLimit: 1000,
                 memoryRequest: 256,
@@ -578,9 +600,9 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue(existingAgent as any);
         });
 
-        it('saves image, cpu, memory, and system prompt config', async () => {
+        it('saves source image, cpu, memory, and system prompt config', async () => {
             const result = await agentService.saveConfig(agentId, {
-                image: 'my-custom-image:latest',
+                containerImageSource: 'my-custom-image:latest',
                 cpuRequest: 200,
                 cpuLimit: 1000,
                 memoryRequest: 256,
@@ -594,7 +616,7 @@ describe('agent.service', () => {
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
                 where: { id: agentId },
                 data: {
-                    image: 'my-custom-image:latest',
+                    containerImageSource: 'my-custom-image:latest',
                     cpuRequest: 200,
                     cpuLimit: 1000,
                     memoryRequest: 256,
@@ -605,20 +627,20 @@ describe('agent.service', () => {
                     systemPrompt: 'You are a helpful assistant.',
                 },
             });
-            expect(result.image).toBe('my-custom-image:latest');
+            expect(result.containerImageSource).toBe('my-custom-image:latest');
         });
 
         it('clears string config when empty strings are passed', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue({
                 ...existingAgent,
-                image: 'old-image:latest',
+                containerImageSource: 'old-image:latest',
                 systemPrompt: 'old prompt',
                 containerCommand: 'old-command',
                 containerArgs: '["old"]',
             } as any);
 
             await agentService.saveConfig(agentId, {
-                image: '',
+                containerImageSource: '',
                 systemPrompt: '',
                 containerCommand: [],
                 containerArgs: [],
@@ -627,7 +649,7 @@ describe('agent.service', () => {
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
                 where: { id: agentId },
                 data: {
-                    image: null,
+                    containerImageSource: null,
                     systemPrompt: null,
                     containerCommand: null,
                     containerArgs: null,
@@ -639,7 +661,7 @@ describe('agent.service', () => {
             const { CryptoUtils } = await import('@/server/utils/crypto.utils');
 
             await agentService.saveConfig(agentId, {
-                image: undefined,
+                containerImageSource: undefined,
                 envVars: [
                     { name: 'API_KEY', value: 'secret-123' },
                     { name: 'DB_PASSWORD', value: 'db-secret-456' },
@@ -665,7 +687,7 @@ describe('agent.service', () => {
 
             await expect(
                 agentService.saveConfig(agentId, {
-                    image: 'new-image:latest',
+                    containerImageSource: 'new-image:latest',
                     cpuRequest: undefined,
                     cpuLimit: undefined,
                     memoryRequest: undefined,
@@ -683,7 +705,7 @@ describe('agent.service', () => {
 
             await expect(
                 agentService.saveConfig(agentId, {
-                    image: undefined,
+                    containerImageSource: undefined,
                     cpuRequest: undefined,
                     cpuLimit: undefined,
                     memoryRequest: undefined,
@@ -701,7 +723,7 @@ describe('agent.service', () => {
 
             await expect(
                 agentService.saveConfig(agentId, {
-                    image: 'new-image:latest',
+                    containerImageSource: 'new-image:latest',
                     cpuRequest: 100,
                     systemPrompt: undefined,
                     envVars: undefined,
@@ -769,7 +791,7 @@ describe('agent.service', () => {
 
         it('does not send encryptedEnvVars when envVars is undefined', async () => {
             await agentService.saveConfig(agentId, {
-                image: 'new-image:latest',
+                containerImageSource: 'new-image:latest',
             });
 
             const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];

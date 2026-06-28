@@ -32,11 +32,12 @@ const OPENCODE_WEB_PORT = 4096;
 const FILEBROWSER_PORT = 80;
 const FILEBROWSER_BASE_URL = '/files';
 const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
+const DEFAULT_AGENT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
 
 type AgentSandboxTemplateConfig = {
     id: string;
     projectId: string;
-    image: string;
+    containerImageSource: string;
     modelAlias: string;
     llmGateway?: { baseUrl: string } | null;
     cpuRequest?: number | null;
@@ -65,6 +66,7 @@ class AgentService {
                     agentDomains: true,
                     agentVolumes: true,
                     agentFileMounts: true,
+                    agentGitSshKey: true,
                 },
                 orderBy: { name: 'asc' },
             }),
@@ -83,6 +85,7 @@ class AgentService {
                     agentDomains: true,
                     agentVolumes: true,
                     agentFileMounts: true,
+                    agentGitSshKey: true,
                 },
             }),
             [Tags.agent(agentId)],
@@ -125,7 +128,6 @@ class AgentService {
                     data: {
                         id: agentId,
                         name: input.name,
-                        image: input,
                         projectId: input.projectId,
                         llmGatewayId: input.llmGatewayId,
                         modelAlias: input.modelAlias,
@@ -164,8 +166,35 @@ class AgentService {
 
         // Compute diffs and validate before transaction
         const configFields: string[] = [];
-        if (config.image !== undefined && config.image !== existing.image) {
-            configFields.push('image');
+        if (config.sourceType !== undefined && config.sourceType !== existing.sourceType) {
+            configFields.push('sourceType');
+        }
+        if (config.buildMethod !== undefined && config.buildMethod !== existing.buildMethod) {
+            configFields.push('buildMethod');
+        }
+        if (config.containerImageSource !== undefined && config.containerImageSource !== existing.containerImageSource) {
+            configFields.push('containerImageSource');
+        }
+        if (config.containerRegistryUsername !== undefined && config.containerRegistryUsername !== existing.containerRegistryUsername) {
+            configFields.push('containerRegistryUsername');
+        }
+        if (config.containerRegistryPassword !== undefined && config.containerRegistryPassword !== existing.containerRegistryPassword) {
+            configFields.push('containerRegistryPassword');
+        }
+        if (config.gitUrl !== undefined && config.gitUrl !== existing.gitUrl) {
+            configFields.push('gitUrl');
+        }
+        if (config.gitBranch !== undefined && config.gitBranch !== existing.gitBranch) {
+            configFields.push('gitBranch');
+        }
+        if (config.gitUsername !== undefined && config.gitUsername !== existing.gitUsername) {
+            configFields.push('gitUsername');
+        }
+        if (config.gitToken !== undefined && config.gitToken !== existing.gitToken) {
+            configFields.push('gitToken');
+        }
+        if (config.dockerfilePath !== undefined && config.dockerfilePath !== existing.dockerfilePath) {
+            configFields.push('dockerfilePath');
         }
         if (config.cpuRequest !== undefined && config.cpuRequest !== existing.cpuRequest) {
             configFields.push('cpuRequest');
@@ -202,7 +231,7 @@ class AgentService {
         if (config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias) {
             configFields.push('modelAlias');
         }
-        const runtimeRelevant = ['image', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'containerCommand', 'containerArgs', 'warmPoolReplicas', 'llmGatewayId', 'modelAlias'];
+        const runtimeRelevant = ['sourceType', 'buildMethod', 'containerImageSource', 'containerRegistryUsername', 'containerRegistryPassword', 'gitUrl', 'gitBranch', 'gitUsername', 'gitToken', 'dockerfilePath', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'containerCommand', 'containerArgs', 'warmPoolReplicas', 'llmGatewayId', 'modelAlias'];
 
         if (isRunning) {
             const changedRuntime = configFields.some((f) => runtimeRelevant.includes(f));
@@ -260,7 +289,16 @@ class AgentService {
             return tx.agent.update({
                 where: { id: agentId },
                 data: {
-                    ...(config.image !== undefined ? { image: config.image || null } : {}),
+                    ...(config.sourceType !== undefined ? { sourceType: config.sourceType } : {}),
+                    ...(config.buildMethod !== undefined ? { buildMethod: config.buildMethod } : {}),
+                    ...(config.containerImageSource !== undefined ? { containerImageSource: config.containerImageSource || null } : {}),
+                    ...(config.containerRegistryUsername !== undefined ? { containerRegistryUsername: config.containerRegistryUsername || null } : {}),
+                    ...(config.containerRegistryPassword !== undefined ? { containerRegistryPassword: config.containerRegistryPassword || null } : {}),
+                    ...(config.gitUrl !== undefined ? { gitUrl: config.gitUrl || null } : {}),
+                    ...(config.gitBranch !== undefined ? { gitBranch: config.gitBranch || null } : {}),
+                    ...(config.gitUsername !== undefined ? { gitUsername: config.gitUsername || null } : {}),
+                    ...(config.gitToken !== undefined ? { gitToken: config.gitToken || null } : {}),
+                    ...(config.dockerfilePath !== undefined ? { dockerfilePath: config.dockerfilePath || './Dockerfile' } : {}),
                     ...(config.cpuRequest !== undefined ? { cpuRequest: config.cpuRequest ?? null } : {}),
                     ...(config.cpuLimit !== undefined ? { cpuLimit: config.cpuLimit ?? null } : {}),
                     ...(config.memoryRequest !== undefined ? { memoryRequest: config.memoryRequest ?? null } : {}),
@@ -301,6 +339,9 @@ class AgentService {
         if (!agent) {
             throw new ServiceException('Agent not found.');
         }
+        if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
+            throw new ServiceException('Git sources for Agents are saved but cannot be deployed yet. Use a container image source or wait for Agent build support.');
+        }
 
         await namespaceService.createNamespaceIfNotExists(agent.project.id);
 
@@ -335,7 +376,7 @@ class AgentService {
             await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
                 id: agent.id,
                 projectId: agent.project.id,
-                image: agent.image ?? null,
+                containerImageSource: agent.containerImageSource ?? DEFAULT_AGENT_IMAGE,
                 modelAlias: agent.modelAlias,
                 llmGateway: agent.llmGateway,
                 cpuRequest: agent.cpuRequest ?? null,
@@ -496,7 +537,7 @@ class AgentService {
     }
 
     private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig): KubernetesResource {
-        const effectiveImage = agent.image;
+        const effectiveImage = agent.containerImageSource;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const customCommand = parseStoredContainerCommandArray(agent.containerCommand);
         const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;

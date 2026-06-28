@@ -61,6 +61,7 @@ export function createPrismaTestContext(label: string) {
         await dataAccess.client.roleAppPermission.deleteMany();
         await dataAccess.client.roleAgentPermission.deleteMany();
         await dataAccess.client.roleProjectPermission.deleteMany();
+        await dataAccess.client.agentGitSshKey.deleteMany();
         // AppVolume has a self-referential relation; clear the FK first
         await dataAccess.client.appVolume.updateMany({ data: { sharedVolumeId: null } });
         await dataAccess.client.appVolume.deleteMany();
