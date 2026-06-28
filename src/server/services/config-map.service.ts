@@ -1,5 +1,5 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
@@ -72,7 +72,7 @@ class ConfigMapService {
         return { fileVolumeMounts, fileVolumes };
     }
 
-    async createOrUpdateConfigMapForAgent(agent: AgentWithRelationsModel) {
+    async createOrUpdateConfigMapForAgent(agent: AgentExtendedModel) {
 
         if (agent.agentFileMounts.length === 0) {
             return { fileVolumeMounts: [], fileVolumes: [] };
@@ -159,7 +159,7 @@ class ConfigMapService {
         }
     }
 
-    async deleteUnusedConfigMapsForAgent(agent: AgentWithRelationsModel) {
+    async deleteUnusedConfigMapsForAgent(agent: AgentExtendedModel) {
         const existingConfigMaps = await this.getConfigMapsForAgentFileMounts(agent.projectId, agent.id);
         for (const cm of existingConfigMaps) {
             if (!agent.agentFileMounts.some(fm => KubeObjectNameUtils.getConfigMapName(fm.id) === cm.metadata?.name)) {

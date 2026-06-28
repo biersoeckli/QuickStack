@@ -19,7 +19,12 @@ export default async function AgentDetailPage({
     ensureReadProjectWorkload(identity, resolvedParams.agentId);
 
     const agent = await agentService.getById(resolvedParams.agentId);
-    const templateDeploymentDetails = await agentService.getSandboxTemplateDeployInfo(agent.id);
+    let templateDeploymentDetails = null;
+    try {
+        templateDeploymentDetails = await agentService.getSandboxTemplateDeployInfo(agent.id);
+    } catch (error) {
+        console.error("Error fetching template deployment details:", error);
+    }
     const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, resolvedParams.agentId);
 
     return (
@@ -28,7 +33,7 @@ export default async function AgentDetailPage({
                 title={agent.name}
                 subtitle={`Agent · ${agent.project.name}`}
             />
-            <AgentDetailClient agent={agent} role={role} templateInfo={templateDeploymentDetails} />
+            <AgentDetailClient agent={agent} role={role} templateInfo={templateDeploymentDetails ?? undefined} />
         </div>
     );
 }

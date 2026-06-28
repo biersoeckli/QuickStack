@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDialog } from "@/frontend/states/zustand.states";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
 import { ReadonlyInfo } from "@/app/project/app/[appId]/general/app-source-wizard/readonly-info";
 import { defaultDockerfilePath, SourceType, sourceTypeLabels } from "@/app/project/app/[appId]/general/app-source-wizard/types";
@@ -11,7 +11,7 @@ import { PublicDeployKeyDialog } from "@/app/project/app/[appId]/general/app-sou
 import { AgentSourceWizardDialog } from "./agent-source-wizard-dialog";
 
 export default function AgentSourceCard({ agent, readonly }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     readonly: boolean;
 }) {
     const { openDialog } = useDialog();
@@ -73,7 +73,7 @@ function EmptySourceState({ readonly, onConnect }: { readonly: boolean; onConnec
     );
 }
 
-function ConfiguredSourceSummary({ agent, gitSshPublicKey }: { agent: AgentWithRelationsModel; gitSshPublicKey?: string }) {
+function ConfiguredSourceSummary({ agent, gitSshPublicKey }: { agent: AgentExtendedModel; gitSshPublicKey?: string }) {
     const { openDialog } = useDialog();
     const sourceType = agent.sourceType as SourceType;
     const isGitSource = sourceType === 'GIT' || sourceType === 'GIT_SSH';
@@ -133,7 +133,7 @@ function ConfiguredSourceSummary({ agent, gitSshPublicKey }: { agent: AgentWithR
     );
 }
 
-function isConfiguredSource(agent: AgentWithRelationsModel) {
+function isConfiguredSource(agent: AgentExtendedModel) {
     if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
         return !!agent.gitUrl?.trim() && !!agent.gitBranch?.trim() && !!agent.dockerfilePath?.trim();
     }

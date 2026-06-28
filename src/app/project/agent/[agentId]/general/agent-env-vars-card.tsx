@@ -15,7 +15,7 @@ import { useFormState } from "react-dom";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { saveAgentEnvVars } from "./actions";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 
 interface AgentEnvVarEntry {
     name: string;
@@ -32,7 +32,7 @@ function parseEncryptedEnvVars(raw: string | null): AgentEnvVarEntry[] {
 }
 
 export default function AgentEnvVarsCard({ agent, readonly }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     readonly: boolean;
 }) {
     const existingEnvVars = parseEncryptedEnvVars(agent.encryptedEnvVars ?? null);

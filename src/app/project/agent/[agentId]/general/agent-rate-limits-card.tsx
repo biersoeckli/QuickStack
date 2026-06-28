@@ -13,10 +13,10 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { toast } from "sonner";
 import { saveAgentRateLimits } from "./actions";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 
 export default function AgentRateLimitsCard({ agent, readonly }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     readonly: boolean;
 }) {
     const form = useForm<AgentRateLimitsModel>({

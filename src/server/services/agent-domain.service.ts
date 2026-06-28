@@ -3,15 +3,18 @@ import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { DomainEditModel } from "@/shared/model/domain-edit.model";
+import { Prisma } from "@prisma/client";
 import ingressService from "./ingress.service";
-import agentService from "./agent.service";
 
 class AgentDomainService {
 
-    async saveDomain(input: DomainEditModel & { agentId: string }) {
-        const existingAgent = await agentService.getById(input.agentId);
+    async saveDomain(input: DomainEditModel & { agentId: string }, db: Prisma.TransactionClient = dataAccess.client) {
 
-        const existingDomainWithSameHostname = await dataAccess.client.agentDomain.findUnique({
+        const existingAgent = await db.agent.findFirstOrThrow({
+            where: { id: input.agentId },
+        });
+
+        const existingDomainWithSameHostname = await db.agentDomain.findUnique({
             where: { hostname: input.hostname },
         });
         if (existingDomainWithSameHostname && existingDomainWithSameHostname.agentId !== input.agentId) {
@@ -20,19 +23,19 @@ class AgentDomainService {
 
         try {
             if (input.id) {
-                const existing = await dataAccess.client.agentDomain.findFirst({
+                const existing = await db.agentDomain.findFirst({
                     where: { id: input.id, agentId: input.agentId },
                 });
                 if (!existing) {
                     throw new ServiceException('Agent domain not found.');
                 }
-                await dataAccess.client.agentDomain.update({
+                await db.agentDomain.update({
                     where: { id: input.id },
                     data: input,
                 });
             } else {
                 const { id: _id, ...data } = input;
-                await dataAccess.client.agentDomain.create({
+                await db.agentDomain.create({
                     data,
                 });
             }
@@ -42,8 +45,9 @@ class AgentDomainService {
         }
     }
 
-    async deleteDomain(domainId: string) {
-        const domain = await dataAccess.client.agentDomain.findUnique({
+    async deleteDomain(domainId: string, tx?: Prisma.TransactionClient) {
+        const db = tx ?? dataAccess.client;
+        const domain = await db.agentDomain.findUnique({
             where: { id: domainId },
             include: { agent: true },
         });
@@ -51,13 +55,14 @@ class AgentDomainService {
             return;
         }
         try {
-            await ingressService.deleteAgentIngress(domain.hostname);
-            await dataAccess.client.agentDomain.delete({
+            await db.agentDomain.delete({
                 where: { id: domainId },
             });
         } finally {
-            revalidateTag(Tags.agent(domain.agentId));
-            revalidateTag(Tags.agents(domain.agent.projectId));
+            if (!tx) {
+                revalidateTag(Tags.agent(domain.agentId));
+                revalidateTag(Tags.agents(domain.agent.projectId));
+            }
         }
     }
 

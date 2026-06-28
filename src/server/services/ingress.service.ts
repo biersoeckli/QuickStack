@@ -7,7 +7,7 @@ import ingressSetupService from "./setup-services/ingress-setup.service";
 import { dlog } from "./deployment-logs.service";
 import { createHash } from "crypto";
 import { CryptoUtils } from "../utils/crypto.utils";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { AgentDomain } from "@prisma/client";
 import qsAuthProxyService, { QS_AUTH_PROXY_SERVICE_NAME, QS_AUTH_PROXY_SERVICE_PORT } from "./qs-auth-proxy.service";
@@ -116,7 +116,7 @@ class IngressService {
         await k3s.network.createNamespacedIngress(namespace, ingressDefinition);
     }
 
-    async createOrUpdateAgentIngress(agent: AgentWithRelationsModel, domain: AgentDomain) {
+    async createOrUpdateAgentIngress(agent: AgentExtendedModel, domain: AgentDomain) {
         const hostname = domain.hostname;
         const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         const resourceName = this.getAgentAccessResourceName(hostname);

@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FormUtils } from "@/frontend/utils/form.utilts";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import {
     agentContainerConfigZodModel,
     AgentContainerConfigModel,
@@ -21,7 +21,7 @@ import { saveAgentContainerConfig } from "./actions";
 import { parseStoredContainerCommandItems } from "@/shared/utils/container-command-args.utils";
 
 export default function AgentContainerConfigCard({ agent, readonly }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     readonly: boolean;
 }) {
     const form = useForm<AgentContainerConfigModel>({

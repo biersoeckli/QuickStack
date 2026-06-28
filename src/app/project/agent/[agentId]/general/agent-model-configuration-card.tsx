@@ -13,12 +13,12 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { saveAgentModelConfiguration } from "./actions";
 import { getLlmGateways, getModelAliasesForGateway } from "../../../[projectId]/actions";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { LlmGatewayModel } from "@/shared/model/llm-gateway.model";
 import { Loader2 } from "lucide-react";
 
 export default function AgentModelConfigurationCard({ agent, readonly }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     readonly: boolean;
 }) {
     const [gateways, setGateways] = useState<LlmGatewayModel[]>([]);

@@ -6,7 +6,7 @@ import { useDialogContext } from "@/frontend/states/dialog-context";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentDockerfileDetectionModel, AgentGitBranchesLookupModel, AgentSourceInfoInputModel } from "@/shared/model/agent-config.model";
 import { ChevronLeft, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -30,7 +30,7 @@ import { defaultDockerfilePath, SourceFormPatch, sourceTypeLabels, SourceType, S
 import { WizardProgress } from "@/app/project/app/[appId]/general/app-source-wizard/wizard-progress";
 
 export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
-    agent: AgentWithRelationsModel;
+    agent: AgentExtendedModel;
     gitSshPublicKey?: string;
 }) {
     const router = useRouter();
@@ -363,7 +363,7 @@ function resetForSourceType(current: AgentSourceInfoInputModel, sourceType: Sour
     };
 }
 
-function toSourceInput(agent: AgentWithRelationsModel): AgentSourceInfoInputModel {
+function toSourceInput(agent: AgentExtendedModel): AgentSourceInfoInputModel {
     return {
         sourceType: agent.sourceType as SourceType,
         buildMethod: 'DOCKERFILE',

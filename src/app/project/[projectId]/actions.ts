@@ -18,6 +18,8 @@ import {
 } from "@/server/utils/shared-authorization.utils";
 import agentService from "@/server/services/agent.service";
 import llmGatewayService from "@/server/services/llm-gateway.service";
+import agentTemplateService from "@/server/services/agent-template.service";
+import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-template.model";
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -53,6 +55,20 @@ export const createAppFromTemplate = async (prevState: any, inputData: AppTempla
             throw new ServiceException('Please fill out all required fields.');
         }
         await appTemplateService.createAppFromTemplate(projectId, validatedData);
+    });
+
+export const createAgentFromTemplate = async (prevState: any, inputData: AgentTemplateModel, projectId: string) =>
+    saveFormAction(inputData, agentTemplateZodModel, async (validatedData) => {
+        const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureCreateProjectWorkloadInProject(identity, projectId);
+        if (validatedData.templates.some(x => x.inputSettings.some(y => !y.randomGeneratedIfEmpty && !y.value))) {
+            throw new ServiceException('Please fill out all required fields.');
+        }
+        if (validatedData.templates.some(x => !x.llmGatewayId || !x.modelAlias)) {
+            throw new ServiceException('Please select an LLM Gateway and model alias for each Agent.');
+        }
+        await agentTemplateService.createAgentFromTemplate(projectId, validatedData);
     });
 
 export const createAgent = async (agentName: string, projectId: string, llmGatewayId: string, modelAlias: string) =>

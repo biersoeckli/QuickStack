@@ -10,7 +10,7 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
@@ -19,7 +19,7 @@ import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 
 class AgentRuntimeService {
 
-    private async getAgentOrThrow(agentId: string): Promise<AgentWithRelationsModel> {
+    private async getAgentOrThrow(agentId: string): Promise<AgentExtendedModel> {
         const agent = await dataAccess.client.agent.findUnique({
             where: { id: agentId },
             include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true, agentGitSshKey: true },
@@ -69,7 +69,7 @@ class AgentRuntimeService {
      * Ensures the agent runtime secret exists.
      * Creates a new LiteLLM virtual key and secret if missing; reuses existing if present.
      */
-    private async ensureRuntimeSecret(agent: AgentWithRelationsModel): Promise<void> {
+    private async ensureRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
         const namespace = agent.project.id;
         const secretName = this.toSecretName(agent.id);
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);

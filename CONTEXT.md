@@ -39,6 +39,10 @@ _Avoid_: app replicas, running agent instances
 The **Source** QuickStack uses to build or run an **Agent**.
 _Avoid_: agent config, general settings
 
+**Agent Build Output**:
+The internal container image produced from an **Agent Source** and used by the Agent's SandboxTemplate.
+_Avoid_: agent source, saved container image source
+
 **Agent Model Configuration**:
 The **LLM Gateway** and **LiteLLM Model Alias** selected for an **Agent**.
 _Avoid_: agent source when only model access is meant

@@ -2,15 +2,16 @@
 
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { UserSession } from "@/shared/model/sim-session.model";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { CreateAgentDialog } from "./create-agent-dialog";
 import { useRouter } from "next/navigation";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import CreateProjectActions from "./create-project-actions";
 
 interface AgentListClientProps {
-    agents: AgentWithRelationsModel[];
+    agents: AgentExtendedModel[];
     session: UserSession;
     projectId: string;
 }
@@ -38,9 +39,7 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                     Create your first Agent to get started.
                 </p>
                 <div className="mt-4">
-                    <CreateAgentDialog projectId={projectId}>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Create Agent</Button>
-                    </CreateAgentDialog>
+                    <CreateProjectActions projectId={projectId} projectType="agent" />
                 </div>
             </div>
         );
@@ -48,16 +47,9 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
 
     return (
         <div className="space-y-4">
-            {canCreate && (
-                <div className="flex justify-end">
-                    <CreateAgentDialog projectId={projectId}>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Create Agent</Button>
-                    </CreateAgentDialog>
-                </div>
-            )}
             <SimpleDataTable
                 columns={[
-                    ['name', 'Name', true, (item: AgentWithRelationsModel) => (
+                    ['name', 'Name', true, (item: AgentExtendedModel) => (
                         <span
                             className="font-medium cursor-pointer hover:underline"
                             onClick={() => router.push(`/project/agent/${item.id}`)}
@@ -67,7 +59,7 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                     )],
                     ['llmGateway.name', 'LLM Gateway', true],
                     ['modelAlias', 'Model Alias', true],
-                    ['createdAt', 'Created', true, (item: AgentWithRelationsModel) =>
+                    ['createdAt', 'Created', true, (item: AgentExtendedModel) =>
                         new Date(item.createdAt).toLocaleDateString()
                     ],
                 ]}

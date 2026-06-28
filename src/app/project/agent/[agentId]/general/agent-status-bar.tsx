@@ -9,7 +9,7 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { getInstances } from "../instances/actions";
 import { deployAgent, deleteAgent } from "../overview/actions";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 
@@ -18,8 +18,8 @@ export default function AgentStatusBar({
     readonly,
     templateInfo
 }: {
-    agent: AgentWithRelationsModel;
-    templateInfo: AgentSanboxTemplateInfo;
+    agent: AgentExtendedModel;
+    templateInfo?: AgentSanboxTemplateInfo;
     readonly: boolean;
 }) {
     const router = useRouter();
@@ -89,7 +89,7 @@ export default function AgentStatusBar({
                     {hasInstances ? `${runningCount}/${instanceCount} running` : "No instances"}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                    Last Deployment: {formatDateTime(templateInfo.lastDeployedAt) || 'not deloyed yet'}</span>
+                    Last Deployment: {formatDateTime(templateInfo?.lastDeployedAt) || 'not deloyed yet'}</span>
             </div>
             <div className="flex items-center gap-2">
                 <Button onClick={handleDeploy} disabled={loading} size="sm">

@@ -1,8 +1,9 @@
 import { revalidateTag, unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Agent, AgentVolume } from "@prisma/client";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import agentSandboxAdapter, {
@@ -21,6 +22,9 @@ import secretService from "./secret.service";
 import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
+import agentDomainService from "./agent-domain.service";
+import agentVolumeService from "./agent-volume.service";
+import agentFileMountService from "./agent-file-mount.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import {
     parseStoredContainerCommandArray,
@@ -56,7 +60,7 @@ type AgentSandboxTemplateConfig = {
 
 class AgentService {
 
-    async getAllByProjectId(projectId: string): Promise<AgentWithRelationsModel[]> {
+    async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
         return await unstable_cache(
             async (pid: string) => dataAccess.client.agent.findMany({
                 where: { projectId: pid },
@@ -75,7 +79,20 @@ class AgentService {
         )(projectId);
     }
 
-    async getById(agentId: string): Promise<AgentWithRelationsModel> {
+    async getById(agentId: string, tx?: Prisma.TransactionClient): Promise<AgentExtendedModel> {
+        if (tx) {
+            return await tx.agent.findFirstOrThrow({
+                where: { id: agentId },
+                include: {
+                    project: true,
+                    llmGateway: true,
+                    agentDomains: true,
+                    agentVolumes: true,
+                    agentFileMounts: true,
+                    agentGitSshKey: true,
+                },
+            });
+        }
         return await unstable_cache(
             async (id: string) => dataAccess.client.agent.findFirstOrThrow({
                 where: { id },
@@ -143,6 +160,199 @@ class AgentService {
             revalidateTag(Tags.agents(input.projectId));
             revalidateTag(Tags.projects());
         }
+    }
+
+    /**
+     * Upserts an Agent along with its sub-resources (domains, volumes, file mounts)
+     * in a single transaction. Delegates per-item save logic to the respective
+     * sub-services ({@link agentDomainService}, {@link agentVolumeService},
+     * {@link agentFileMountService}).
+     *
+     * - If {@link AgentExtendedWriteModel.id} is provided and the agent exists → update.
+     * - If the id is provided but no agent exists → create with that id.
+     * - If the id is absent → create with a generated id.
+     *
+     * When called inside an existing transaction pass the `tx`; cache revalidation
+     * is deferred to the caller.  When called standalone (no `tx`) the method wraps
+     * everything in a new `$transaction` and revalidates caches itself.
+     */
+    async saveAgentExtendedModel(
+        agent: AgentExtendedWriteModel,
+        tx?: Prisma.TransactionClient,
+    ): Promise<AgentExtendedModel> {
+        const run = async (tx: Prisma.TransactionClient) => {
+            let savedAgentId: string;
+
+            if (agent.id) {
+                const existing = await tx.agent.findUnique({ where: { id: agent.id } });
+                if (existing) {
+                    await tx.agent.update({
+                        where: { id: agent.id },
+                        data: {
+                            name: agent.name,
+                            projectId: agent.projectId,
+                            llmGatewayId: agent.llmGatewayId,
+                            modelAlias: agent.modelAlias,
+                            sourceType: agent.sourceType,
+                            buildMethod: agent.buildMethod,
+                            containerImageSource: agent.containerImageSource ?? null,
+                            containerRegistryUsername: agent.containerRegistryUsername ?? null,
+                            containerRegistryPassword: agent.containerRegistryPassword ?? null,
+                            gitUrl: agent.gitUrl ?? null,
+                            gitBranch: agent.gitBranch ?? null,
+                            gitUsername: agent.gitUsername ?? null,
+                            gitToken: agent.gitToken ?? null,
+                            dockerfilePath: agent.dockerfilePath,
+                            cpuRequest: agent.cpuRequest ?? null,
+                            cpuLimit: agent.cpuLimit ?? null,
+                            memoryRequest: agent.memoryRequest ?? null,
+                            memoryLimit: agent.memoryLimit ?? null,
+                            systemPrompt: agent.systemPrompt ?? null,
+                            encryptedEnvVars: agent.encryptedEnvVars ?? null,
+                            containerCommand: agent.containerCommand ?? null,
+                            containerArgs: agent.containerArgs ?? null,
+                            warmPoolReplicas: agent.warmPoolReplicas,
+                        },
+                    });
+                } else {
+                    await tx.agent.create({
+                        data: {
+                            id: agent.id,
+                            name: agent.name,
+                            projectId: agent.projectId,
+                            llmGatewayId: agent.llmGatewayId,
+                            modelAlias: agent.modelAlias,
+                            sourceType: agent.sourceType,
+                            buildMethod: agent.buildMethod,
+                            containerImageSource: agent.containerImageSource ?? null,
+                            containerRegistryUsername: agent.containerRegistryUsername ?? null,
+                            containerRegistryPassword: agent.containerRegistryPassword ?? null,
+                            gitUrl: agent.gitUrl ?? null,
+                            gitBranch: agent.gitBranch ?? null,
+                            gitUsername: agent.gitUsername ?? null,
+                            gitToken: agent.gitToken ?? null,
+                            dockerfilePath: agent.dockerfilePath,
+                            cpuRequest: agent.cpuRequest ?? null,
+                            cpuLimit: agent.cpuLimit ?? null,
+                            memoryRequest: agent.memoryRequest ?? null,
+                            memoryLimit: agent.memoryLimit ?? null,
+                            systemPrompt: agent.systemPrompt ?? null,
+                            encryptedEnvVars: agent.encryptedEnvVars ?? null,
+                            containerCommand: agent.containerCommand ?? null,
+                            containerArgs: agent.containerArgs ?? null,
+                            warmPoolReplicas: agent.warmPoolReplicas,
+                        },
+                    });
+                }
+                savedAgentId = agent.id;
+            } else {
+                const agentId = KubeObjectNameUtils.toAgentId(agent.name);
+                await tx.agent.create({
+                    data: {
+                        id: agentId,
+                        name: agent.name,
+                        projectId: agent.projectId,
+                        llmGatewayId: agent.llmGatewayId,
+                        modelAlias: agent.modelAlias,
+                        sourceType: agent.sourceType,
+                        buildMethod: agent.buildMethod,
+                        containerImageSource: agent.containerImageSource ?? null,
+                        containerRegistryUsername: agent.containerRegistryUsername ?? null,
+                        containerRegistryPassword: agent.containerRegistryPassword ?? null,
+                        gitUrl: agent.gitUrl ?? null,
+                        gitBranch: agent.gitBranch ?? null,
+                        gitUsername: agent.gitUsername ?? null,
+                        gitToken: agent.gitToken ?? null,
+                        dockerfilePath: agent.dockerfilePath,
+                        cpuRequest: agent.cpuRequest ?? null,
+                        cpuLimit: agent.cpuLimit ?? null,
+                        memoryRequest: agent.memoryRequest ?? null,
+                        memoryLimit: agent.memoryLimit ?? null,
+                        systemPrompt: agent.systemPrompt ?? null,
+                        encryptedEnvVars: agent.encryptedEnvVars ?? null,
+                        containerCommand: agent.containerCommand ?? null,
+                        containerArgs: agent.containerArgs ?? null,
+                        warmPoolReplicas: agent.warmPoolReplicas,
+                    },
+                });
+                savedAgentId = agentId;
+            }
+
+            // Sub-resources via dedicated sub-services
+            for (const domain of agent.agentDomains) {
+                await agentDomainService.saveDomain({
+                    id: domain.id,
+                    hostname: domain.hostname,
+                    port: domain.port,
+                    useSsl: domain.useSsl,
+                    redirectHttps: domain.redirectHttps,
+                    agentId: savedAgentId,
+                }, tx);
+            }
+            // Delete sub-items that are no longer in the incoming model
+            {
+                const existingDomains = await tx.agentDomain.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agent.agentDomains.map((d) => d.id).filter(Boolean) as string[]);
+                for (const existing of existingDomains) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentDomainService.deleteDomain(existing.id, tx);
+                    }
+                }
+            }
+
+            for (const volume of agent.agentVolumes) {
+                await agentVolumeService.saveVolume({
+                    id: volume.id,
+                    containerMountPath: volume.containerMountPath,
+                    size: volume.size,
+                    storageClassName: volume.storageClassName as "longhorn",
+                    agentId: savedAgentId,
+                }, tx);
+            }
+            // Delete volumes that are no longer in the incoming model
+            {
+                const existingVolumes = await tx.agentVolume.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agent.agentVolumes.map((v) => v.id).filter(Boolean) as string[]);
+                for (const existing of existingVolumes) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentVolumeService.deleteVolume(existing.id, tx);
+                    }
+                }
+            }
+
+            for (const fileMount of agent.agentFileMounts) {
+                await agentFileMountService.saveFileMount({
+                    id: fileMount.id,
+                    containerMountPath: fileMount.containerMountPath,
+                    content: fileMount.content,
+                    agentId: savedAgentId,
+                }, tx);
+            }
+            // Delete file mounts that are no longer in the incoming model
+            {
+                const existingFileMounts = await tx.agentFileMount.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agent.agentFileMounts.map((f) => f.id).filter(Boolean) as string[]);
+                for (const existing of existingFileMounts) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentFileMountService.deleteFileMount(existing.id, tx);
+                    }
+                }
+            }
+
+            return await this.getById(savedAgentId, tx);
+        };
+
+        if (tx) {
+            return await run(tx);
+        }
+
+        const result = await dataAccess.client.$transaction(async (innerTx) => {
+            return await run(innerTx);
+        });
+
+        revalidateTag(Tags.agent(result.id));
+        revalidateTag(Tags.agents(result.projectId));
+        return result;
     }
 
     /**

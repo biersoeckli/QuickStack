@@ -36,7 +36,7 @@ export default async function AppsPage({
                     title="Agents"
                     subtitle={`Agent Project "${project.name}"`}>
                     {UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId) &&
-                        <CreateProjectActions projectId={projectId} />}
+                        <CreateProjectActions projectId={projectId} projectType="agent" />}
                 </PageTitle>
                 <AgentListClient agents={agents} session={session} projectId={projectId} />
                 <ProjectBreadcrumbs project={project} />
@@ -54,7 +54,7 @@ export default async function AppsPage({
                 title="Apps"
                 subtitle={`App Project "${project.name}"`}>
                 {UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId) &&
-                    <CreateProjectActions projectId={projectId} />}
+                    <CreateProjectActions projectId={projectId} projectType="app" />}
             </PageTitle>
             <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />
             <ProjectBreadcrumbs project={project} />

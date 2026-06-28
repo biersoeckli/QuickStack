@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentWithRelationsModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { Bot, Settings } from "lucide-react";
 import AgentSourceCard from "./general/agent-source-card";
@@ -19,8 +19,8 @@ import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volume
 import FileMountsCard from "@/components/custom/file-mounts-card";
 
 export default function AgentDetailClient({ agent, role, templateInfo }: {
-    agent: AgentWithRelationsModel;
-    templateInfo: AgentSanboxTemplateInfo;
+    agent: AgentExtendedModel;
+    templateInfo?: AgentSanboxTemplateInfo;
     role: RolePermissionEnum | null;
 }) {
     const router = useRouter();
