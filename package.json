@@ -16,13 +16,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "openapi-generate": "bash update-k8s-custom-crds.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
     "@elysiajs/openapi": "^1.4.15",
     "@hookform/resolvers": "3.10.0",
-    "@kubernetes/client-node": "^0.22.2",
+    "@kubernetes/client-node": "^1.4.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/adapter-better-sqlite3": "^7.1.0",
     "@prisma/client": "7.1.0",

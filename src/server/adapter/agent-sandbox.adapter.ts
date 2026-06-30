@@ -1,6 +1,7 @@
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import k3s from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 export const SANDBOX_API_VERSION = 'v1beta1';
@@ -34,7 +35,7 @@ class AgentSandboxAdapter {
         }
     }
 
-    async getSandboxTemplate(name: string, namespace: string): Promise<KubernetesResource> {
+    async getSandboxTemplate(name: string, namespace: string): Promise<SandboxTemplate> {
         try {
             const response = await k3s.customObjects.getNamespacedCustomObject(
                 SANDBOX_API_GROUP,
@@ -59,14 +60,14 @@ class AgentSandboxAdapter {
      * Creates or updates a SandboxTemplate custom resource.
      * The caller is responsible for constructing the full KubernetesResource.
      */
-    async reconcileSandboxTemplate(resource: KubernetesResource): Promise<void> {
+    async reconcileSandboxTemplate(resource: SandboxTemplate): Promise<void> {
         this.assertResourceKind(resource, 'SandboxTemplate', TEMPLATE_PLURAL);
         try {
-            await this.applyCustomResource(resource, resource.metadata.namespace!, TEMPLATE_PLURAL);
+            await this.applyCustomResource(resource, resource.metadata!.namespace!, TEMPLATE_PLURAL);
         } catch (error: any) {
-            console.error(`Failed to reconcile SandboxTemplate "${resource.metadata.name}":`, JSON.stringify(error));
+            console.error(`Failed to reconcile SandboxTemplate "${resource.metadata!.name}":`, JSON.stringify(error));
             throw new ServiceException(
-                `Failed to reconcile SandboxTemplate "${resource.metadata.name}": ${error?.message || error}`,
+                `Failed to reconcile SandboxTemplate "${resource.metadata!.name}": ${error?.message || error}`,
             );
         }
     }
@@ -75,14 +76,14 @@ class AgentSandboxAdapter {
      * Creates or updates a SandboxWarmPool custom resource.
      * The caller is responsible for constructing the full KubernetesResource.
      */
-    async reconcileSandboxWarmPool(resource: KubernetesResource): Promise<void> {
+    async reconcileSandboxWarmPool(resource: SandboxWarmPool): Promise<void> {
         this.assertResourceKind(resource, 'SandboxWarmPool', WARMPOOL_PLURAL);
         try {
-            await this.applyCustomResource(resource, resource.metadata.namespace!, WARMPOOL_PLURAL);
+            await this.applyCustomResource(resource, resource.metadata!.namespace!, WARMPOOL_PLURAL);
         } catch (error: any) {
-            console.error(`Failed to reconcile SandboxWarmPool "${resource.metadata.name}":`, error);
+            console.error(`Failed to reconcile SandboxWarmPool "${resource.metadata!.name}":`, error);
             throw new ServiceException(
-                `Failed to reconcile SandboxWarmPool "${resource.metadata.name}": ${error?.message || error}`,
+                `Failed to reconcile SandboxWarmPool "${resource.metadata!.name}": ${error?.message || error}`,
             );
         }
     }
@@ -139,7 +140,7 @@ class AgentSandboxAdapter {
     async listSandboxClaims(
         namespace: string,
         labelSelector?: string,
-    ): Promise<KubernetesResource[]> {
+    ): Promise<SandboxClaim[]> {
         try {
             const response = await k3s.customObjects.listNamespacedCustomObject(
                 SANDBOX_API_GROUP,
@@ -165,10 +166,10 @@ class AgentSandboxAdapter {
      * Creates a SandboxClaim custom resource.
      * The caller is responsible for constructing the full KubernetesResource.
      */
-    async createSandboxClaim(resource: KubernetesResource): Promise<void> {
+    async createSandboxClaim(resource: SandboxClaim): Promise<void> {
         this.assertResourceKind(resource, 'SandboxClaim', CLAIM_PLURAL);
-        const name = resource.metadata.name!;
-        const namespace = resource.metadata.namespace!;
+        const name = resource.metadata!.name!;
+        const namespace = resource.metadata!.namespace!;
 
         try {
             await k3s.customObjects.getNamespacedCustomObject(
@@ -209,7 +210,7 @@ class AgentSandboxAdapter {
         }
     }
 
-    async getSandboxClaim(name: string, namespace: string): Promise<KubernetesResource | null> {
+    async getSandboxClaim(name: string, namespace: string): Promise<SandboxClaim | null> {
         try {
             const response = await k3s.customObjects.getNamespacedCustomObject(
                 SANDBOX_API_GROUP,
@@ -319,7 +320,7 @@ class AgentSandboxAdapter {
         namespace: string,
         plural: string,
     ): Promise<void> {
-        const name = resource.metadata.name!;
+        const name = resource.metadata!.name!;
 
         try {
             // Try to read existing resource

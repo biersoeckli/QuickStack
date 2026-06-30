@@ -2,7 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { Prisma } from "@prisma/client";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { Agent, AgentVolume } from "@prisma/client";
+import { Agent } from "@prisma/client";
 import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -34,6 +34,8 @@ import {
 import buildService from "./build.service";
 import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
+import { SandboxTemplate, SandboxWarmPool, } from "../adapter/api-clients/types/agents.models";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 const OPENCODE_WORKDIR = '/workspace';
 const OPENCODE_WEB_PORT = 4096;
@@ -63,6 +65,10 @@ type AgentSandboxTemplateConfig = {
 };
 
 class AgentService {
+
+    async agentClaimsAreInstalled() {
+        const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.hasActiveClaim());
+    }
 
     async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
         return await unstable_cache(
@@ -820,7 +826,7 @@ class AgentService {
         buildJobName?: string;
         gitCommitHash?: string;
         gitCommitMessage?: string;
-    }): KubernetesResource {
+    }): SandboxTemplate {
         const effectiveImage = agent.containerImageSource;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const customCommand = parseStoredContainerCommandArray(agent.containerCommand);
@@ -829,13 +835,15 @@ class AgentService {
 
         // Use PVC-based volumes when agent has volumes configured; otherwise fallback to emptyDir
         const hasCustomVolumes = agent.volumePvcData.length > 0;
+
+        type SandboxVolumes = SandboxTemplate['spec']['podTemplate']['spec']['volumes']
         const workspaceVolumes = hasCustomVolumes
             ? agent.volumePvcData.map(v => v.volume)
             : [{
                 name: 'workspace',
                 emptyDir: {},
             }];
-        const volumes = [...workspaceVolumes, ...agent.fileVolumes];
+        const volumes = [...workspaceVolumes, ...agent.fileVolumes] as SandboxVolumes;
 
         const agentWorkspaceVolumeMounts = hasCustomVolumes
             ? agent.volumePvcData.map(v => v.volumeMount)
@@ -904,12 +912,20 @@ class AgentService {
                             }],
                             resources: {
                                 requests: {
-                                    cpu: agent.cpuRequest ? `${agent.cpuRequest}m` : undefined,
-                                    memory: agent.memoryRequest ? `${agent.memoryRequest}M` : undefined,
+                                    ...(agent.cpuRequest ? {
+                                        cpu: `${agent.cpuRequest}m`,
+                                    } : {}),
+                                    ...(agent.memoryRequest ? {
+                                        memory: `${agent.memoryRequest}M`,
+                                    } : {}),
                                 },
                                 limits: {
-                                    cpu: agent.cpuLimit ? `${agent.cpuLimit}m` : undefined,
-                                    memory: agent.memoryLimit ? `${agent.memoryLimit}M` : undefined,
+                                    ...(agent.cpuLimit ? {
+                                        cpu: `${agent.cpuLimit}m`,
+                                    } : {}),
+                                    ...(agent.memoryLimit ? {
+                                        memory: `${agent.memoryLimit}M`,
+                                    } : {}),
                                 },
                             },
                         }, {
@@ -935,7 +951,7 @@ class AgentService {
         };
     }
 
-    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): KubernetesResource {
+    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): SandboxWarmPool {
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxWarmPool',
