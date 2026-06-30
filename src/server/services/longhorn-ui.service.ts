@@ -77,9 +77,9 @@ class LonghornUiService {
 
         const existingIngress = await ingressService.getIngressByName(this.NAMESPACE, this.INGRESS_ID);
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(ingressName, this.NAMESPACE, ingressDefinition);
+            await k3s.network.replaceNamespacedIngress({ name: ingressName, namespace: this.NAMESPACE, body: ingressDefinition });
         } else {
-            await k3s.network.createNamespacedIngress(this.NAMESPACE, ingressDefinition);
+            await k3s.network.createNamespacedIngress({ namespace: this.NAMESPACE, body: ingressDefinition });
         }
 
         return { url: `https://${hostname}`, username: this.USERNAME, password };
@@ -96,7 +96,7 @@ class LonghornUiService {
         const ingressName = KubeObjectNameUtils.getIngressName(this.INGRESS_ID);
         const existingIngress = await ingressService.getIngressByName(this.NAMESPACE, this.INGRESS_ID);
         if (existingIngress) {
-            await k3s.network.deleteNamespacedIngress(ingressName, this.NAMESPACE);
+            await k3s.network.deleteNamespacedIngress({ name: ingressName, namespace: this.NAMESPACE });
         }
         await ingressService.deleteUnusedBasicAuthMiddlewares(this.NAMESPACE, this.INGRESS_ID);
     }

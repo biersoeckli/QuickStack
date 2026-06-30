@@ -122,7 +122,7 @@ class BuildService {
                 gitSshPrivateKeySecretName,
             });
 
-            await k3s.batch.createNamespacedJob(BUILD_NAMESPACE, jobDefinition);
+            await k3s.batch.createNamespacedJob({ namespace: BUILD_NAMESPACE, body: jobDefinition });
         } catch (error) {
             await this.deleteTemporaryGitSshBuildSecret(gitSshPrivateKeySecretName);
             throw error;
@@ -229,16 +229,16 @@ class BuildService {
 
     async deleteAllBuildsOfWorkload(workloadId: string) {
         const jobNamePrefix = KubeObjectNameUtils.toJobName(workloadId);
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        const jobsOfBuild = jobs.body.items.filter((job) => job.metadata?.name?.startsWith(jobNamePrefix));
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        const jobsOfBuild = jobs.items.filter((job) => job.metadata?.name?.startsWith(jobNamePrefix));
         for (const job of jobsOfBuild) {
             await this.deleteBuild(job.metadata?.name!);
         }
     }
 
     async deleteAllFailedOrSuccededBuilds() {
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        const jobsToDelete = jobs.body.items.filter((job) => {
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        const jobsToDelete = jobs.items.filter((job) => {
             const status = this.getJobStatusString(job.status);
             return status !== 'RUNNING' && status !== 'PENDING';
         });
@@ -248,16 +248,16 @@ class BuildService {
     }
 
     async deleteAllBuildsOfProject(projectId: string) {
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        const jobsOfProject = jobs.body.items.filter((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID] === projectId);
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        const jobsOfProject = jobs.items.filter((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID] === projectId);
         for (const job of jobsOfProject) {
             await this.deleteBuild(job.metadata?.name!);
         }
     }
 
     async getBuildByName(buildName: string) {
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        return jobs.body.items.find((job) => job.metadata?.name === buildName);
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        return jobs.items.find((job) => job.metadata?.name === buildName);
     }
 
     async getAppIdByBuildName(buildName: string) {
@@ -290,7 +290,7 @@ class BuildService {
     async deleteBuild(buildName: string) {
         const job = await this.getBuildByName(buildName);
         const gitSshSecretName = job?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
-        await k3s.batch.deleteNamespacedJob(buildName, BUILD_NAMESPACE);
+        await k3s.batch.deleteNamespacedJob({ name: buildName, namespace: BUILD_NAMESPACE });
         await this.deleteTemporaryGitSshBuildSecret(gitSshSecretName);
         console.log(`Deleted build job ${buildName}`);
     }
@@ -305,8 +305,8 @@ class BuildService {
 
     async getBuildsForWorkload(workloadId: string) {
         const jobNamePrefix = KubeObjectNameUtils.toJobName(workloadId);
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-        const jobsOfBuild = jobs.body.items.filter((job) => job.metadata?.name?.startsWith(jobNamePrefix));
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        const jobsOfBuild = jobs.items.filter((job) => job.metadata?.name?.startsWith(jobNamePrefix));
         const builds = jobsOfBuild.map((job) => ({
             name: job.metadata?.name,
             startTime: job.status?.startTime,
@@ -330,8 +330,8 @@ class BuildService {
 
     async getJobStatus(buildName: string): Promise<'UNKNOWN' | 'RUNNING' | 'FAILED' | 'SUCCEEDED' | 'PENDING'> {
         try {
-            const response = await k3s.batch.readNamespacedJobStatus(buildName, BUILD_NAMESPACE);
-            return this.getJobStatusString(response.body.status);
+            const response = await k3s.batch.readNamespacedJobStatus({ name: buildName, namespace: BUILD_NAMESPACE });
+            return this.getJobStatusString(response.status);
         } catch (err) {
             console.error(err);
         }
@@ -364,14 +364,14 @@ class BuildService {
     }
 
     async getAllBuilds(): Promise<GlobalBuildJobModel[]> {
-        const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
         const appIds = Array.from(new Set(
-            jobs.body.items
+            jobs.items
                 .map((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID])
                 .filter((id): id is string => !!id)
         ));
         const agentIds = Array.from(new Set(
-            jobs.body.items
+            jobs.items
                 .map((job) => job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID])
                 .filter((id): id is string => !!id)
         ));
@@ -389,7 +389,7 @@ class BuildService {
         const appMap = new Map(apps.map((a) => [a.id, a]));
         const agentMap = new Map(agents.map((a) => [a.id, a]));
 
-        return jobs.body.items
+        return jobs.items
             .map((job) => {
                 const workloadType = (job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE] as WorkloadType | undefined)
                     ?? (job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] ? 'agent' : 'app');

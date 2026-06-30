@@ -74,8 +74,8 @@ class SharedBackupService {
     }
 
     async getPodForBackupJob(jobName: string, namespace?: string): Promise<PodsInfoModel> {
-        const res = await k3s.core.listNamespacedPod(namespace || BACKUP_NAMESPACE, undefined, undefined, undefined, undefined, `job-name=${jobName}`);
-        const pods = res.body.items;
+        const res = await k3s.core.listNamespacedPod({ namespace: namespace || BACKUP_NAMESPACE, labelSelector: `job-name=${jobName}` });
+        const pods = res.items;
         if (pods.length === 0) {
             throw new ServiceException(`No pod found for backup job ${jobName}`);
         }
@@ -91,8 +91,8 @@ class SharedBackupService {
         return await new Promise<void>((resolve, reject) => {
             const intervalId = setInterval(async () => {
                 try {
-                    const job = await k3s.batch.readNamespacedJob(jobName, namespace || BACKUP_NAMESPACE);
-                    const status = job.body.status;
+                    const job = await k3s.batch.readNamespacedJob({ name: jobName, namespace: namespace || BACKUP_NAMESPACE });
+                    const status = job.status;
 
                     if ((status?.succeeded ?? 0) > 0) {
                         clearInterval(intervalId);

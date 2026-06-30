@@ -103,17 +103,17 @@ class IngressService {
     }
 
     private async getIngressByResourceName(namespace: string, ingressName: string) {
-        const res = await k3s.network.listNamespacedIngress(namespace);
-        return res.body.items.find((item) => item.metadata?.name === ingressName);
+        const res = await k3s.network.listNamespacedIngress({ namespace: namespace });
+        return res.items.find((item) => item.metadata?.name === ingressName);
     }
 
     private async applyIngress(namespace: string, ingressName: string, ingressDefinition: V1Ingress) {
         const existingIngress = await this.getIngressByResourceName(namespace, ingressName);
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(ingressName, namespace, ingressDefinition);
+            await k3s.network.replaceNamespacedIngress({ name: ingressName, namespace: namespace, body: ingressDefinition });
             return;
         }
-        await k3s.network.createNamespacedIngress(namespace, ingressDefinition);
+        await k3s.network.createNamespacedIngress({ namespace: namespace, body: ingressDefinition });
     }
 
     async createOrUpdateAgentIngress(agent: AgentExtendedModel, domain: AgentDomain) {
@@ -145,7 +145,7 @@ class IngressService {
         const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         const resourceName = this.getAgentAccessResourceName(hostname);
         try {
-            await k3s.network.deleteNamespacedIngress(resourceName, namespace);
+            await k3s.network.deleteNamespacedIngress({ name: resourceName, namespace: namespace });
         } catch (error: any) {
             if (error?.response?.statusCode !== 404) {
                 throw new ServiceException(`Failed to delete ingress/${resourceName}: ${error?.message || error}`);
@@ -161,8 +161,8 @@ class IngressService {
         const result: { hostname: string; resourceName: string }[] = [];
 
         try {
-            const ingresses = await k3s.network.listNamespacedIngress(namespace);
-            for (const ingress of ingresses.body.items) {
+            const ingresses = await k3s.network.listNamespacedIngress({ namespace: namespace });
+            for (const ingress of ingresses.items) {
                 const itemAgentId = ingress.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
                 if (itemAgentId !== agentId) continue;
 
@@ -184,8 +184,8 @@ class IngressService {
     }
 
     async getAllIngressForApp(projectId: string, appId: string) {
-        const res = await k3s.network.listNamespacedIngress(projectId);
-        return res.body.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
+        const res = await k3s.network.listNamespacedIngress({ namespace: projectId });
+        return res.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
     }
 
     async getIngressByName(projectId: string, domainId: string) {
@@ -198,7 +198,7 @@ class IngressService {
 
         if (currentDomains.size === 0) {
             for (const ingress of existingIngresses) {
-                await k3s.network.deleteNamespacedIngress(ingress.metadata!.name!, app.projectId);
+                await k3s.network.deleteNamespacedIngress({ name: ingress.metadata!.name!, namespace: app.projectId });
                 console.log(`Deleted Ingress ${ingress.metadata!.name} for app ${app.id}`);
             }
         } else {
@@ -206,7 +206,7 @@ class IngressService {
                 const ingressDomain = ingress.spec?.rules?.[0]?.host;
 
                 if (ingressDomain && !currentDomains.has(ingressDomain)) {
-                    await k3s.network.deleteNamespacedIngress(ingress.metadata!.name!, app.projectId);
+                    await k3s.network.deleteNamespacedIngress({ name: ingress.metadata!.name!, namespace: app.projectId });
                     console.log(`Deleted Ingress ${ingress.metadata!.name} for domain ${ingressDomain}`);
                 }
             }
@@ -216,7 +216,7 @@ class IngressService {
     async deleteAllIngressForApp(projectId: string, appId: string) {
         const existingIngresses = await this.getAllIngressForApp(projectId, appId);
         for (const ingress of existingIngresses) {
-            await k3s.network.deleteNamespacedIngress(ingress.metadata!.name!, projectId);
+            await k3s.network.deleteNamespacedIngress({ name: ingress.metadata!.name!, namespace: projectId });
             console.log(`Deleted Ingress ${ingress.metadata!.name} for app ${appId}`);
         }
     }
@@ -284,29 +284,25 @@ class IngressService {
 
         // delete middleware
         const middlewareName = `ba-${basicAuthId}`;
-        const existingMiddlewares = await k3s.customObjects.listNamespacedCustomObject('traefik.io',            // group
-            'v1alpha1',              // version
-            namespace,        // namespace
-            'middlewares'            // plural name of the custom resource
-        );
-        const existingBasicAuthMiddleware = (existingMiddlewares.body as any).items.find((item: any) => item.metadata?.name === middlewareName);
+        const existingMiddlewares = await k3s.customObjects.listNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: namespace, plural: 'middlewares' });
+        const existingBasicAuthMiddleware = (existingMiddlewares as any).items.find((item: any) => item.metadata?.name === middlewareName);
         if (existingBasicAuthMiddleware) {
-            await k3s.customObjects.deleteNamespacedCustomObject('traefik.io', 'v1alpha1', namespace, 'middlewares', middlewareName);
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: namespace, plural: 'middlewares', name: middlewareName });
         }
 
         // delete traefik basic auth secret
         const secretName = `bas-${basicAuthId}`;
-        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
-        const existingSecret = existingSecrets.body.items.find((item) => item.metadata?.name === secretName);
+        const existingSecrets = await k3s.core.listNamespacedSecret({ namespace: namespace });
+        const existingSecret = existingSecrets.items.find((item) => item.metadata?.name === secretName);
         if (existingSecret) {
-            await k3s.core.deleteNamespacedSecret(secretName, namespace);
+            await k3s.core.deleteNamespacedSecret({ name: secretName, namespace: namespace });
         }
 
         // delete plaintext credentials secret
         const plaintextSecretName = `bas-plain-${basicAuthId}`;
-        const existingPlaintextSecret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+        const existingPlaintextSecret = existingSecrets.items.find((item) => item.metadata?.name === plaintextSecretName);
         if (existingPlaintextSecret) {
-            await k3s.core.deleteNamespacedSecret(plaintextSecretName, namespace);
+            await k3s.core.deleteNamespacedSecret({ name: plaintextSecretName, namespace: namespace });
         }
     }
 
@@ -316,8 +312,8 @@ class IngressService {
      */
     async getPlaintextCredentialsFromSecret(namespace: string, basicAuthId: string): Promise<{ username: string; password: string } | undefined> {
         const plaintextSecretName = `bas-plain-${basicAuthId}`;
-        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
-        const secret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+        const existingSecrets = await k3s.core.listNamespacedSecret({ namespace: namespace });
+        const secret = existingSecrets.items.find((item) => item.metadata?.name === plaintextSecretName);
         if (!secret?.data) return undefined;
         const usernameB64 = secret.data['username'];
         const passwordB64 = secret.data['password'];
@@ -342,8 +338,8 @@ class IngressService {
         const middlewareNamespace = namespace;
 
         // Create a secret with basic auth users
-        const existingSecrets = await k3s.core.listNamespacedSecret(secretNamespace);
-        const existingSecret = existingSecrets.body.items.find((item) => item.metadata?.name === basicAuthSecretName);
+        const existingSecrets = await k3s.core.listNamespacedSecret({ namespace: secretNamespace });
+        const existingSecret = existingSecrets.items.find((item) => item.metadata?.name === basicAuthSecretName);
 
         const usernameAndSha1PasswordStrings = usernamePassword.map(([username, password]) => `${username}:{SHA}${createHash('sha1').update(password).digest('base64')}`);
 
@@ -361,17 +357,14 @@ class IngressService {
         };
 
         if (existingSecret) {
-            await k3s.core.deleteNamespacedSecret(basicAuthSecretName, secretNamespace);
+            await k3s.core.deleteNamespacedSecret({ name: basicAuthSecretName, namespace: secretNamespace });
         }
-        await k3s.core.createNamespacedSecret(
-            secretNamespace,       // namespace
-            secretManifest          // object manifest
-        );
+        await k3s.core.createNamespacedSecret({ namespace: secretNamespace, body: secretManifest });
 
         // Store plaintext credentials in a separate secret so they can be displayed to the user
         if (storeCredentialsSeparately && usernamePassword.length > 0) {
             const plaintextSecretName = `bas-plain-${basicAuthId}`;
-            const existingPlaintextSecret = existingSecrets.body.items.find((item) => item.metadata?.name === plaintextSecretName);
+            const existingPlaintextSecret = existingSecrets.items.find((item) => item.metadata?.name === plaintextSecretName);
             const plaintextSecretManifest: V1Secret = {
                 apiVersion: 'v1',
                 kind: 'Secret',
@@ -385,18 +378,14 @@ class IngressService {
                 }
             };
             if (existingPlaintextSecret) {
-                await k3s.core.deleteNamespacedSecret(plaintextSecretName, secretNamespace);
+                await k3s.core.deleteNamespacedSecret({ name: plaintextSecretName, namespace: secretNamespace });
             }
-            await k3s.core.createNamespacedSecret(secretNamespace, plaintextSecretManifest);
+            await k3s.core.createNamespacedSecret({ namespace: secretNamespace, body: plaintextSecretManifest });
         }
 
         // Create a middleware with basic auth
-        const existingBasicAuthMiddlewares = await k3s.customObjects.listNamespacedCustomObject('traefik.io',            // group
-            'v1alpha1',              // version
-            middlewareNamespace,        // namespace
-            'middlewares'            // plural name of the custom resource
-        );
-        const existingBasicAuthMiddleware = (existingBasicAuthMiddlewares.body as any).items.find((item: any) => item.metadata?.name === basicAuthNameMiddlewareName);
+        const existingBasicAuthMiddlewares = await k3s.customObjects.listNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: middlewareNamespace, plural: 'middlewares' });
+        const existingBasicAuthMiddleware = (existingBasicAuthMiddlewares as any).items.find((item: any) => item.metadata?.name === basicAuthNameMiddlewareName);
 
         const middlewareManifest = {
             apiVersion: 'traefik.io/v1alpha1',
@@ -413,15 +402,9 @@ class IngressService {
         };
 
         if (existingBasicAuthMiddleware) {
-            await k3s.customObjects.deleteNamespacedCustomObject('traefik.io', 'v1alpha1', middlewareNamespace, 'middlewares', basicAuthNameMiddlewareName);
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: middlewareNamespace, plural: 'middlewares', name: basicAuthNameMiddlewareName });
         }
-        await k3s.customObjects.createNamespacedCustomObject(
-            'traefik.io',           // group
-            'v1alpha1',             // version
-            middlewareNamespace,    // namespace
-            'middlewares',          // plural name of the custom resource
-            middlewareManifest      // object manifest
-        );
+        await k3s.customObjects.createNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: middlewareNamespace, plural: 'middlewares', body: middlewareManifest });
 
         return `${namespace}-${basicAuthNameMiddlewareName}@kubernetescrd`;
     }

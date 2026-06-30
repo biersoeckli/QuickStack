@@ -12,10 +12,10 @@ import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
-import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import secretService from "./secret.service";
 import pvcService from "./pvc.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
+import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
 
 class AgentRuntimeService {
 
@@ -129,7 +129,7 @@ class AgentRuntimeService {
         namespace: string,
         warmPoolName: string,
         labels?: Record<string, string>,
-    ): KubernetesResource {
+    ): SandboxClaim {
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxClaim',
@@ -239,7 +239,10 @@ class AgentRuntimeService {
         const claims = await agentSandboxAdapter.listSandboxClaims(namespace, selector);
 
         for (const claim of claims) {
-            await agentSandboxAdapter.deleteSandboxClaim(claim.metadata.name!, namespace);
+            const claimName = claim.metadata?.name;
+            if (claimName) {
+                await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
+            }
         }
 
         revalidateTag(Tags.agent(agentId));

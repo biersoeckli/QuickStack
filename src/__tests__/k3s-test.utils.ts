@@ -39,8 +39,8 @@ export async function deployRegistry() {
             return 'MISSING';
         }
 
-        const pod = await k3s.core.readNamespacedPod(pods[0].podName, BUILD_NAMESPACE);
-        return pod.body.status?.phase ?? 'UNKNOWN';
+        const pod = await k3s.core.readNamespacedPod({ name: pods[0].podName, namespace: BUILD_NAMESPACE });
+        return pod.status?.phase ?? 'UNKNOWN';
     }, {
         timeout: 120_000,
         interval: 2_000,
@@ -140,7 +140,7 @@ export function createK3sTestContext(image = DEFAULT_IMAGE) {
     it('healthcheck for k3s cluster', async () => {
         const c = getClients();
         const nodes = await c.core.listNode();
-        expect(nodes.body.items).toHaveLength(1);
+        expect(nodes.items).toHaveLength(1);
     });
 
     afterAll(async () => {

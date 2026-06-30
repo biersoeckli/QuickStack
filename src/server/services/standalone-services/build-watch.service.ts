@@ -58,8 +58,8 @@ class BuildWatchService {
     private async scanExistingJobs() {
         console.log('[BuildWatch] Scanning existing build jobs...');
         try {
-            const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-            for (const job of jobs.body.items) {
+            const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+            for (const job of jobs.items) {
                 const jobName = job.metadata?.name;
                 if (!jobName) continue;
 

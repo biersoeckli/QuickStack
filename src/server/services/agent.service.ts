@@ -67,7 +67,8 @@ type AgentSandboxTemplateConfig = {
 class AgentService {
 
     async agentClaimsAreInstalled() {
-        const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.hasActiveClaim());
+        const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.sandboxClaimApiIsInstalled());
+        return result ?? false;
     }
 
     async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
@@ -881,6 +882,8 @@ class AgentService {
                 },
             },
             spec: {
+                envVarsInjectionPolicy: 'Disallowed',
+                networkPolicyManagement: 'Managed',
                 service: true,
                 podTemplate: {
                     spec: {

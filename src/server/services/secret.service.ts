@@ -1,4 +1,4 @@
-import { V1Secret } from "@kubernetes/client-node";
+import { ApiException, V1Secret } from "@kubernetes/client-node";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
@@ -88,12 +88,12 @@ class SecretService {
             throw new Error('Secret name is required.');
         }
         console.log(`Creating secret ${secretName}...`);
-        await k3s.core.createNamespacedSecret(namespace, secretManifest);
+        await k3s.core.createNamespacedSecret({ namespace: namespace, body: secretManifest });
     }
 
     async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
         console.log(`Updating secret ${secretName}...`);
-        await k3s.core.replaceNamespacedSecret(secretName, namespace, secretManifest);
+        await k3s.core.replaceNamespacedSecret({ name: secretName, namespace: namespace, body: secretManifest });
     }
 
     async saveSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
@@ -106,7 +106,7 @@ class SecretService {
     }
 
     async deleteSecret(namespace: string, secretName: string) {
-        await k3s.core.deleteNamespacedSecret(secretName, namespace);
+        await k3s.core.deleteNamespacedSecret({ name: secretName, namespace: namespace });
     }
 
     async deleteSecretIfExists(namespace: string, secretName?: string) {
@@ -121,8 +121,8 @@ class SecretService {
     }
 
     async getExistingSecret(namespace: string, secretName: string) {
-        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
-        const existingSecret = existingSecrets.body.items.find(s => s.metadata?.name === secretName);
+        const existingSecrets = await k3s.core.listNamespacedSecret({ namespace: namespace });
+        const existingSecret = existingSecrets.items.find(s => s.metadata?.name === secretName);
         return existingSecret;
     }
 
@@ -146,17 +146,18 @@ class SecretService {
         };
 
         try {
-            const existingResponse = await k3s.core.readNamespacedSecret(name, namespace);
-            secretManifest.metadata!.resourceVersion = existingResponse.body.metadata?.resourceVersion;
-            await k3s.core.replaceNamespacedSecret(name, namespace, secretManifest);
-        } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
+            const existingResponse = await k3s.core.readNamespacedSecret({ name: name, namespace: namespace });
+            secretManifest.metadata!.resourceVersion = existingResponse.metadata?.resourceVersion;
+            await k3s.core.replaceNamespacedSecret({ name: name, namespace: namespace, body: secretManifest });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code !== 404) {
                 console.error(`Failed to read Secret "${name}":`, error);
                 throw new ServiceException(
                     `Failed to read Secret "${name}": ${error?.message || error}`,
                 );
             }
-            await k3s.core.createNamespacedSecret(namespace, secretManifest);
+            await k3s.core.createNamespacedSecret({ namespace: namespace, body: secretManifest });
         }
     }
 
@@ -166,15 +167,16 @@ class SecretService {
      */
     async getDecodedSecret(name: string, namespace: string): Promise<Record<string, string> | null> {
         try {
-            const response = await k3s.core.readNamespacedSecret(name, namespace);
-            const data = response.body.data || {};
+            const response = await k3s.core.readNamespacedSecret({ name: name, namespace: namespace });
+            const data = response.data || {};
             const decoded: Record<string, string> = {};
             for (const [key, value] of Object.entries(data)) {
                 decoded[key] = value ? Buffer.from(value, 'base64').toString('utf-8') : '';
             }
             return decoded;
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return null;
             }
             console.error(`Failed to read Secret "${name}":`, error);
@@ -189,9 +191,10 @@ class SecretService {
      */
     async deleteSecretSafe(name: string, namespace: string): Promise<void> {
         try {
-            await k3s.core.deleteNamespacedSecret(name, namespace);
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            await k3s.core.deleteNamespacedSecret({ name: name, namespace: namespace });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return;
             }
             console.error(`Failed to delete Secret "${name}":`, error);

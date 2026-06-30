@@ -23,15 +23,9 @@ class EventService {
         const returnVal: EventInfoModel[] = [];
         for (let podInfo of pods) {
             console.log(podInfo.uid)
-            const result = await k3s.core.listNamespacedEvent(projectId,
-                undefined,
-                undefined,
-                undefined,
-                `involvedObject.namespace=${projectId},involvedObject.uid=${podInfo.uid},involvedObject.name=${podInfo.podName}`,
-                undefined,
-                50);
+            const result = await k3s.core.listNamespacedEvent({ namespace: projectId, fieldSelector: `involvedObject.namespace=${projectId},involvedObject.uid=${podInfo.uid},involvedObject.name=${podInfo.podName}`, limit: 50 });
 
-            const events: CoreV1Event[] = result.body.items;
+            const events: CoreV1Event[] = result.items;
 
             const eventsForPod = events.map(event => {
                 return {
@@ -66,15 +60,9 @@ class EventService {
         const returnVal: EventInfoModel[] = [];
 
         for (let podInfo of pods) {
-            const result = await k3s.core.listNamespacedEvent(projectId,
-                undefined,
-                undefined,
-                undefined,
-                `involvedObject.namespace=${projectId},involvedObject.uid=${podInfo.uid},involvedObject.name=${podInfo.podName}`,
-                undefined,
-                50);
+            const result = await k3s.core.listNamespacedEvent({ namespace: projectId, fieldSelector: `involvedObject.namespace=${projectId},involvedObject.uid=${podInfo.uid},involvedObject.name=${podInfo.podName}`, limit: 50 });
 
-            const events: CoreV1Event[] = result.body.items;
+            const events: CoreV1Event[] = result.items;
 
             for (const event of events) {
                 returnVal.push({
@@ -89,14 +77,8 @@ class EventService {
         }
 
         try {
-            const claimEvents = await k3s.core.listNamespacedEvent(projectId,
-                undefined,
-                undefined,
-                undefined,
-                `involvedObject.kind=SandboxClaim,involvedObject.name=${agentId},involvedObject.namespace=${projectId}`,
-                undefined,
-                50);
-            for (const event of claimEvents.body.items) {
+            const claimEvents = await k3s.core.listNamespacedEvent({ namespace: projectId, fieldSelector: `involvedObject.kind=SandboxClaim,involvedObject.name=${agentId},involvedObject.namespace=${projectId}`, limit: 50 });
+            for (const event of claimEvents.items) {
                 returnVal.push({
                     podName: `SandboxClaim/${agentId}`,
                     action: event.action,

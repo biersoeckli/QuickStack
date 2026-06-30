@@ -1,7 +1,8 @@
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
-import k3s from "./kubernetes-api.adapter";
+import k3s, { kubernetesPatchOptions } from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
+import { ApiException } from "@kubernetes/client-node";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 export const SANDBOX_API_VERSION = 'v1beta1';
@@ -10,6 +11,23 @@ export const WARMPOOL_PLURAL = 'sandboxwarmpools';
 export const CLAIM_PLURAL = 'sandboxclaims';
 
 class AgentSandboxAdapter {
+    async sandboxClaimApiIsInstalled(): Promise<boolean> {
+        try {
+            await k3s.customObjects.listCustomObjectForAllNamespaces({
+                group: SANDBOX_API_GROUP,
+                version: SANDBOX_API_VERSION,
+                plural: CLAIM_PLURAL,
+                limit: 1,
+            });
+            return true;
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
+                return false;
+            }
+            throw error;
+        }
+    }
 
     /**
      * Checks whether an active SandboxClaim exists for the given agent.
@@ -17,16 +35,11 @@ class AgentSandboxAdapter {
      */
     async hasActiveClaim(name: string, namespace: string): Promise<boolean> {
         try {
-            await k3s.customObjects.getNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                name,
-            );
+            await k3s.customObjects.getNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, name: name });
             return true;
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return false;
             }
             throw new ServiceException(
@@ -37,16 +50,11 @@ class AgentSandboxAdapter {
 
     async getSandboxTemplate(name: string, namespace: string): Promise<SandboxTemplate> {
         try {
-            const response = await k3s.customObjects.getNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                TEMPLATE_PLURAL,
-                name,
-            );
-            return (response as any).body;
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            const response = await k3s.customObjects.getNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: TEMPLATE_PLURAL, name: name });
+            return response as SandboxTemplate;
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 throw new ServiceException(`SandboxTemplate "${name}" not found in namespace "${namespace}".`);
             }
             console.error(`Failed to get SandboxTemplate "${name}":`, error);
@@ -64,7 +72,8 @@ class AgentSandboxAdapter {
         this.assertResourceKind(resource, 'SandboxTemplate', TEMPLATE_PLURAL);
         try {
             await this.applyCustomResource(resource, resource.metadata!.namespace!, TEMPLATE_PLURAL);
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as ApiException<any>;
             console.error(`Failed to reconcile SandboxTemplate "${resource.metadata!.name}":`, JSON.stringify(error));
             throw new ServiceException(
                 `Failed to reconcile SandboxTemplate "${resource.metadata!.name}": ${error?.message || error}`,
@@ -80,7 +89,8 @@ class AgentSandboxAdapter {
         this.assertResourceKind(resource, 'SandboxWarmPool', WARMPOOL_PLURAL);
         try {
             await this.applyCustomResource(resource, resource.metadata!.namespace!, WARMPOOL_PLURAL);
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as ApiException<any>;
             console.error(`Failed to reconcile SandboxWarmPool "${resource.metadata!.name}":`, error);
             throw new ServiceException(
                 `Failed to reconcile SandboxWarmPool "${resource.metadata!.name}": ${error?.message || error}`,
@@ -93,15 +103,10 @@ class AgentSandboxAdapter {
      */
     async deleteSandboxTemplate(name: string, namespace: string): Promise<void> {
         try {
-            await k3s.customObjects.deleteNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                TEMPLATE_PLURAL,
-                name,
-            );
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: TEMPLATE_PLURAL, name: name });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return; // Already deleted
             }
             console.error(`Failed to delete SandboxTemplate "${name}":`, error);
@@ -116,15 +121,10 @@ class AgentSandboxAdapter {
      */
     async deleteSandboxWarmPool(name: string, namespace: string): Promise<void> {
         try {
-            await k3s.customObjects.deleteNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                WARMPOOL_PLURAL,
-                name,
-            );
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: WARMPOOL_PLURAL, name: name });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return; // Already deleted
             }
             console.error(`Failed to delete SandboxWarmPool "${name}":`, error);
@@ -142,19 +142,10 @@ class AgentSandboxAdapter {
         labelSelector?: string,
     ): Promise<SandboxClaim[]> {
         try {
-            const response = await k3s.customObjects.listNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                undefined, // pretty
-                undefined, // allowWatchBookmarks
-                undefined, // continue
-                undefined, // fieldSelector
-                labelSelector,
-            );
-            return (response as any).body?.items || [];
-        } catch (error: any) {
+            const response = await k3s.customObjects.listNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, labelSelector: labelSelector });
+            return (response as any).items || [];
+        } catch (err) {
+            const error = err as ApiException<any>;
             console.error(`Failed to list SandboxClaims in namespace "${namespace}":`, error);
             throw new ServiceException(
                 `Failed to list SandboxClaims: ${error?.message || error}`,
@@ -172,22 +163,17 @@ class AgentSandboxAdapter {
         const namespace = resource.metadata!.namespace!;
 
         try {
-            await k3s.customObjects.getNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                name,
-            );
+            await k3s.customObjects.getNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, name: name });
             throw new ServiceException(
                 `SandboxClaim "${name}" already exists. Stop the Agent before starting again.`,
             );
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as ApiException<any>;
             if (error instanceof ServiceException) {
                 throw error;
             }
-            console.error(`Failed to check existing SandboxClaim "${name}":`, error);
-            if (error?.response?.statusCode !== 404) {
+            if (error?.code !== 404) {
+                console.error(`Failed to check existing SandboxClaim "${name}":`, error);
                 throw new ServiceException(
                     `Failed to check existing SandboxClaim "${name}": ${error?.message || error}`,
                 );
@@ -195,14 +181,9 @@ class AgentSandboxAdapter {
         }
 
         try {
-            await k3s.customObjects.createNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                resource,
-            );
-        } catch (error: any) {
+            await k3s.customObjects.createNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, body: resource });
+        } catch (err) {
+            const error = err as ApiException<any>;
             console.error(`Failed to create SandboxClaim "${name}":`, error);
             throw new ServiceException(
                 `Failed to create SandboxClaim "${name}": ${error?.message || error}`,
@@ -212,16 +193,11 @@ class AgentSandboxAdapter {
 
     async getSandboxClaim(name: string, namespace: string): Promise<SandboxClaim | null> {
         try {
-            const response = await k3s.customObjects.getNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                name,
-            );
-            return (response as any).body;
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            const response = await k3s.customObjects.getNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, name: name });
+            return response as SandboxClaim;
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return null;
             }
             console.error(`Failed to get SandboxClaim "${name}":`, error);
@@ -233,15 +209,10 @@ class AgentSandboxAdapter {
 
     async deleteSandboxClaim(name: string, namespace: string): Promise<void> {
         try {
-            await k3s.customObjects.deleteNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                name,
-            );
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace: namespace, plural: CLAIM_PLURAL, name: name });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 return;
             }
             console.error(`Failed to delete SandboxClaim "${name}":`, error);
@@ -324,38 +295,17 @@ class AgentSandboxAdapter {
 
         try {
             // Try to read existing resource
-            await k3s.customObjects.getNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                plural,
-                name,
-            );
+            await k3s.customObjects.getNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural, name: name });
             // Exists — patch it
             await k3s.customObjects.patchNamespacedCustomObject(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                plural,
-                name,
-                resource,
-                undefined,
-                undefined,
-                undefined,
-                {
-                    headers: { 'Content-Type': 'application/merge-patch+json' },
-                },
+                { group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural, name, body: resource },
+                kubernetesPatchOptions('application/merge-patch+json'),
             );
-        } catch (error: any) {
-            if (error?.response?.statusCode === 404) {
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
                 // Does not exist — create it
-                await k3s.customObjects.createNamespacedCustomObject(
-                    SANDBOX_API_GROUP,
-                    SANDBOX_API_VERSION,
-                    namespace,
-                    plural,
-                    resource,
-                );
+                await k3s.customObjects.createNamespacedCustomObject({ group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural, body: resource });
             } else {
                 console.error(`Failed to apply custom resource "${name}" in namespace "${namespace}":`, error);
                 throw error;

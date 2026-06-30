@@ -47,8 +47,8 @@ class PvcService {
     }
 
     async doesAppConfigurationIncreaseAnyPvcSize(app: AppExtendedModel) {
-        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim(app.projectId);
-        const existingPvcs = existingPvcsResponse.body.items;
+        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: app.projectId });
+        const existingPvcs = existingPvcsResponse.items;
         const baseVolumes = await this.getBaseVolumes(app);
 
         for (const appVolume of baseVolumes) {
@@ -63,18 +63,18 @@ class PvcService {
     }
 
     async getAllPvcForApp(projectId: string, appId: string) {
-        const res = await k3s.core.listNamespacedPersistentVolumeClaim(projectId);
-        return res.body.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
+        const res = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: projectId });
+        return res.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID] === appId);
     }
 
     async getExistingPvcByVolumeId(namespace: string, volumeId: string) {
-        const allVolumes = await k3s.core.listNamespacedPersistentVolumeClaim(namespace);
-        return allVolumes.body.items.find(pvc => pvc.metadata?.name === KubeObjectNameUtils.toPvcName(volumeId));
+        const allVolumes = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: namespace });
+        return allVolumes.items.find(pvc => pvc.metadata?.name === KubeObjectNameUtils.toPvcName(volumeId));
     }
 
     async getAllPvc() {
         const res = await k3s.core.listPersistentVolumeClaimForAllNamespaces();
-        return res.body.items;
+        return res.items;
     }
 
     async deleteUnusedPvcOfApp(app: AppExtendedModel) {
@@ -85,7 +85,7 @@ class PvcService {
                 continue;
             }
 
-            await k3s.core.deleteNamespacedPersistentVolumeClaim(pvc.metadata!.name!, app.projectId);
+            await k3s.core.deleteNamespacedPersistentVolumeClaim({ name: pvc.metadata!.name!, namespace: app.projectId });
             console.log(`Deleted PVC ${pvc.metadata!.name!} for app ${app.id}`);
         }
     }
@@ -94,7 +94,7 @@ class PvcService {
         const existingPvc = await this.getAllPvcForApp(projectId, appId);
 
         for (const pvc of existingPvc) {
-            await k3s.core.deleteNamespacedPersistentVolumeClaim(pvc.metadata!.name!, projectId);
+            await k3s.core.deleteNamespacedPersistentVolumeClaim({ name: pvc.metadata!.name!, namespace: projectId });
             console.log(`Deleted PVC ${pvc.metadata!.name!} for app ${appId}`);
         }
     }
@@ -114,13 +114,13 @@ class PvcService {
         }
 
         const pvcDefinition = this.mapVolumeToPvcDefinition(projectId, baseVolume);
-        await k3s.core.createNamespacedPersistentVolumeClaim(projectId, pvcDefinition);
+        await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: projectId, body: pvcDefinition });
         console.log(`Created PVC ${pvcName} for app ${app.id}`);
     }
 
     async createOrUpdatePvc(app: AppExtendedModel) {
-        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim(app.projectId);
-        const existingPvcs = existingPvcsResponse.body.items;
+        const existingPvcsResponse = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: app.projectId });
+        const existingPvcs = existingPvcsResponse.items;
         const baseVolumes = await this.getBaseVolumes(app);
 
         for (const appVolume of baseVolumes) {
@@ -140,7 +140,7 @@ class PvcService {
                 // Only the Size of PVC can be updated, so we need to delete and recreate the PVC
                 // update PVC size
                 existingPvc.spec!.resources!.requests!.storage = KubeSizeConverter.megabytesToKubeFormat(appVolume.size);
-                await k3s.core.replaceNamespacedPersistentVolumeClaim(pvcName, app.projectId, existingPvc);
+                await k3s.core.replaceNamespacedPersistentVolumeClaim({ name: pvcName, namespace: app.projectId, body: existingPvc });
                 console.log(`Updated PVC ${pvcName} for app ${app.id}`);
 
                 // wait until persisten volume ist resized
@@ -149,7 +149,7 @@ class PvcService {
                 await this.waitUntilPvResized(existingPvc.spec!.volumeName!, appVolume.size);
                 console.log(`PV ${existingPvc.spec!.volumeName} resized to ${KubeSizeConverter.megabytesToKubeFormat(appVolume.size)}`);
             } else {
-                await k3s.core.createNamespacedPersistentVolumeClaim(app.projectId, pvcDefinition);
+                await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: app.projectId, body: pvcDefinition });
                 console.log(`Created PVC ${pvcName} for app ${app.id}`);
             }
         }
@@ -204,14 +204,14 @@ class PvcService {
 
     private async waitUntilPvResized(persistentVolumeName: string, size: number) {
         let iterationCount = 0;
-        let pv = await k3s.core.readPersistentVolume(persistentVolumeName);
-        while (pv.body.spec!.capacity!.storage !== KubeSizeConverter.megabytesToKubeFormat(size)) {
+        let pv = await k3s.core.readPersistentVolume({ name: persistentVolumeName });
+        while (pv.spec!.capacity!.storage !== KubeSizeConverter.megabytesToKubeFormat(size)) {
             if (iterationCount > 30) {
                 console.error(`Timeout: PV ${persistentVolumeName} not resized to ${KubeSizeConverter.megabytesToKubeFormat(size)}`);
                 throw new ServiceException(`Timeout: Volume could not be resized to ${KubeSizeConverter.megabytesToKubeFormat(size)}`);
             }
             await new Promise(resolve => setTimeout(resolve, 3000)); // wait 5 Seconds, so that the PV is resized
-            pv = await k3s.core.readPersistentVolume(persistentVolumeName);
+            pv = await k3s.core.readPersistentVolume({ name: persistentVolumeName });
             iterationCount++;
         }
     }
@@ -233,13 +233,13 @@ class PvcService {
     // ─── Agent Volume Methods ────────────────────────────────────────
 
     async getAllPvcForAgent(projectId: string, agentId: string) {
-        const res = await k3s.core.listNamespacedPersistentVolumeClaim(projectId);
-        return res.body.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] === agentId);
+        const res = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: projectId });
+        return res.items.filter((item) => item.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] === agentId);
     }
 
     async getAgentWorkspacePvc(projectId: string, pvcName: string) {
-        const res = await k3s.core.listNamespacedPersistentVolumeClaim(projectId);
-        return res.body.items.find((item) => item.metadata?.name === pvcName) || null;
+        const res = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: projectId });
+        return res.items.find((item) => item.metadata?.name === pvcName) || null;
     }
 
     async ensurePvcForUserAgent(projectId: string, agentVolume: AgentVolume): Promise<{
@@ -274,7 +274,7 @@ class PvcService {
                 },
             };
 
-            await k3s.core.createNamespacedPersistentVolumeClaim(projectId, pvcDefinition);
+            await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: projectId, body: pvcDefinition });
             console.log(`Created workspace PVC ${pvcName} for agent ${agentId}`);
         }
 
@@ -296,7 +296,7 @@ class PvcService {
     async deleteAllPvcForAgent(projectId: string, agentId: string) {
         const pvcs = await this.getAllPvcForAgent(projectId, agentId);
         for (const pvc of pvcs) {
-            await k3s.core.deleteNamespacedPersistentVolumeClaim(pvc.metadata!.name!, projectId);
+            await k3s.core.deleteNamespacedPersistentVolumeClaim({ name: pvc.metadata!.name!, namespace: projectId });
             console.log(`Deleted workspace PVC ${pvc.metadata!.name!} for agent ${agentId}`);
         }
     }
@@ -310,7 +310,7 @@ class PvcService {
                 continue;
             }
 
-            await k3s.core.deleteNamespacedPersistentVolumeClaim(pvc.metadata!.name!, projectId);
+            await k3s.core.deleteNamespacedPersistentVolumeClaim({ name: pvc.metadata!.name!, namespace: projectId });
             console.log(`Deleted unused workspace PVC ${pvc.metadata!.name!} for agent ${agentId}`);
         }
     }
