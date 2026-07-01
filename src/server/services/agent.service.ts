@@ -66,9 +66,9 @@ type AgentSandboxTemplateConfig = {
 
 class AgentService {
 
-    async agentClaimsAreInstalled() {
+    async agentCrdAreInstalled() {
         const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.sandboxClaimApiIsInstalled());
-        return result ?? false;
+        return !!(result ?? false);
     }
 
     async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {

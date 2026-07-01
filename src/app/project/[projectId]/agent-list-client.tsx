@@ -4,11 +4,20 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Bot } from "lucide-react";
 import { CreateAgentDialog } from "./create-agent-dialog";
 import { useRouter } from "next/navigation";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "./create-project-actions";
+import Link from "next/link";
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from "@/components/ui/empty";
 
 interface AgentListClientProps {
     agents: AgentExtendedModel[];
@@ -22,26 +31,36 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
 
     if (agents.length === 0 && !canCreate) {
         return (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-                <h3 className="text-lg font-semibold">No Agents</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    No agents available in this project.
-                </p>
-            </div>
+            <Empty className="border border-dashed">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Bot />
+                    </EmptyMedia>
+                    <EmptyTitle>No Agents</EmptyTitle>
+                    <EmptyDescription>
+                        No agents available in this project.
+                    </EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
     if (agents.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-                <h3 className="text-lg font-semibold">No Agents yet</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Create your first Agent to get started.
-                </p>
-                <div className="mt-4">
+            <Empty className="border border-dashed">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Bot />
+                    </EmptyMedia>
+                    <EmptyTitle>No Agents yet</EmptyTitle>
+                    <EmptyDescription>
+                        Create your first Agent to get started.
+                    </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
                     <CreateProjectActions projectId={projectId} projectType="agent" />
-                </div>
-            </div>
+                </EmptyContent>
+            </Empty>
         );
     }
 
@@ -50,12 +69,10 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
             <SimpleDataTable
                 columns={[
                     ['name', 'Name', true, (item: AgentExtendedModel) => (
-                        <span
-                            className="font-medium cursor-pointer hover:underline"
-                            onClick={() => router.push(`/project/agent/${item.id}`)}
-                        >
+                        <Link href={`/project/agent/${item.id}`}
+                            className="font-medium cursor-pointer hover:underline">
                             {item.name}
-                        </span>
+                        </Link>
                     )],
                     ['llmGateway.name', 'LLM Gateway', true],
                     ['modelAlias', 'Model Alias', true],

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
+import { Bot, Container, Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { App, Project } from "@prisma/client";
 import { deleteApp } from "./actions";
@@ -16,10 +16,11 @@ import { EditAppDialog } from "./edit-app-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import PodStatusIndicator from "@/components/custom/pod-status-indicator";
+import CreateProjectActions from "./create-project-actions";
 
 
 export default function AppTable({
-    app,
+    app: apps,
     projectId,
     session
 }: {
@@ -33,7 +34,10 @@ export default function AppTable({
     return <>
         <SimpleDataTable columns={[
             ['id', 'ID', false],
-            ['name', 'Name', true],
+            ['name', 'Name', true, (item) => <Link href={`/project/apps/${item.id}`}
+                className="font-medium cursor-pointer hover:underline">
+                {item.name}
+            </Link>],
             ['sourceType', 'Source Type', false, (item) => item.sourceType === 'GIT' ? 'Git HTTPS' : item.sourceType === 'GIT_SSH' ? 'Git SSH' : 'Container'],
             ['replicas', 'Replica Count', false],
             ['memoryLimit', 'Memory Limit', false],
@@ -44,7 +48,7 @@ export default function AppTable({
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
             ['status', 'Status', true, (item) => <PodStatusIndicator appId={item.id} />],
         ]}
-            data={app}
+            data={apps}
             onItemClickLink={(item) => `/project/app/${item.id}`}
             actionCol={(item) =>
                 <>

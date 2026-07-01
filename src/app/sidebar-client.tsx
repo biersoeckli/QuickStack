@@ -28,7 +28,7 @@ import {
 import { Agent, App, Project } from "@prisma/client"
 import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { JSX, useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
 import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
@@ -36,11 +36,13 @@ import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
 export function SidebarCient({
   projects,
   session,
-  newVersionInfo
+  newVersionInfo,
+  agentsAvailable
 }: {
   projects: (Project & { apps: App[]; agents: Agent[] })[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
+  agentsAvailable: boolean;
 }) {
 
   const path = usePathname();
@@ -66,19 +68,28 @@ export function SidebarCient({
       url: "/settings/s3-targets",
       icon: Settings,
       adminOnly: true,
-    },
-    {
+    }
+  ] as {
+    title: string | JSX.Element;
+    url: string;
+    icon?: React.ComponentType<any>;
+    adminOnly?: boolean;
+  }[];
+
+  if (agentsAvailable) {
+    settingsMenu.push({
       title: "LLM Gateways",
       url: "/settings/llm-gateways",
       icon: Boxes,
       adminOnly: true,
-    },
-    {
-      title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
-      url: "/settings/server",
-      adminOnly: true,
-    },
-  ]
+    });
+  }
+
+  settingsMenu.push({
+    title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
+    url: "/settings/server",
+    adminOnly: true,
+  });
 
   useEffect(() => {
     if (path.startsWith('/project/agent/')) {
@@ -172,7 +183,7 @@ export function SidebarCient({
                     <span>Projects</span>
                   </Link>
                 </SidebarMenuButton>
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
+                {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
                   <SidebarMenuAction>
                     <Plus />
                   </SidebarMenuAction>
@@ -185,42 +196,43 @@ export function SidebarCient({
                     const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
 
                     return (
-                    <DropdownMenu key={item.id}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild tooltip={{
-                          children: `Project: ${item.name}`,
-                          hidden: open,
-                        }}
-                          isActive={currentlySelectedProjectId === item.id}
-                        >
-                          <Link href={`/project/${item.id}`}>
-                            <Dot />  <span>{item.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                        {workloads.length ? (<>
-                          <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction className="">
-                              <ChevronRight />
-                              <span className="sr-only">Toggle</span>
-                            </SidebarMenuAction>
-                          </DropdownMenuTrigger>
-
-                          <DropdownMenuContent
-                            side={isMobile ? "bottom" : "right"}
-                            align={isMobile ? "end" : "start"}
-                            className="min-w-56 rounded-lg"
+                      <DropdownMenu key={item.id}>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton asChild tooltip={{
+                            children: `Project: ${item.name}`,
+                            hidden: open,
+                          }}
+                            isActive={currentlySelectedProjectId === item.id}
                           >
-                            {workloads.map((workload) => (
-                              <DropdownMenuItem asChild key={workload.name}
-                                className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
-                                <a href={`${workloadPath}${workload.id}`}>{workload.name}</a>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </>) : null}
-                      </SidebarMenuItem>
-                    </DropdownMenu>
-                  )})}
+                            <Link href={`/project/${item.id}`}>
+                              <Dot />  <span>{item.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                          {workloads.length ? (<>
+                            <DropdownMenuTrigger asChild>
+                              <SidebarMenuAction className="">
+                                <ChevronRight />
+                                <span className="sr-only">Toggle</span>
+                              </SidebarMenuAction>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent
+                              side={isMobile ? "bottom" : "right"}
+                              align={isMobile ? "end" : "start"}
+                              className="min-w-56 rounded-lg"
+                            >
+                              {workloads.map((workload) => (
+                                <DropdownMenuItem asChild key={workload.name}
+                                  className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
+                                  <a href={`${workloadPath}${workload.id}`}>{workload.name}</a>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </>) : null}
+                        </SidebarMenuItem>
+                      </DropdownMenu>
+                    )
+                  })}
                 </SidebarMenu>
               </SidebarMenuItem>
             </SidebarMenu>

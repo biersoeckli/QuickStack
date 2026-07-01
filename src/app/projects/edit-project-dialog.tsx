@@ -24,14 +24,15 @@ import { Project } from '@prisma/client';
 import { useState } from 'react';
 import { createProject } from './actions';
 
-export function EditProjectDialog({ children, existingItem }: {
+export function EditProjectDialog({ children, existingItem, agentsAvailable }: {
     children?: React.ReactNode;
     existingItem?: Project;
+    agentsAvailable: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(existingItem?.name ?? '');
     const [projectType, setProjectType] = useState<ProjectType | undefined>(
-        existingItem?.projectType as ProjectType | undefined,
+        agentsAvailable ? existingItem?.projectType as ProjectType | undefined : 'APP',
     );
 
     const openDialog = () => {
@@ -79,16 +80,16 @@ export function EditProjectDialog({ children, existingItem }: {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="APP">App</SelectItem>
-                                <SelectItem value="AGENT">Agent</SelectItem>
+                                {agentsAvailable && <SelectItem value="AGENT">Agent</SelectItem>}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
                     <Button disabled={!name.trim() || !projectType} onClick={submit}>
                         {existingItem ? 'Save Project' : 'Create Project'}
                     </Button>
+                    <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
