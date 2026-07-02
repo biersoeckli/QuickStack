@@ -22,7 +22,7 @@ import { AppExtendedModel } from '@/shared/model/app-extended.model';
 describe('network-policy.service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        k3sMocks.listNamespacedNetworkPolicy.mockResolvedValue({ body: { items: [] } });
+        k3sMocks.listNamespacedNetworkPolicy.mockResolvedValue({ items: [] });
     });
 
     it('allows external ingress to configured App Node Ports', async () => {
@@ -48,11 +48,11 @@ describe('network-policy.service', () => {
         await networkPolicyService.reconcileNetworkPolicy(app);
 
         expect(k3sMocks.createNamespacedNetworkPolicy).toHaveBeenCalledTimes(1);
-        const [, policy] = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0];
+        const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
         expect(policy.spec.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
+                    _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                     ports: [{ protocol: 'TCP', port: 300 }],
                 }),
             ])

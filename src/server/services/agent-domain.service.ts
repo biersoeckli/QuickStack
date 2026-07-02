@@ -4,12 +4,10 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { DomainEditModel } from "@/shared/model/domain-edit.model";
 import { Prisma } from "@prisma/client";
-import ingressService from "./ingress.service";
 
 class AgentDomainService {
 
     async saveDomain(input: DomainEditModel & { agentId: string }, db: Prisma.TransactionClient = dataAccess.client) {
-
         const existingAgent = await db.agent.findFirstOrThrow({
             where: { id: input.agentId },
         });

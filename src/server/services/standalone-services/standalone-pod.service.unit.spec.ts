@@ -37,12 +37,10 @@ describe('standalonePodService.getPodsForAgent', () => {
 
     it('returns pods matching by name containing agentId', async () => {
         k3sMocks.listNamespacedPod.mockResolvedValue({
-            body: {
-                items: [
-                    podItem('kwaid-agent-1-abc123', 'agent'),
-                    podItem('other-pod', 'web'),
-                ],
-            },
+            items: [
+                podItem('kwaid-agent-1-abc123', 'agent'),
+                podItem('other-pod', 'web'),
+            ],
         });
 
         const result = await standalonePodService.getPodsForAgent('project-1', 'kwaid-agent-1');
@@ -53,13 +51,11 @@ describe('standalonePodService.getPodsForAgent', () => {
 
     it('returns pods matching by container name "agent"', async () => {
         k3sMocks.listNamespacedPod.mockResolvedValue({
-            body: {
-                items: [
-                    podItem('sandbox-pod-1', 'agent'),
-                    podItem('sandbox-pod-2', 'agent'),
-                    podItem('unrelated', 'web'),
-                ],
-            },
+            items: [
+                podItem('sandbox-pod-1', 'agent'),
+                podItem('sandbox-pod-2', 'agent'),
+                podItem('unrelated', 'web'),
+            ],
         });
 
         const result = await standalonePodService.getPodsForAgent('project-1', 'different-agent-id');
@@ -70,12 +66,10 @@ describe('standalonePodService.getPodsForAgent', () => {
 
     it('returns empty array when no matching pods exist', async () => {
         k3sMocks.listNamespacedPod.mockResolvedValue({
-            body: {
-                items: [
-                    podItem('web-pod', 'web'),
-                    podItem('db-pod', 'postgres'),
-                ],
-            },
+            items: [
+                podItem('web-pod', 'web'),
+                podItem('db-pod', 'postgres'),
+            ],
         });
 
         const result = await standalonePodService.getPodsForAgent('project-1', 'nonexistent');
@@ -84,7 +78,7 @@ describe('standalonePodService.getPodsForAgent', () => {
 
     it('returns empty array when namespace has no pods', async () => {
         k3sMocks.listNamespacedPod.mockResolvedValue({
-            body: { items: [] },
+            items: [],
         });
 
         const result = await standalonePodService.getPodsForAgent('project-1', 'agent-1');
@@ -93,11 +87,9 @@ describe('standalonePodService.getPodsForAgent', () => {
 
     it('includes uid and status in result', async () => {
         k3sMocks.listNamespacedPod.mockResolvedValue({
-            body: {
-                items: [
-                    podItem('agent-pod-1', 'agent', 'uid-123', 'Running'),
-                ],
-            },
+            items: [
+                podItem('agent-pod-1', 'agent', 'uid-123', 'Running'),
+            ],
         });
 
         const result = await standalonePodService.getPodsForAgent('project-1', 'agent');

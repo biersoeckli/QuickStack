@@ -23,8 +23,10 @@ describe('network-policy.service integration', () => {
         const namespace = 'node-port-policy-test';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -52,7 +54,7 @@ describe('network-policy.service integration', () => {
         expect(policy.spec?.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
+                    _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                     ports: [{ protocol: 'TCP', port: 300 }],
                 }),
             ])
@@ -64,8 +66,10 @@ describe('network-policy.service integration', () => {
         const appId = 'normal-app';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -89,7 +93,7 @@ describe('network-policy.service integration', () => {
         expect(policy.spec?.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: expect.arrayContaining([
+                    _from: expect.arrayContaining([
                         { podSelector: {} },
                     ]),
                 }),
@@ -98,7 +102,7 @@ describe('network-policy.service integration', () => {
         expect(policy.spec?.ingress).not.toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
+                    _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                 }),
             ])
         );
@@ -109,8 +113,10 @@ describe('network-policy.service integration', () => {
         const appId = 'disabled-policy-app';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -146,8 +152,10 @@ describe('network-policy.service integration', () => {
             const appId = 'matrix-app';
             const { core, network } = ctx.getClients();
             await core.createNamespace({
-                metadata: {
-                    name: namespace,
+                body: {
+                    metadata: {
+                        name: namespace,
+                    },
                 },
             });
 
@@ -171,8 +179,10 @@ describe('network-policy.service integration', () => {
         const app = createNginxApp();
         const { core, apps } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: app.projectId,
+            body: {
+                metadata: {
+                    name: app.projectId,
+                },
             },
         });
 
@@ -321,7 +331,7 @@ function createNginxApp(): AppExtendedModel {
 }
 
 function expectIngressRules(rules: k8s.V1NetworkPolicyIngressRule[], policyType: AppNetworkPolicyType) {
-    const peers = rules.flatMap(rule => rule.from ?? []);
+    const peers = rules.flatMap(rule => rule._from ?? []);
     const expectedPeers: Record<AppNetworkPolicyType, {
         traefik: boolean;
         namespace: boolean;

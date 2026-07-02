@@ -20,7 +20,7 @@ import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
 import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
-import { parseStoredContainerCommandArray } from "@/shared/utils/container-command-args.utils";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 
 class DeploymentService {
@@ -63,7 +63,7 @@ class DeploymentService {
         }
 
         if (app.containerCommand) {
-            const validatedData = z.array(z.string()).safeParse(parseStoredContainerCommandArray(app.containerCommand));
+            const validatedData = z.array(z.string()).safeParse(ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand));
             if (!validatedData.success) {
                 throw new ServiceException("Container command must be a valid JSON array, e.g., [\"/bin/sh\", \"-lc\"]");
             }
@@ -152,7 +152,7 @@ class DeploymentService {
                                 name: app.id,
                                 image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
-                                ...(app.containerCommand ? { command: parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
+                                ...(app.containerCommand ? { command: ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
                                 ...(app.securityContextPrivileged ? { securityContext: { privileged: true } } : {}),
                                 ...(envVars.length > 0 ? { env: envVars } : {}),

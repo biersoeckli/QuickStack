@@ -32,7 +32,7 @@ function k8sEvent(action: string, reason: string, message: string, type: string,
 }
 
 function podEventResponse(podName: string, uid: string, events: any[]) {
-    return { body: { items: events } };
+    return { items: events };
 }
 
 describe('eventService.getEventsForAgent', () => {
@@ -50,7 +50,7 @@ describe('eventService.getEventsForAgent', () => {
                 k8sEvent('Created', 'Started', 'Container started', 'Normal', new Date('2026-01-01T10:00:00Z')),
                 k8sEvent('Pulled', 'Pulled', 'Container image pulled', 'Normal', new Date('2026-01-01T09:00:00Z')),
             ]))
-            .mockResolvedValueOnce({ body: { items: [] } }); // claim events fallback
+            .mockResolvedValueOnce({ items: [] }); // claim events fallback
 
         const result = await eventService.getEventsForAgent('project-1', 'agent-1');
 
@@ -72,17 +72,15 @@ describe('eventService.getEventsForAgent', () => {
                 k8sEvent('Created', 'Started', 'Container started', 'Normal', new Date('2026-01-01T10:00:00Z')),
             ]))
             .mockResolvedValueOnce({
-                body: {
-                    items: [
-                        k8sEvent(
-                            'ClaimExpired',
-                            'ClaimExpired',
-                            'Sandbox claim has expired',
-                            'Warning',
-                            new Date('2026-01-01T10:05:00Z'),
-                        ),
-                    ],
-                },
+                items: [
+                    k8sEvent(
+                        'ClaimExpired',
+                        'ClaimExpired',
+                        'Sandbox claim has expired',
+                        'Warning',
+                        new Date('2026-01-01T10:05:00Z'),
+                    ),
+                ],
             });
 
         const result = await eventService.getEventsForAgent('project-1', 'agent-1');
@@ -113,7 +111,7 @@ describe('eventService.getEventsForAgent', () => {
 
     it('returns empty array when no agent pods exist', async () => {
         podServiceMocks.getPodsForAgent.mockResolvedValue([]);
-        k3sMocks.listNamespacedEvent.mockResolvedValue({ body: { items: [] } });
+        k3sMocks.listNamespacedEvent.mockResolvedValue({ items: [] });
 
         const result = await eventService.getEventsForAgent('project-1', 'agent-1');
 
@@ -134,17 +132,15 @@ describe('eventService.getEventsForAgent', () => {
                 k8sEvent('Created', 'Error', 'pod-2 error', 'Warning', new Date('2026-01-01T10:30:00Z')),
             ]))
             .mockResolvedValueOnce({
-                body: {
-                    items: [
-                        k8sEvent(
-                            'Scheduled',
-                            'Scheduled',
-                            'Claim scheduled',
-                            'Normal',
-                            new Date('2026-01-01T09:00:00Z'),
-                        ),
-                    ],
-                },
+                items: [
+                    k8sEvent(
+                        'Scheduled',
+                        'Scheduled',
+                        'Claim scheduled',
+                        'Normal',
+                        new Date('2026-01-01T09:00:00Z'),
+                    ),
+                ],
             });
 
         const result = await eventService.getEventsForAgent('project-1', 'agent-1');

@@ -7,7 +7,7 @@ import { Prisma } from "@prisma/client";
 
 class AgentFileMountService {
 
-    async getById(fileMountId: string) {
+    async getFileMountById(fileMountId: string) {
         return await dataAccess.client.agentFileMount.findFirstOrThrow({
             where: {
                 id: fileMountId

@@ -2,7 +2,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
         batch: {
             createNamespacedJob: vi.fn(),
-            listNamespacedJob: vi.fn().mockResolvedValue({ body: { items: [] } }),
+            listNamespacedJob: vi.fn().mockResolvedValue({ items: [] }),
             readNamespacedJobStatus: vi.fn(),
         },
         core: {

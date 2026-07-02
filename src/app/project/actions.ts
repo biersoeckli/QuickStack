@@ -9,10 +9,10 @@ import { DomainEditModel, domainEditZodModel } from "@/shared/model/domain-edit.
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import appService from "@/server/services/app.service";
 import agentDomainService from "@/server/services/agent-domain.service";
-import { FileMountEditModel, fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 import agentFileMountService from "@/server/services/agent-file-mount.service";
 import dataAccess from "@/server/adapter/db.client";
 import { z } from "zod";
+import { FileMountEditModel, fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 import buildService from "@/server/services/build.service";
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import { zodWorkloadType } from "@/shared/model/runtime-type.model";
@@ -103,7 +103,7 @@ export const deleteFileMount = async (fileMountId: string, type: WorkloadType) =
                 await appService.deleteFileMountById(fileMountId);
             },
             agent: async () => {
-                const fileMount = await agentFileMountService.getById(fileMountId);
+                const fileMount = await agentFileMountService.getFileMountById(fileMountId);
                 await isAuthorizedWriteForWorkload(fileMount.agentId);
                 await agentFileMountService.deleteFileMount(fileMountId);
             }

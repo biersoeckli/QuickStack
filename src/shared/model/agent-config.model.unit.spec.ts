@@ -1,28 +1,61 @@
 import { describe, it, expect } from 'vitest';
 import { agentConfigZodModel, agentSourceInfoGitZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
 
+function validAgentConfig(overrides: Record<string, unknown> = {}) {
+    return {
+        id: 'agent-1',
+        name: 'Agent One',
+        projectId: 'project-1',
+        llmGatewayId: 'gateway-1',
+        modelAlias: 'gpt-4o',
+        sourceType: 'CONTAINER',
+        buildMethod: 'DOCKERFILE',
+        containerImageSource: 'my/image:latest',
+        containerRegistryUsername: null,
+        containerRegistryPassword: null,
+        gitUrl: null,
+        gitBranch: null,
+        gitUsername: null,
+        gitToken: null,
+        dockerfilePath: './Dockerfile',
+        cpuRequest: null,
+        cpuLimit: null,
+        memoryRequest: null,
+        memoryLimit: null,
+        systemPrompt: null,
+        encryptedEnvVars: null,
+        containerCommand: undefined,
+        containerArgs: undefined,
+        warmPoolReplicas: 0,
+        envVars: [],
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+        ...overrides,
+    };
+}
+
 describe('agentConfigZodModel', () => {
 
     describe('environment variable validation', () => {
         it('accepts valid Kubernetes env var names', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: 'MY_VAR', value: 'hello' },
                     { name: 'API_KEY', value: 'secret' },
                     { name: '_PREFIXED', value: 'val' },
                     { name: 'DB_HOST_1', value: 'localhost' },
                 ],
-            });
+            }));
             expect(result.success).toBe(true);
         });
 
         it('rejects duplicate env var names (case-insensitive)', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: 'MY_VAR', value: 'hello' },
                     { name: 'my_var', value: 'world' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
             if (!result.success) {
                 const errors = result.error.flatten().fieldErrors;
@@ -31,64 +64,64 @@ describe('agentConfigZodModel', () => {
         });
 
         it('rejects QuickStack-reserved env var names', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: `${QUICKSTACK_RESERVED_ENV_PREFIX}GATEWAY`, value: 'test' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('rejects env var names not starting with uppercase or underscore', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: 'myVar', value: 'test' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('rejects env var names with lowercase letters', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: 'MY_var', value: 'test' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('rejects env var names longer than 63 characters', () => {
             const longName = 'A'.repeat(64);
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: longName, value: 'test' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('rejects empty env var names', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: '', value: 'test' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('rejects empty env var values', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [
                     { name: 'MY_VAR', value: '' },
                 ],
-            });
+            }));
             expect(result.success).toBe(false);
         });
 
         it('accepts empty envVars array', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 envVars: [],
-            });
+            }));
             expect(result.success).toBe(true);
         });
     });
@@ -109,7 +142,7 @@ describe('agentConfigZodModel', () => {
 
     describe('full config parsing', () => {
         it('accepts a complete valid config', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 containerImageSource: 'my/image:latest',
                 cpuRequest: '100m',
                 cpuLimit: '500m',
@@ -120,12 +153,12 @@ describe('agentConfigZodModel', () => {
                     { name: 'API_KEY', value: 'secret-123' },
                     { name: 'DB_HOST', value: 'localhost' },
                 ],
-            });
+            }));
             expect(result.success).toBe(true);
         });
 
         it('accepts config with all nullable fields empty', () => {
-            const result = agentConfigZodModel.safeParse({});
+            const result = agentConfigZodModel.safeParse(validAgentConfig());
             expect(result.success).toBe(true);
             if (result.success) {
                 expect(result.data.envVars).toEqual([]);
@@ -134,11 +167,11 @@ describe('agentConfigZodModel', () => {
         });
 
         it('accepts container command, args, and warm pool replicas', () => {
-            const result = agentConfigZodModel.safeParse({
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
                 containerCommand: [{ value: 'sh' }],
                 containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
                 warmPoolReplicas: '3',
-            });
+            }));
 
             expect(result.success).toBe(true);
             if (result.success) {
@@ -149,8 +182,8 @@ describe('agentConfigZodModel', () => {
         });
 
         it('rejects warm pool replicas outside the allowed range', () => {
-            expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '-1' }).success).toBe(false);
-            expect(agentConfigZodModel.safeParse({ warmPoolReplicas: '11' }).success).toBe(false);
+            expect(agentConfigZodModel.safeParse(validAgentConfig({ warmPoolReplicas: '-1' })).success).toBe(false);
+            expect(agentConfigZodModel.safeParse(validAgentConfig({ warmPoolReplicas: '11' })).success).toBe(false);
         });
     });
 

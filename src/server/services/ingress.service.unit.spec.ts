@@ -39,7 +39,7 @@ import ingressService from './ingress.service';
 
 function notFound() {
     return Object.assign(new Error('not found'), {
-        response: { statusCode: 404 },
+        code: 404,
     });
 }
 
@@ -48,10 +48,10 @@ describe('ingress.service Agent access', () => {
         vi.resetAllMocks();
         process.env.QS_AGENT_ROUTER_NAMESPACE = 'quickstack';
         vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(notFound());
-        vi.mocked(k3s.customObjects.listNamespacedCustomObject).mockResolvedValue({ body: { items: [{ metadata: { name: 'redirect-to-https' } }] } } as any);
-        vi.mocked(k3s.core.listNamespacedSecret).mockResolvedValue({ body: { items: [] } } as any);
+        vi.mocked(k3s.customObjects.listNamespacedCustomObject).mockResolvedValue({ items: [{ metadata: { name: 'redirect-to-https' } }] } as any);
+        vi.mocked(k3s.core.listNamespacedSecret).mockResolvedValue({ items: [] } as any);
         vi.mocked(k3s.core.readNamespacedSecret).mockRejectedValue(notFound());
-        vi.mocked(k3s.network.listNamespacedIngress).mockResolvedValue({ body: { items: [] } } as any);
+        vi.mocked(k3s.network.listNamespacedIngress).mockResolvedValue({ items: [] } as any);
     });
 
     it('creates per-agent ingress with cert-manager TLS', async () => {
@@ -66,9 +66,10 @@ describe('ingress.service Agent access', () => {
             redirectHttps: true,
         } as any);
 
-        expect(k3s.network.createNamespacedIngress).toHaveBeenCalledWith(
-            'quickstack',
-            expect.objectContaining({
+        const ingressArg = vi.mocked(k3s.network.createNamespacedIngress).mock.calls[0][0];
+        expect(ingressArg).toEqual(expect.objectContaining({
+            namespace: 'quickstack',
+            body: expect.objectContaining({
                 kind: 'Ingress',
                 metadata: expect.objectContaining({
                     name: expect.stringMatching(/^agent-access-/),
@@ -105,7 +106,7 @@ describe('ingress.service Agent access', () => {
                     ]),
                 }),
             }),
-        );
+        }));
         expect(k3s.applyResource).toHaveBeenCalledWith(
             expect.objectContaining({ kind: 'Deployment', metadata: expect.objectContaining({ name: 'qs-auth-proxy' }) }),
             'quickstack',

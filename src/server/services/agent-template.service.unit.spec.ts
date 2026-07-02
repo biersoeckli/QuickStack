@@ -82,6 +82,7 @@ describe("agent-template.service", () => {
         dbGatewayMocks.findUnique.mockResolvedValue({ id: "gateway-1" });
         dbAgentMocks.findUnique.mockResolvedValue(null);
         dbAgentMocks.create.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
+        dbAgentMocks.update.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
         dbAgentDomainMocks.findMany.mockResolvedValue([]);
         dbAgentVolumeMocks.findMany.mockResolvedValue([]);
         dbAgentFileMountMocks.findMany.mockResolvedValue([]);
@@ -126,7 +127,8 @@ describe("agent-template.service", () => {
 
         await agentTemplateService.createAgentFromTemplate("project-1", template);
 
-        expect(dbAgentMocks.create).toHaveBeenCalledWith({
+        expect(dbAgentMocks.update).toHaveBeenCalledWith({
+            where: { id: expect.stringMatching(/^agent-open-code-/) },
             data: expect.objectContaining({
                 id: expect.stringMatching(/^agent-open-code-/),
                 name: "OpenCode",
@@ -144,7 +146,7 @@ describe("agent-template.service", () => {
                 containerMountPath: "/workspace",
                 size: 10000,
                 storageClassName: "longhorn",
-                agentId: expect.stringMatching(/^agent-open-code-/),
+                agentId: "agent-opencode",
             },
         });
         expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith("project-1");
@@ -159,5 +161,6 @@ describe("agent-template.service", () => {
         await expect(agentTemplateService.createAgentFromTemplate("project-1", template))
             .rejects.toThrow(ServiceException);
         expect(dbAgentMocks.create).not.toHaveBeenCalled();
+        expect(dbAgentMocks.update).not.toHaveBeenCalled();
     });
 });

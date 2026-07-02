@@ -1,9 +1,6 @@
 import { revalidateTag } from "next/cache";
 import dataAccess from "../adapter/db.client";
-import agentSandboxAdapter, {
-    SANDBOX_API_GROUP,
-    SANDBOX_API_VERSION,
-} from "../adapter/agent-sandbox.adapter";
+import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -14,8 +11,8 @@ import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
 import pvcService from "./pvc.service";
+import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
-import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
 
 class AgentRuntimeService {
 
@@ -124,28 +121,6 @@ class AgentRuntimeService {
         return 'DEPLOYING';
     }
 
-    private buildSandboxClaimResource(
-        claimName: string,
-        namespace: string,
-        warmPoolName: string,
-        labels?: Record<string, string>,
-    ): SandboxClaim {
-        return {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxClaim',
-            metadata: {
-                name: claimName,
-                namespace,
-                ...(labels ? { labels } : {}),
-            },
-            spec: {
-                warmPoolRef: {
-                    name: warmPoolName,
-                },
-            },
-        };
-    }
-
     /**
      * Derives live Agent status from Kubernetes SandboxClaim conditions.
      * - No claim -> SHUTDOWN
@@ -197,7 +172,7 @@ class AgentRuntimeService {
         const claimName = KubeObjectNameUtils.toAgentClaimName(agentId);
 
         await agentSandboxAdapter.createSandboxClaim(
-            this.buildSandboxClaimResource(claimName, namespace, agentId, {
+            agentSandboxTemplateBuilder.buildSandboxClaimResource(claimName, namespace, agentId, {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,

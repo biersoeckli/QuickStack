@@ -18,7 +18,7 @@ import {
 } from "@/shared/model/agent-config.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { saveAgentContainerConfig } from "./actions";
-import { parseStoredContainerCommandItems } from "@/shared/utils/container-command-args.utils";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 
 export default function AgentContainerConfigCard({ agent, readonly }: {
     agent: AgentExtendedModel;
@@ -27,7 +27,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
     const form = useForm<AgentContainerConfigModel>({
         resolver: zodResolver(agentContainerConfigZodModel),
         defaultValues: {
-            containerCommand: parseStoredContainerCommandItems(agent.containerCommand),
+            containerCommand: ContainerCommangArgsUtils.parseStoredContainerCommandItems(agent.containerCommand),
             containerArgs: agent.containerArgs
                 ? JSON.parse(agent.containerArgs).map((arg: string) => ({ value: arg }))
                 : [],

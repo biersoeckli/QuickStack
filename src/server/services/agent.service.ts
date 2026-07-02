@@ -6,10 +6,7 @@ import { Agent } from "@prisma/client";
 import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import agentSandboxAdapter, {
-    SANDBOX_API_GROUP,
-    SANDBOX_API_VERSION,
-} from "../adapter/agent-sandbox.adapter";
+import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import namespaceService from "./namespace.service";
@@ -27,42 +24,11 @@ import agentVolumeService from "./agent-volume.service";
 import agentFileMountService from "./agent-file-mount.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import crypto from "crypto";
-import {
-    parseStoredContainerCommandArray,
-    serializeContainerCommandItems,
-} from "@/shared/utils/container-command-args.utils";
 import buildService from "./build.service";
 import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
-import { SandboxTemplate, SandboxWarmPool, } from "../adapter/api-clients/types/agents.models";
 import { CatchUtils } from "@/shared/utils/catch.utils";
-
-const OPENCODE_WORKDIR = '/workspace';
-const OPENCODE_WEB_PORT = 4096;
-const FILEBROWSER_PORT = 80;
-const FILEBROWSER_BASE_URL = '/files';
-const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
-const DEFAULT_AGENT_IMAGE = 'ghcr.io/anomalyco/opencode:latest';
-
-type AgentSandboxTemplateConfig = {
-    id: string;
-    projectId: string;
-    containerImageSource: string;
-    modelAlias: string;
-    llmGateway?: { baseUrl: string } | null;
-    cpuRequest?: number | null;
-    cpuLimit?: number | null;
-    memoryRequest?: number | null;
-    memoryLimit?: number | null;
-    containerCommand?: string | null;
-    containerArgs?: string | null;
-    volumePvcData: {
-        volume: V1Volume;
-        volumeMount: V1VolumeMount;
-    }[];
-    fileVolumes: V1Volume[];
-    fileVolumeMounts: V1VolumeMount[];
-};
+import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 
 class AgentService {
 
@@ -121,63 +87,10 @@ class AgentService {
         )(agentId);
     }
 
-
-    async create(input: {
-        name: string;
-        projectId: string;
-        llmGatewayId: string;
-        modelAlias: string;
-    }): Promise<Agent> {
-        try {
-            const agentId = KubeObjectNameUtils.toAgentId(input.name);
-
-            // Validate project, gateway and create agent in a single DB transaction
-            const createdAgent = await dataAccess.client.$transaction(async (tx) => {
-                const project = await tx.project.findUnique({
-                    where: { id: input.projectId },
-                    select: { projectType: true, id: true },
-                });
-                if (!project) {
-                    throw new ServiceException('Project not found.');
-                }
-                if (project.projectType !== 'AGENT') {
-                    throw new ServiceException('Agents can only be created in Agent Projects.');
-                }
-
-                const gateway = await tx.llmGateway.findUnique({
-                    where: { id: input.llmGatewayId },
-                    select: { id: true },
-                });
-                if (!gateway) {
-                    throw new ServiceException('LLM Gateway not found.');
-                }
-
-                return tx.agent.create({
-                    data: {
-                        id: agentId,
-                        name: input.name,
-                        projectId: input.projectId,
-                        llmGatewayId: input.llmGatewayId,
-                        modelAlias: input.modelAlias,
-                    },
-                });
-            });
-
-            // Ensure the project namespace exists in K8s
-            await namespaceService.createNamespaceIfNotExists(createdAgent.projectId);
-
-            return createdAgent;
-        } finally {
-            revalidateTag(Tags.agents(input.projectId));
-            revalidateTag(Tags.projects());
-        }
-    }
-
     /**
      * Upserts an Agent along with its sub-resources (domains, volumes, file mounts)
      * in a single transaction. Delegates per-item save logic to the respective
-     * sub-services ({@link agentDomainService}, {@link agentVolumeService},
-     * {@link agentFileMountService}).
+     * sub-services ({@link agentDomainService}, {@link agentVolumeService}, {@link agentFileMountService}).
      *
      * - If {@link AgentExtendedWriteModel.id} is provided and the agent exists → update.
      * - If the id is provided but no agent exists → create with that id.
@@ -188,109 +101,22 @@ class AgentService {
      * everything in a new `$transaction` and revalidates caches itself.
      */
     async saveAgentExtendedModel(
-        agent: AgentExtendedWriteModel,
+        agentExtendedInput: AgentExtendedWriteModel,
         tx?: Prisma.TransactionClient,
     ): Promise<AgentExtendedModel> {
         const run = async (tx: Prisma.TransactionClient) => {
-            let savedAgentId: string;
+            const {
+                agentDomains: agentDomainsInput,
+                agentVolumes: agentVolumesInput,
+                agentFileMounts: agentFileMountsInput,
+                ...agentInputData
+            } = agentExtendedInput;
+            const savedAgent = await this.saveAgent(agentInputData, tx);
+            const savedAgentId = savedAgent.id;
 
-            if (agent.id) {
-                const existing = await tx.agent.findUnique({ where: { id: agent.id } });
-                if (existing) {
-                    await tx.agent.update({
-                        where: { id: agent.id },
-                        data: {
-                            name: agent.name,
-                            projectId: agent.projectId,
-                            llmGatewayId: agent.llmGatewayId,
-                            modelAlias: agent.modelAlias,
-                            sourceType: agent.sourceType,
-                            buildMethod: agent.buildMethod,
-                            containerImageSource: agent.containerImageSource ?? null,
-                            containerRegistryUsername: agent.containerRegistryUsername ?? null,
-                            containerRegistryPassword: agent.containerRegistryPassword ?? null,
-                            gitUrl: agent.gitUrl ?? null,
-                            gitBranch: agent.gitBranch ?? null,
-                            gitUsername: agent.gitUsername ?? null,
-                            gitToken: agent.gitToken ?? null,
-                            dockerfilePath: agent.dockerfilePath,
-                            cpuRequest: agent.cpuRequest ?? null,
-                            cpuLimit: agent.cpuLimit ?? null,
-                            memoryRequest: agent.memoryRequest ?? null,
-                            memoryLimit: agent.memoryLimit ?? null,
-                            systemPrompt: agent.systemPrompt ?? null,
-                            encryptedEnvVars: agent.encryptedEnvVars ?? null,
-                            containerCommand: agent.containerCommand ?? null,
-                            containerArgs: agent.containerArgs ?? null,
-                            warmPoolReplicas: agent.warmPoolReplicas,
-                        },
-                    });
-                } else {
-                    await tx.agent.create({
-                        data: {
-                            id: agent.id,
-                            name: agent.name,
-                            projectId: agent.projectId,
-                            llmGatewayId: agent.llmGatewayId,
-                            modelAlias: agent.modelAlias,
-                            sourceType: agent.sourceType,
-                            buildMethod: agent.buildMethod,
-                            containerImageSource: agent.containerImageSource ?? null,
-                            containerRegistryUsername: agent.containerRegistryUsername ?? null,
-                            containerRegistryPassword: agent.containerRegistryPassword ?? null,
-                            gitUrl: agent.gitUrl ?? null,
-                            gitBranch: agent.gitBranch ?? null,
-                            gitUsername: agent.gitUsername ?? null,
-                            gitToken: agent.gitToken ?? null,
-                            dockerfilePath: agent.dockerfilePath,
-                            cpuRequest: agent.cpuRequest ?? null,
-                            cpuLimit: agent.cpuLimit ?? null,
-                            memoryRequest: agent.memoryRequest ?? null,
-                            memoryLimit: agent.memoryLimit ?? null,
-                            systemPrompt: agent.systemPrompt ?? null,
-                            encryptedEnvVars: agent.encryptedEnvVars ?? null,
-                            containerCommand: agent.containerCommand ?? null,
-                            containerArgs: agent.containerArgs ?? null,
-                            warmPoolReplicas: agent.warmPoolReplicas,
-                        },
-                    });
-                }
-                savedAgentId = agent.id;
-            } else {
-                const agentId = KubeObjectNameUtils.toAgentId(agent.name);
-                await tx.agent.create({
-                    data: {
-                        id: agentId,
-                        name: agent.name,
-                        projectId: agent.projectId,
-                        llmGatewayId: agent.llmGatewayId,
-                        modelAlias: agent.modelAlias,
-                        sourceType: agent.sourceType,
-                        buildMethod: agent.buildMethod,
-                        containerImageSource: agent.containerImageSource ?? null,
-                        containerRegistryUsername: agent.containerRegistryUsername ?? null,
-                        containerRegistryPassword: agent.containerRegistryPassword ?? null,
-                        gitUrl: agent.gitUrl ?? null,
-                        gitBranch: agent.gitBranch ?? null,
-                        gitUsername: agent.gitUsername ?? null,
-                        gitToken: agent.gitToken ?? null,
-                        dockerfilePath: agent.dockerfilePath,
-                        cpuRequest: agent.cpuRequest ?? null,
-                        cpuLimit: agent.cpuLimit ?? null,
-                        memoryRequest: agent.memoryRequest ?? null,
-                        memoryLimit: agent.memoryLimit ?? null,
-                        systemPrompt: agent.systemPrompt ?? null,
-                        encryptedEnvVars: agent.encryptedEnvVars ?? null,
-                        containerCommand: agent.containerCommand ?? null,
-                        containerArgs: agent.containerArgs ?? null,
-                        warmPoolReplicas: agent.warmPoolReplicas,
-                    },
-                });
-                savedAgentId = agentId;
-            }
 
             // Sub-resources via dedicated sub-services
-            for (const domain of agent.agentDomains) {
+            for (const domain of agentDomainsInput) {
                 await agentDomainService.saveDomain({
                     id: domain.id,
                     hostname: domain.hostname,
@@ -303,7 +129,7 @@ class AgentService {
             // Delete sub-items that are no longer in the incoming model
             {
                 const existingDomains = await tx.agentDomain.findMany({ where: { agentId: savedAgentId } });
-                const keepIds = new Set(agent.agentDomains.map((d) => d.id).filter(Boolean) as string[]);
+                const keepIds = new Set(agentDomainsInput.map((d) => d.id).filter(Boolean) as string[]);
                 for (const existing of existingDomains) {
                     if (!keepIds.has(existing.id)) {
                         await agentDomainService.deleteDomain(existing.id, tx);
@@ -311,7 +137,7 @@ class AgentService {
                 }
             }
 
-            for (const volume of agent.agentVolumes) {
+            for (const volume of agentVolumesInput) {
                 await agentVolumeService.saveVolume({
                     id: volume.id,
                     containerMountPath: volume.containerMountPath,
@@ -323,7 +149,7 @@ class AgentService {
             // Delete volumes that are no longer in the incoming model
             {
                 const existingVolumes = await tx.agentVolume.findMany({ where: { agentId: savedAgentId } });
-                const keepIds = new Set(agent.agentVolumes.map((v) => v.id).filter(Boolean) as string[]);
+                const keepIds = new Set(agentVolumesInput.map((v) => v.id).filter(Boolean) as string[]);
                 for (const existing of existingVolumes) {
                     if (!keepIds.has(existing.id)) {
                         await agentVolumeService.deleteVolume(existing.id, tx);
@@ -331,7 +157,7 @@ class AgentService {
                 }
             }
 
-            for (const fileMount of agent.agentFileMounts) {
+            for (const fileMount of agentFileMountsInput) {
                 await agentFileMountService.saveFileMount({
                     id: fileMount.id,
                     containerMountPath: fileMount.containerMountPath,
@@ -342,7 +168,7 @@ class AgentService {
             // Delete file mounts that are no longer in the incoming model
             {
                 const existingFileMounts = await tx.agentFileMount.findMany({ where: { agentId: savedAgentId } });
-                const keepIds = new Set(agent.agentFileMounts.map((f) => f.id).filter(Boolean) as string[]);
+                const keepIds = new Set(agentFileMountsInput.map((f) => f.id).filter(Boolean) as string[]);
                 for (const existing of existingFileMounts) {
                     if (!keepIds.has(existing.id)) {
                         await agentFileMountService.deleteFileMount(existing.id, tx);
@@ -366,179 +192,39 @@ class AgentService {
         return result;
     }
 
-    /**
-     * Saves runtime configuration to the database only.
-     * Does NOT reconcile Kubernetes sandbox resources — use {@link deploy} for that.
-     *
-     * - Validates K8s resource quantities and env var names.
-     * - Encrypts environment variable values via CryptoUtils.
-     * - Rejects QuickStack-reserved env var names.
-     * - Locks runtime-relevant config while the Agent has an active SandboxClaim (running).
-     * - Invalidates stored virtual-key state on gateway/model changes.
-     */
-    async saveConfig(agentId: string, config: Partial<AgentConfigModel>): Promise<Agent> {
-        // Read agent for K8s runtime check
-        const existing = await this.getById(agentId);
+    async saveAgent(data: Prisma.AgentUncheckedCreateInput | Prisma.AgentUncheckedUpdateInput, tx: Prisma.TransactionClient = dataAccess.client): Promise<Agent> {
+        const isCreate = !('id' in data) || !data.id;
 
-        const isRunning = await agentSandboxAdapter.hasActiveClaim(
-            existing.id,
-            existing.project.id,
-        );
-
-        // Compute diffs and validate before transaction
-        const configFields: string[] = [];
-        if (config.sourceType !== undefined && config.sourceType !== existing.sourceType) {
-            configFields.push('sourceType');
-        }
-        if (config.buildMethod !== undefined && config.buildMethod !== existing.buildMethod) {
-            configFields.push('buildMethod');
-        }
-        if (config.containerImageSource !== undefined && config.containerImageSource !== existing.containerImageSource) {
-            configFields.push('containerImageSource');
-        }
-        if (config.containerRegistryUsername !== undefined && config.containerRegistryUsername !== existing.containerRegistryUsername) {
-            configFields.push('containerRegistryUsername');
-        }
-        if (config.containerRegistryPassword !== undefined && config.containerRegistryPassword !== existing.containerRegistryPassword) {
-            configFields.push('containerRegistryPassword');
-        }
-        if (config.gitUrl !== undefined && config.gitUrl !== existing.gitUrl) {
-            configFields.push('gitUrl');
-        }
-        if (config.gitBranch !== undefined && config.gitBranch !== existing.gitBranch) {
-            configFields.push('gitBranch');
-        }
-        if (config.gitUsername !== undefined && config.gitUsername !== existing.gitUsername) {
-            configFields.push('gitUsername');
-        }
-        if (config.gitToken !== undefined && config.gitToken !== existing.gitToken) {
-            configFields.push('gitToken');
-        }
-        if (config.dockerfilePath !== undefined && config.dockerfilePath !== existing.dockerfilePath) {
-            configFields.push('dockerfilePath');
-        }
-        if (config.cpuRequest !== undefined && config.cpuRequest !== existing.cpuRequest) {
-            configFields.push('cpuRequest');
-        }
-        if (config.cpuLimit !== undefined && config.cpuLimit !== existing.cpuLimit) {
-            configFields.push('cpuLimit');
-        }
-        if (config.memoryRequest !== undefined && config.memoryRequest !== existing.memoryRequest) {
-            configFields.push('memoryRequest');
-        }
-        if (config.memoryLimit !== undefined && config.memoryLimit !== existing.memoryLimit) {
-            configFields.push('memoryLimit');
-        }
-        if (config.containerCommand !== undefined) {
-            const nextContainerCommand = serializeContainerCommandItems(config.containerCommand);
-            if (nextContainerCommand !== existing.containerCommand) {
-                configFields.push('containerCommand');
-            }
-        }
-        if (config.containerArgs !== undefined) {
-            const nextContainerArgs = config.containerArgs.length > 0
-                ? JSON.stringify(config.containerArgs.map(arg => arg.value))
-                : null;
-            if (nextContainerArgs !== existing.containerArgs) {
-                configFields.push('containerArgs');
-            }
-        }
-        if (config.warmPoolReplicas !== undefined && config.warmPoolReplicas !== existing.warmPoolReplicas) {
-            configFields.push('warmPoolReplicas');
-        }
-        if (config.llmGatewayId !== undefined && config.llmGatewayId !== existing.llmGatewayId) {
-            configFields.push('llmGatewayId');
-        }
-        if (config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias) {
-            configFields.push('modelAlias');
-        }
-        const runtimeRelevant = ['sourceType', 'buildMethod', 'containerImageSource', 'containerRegistryUsername', 'containerRegistryPassword', 'gitUrl', 'gitBranch', 'gitUsername', 'gitToken', 'dockerfilePath', 'cpuRequest', 'cpuLimit', 'memoryRequest', 'memoryLimit', 'containerCommand', 'containerArgs', 'warmPoolReplicas', 'llmGatewayId', 'modelAlias'];
-
-        if (isRunning) {
-            const changedRuntime = configFields.some((f) => runtimeRelevant.includes(f));
-            if (changedRuntime) {
-                throw new ServiceException(
-                    'Runtime configuration cannot be changed while the Agent is running. Stop the Agent first.',
-                );
-            }
-        }
-
-        const isGatewayChanged =
-            config.llmGatewayId !== undefined && config.llmGatewayId !== existing.llmGatewayId;
-        const isModelChanged =
-            config.modelAlias !== undefined && config.modelAlias !== existing.modelAlias;
-
-        let encryptedEnvVars: string | null = null;
-        if (config.envVars !== undefined) {
-            encryptedEnvVars = JSON.stringify(
-                config.envVars.map((ev) => ({
+        let savedItem: Agent | null = null;
+        try {
+            // if env vars exists, encrypt them
+            if (data.encryptedEnvVars) {
+                const parsed = JSON.parse(data.encryptedEnvVars as string) as { name: string; value: string }[];
+                const encrypted = parsed.map(ev => ({
                     name: ev.name,
                     value: CryptoUtils.encrypt(ev.value),
-                })),
-            );
-        }
-
-        const systemPromptValue =
-            config.systemPrompt !== undefined
-                ? (config.systemPrompt || null)
-                : undefined;
-        const containerCommandValue =
-            config.containerCommand !== undefined
-                ? serializeContainerCommandItems(config.containerCommand)
-                : undefined;
-        const containerArgsValue =
-            config.containerArgs !== undefined
-                ? (config.containerArgs.length > 0
-                    ? JSON.stringify(config.containerArgs.map(arg => arg.value))
-                    : null)
-                : undefined;
-
-        // Transactional read-then-write to prevent lost updates
-        const updated = await dataAccess.client.$transaction(async (tx) => {
-            // Re-read inside transaction to ensure we update the latest row
-            const current = await tx.agent.findUniqueOrThrow({
-                where: { id: agentId },
-            });
-
-            // If gateway was changed, verify no conflicting concurrent change
-            if (isGatewayChanged && current.llmGatewayId !== existing.llmGatewayId) {
-                throw new ServiceException(
-                    'Agent configuration was modified by another process. Please reload and try again.',
-                );
+                }));
+                data.encryptedEnvVars = JSON.stringify(encrypted);
             }
 
-            return tx.agent.update({
-                where: { id: agentId },
-                data: {
-                    ...(config.sourceType !== undefined ? { sourceType: config.sourceType } : {}),
-                    ...(config.buildMethod !== undefined ? { buildMethod: config.buildMethod } : {}),
-                    ...(config.containerImageSource !== undefined ? { containerImageSource: config.containerImageSource || null } : {}),
-                    ...(config.containerRegistryUsername !== undefined ? { containerRegistryUsername: config.containerRegistryUsername || null } : {}),
-                    ...(config.containerRegistryPassword !== undefined ? { containerRegistryPassword: config.containerRegistryPassword || null } : {}),
-                    ...(config.gitUrl !== undefined ? { gitUrl: config.gitUrl || null } : {}),
-                    ...(config.gitBranch !== undefined ? { gitBranch: config.gitBranch || null } : {}),
-                    ...(config.gitUsername !== undefined ? { gitUsername: config.gitUsername || null } : {}),
-                    ...(config.gitToken !== undefined ? { gitToken: config.gitToken || null } : {}),
-                    ...(config.dockerfilePath !== undefined ? { dockerfilePath: config.dockerfilePath || './Dockerfile' } : {}),
-                    ...(config.cpuRequest !== undefined ? { cpuRequest: config.cpuRequest ?? null } : {}),
-                    ...(config.cpuLimit !== undefined ? { cpuLimit: config.cpuLimit ?? null } : {}),
-                    ...(config.memoryRequest !== undefined ? { memoryRequest: config.memoryRequest ?? null } : {}),
-                    ...(config.memoryLimit !== undefined ? { memoryLimit: config.memoryLimit ?? null } : {}),
-                    ...(systemPromptValue !== undefined ? { systemPrompt: systemPromptValue } : {}),
-                    ...(containerCommandValue !== undefined ? { containerCommand: containerCommandValue } : {}),
-                    ...(containerArgsValue !== undefined ? { containerArgs: containerArgsValue } : {}),
-                    ...(config.warmPoolReplicas !== undefined ? { warmPoolReplicas: config.warmPoolReplicas } : {}),
-                    ...(config.envVars !== undefined ? { encryptedEnvVars: encryptedEnvVars! } : {}),
-                    ...(isGatewayChanged ? { llmGatewayId: config.llmGatewayId! } : {}),
-                    ...(isModelChanged ? { modelAlias: config.modelAlias! } : {}),
-                },
-            });
-        });
-
-        revalidateTag(Tags.agent(agentId));
-        revalidateTag(Tags.agents(existing.projectId));
-
-        return updated;
+            if (isCreate) {
+                savedItem = await tx.agent.create({
+                    data: {
+                        id: KubeObjectNameUtils.toAgentId(data.name as string),
+                        ...data
+                    } as Prisma.AgentUncheckedCreateInput,
+                });
+            } else {
+                savedItem = await tx.agent.update({
+                    where: { id: data.id as string },
+                    data: data as Prisma.AgentUncheckedUpdateInput,
+                });
+            }
+            return savedItem;
+        } finally {
+            if (savedItem) { revalidateTag(Tags.agent(savedItem.id)); }
+            if (savedItem) { revalidateTag(Tags.agents(savedItem?.projectId)); }
+        }
     }
 
     async getSandboxTemplateDeployInfo(agentId: string) {
@@ -650,10 +336,15 @@ class AgentService {
             const dockerPullSecretName = containerImageOverride
                 ? undefined
                 : await secretService.createOrUpdateAgentDockerPullSecret(agent);
-            await agentSandboxAdapter.reconcileSandboxTemplate(this.buildSandboxTemplateResource({
+
+            const containerImageSource = containerImageOverride ?? agent.containerImageSource;
+            if (!containerImageSource) {
+                throw new ServiceException('Container image source is missing. Cannot deploy for Agent.');
+            }
+            await agentSandboxAdapter.reconcileSandboxTemplate(agentSandboxTemplateBuilder.buildSandboxTemplateResource({
                 id: agent.id,
                 projectId: agent.project.id,
-                containerImageSource: containerImageOverride ?? agent.containerImageSource ?? DEFAULT_AGENT_IMAGE,
+                containerImageSource,
                 modelAlias: agent.modelAlias,
                 llmGateway: agent.llmGateway,
                 cpuRequest: agent.cpuRequest ?? null,
@@ -674,7 +365,7 @@ class AgentService {
             }));
 
             await agentSandboxAdapter.reconcileSandboxWarmPool(
-                this.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
+                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
             );
 
             // Reconcile agent domain ingresses — clean up orphaned, then ensure current
@@ -786,193 +477,6 @@ class AgentService {
         revalidateTag(Tags.projects());
     }
 
-    private normalizeLiteLlmBaseUrl(baseUrl: string): string {
-        const trimmed = baseUrl.trim().replace(/\/+$/, '');
-        if (!trimmed) {
-            throw new ServiceException('LLM Gateway base URL is missing for Agent.');
-        }
-        return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
-    }
-
-    private buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
-        const modelAlias = agent.modelAlias;
-        return {
-            $schema: 'https://opencode.ai/config.json',
-            model: `${OPENCODE_PROVIDER_ID}/${modelAlias}`,
-            provider: {
-                [OPENCODE_PROVIDER_ID]: {
-                    npm: '@ai-sdk/openai-compatible',
-                    name: 'QuickStack LiteLLM',
-                    options: {
-                        baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
-                        apiKey: '{env:QS_VIRTUAL_KEY}',
-                    },
-                    models: {
-                        [modelAlias]: {
-                            name: modelAlias,
-                        },
-                    },
-                },
-            },
-            server: {
-                hostname: '0.0.0.0',
-                port: OPENCODE_WEB_PORT,
-            },
-        };
-    }
-
-    private buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: {
-        dockerPullSecretName?: string;
-        deploymentId?: string;
-        buildJobName?: string;
-        gitCommitHash?: string;
-        gitCommitMessage?: string;
-    }): SandboxTemplate {
-        const effectiveImage = agent.containerImageSource;
-        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
-        const customCommand = parseStoredContainerCommandArray(agent.containerCommand);
-        const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;
-        const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
-
-        // Use PVC-based volumes when agent has volumes configured; otherwise fallback to emptyDir
-        const hasCustomVolumes = agent.volumePvcData.length > 0;
-
-        type SandboxVolumes = SandboxTemplate['spec']['podTemplate']['spec']['volumes']
-        const workspaceVolumes = hasCustomVolumes
-            ? agent.volumePvcData.map(v => v.volume)
-            : [{
-                name: 'workspace',
-                emptyDir: {},
-            }];
-        const volumes = [...workspaceVolumes, ...agent.fileVolumes] as SandboxVolumes;
-
-        const agentWorkspaceVolumeMounts = hasCustomVolumes
-            ? agent.volumePvcData.map(v => v.volumeMount)
-            : [{
-                name: 'workspace',
-                mountPath: OPENCODE_WORKDIR,
-            }];
-        const agentVolumeMounts = [...agentWorkspaceVolumeMounts, ...agent.fileVolumeMounts];
-
-        // Filebrowser mounts all volumes at /srv/<volume-id> if custom volumes, else workspace
-        const filebrowserVolumeMounts = hasCustomVolumes
-            ? agent.volumePvcData.map(v => ({
-                name: v.volume.name,
-                mountPath: `/srv/${v.volumeMount.name}`,
-            }))
-            : [{
-                name: 'workspace',
-                mountPath: '/srv',
-            }];
-
-        return {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxTemplate',
-            metadata: {
-                name: agent.id,
-                namespace: agent.projectId,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
-                    [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
-                    ...(deploymentInfo?.deploymentId ? { [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentInfo.deploymentId } : {}),
-                    ...(deploymentInfo?.buildJobName ? { buildJobName: deploymentInfo.buildJobName } : {}),
-                    ...(deploymentInfo?.gitCommitHash ? { [Constants.QS_ANNOTATION_GIT_COMMIT]: deploymentInfo.gitCommitHash } : {}),
-                    ...(deploymentInfo?.gitCommitMessage ? { [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: deploymentInfo.gitCommitMessage } : {}),
-                },
-            },
-            spec: {
-                envVarsInjectionPolicy: 'Disallowed',
-                networkPolicyManagement: 'Managed',
-                service: true,
-                podTemplate: {
-                    spec: {
-                        volumes,
-                        ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),
-                        containers: [{
-                            name: 'agent',
-                            image: effectiveImage,
-                            ...(usesDefaultOpenCodeStartup
-                                ? {
-                                    command: ['/bin/sh', '-lc'],
-                                    args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
-                                }
-                                : {
-                                    ...(customCommand ? { command: customCommand } : {}),
-                                    ...(customArgs ? { args: customArgs } : {}),
-                                }),
-                            workingDir: OPENCODE_WORKDIR,
-                            ports: [{
-                                name: 'opencode-web',
-                                containerPort: OPENCODE_WEB_PORT,
-                                protocol: 'TCP',
-                            }],
-                            volumeMounts: agentVolumeMounts,
-                            envFrom: [{ secretRef: { name: secretName } }],
-                            env: [{
-                                name: 'OPENCODE_CONFIG_CONTENT',
-                                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
-                            }],
-                            resources: {
-                                requests: {
-                                    ...(agent.cpuRequest ? {
-                                        cpu: `${agent.cpuRequest}m`,
-                                    } : {}),
-                                    ...(agent.memoryRequest ? {
-                                        memory: `${agent.memoryRequest}M`,
-                                    } : {}),
-                                },
-                                limits: {
-                                    ...(agent.cpuLimit ? {
-                                        cpu: `${agent.cpuLimit}m`,
-                                    } : {}),
-                                    ...(agent.memoryLimit ? {
-                                        memory: `${agent.memoryLimit}M`,
-                                    } : {}),
-                                },
-                            },
-                        }, {
-                            name: 'filebrowser',
-                            image: 'filebrowser/filebrowser:v2.31.2',
-                            imagePullPolicy: 'Always',
-                            args: [
-                                '--noauth',
-                                '--root', '/srv',
-                                '--baseurl', FILEBROWSER_BASE_URL,
-                                '--port', `${FILEBROWSER_PORT}`,
-                            ],
-                            ports: [{
-                                name: 'filebrowser-web',
-                                containerPort: FILEBROWSER_PORT,
-                                protocol: 'TCP',
-                            }],
-                            volumeMounts: filebrowserVolumeMounts,
-                        }]
-                    }
-                }
-            }
-        };
-    }
-
-    private buildSandboxWarmPoolResource(agentId: string, namespace: string, replicas: number): SandboxWarmPool {
-        return {
-            apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-            kind: 'SandboxWarmPool',
-            metadata: {
-                name: agentId,
-                namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().getTime()}`,
-                },
-            },
-            spec: {
-                sandboxTemplateRef: {
-                    name: agentId,
-                },
-                replicas,
-            },
-        };
-    }
 }
 
 const agentService = new AgentService();

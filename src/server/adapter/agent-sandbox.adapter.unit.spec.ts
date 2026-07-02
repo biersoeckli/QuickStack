@@ -28,7 +28,7 @@ describe('AgentSandboxAdapter', () => {
     describe('Sandbox resource reconciliation', () => {
         it('creates an upstream-compatible SandboxTemplate', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await agentSandboxAdapter.reconcileSandboxTemplate({
@@ -54,11 +54,12 @@ describe('AgentSandboxAdapter', () => {
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                'sandboxtemplates',
                 expect.objectContaining({
+                    group: SANDBOX_API_GROUP,
+                    version: SANDBOX_API_VERSION,
+                    namespace,
+                    plural: 'sandboxtemplates',
+                    body: expect.objectContaining({
                     apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
                     kind: 'SandboxTemplate',
                     spec: {
@@ -78,12 +79,13 @@ describe('AgentSandboxAdapter', () => {
                         },
                     },
                 }),
+                }),
             );
         });
 
         it('creates an upstream-compatible SandboxWarmPool', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await agentSandboxAdapter.reconcileSandboxWarmPool({
@@ -97,15 +99,17 @@ describe('AgentSandboxAdapter', () => {
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                'sandboxwarmpools',
                 expect.objectContaining({
-                    spec: {
-                        sandboxTemplateRef: { name: 'agent-template' },
-                        replicas: 2,
-                    },
+                    group: SANDBOX_API_GROUP,
+                    version: SANDBOX_API_VERSION,
+                    namespace,
+                    plural: 'sandboxwarmpools',
+                    body: expect.objectContaining({
+                        spec: {
+                            sandboxTemplateRef: { name: 'agent-template' },
+                            replicas: 2,
+                        },
+                    }),
                 }),
             );
         });
@@ -156,7 +160,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('rejects SandboxClaim with wrong apiVersion', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await expect(
@@ -171,7 +175,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('rejects SandboxClaim with wrong kind', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await expect(
@@ -188,7 +192,7 @@ describe('AgentSandboxAdapter', () => {
     describe('SandboxClaim operations', () => {
         it('returns false only when a SandboxClaim is not found', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await expect(agentSandboxAdapter.hasActiveClaim(name, namespace)).resolves.toBe(false);
@@ -205,7 +209,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('creates a SandboxClaim targeting the given warmPoolName', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await agentSandboxAdapter.createSandboxClaim({
@@ -216,15 +220,17 @@ describe('AgentSandboxAdapter', () => {
             });
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
                 expect.objectContaining({
-                    apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
-                    kind: 'SandboxClaim',
-                    metadata: { name, namespace },
-                    spec: { warmPoolRef: { name: 'agent-test' } },
+                    group: SANDBOX_API_GROUP,
+                    version: SANDBOX_API_VERSION,
+                    namespace,
+                    plural: CLAIM_PLURAL,
+                    body: expect.objectContaining({
+                        apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+                        kind: 'SandboxClaim',
+                        metadata: { name, namespace },
+                        spec: { warmPoolRef: { name: 'agent-test' } },
+                    }),
                 }),
             );
         });
@@ -246,17 +252,13 @@ describe('AgentSandboxAdapter', () => {
             await agentSandboxAdapter.deleteSandboxClaim(name, namespace);
 
             expect(k3s.customObjects.deleteNamespacedCustomObject).toHaveBeenCalledWith(
-                SANDBOX_API_GROUP,
-                SANDBOX_API_VERSION,
-                namespace,
-                CLAIM_PLURAL,
-                name,
+                { group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural: CLAIM_PLURAL, name },
             );
         });
 
         it('handles 404 silently on deleteSandboxClaim', async () => {
             vi.mocked(k3s.customObjects.deleteNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await expect(
@@ -266,7 +268,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('retrieves a SandboxClaim', async () => {
             const claimBody = { metadata: { name }, spec: { warmPoolRef: { name: 'agent-test' } } };
-            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({ body: claimBody } as any);
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue(claimBody as any);
 
             const result = await agentSandboxAdapter.getSandboxClaim(name, namespace);
 
@@ -275,7 +277,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('returns null when SandboxClaim not found', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             const result = await agentSandboxAdapter.getSandboxClaim(name, namespace);
@@ -287,12 +289,10 @@ describe('AgentSandboxAdapter', () => {
     describe('waitForSandboxReady', () => {
         it('resolves when SandboxClaim returns Ready=True', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
-                body: {
-                    status: {
-                        conditions: [
-                            { type: 'Ready', status: 'True' },
-                        ],
-                    },
+                status: {
+                    conditions: [
+                        { type: 'Ready', status: 'True' },
+                    ],
                 },
             } as any);
 
@@ -304,10 +304,10 @@ describe('AgentSandboxAdapter', () => {
         it('keeps polling while SandboxClaim is not ready', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject)
                 .mockResolvedValueOnce({
-                    body: { status: { conditions: [{ type: 'Ready', status: 'False', reason: 'SandboxNotReady' }] } },
+                    status: { conditions: [{ type: 'Ready', status: 'False', reason: 'SandboxNotReady' }] },
                 } as any)
                 .mockResolvedValueOnce({
-                    body: { status: { conditions: [{ type: 'Ready', status: 'True' }] } },
+                    status: { conditions: [{ type: 'Ready', status: 'True' }] },
                 } as any);
 
             await expect(
@@ -317,15 +317,13 @@ describe('AgentSandboxAdapter', () => {
 
         it('throws immediately for terminal claim errors', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
-                body: {
-                    status: {
-                        conditions: [{
-                            type: 'Ready',
-                            status: 'False',
-                            reason: 'WarmPoolNotFound',
-                            message: 'SandboxWarmPool "missing" not found',
-                        }],
-                    },
+                status: {
+                    conditions: [{
+                        type: 'Ready',
+                        status: 'False',
+                        reason: 'WarmPoolNotFound',
+                        message: 'SandboxWarmPool "missing" not found',
+                    }],
                 },
             } as any);
 
@@ -336,7 +334,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('throws ServiceException after timeout', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
-                body: { status: { conditions: [] } },
+                status: { conditions: [] },
             } as any);
 
             await expect(
@@ -346,7 +344,7 @@ describe('AgentSandboxAdapter', () => {
 
         it('throws if Sandbox claim does not exist after timeout', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
-                Object.assign(new Error('Not Found'), { response: { statusCode: 404 } }),
+                Object.assign(new Error('Not Found'), { code: 404 }),
             );
 
             await expect(

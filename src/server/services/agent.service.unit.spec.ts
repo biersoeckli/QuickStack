@@ -137,6 +137,12 @@ vi.mock('@/server/services/build.service', () => ({
 vi.mock('@/server/services/registry.service', () => ({
     default: registryServiceMocks,
 }));
+vi.mock('@/server/services/deployment-logs.service', () => ({
+    default: {
+        catchErrosAndLog: vi.fn(async (_deploymentId: string, fn: () => Promise<void>) => fn()),
+    },
+    dlog: vi.fn(),
+}));
 
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
@@ -161,7 +167,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         modelAlias: 'gpt-4o',
         sourceType: 'CONTAINER',
         buildMethod: 'DOCKERFILE',
-        containerImageSource: null,
+        containerImageSource: 'custom/opencode:latest',
         containerRegistryUsername: null,
         containerRegistryPassword: null,
         gitUrl: null,
@@ -235,106 +241,45 @@ describe('agent.service', () => {
         vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
     });
 
-    describe('create', () => {
-        const validInput = {
-            name: 'My Agent',
-            projectId: 'proj-test-agent',
-            llmGatewayId: 'gateway-1',
-            modelAlias: 'gpt-4o',
-        };
-
-        it('rejects creation when project does not exist', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue(null);
-
-            await expect(agentService.create(validInput)).rejects.toThrow('Project not found.');
-            expect(dataAccess.client.agent.create).not.toHaveBeenCalled();
-        });
-
-        it('rejects creation when project is not AGENT type', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-                id: 'proj-app-project',
-                name: 'App Project',
-                projectType: 'APP',
-            } as any);
-
-            await expect(agentService.create(validInput)).rejects.toThrow(
-                'Agents can only be created in Agent Projects.',
-            );
-            expect(dataAccess.client.agent.create).not.toHaveBeenCalled();
-        });
-
-        it('rejects creation when LLM Gateway does not exist', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-                id: 'proj-test-agent',
-                name: 'Agent Project',
-                projectType: 'AGENT',
-            } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue(null as any);
-
-            await expect(agentService.create(validInput)).rejects.toThrow('LLM Gateway not found.');
-            expect(dataAccess.client.agent.create).not.toHaveBeenCalled();
-        });
-
-        it('generates a stable Kubernetes-safe agent id', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-                id: 'proj-test-agent',
-                name: 'Agent Project',
-                projectType: 'AGENT',
-            } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
-
+    describe('saveAgent', () => {
+        it('creates an agent with a stable Kubernetes-safe id when id is omitted', async () => {
             const agent = mockAgent('agent-my-agent', 'My Agent');
             vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
 
-            await agentService.create(validInput);
-
-            expect(dataAccess.client.agent.create).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    data: expect.objectContaining({
-                        id: expect.stringMatching(/^agent-/),
-                    }),
-                }),
-            );
-        });
-
-        it('persists agent with correct fields', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-                id: 'proj-test-agent',
-                name: 'Agent Project',
-                projectType: 'AGENT',
-            } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
-
-            const agent = mockAgent('agent-my-agent', 'My Agent');
-            vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
-
-            await agentService.create(validInput);
+            await agentService.saveAgent({
+                name: 'My Agent',
+                projectId: 'proj-test-agent',
+                llmGatewayId: 'gateway-1',
+                modelAlias: 'gpt-4o',
+            });
 
             expect(dataAccess.client.agent.create).toHaveBeenCalledWith({
-                data: {
+                data: expect.objectContaining({
                     id: expect.stringMatching(/^agent-/),
                     name: 'My Agent',
                     projectId: 'proj-test-agent',
                     llmGatewayId: 'gateway-1',
                     modelAlias: 'gpt-4o',
-                },
+                }),
             });
         });
 
-        it('creates namespace for the project', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-                id: 'proj-test-agent',
-                name: 'Agent Project',
-                projectType: 'AGENT',
-            } as any);
-            vi.mocked(dataAccess.client.llmGateway.findUnique).mockResolvedValue({ id: 'gateway-1', baseUrl: 'https://litellm.example.com' } as any);
-
+        it('updates an existing agent when id is provided', async () => {
             const agent = mockAgent('agent-my-agent', 'My Agent');
-            vi.mocked(dataAccess.client.agent.create).mockResolvedValue(agent as any);
+            vi.mocked(dataAccess.client.agent.update).mockResolvedValue(agent as any);
 
-            await agentService.create(validInput);
+            await agentService.saveAgent({
+                id: 'agent-my-agent',
+                name: 'My Agent',
+            });
 
-            expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith('proj-test-agent');
+            expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
+                where: { id: 'agent-my-agent' },
+                data: {
+                    id: 'agent-my-agent',
+                    name: 'My Agent',
+                },
+            });
         });
     });
 
@@ -601,9 +546,8 @@ describe('agent.service', () => {
         });
     });
 
-    describe('saveConfig', () => {
+    describe('saveAgent updates', () => {
         const agentId = 'agent-test-1';
-        const namespace = 'proj-test';
         const existingAgent = mockAgentWithRelations(agentId, 'Test Agent');
 
         beforeEach(() => {
@@ -619,15 +563,16 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue(existingAgent as any);
         });
 
-        it('saves source image, cpu, memory, and system prompt config', async () => {
-            const result = await agentService.saveConfig(agentId, {
+        it('saves source image, resources, container command, and system prompt config', async () => {
+            const result = await agentService.saveAgent({
+                id: agentId,
                 containerImageSource: 'my-custom-image:latest',
                 cpuRequest: 200,
                 cpuLimit: 1000,
                 memoryRequest: 256,
                 memoryLimit: 1024,
-                containerCommand: [{ value: 'sh' }],
-                containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
+                containerCommand: JSON.stringify([{ value: 'sh' }]),
+                containerArgs: JSON.stringify([{ value: '-c' }, { value: 'sleep 3600' }].map(arg => arg.value)),
                 warmPoolReplicas: 3,
                 systemPrompt: 'You are a helpful assistant.',
             });
@@ -635,12 +580,13 @@ describe('agent.service', () => {
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
                 where: { id: agentId },
                 data: {
+                    id: agentId,
                     containerImageSource: 'my-custom-image:latest',
                     cpuRequest: 200,
                     cpuLimit: 1000,
                     memoryRequest: 256,
                     memoryLimit: 1024,
-                    containerCommand: '["sh"]',
+                    containerCommand: '[{"value":"sh"}]',
                     containerArgs: '["-c","sleep 3600"]',
                     warmPoolReplicas: 3,
                     systemPrompt: 'You are a helpful assistant.',
@@ -649,42 +595,15 @@ describe('agent.service', () => {
             expect(result.containerImageSource).toBe('my-custom-image:latest');
         });
 
-        it('clears string config when empty strings are passed', async () => {
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue({
-                ...existingAgent,
-                containerImageSource: 'old-image:latest',
-                systemPrompt: 'old prompt',
-                containerCommand: 'old-command',
-                containerArgs: '["old"]',
-            } as any);
-
-            await agentService.saveConfig(agentId, {
-                containerImageSource: '',
-                systemPrompt: '',
-                containerCommand: [],
-                containerArgs: [],
-            });
-
-            expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
-                where: { id: agentId },
-                data: {
-                    containerImageSource: null,
-                    systemPrompt: null,
-                    containerCommand: null,
-                    containerArgs: null,
-                },
-            });
-        });
-
-        it('encrypts environment variable values', async () => {
+        it('encrypts encryptedEnvVars values before saving', async () => {
             const { CryptoUtils } = await import('@/server/utils/crypto.utils');
 
-            await agentService.saveConfig(agentId, {
-                containerImageSource: undefined,
-                envVars: [
+            await agentService.saveAgent({
+                id: agentId,
+                encryptedEnvVars: JSON.stringify([
                     { name: 'API_KEY', value: 'secret-123' },
                     { name: 'DB_PASSWORD', value: 'db-secret-456' },
-                ],
+                ]),
             });
 
             expect(CryptoUtils.encrypt).toHaveBeenCalledWith('secret-123');
@@ -701,78 +620,9 @@ describe('agent.service', () => {
             expect(parsed[1].value).toBe('encrypted:db-secret-456');
         });
 
-        it('rejects runtime-relevant config changes while running', async () => {
-            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(true);
-
-            await expect(
-                agentService.saveConfig(agentId, {
-                    containerImageSource: 'new-image:latest',
-                    cpuRequest: undefined,
-                    cpuLimit: undefined,
-                    memoryRequest: undefined,
-                    memoryLimit: undefined,
-                    containerCommand: [{ value: 'sh' }],
-                    systemPrompt: undefined,
-                }),
-            ).rejects.toThrow(
-                'Runtime configuration cannot be changed while the Agent is running.',
-            );
-        });
-
-        it('allows non-runtime config changes while running', async () => {
-            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(true);
-
-            await expect(
-                agentService.saveConfig(agentId, {
-                    containerImageSource: undefined,
-                    cpuRequest: undefined,
-                    cpuLimit: undefined,
-                    memoryRequest: undefined,
-                    memoryLimit: undefined,
-                    systemPrompt: 'new prompt',
-                    envVars: [
-                        { name: 'KEY', value: 'val' },
-                    ],
-                }),
-            ).resolves.toBeDefined();
-        });
-
-        it('allows runtime config changes while stopped', async () => {
-            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
-
-            await expect(
-                agentService.saveConfig(agentId, {
-                    containerImageSource: 'new-image:latest',
-                    cpuRequest: 100,
-                    systemPrompt: undefined,
-                    envVars: undefined,
-                }),
-            ).resolves.toBeDefined();
-        });
-
-        it('rejects gateway and model changes while running', async () => {
-            vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(true);
-
-            await expect(
-                agentService.saveConfig(agentId, {
-                    llmGatewayId: 'new-gateway',
-                    modelAlias: 'new-model',
-                }),
-            ).rejects.toThrow(
-                'Runtime configuration cannot be changed while the Agent is running.',
-            );
-        });
-
         it('persists gateway and model alias changes', async () => {
-            const agentWithOld = {
-                ...existingAgent,
-                llmGatewayId: 'old-gateway',
-                modelAlias: 'old-model',
-            } as any;
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agentWithOld);
-            vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue(agentWithOld);
-
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
+                id: agentId,
                 llmGatewayId: 'new-gateway',
                 modelAlias: 'new-model',
             });
@@ -783,33 +633,18 @@ describe('agent.service', () => {
         });
 
         it('saves only provided fields', async () => {
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
+                id: agentId,
                 systemPrompt: 'new prompt',
             });
 
             const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
-            expect(Object.keys((updateCall as any).data)).toEqual(['systemPrompt']);
-        });
-
-        it('rejects concurrent gateway change inside transaction', async () => {
-            const agentWithOld = {
-                ...existingAgent,
-                llmGatewayId: 'old-gateway',
-            } as any;
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agentWithOld);
-            // Inside $transaction, the re-read returns a different llmGatewayId
-            vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue({
-                ...agentWithOld,
-                llmGatewayId: 'another-gateway',
-            } as any);
-
-            await expect(
-                agentService.saveConfig(agentId, { llmGatewayId: 'new-gateway' }),
-            ).rejects.toThrow('Agent configuration was modified by another process.');
+            expect(Object.keys((updateCall as any).data)).toEqual(['id', 'systemPrompt']);
         });
 
         it('does not send encryptedEnvVars when envVars is undefined', async () => {
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
+                id: agentId,
                 containerImageSource: 'new-image:latest',
             });
 
@@ -817,12 +652,5 @@ describe('agent.service', () => {
             expect(Object.keys((updateCall as any).data)).not.toContain('encryptedEnvVars');
         });
 
-        it('throws when agent does not exist', async () => {
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockRejectedValue(new Error('Agent not found'));
-
-            await expect(
-                agentService.saveConfig('nonexistent', {}),
-            ).rejects.toThrow();
-        });
     });
 });

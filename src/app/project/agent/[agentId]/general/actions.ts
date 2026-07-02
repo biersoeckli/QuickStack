@@ -30,22 +30,21 @@ import { FormValidationException } from "@/shared/model/form-validation-exceptio
 import { ServiceException } from "@/shared/model/service.exception.model";
 import agentGitSshKeyService from "@/server/services/agent-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 
-const authorizeForAgent = async (agentId: string) => {
-    const session = await getAuthUserSession();
-    const identity: RequesterIdentity = { type: 'session', session };
-    ensureWriteProjectWorkload(identity, agentId);
-};
 
 export const saveAgentModelConfiguration = async (prevState: any, inputData: AgentModelConfigurationModel, agentId: string) =>
     saveFormAction(inputData, agentModelConfigurationZodModel, async (validatedData) => {
-        await authorizeForAgent(agentId);
-        await agentService.saveConfig(agentId, validatedData);
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentService.saveAgent({
+            ...validatedData,
+            id: agentId
+        });
     });
 
 export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfoInputModel, agentId: string) => {
     return simpleAction(async () => {
-        await authorizeForAgent(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
 
         if (inputData.sourceType === 'GIT') {
             const validatedFields = agentSourceInfoGitZodModel.safeParse(inputData);
@@ -53,13 +52,14 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
                 throw new FormValidationException('Please correct the errors in the form.', validatedFields.error.flatten().fieldErrors);
             }
             const validatedData = validatedFields.data;
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
                 ...validatedData,
                 buildMethod: 'DOCKERFILE',
                 containerImageSource: null,
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
                 sourceType: 'GIT',
+                id: agentId,
             });
             return;
         }
@@ -74,7 +74,7 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
                 throw new ServiceException('Generate SSH keys before saving a Git SSH source.');
             }
             const validatedData = validatedFields.data;
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
                 ...validatedData,
                 buildMethod: 'DOCKERFILE',
                 gitUsername: null,
@@ -83,6 +83,7 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
                 sourceType: 'GIT_SSH',
+                id: agentId,
             });
             return;
         }
@@ -93,7 +94,7 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
                 throw new FormValidationException('Please correct the errors in the form.', validatedFields.error.flatten().fieldErrors);
             }
             const validatedData = validatedFields.data;
-            await agentService.saveConfig(agentId, {
+            await agentService.saveAgent({
                 ...validatedData,
                 containerRegistryUsername: validatedData.containerRegistryUsername || null,
                 containerRegistryPassword: validatedData.containerRegistryPassword || null,
@@ -103,6 +104,7 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
                 gitToken: null,
                 sourceType: 'CONTAINER',
                 buildMethod: 'DOCKERFILE',
+                id: agentId,
             });
             return;
         }
@@ -113,13 +115,13 @@ export const saveAgentSource = async (prevState: any, inputData: AgentSourceInfo
 
 export const ensureAgentGitSshPublicKey = async (agentId: string) =>
     simpleAction(async () => {
-        await authorizeForAgent(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
         return await agentGitSshKeyService.ensurePublicKey(agentId);
     });
 
 export const generateOrRegenerateAgentGitSshKey = async (agentId: string) =>
     simpleAction(async () => {
-        await authorizeForAgent(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
         return await agentGitSshKeyService.generateOrRegenerate(agentId);
     });
 
@@ -129,8 +131,7 @@ export const getAgentGitBranches = async (agentId: string, inputData: AgentGitBr
         if (!validatedFields.success) {
             throw new FormValidationException('Please make sure that you entered the correct Git credentials.', validatedFields.error.flatten().fieldErrors);
         }
-
-        await authorizeForAgent(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
         return await gitService.listRemoteBranches({
             id: agentId,
             workloadType: 'agent',
@@ -145,7 +146,7 @@ export const detectAgentDockerfilePath = async (agentId: string, inputData: Agen
             throw new FormValidationException('Please make sure that you entered the correct Git source information.', validatedFields.error.flatten().fieldErrors);
         }
 
-        await authorizeForAgent(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
         return await gitService.detectDockerfilePath({
             id: agentId,
             workloadType: 'agent',
@@ -155,26 +156,40 @@ export const detectAgentDockerfilePath = async (agentId: string, inputData: Agen
 
 export const saveAgentRateLimits = async (prevState: any, inputData: AgentRateLimitsModel, agentId: string) =>
     saveFormAction(inputData, agentRateLimitsZodModel, async (validatedData) => {
-        await authorizeForAgent(agentId);
-        await agentService.saveConfig(agentId, validatedData);
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentService.saveAgent({
+            id: agentId,
+            ...validatedData
+        });
     });
 
 export const saveAgentContainerConfig = async (prevState: any, inputData: AgentContainerConfigModel, agentId: string) =>
     saveFormAction(inputData, agentContainerConfigZodModel, async (validatedData) => {
-        await authorizeForAgent(agentId);
-        await agentService.saveConfig(agentId, validatedData);
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentService.saveAgent({
+            ...validatedData,
+            containerCommand: ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerCommand),
+            containerArgs: ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerArgs),
+            id: agentId,
+        });
     });
 
 export const saveAgentSystemPrompt = async (prevState: any, inputData: AgentSystemPromptModel, agentId: string) =>
     saveFormAction(inputData, agentSystemPromptZodModel, async (validatedData) => {
-        await authorizeForAgent(agentId);
-        await agentService.saveConfig(agentId, validatedData);
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentService.saveAgent({
+            ...validatedData,
+            id: agentId,
+        });
     });
 
 export const saveAgentEnvVars = async (prevState: any, inputData: AgentEnvVarsModel, agentId: string) =>
     saveFormAction(inputData, agentEnvVarsZodModel, async (validatedData) => {
-        await authorizeForAgent(agentId);
-        await agentService.saveConfig(agentId, validatedData);
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentService.saveAgent({
+            ...validatedData,
+            id: agentId
+        });
     });
 
 export const saveAgentVolume = async (prevState: any, inputData: AgentVolumeEditModel & { id?: string }, agentId: string) =>

@@ -8,6 +8,7 @@ import {
     appSourceInfoGitSshZodModel,
     appSourceInfoGitZodModel,
 } from "@/shared/model/app-source-info.model";
+import { AgentModel } from "./generated-zod";
 
 export const agentEnvVarModel = z.object({
     name: z
@@ -30,17 +31,9 @@ export const agentEnvVarFormModel = z.object({
     envVars: z.array(agentEnvVarModel).default([]),
 });
 
-export const agentConfigZodModel = z.object({
+export const agentConfigZodModel = AgentModel.extend(z.object({
     sourceType: z.enum(["GIT", "GIT_SSH", "CONTAINER"]).default("CONTAINER"),
     buildMethod: z.literal("DOCKERFILE").default("DOCKERFILE"),
-    containerImageSource: z.string().trim().nullish(),
-    containerRegistryUsername: z.string().trim().nullish(),
-    containerRegistryPassword: z.string().trim().nullish(),
-    gitUrl: z.string().trim().nullish(),
-    gitBranch: z.string().trim().nullish(),
-    gitUsername: z.string().trim().nullish(),
-    gitToken: z.string().trim().nullish(),
-    dockerfilePath: z.string().trim().nullish(),
     cpuRequest: stringToOptionalNumber,
     cpuLimit: stringToOptionalNumber,
     memoryRequest: stringToOptionalNumber,
@@ -56,7 +49,6 @@ export const agentConfigZodModel = z.object({
         }
         return val;
     }, z.number().int().min(0, 'Warm Pool Replicas must be between 0 and 10').max(10, 'Warm Pool Replicas must be between 0 and 10').default(0)),
-    systemPrompt: z.string().nullish(),
     envVars: z
         .array(
             z.object({
@@ -90,9 +82,7 @@ export const agentConfigZodModel = z.object({
                 seen.add(name);
             });
         }),
-    modelAlias: z.string().nullish(),
-    llmGatewayId: z.string().nullish(),
-});
+}).shape);
 
 export type AgentConfigModel = z.infer<typeof agentConfigZodModel>;
 export type AgentConfigInputModel = z.input<typeof agentConfigZodModel>;
