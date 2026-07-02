@@ -16,6 +16,8 @@ vi.mock('@/server/services/app-git-ssh-key.service', () => ({
     },
 }));
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import gitService from './git.service';
 import appGitSshKeyService from './app-git-ssh-key.service';
 import { PathUtils } from '../utils/path.utils';
