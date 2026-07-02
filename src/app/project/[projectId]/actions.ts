@@ -77,7 +77,7 @@ export const createAgent = async (agentName: string, projectId: string, llmGatew
         const identity: RequesterIdentity = { type: 'session', session };
         ensureCreateProjectWorkloadInProject(identity, projectId);
 
-        const returnData = await agentService.create({
+        const returnData = await agentService.saveAgent({
             name: validatedData.agentName,
             projectId,
             llmGatewayId: validatedData.llmGatewayId,

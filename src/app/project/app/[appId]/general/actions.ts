@@ -9,9 +9,9 @@ import appService from "@/server/services/app.service";
 import { isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
 import { AppContainerConfigInputModel } from "./app-container-config";
-import { serializeContainerCommandItems } from "@/shared/utils/container-command-args.utils";
 import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 
 export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSourceInfoInputModel, appId: string) => {
     return simpleAction(async () => {
@@ -171,7 +171,7 @@ export const saveGeneralAppContainerConfig = async (prevState: any, inputData: A
         await isAuthorizedWriteForApp(appId);
         const existingApp = await appService.getById(appId);
 
-        const containerCommandJson = serializeContainerCommandItems(validatedData.containerCommand);
+        const containerCommandJson = ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerCommand);
         const containerArgsJson = validatedData.containerArgs && validatedData.containerArgs.length > 0
             ? JSON.stringify(validatedData.containerArgs.map(arg => arg.value))
             : null;
