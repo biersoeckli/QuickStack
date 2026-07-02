@@ -70,6 +70,8 @@ vi.mock("@/server/utils/crypto.utils", () => ({
     },
 }));
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import agentTemplateService from "./agent-template.service";
 import namespaceService from "./namespace.service";
 import { opencodeAgentTemplate } from "@/shared/templates/agents/opencode.template";

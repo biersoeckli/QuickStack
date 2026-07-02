@@ -9,7 +9,7 @@ class AppGitSshKeyService extends BaseGitSshKeyService {
     constructor() {
         super({
             entityType: 'app',
-            model: dataAccess.client.appGitSshKey,
+            model: () => dataAccess.client.appGitSshKey,
             cacheTag: (id: string) => Tags.app(id),
             annotationKey: Constants.QS_ANNOTATION_APP_ID,
             keygenPrefix: 'keygen-',

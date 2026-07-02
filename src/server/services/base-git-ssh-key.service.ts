@@ -24,7 +24,7 @@ interface GitSshKeyDelegate {
 
 export interface GitSshKeyServiceConfig {
     entityType: 'app' | 'agent';
-    model: GitSshKeyDelegate;
+    model: GitSshKeyDelegate | (() => GitSshKeyDelegate);
     cacheTag: (id: string) => string;
     annotationKey: string;
     keygenPrefix: string;
@@ -33,12 +33,18 @@ export interface GitSshKeyServiceConfig {
 export class BaseGitSshKeyService {
     constructor(private config: GitSshKeyServiceConfig) { }
 
+    private get model(): GitSshKeyDelegate {
+        return typeof this.config.model === 'function'
+            ? this.config.model()
+            : this.config.model;
+    }
+
     private get idField(): string {
         return `${this.config.entityType}Id`;
     }
 
     async getPublicKey(id: string): Promise<string | undefined> {
-        const key = await this.config.model.findUnique({
+        const key = await this.model.findUnique({
             where: { [this.idField]: id },
             select: { publicKey: true },
         });
@@ -57,7 +63,7 @@ export class BaseGitSshKeyService {
         const { publicKey, privateKey } = await this.generateEd25519KeyPair(id);
         const encryptedPrivateKey = CryptoUtils.encrypt(privateKey);
 
-        const key = await this.config.model.upsert({
+        const key = await this.model.upsert({
             where: { [this.idField]: id },
             create: {
                 [this.idField]: id,
@@ -75,7 +81,7 @@ export class BaseGitSshKeyService {
     }
 
     async getDecryptedPrivateKey(id: string): Promise<string | undefined> {
-        const key = await this.config.model.findUnique({
+        const key = await this.model.findUnique({
             where: { [this.idField]: id },
             select: { encryptedPrivateKey: true },
         });

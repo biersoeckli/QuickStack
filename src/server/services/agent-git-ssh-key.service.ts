@@ -7,7 +7,7 @@ class AgentGitSshKeyService extends BaseGitSshKeyService {
     constructor() {
         super({
             entityType: 'agent',
-            model: dataAccess.client.agentGitSshKey,
+            model: () => dataAccess.client.agentGitSshKey,
             cacheTag: (id: string) => Tags.agent(id),
             annotationKey: Constants.QS_ANNOTATION_AGENT_ID,
             keygenPrefix: 'agent-keygen-',
