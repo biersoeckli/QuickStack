@@ -2,8 +2,8 @@ import { stringToNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const appVolumeTypeZodModel = z.enum(["ReadWriteOnce", "ReadWriteMany"]);
-export const appStorageClassNameZodModel = z.enum(["longhorn", "local-path"]);
-export const agentStorageClassNameZodModel = z.enum(["longhorn"]); // only rwx models
+export const appStorageClassNameZodModel = z.string().trim().min(1);
+export const agentStorageClassNameZodModel = z.string().trim().min(1);
 
 export const agentVolumeEditZodModel = z.object({
   containerMountPath: z.string().trim().min(1),

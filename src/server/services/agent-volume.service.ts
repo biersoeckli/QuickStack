@@ -22,9 +22,14 @@ class AgentVolumeService {
                 if (!existing) {
                     throw new ServiceException('Agent volume not found.');
                 }
+                if (existing.storageClassName !== input.storageClassName) {
+                    throw new ServiceException('Storage class cannot be changed for existing volumes');
+                }
+                const updateData = { ...input };
+                delete updateData.id;
                 await db.agentVolume.update({
                     where: { id: input.id },
-                    data: input as Prisma.AgentVolumeUpdateInput,
+                    data: updateData as Prisma.AgentVolumeUpdateInput,
                 });
             } else {
                 const createData = { ...input };

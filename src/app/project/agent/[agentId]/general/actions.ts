@@ -29,6 +29,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import agentGitSshKeyService from "@/server/services/agent-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
+import { z } from "zod";
 
 
 export const saveAgentModelConfiguration = async (prevState: any, inputData: AgentModelConfigurationModel, agentId: string) =>
@@ -190,12 +191,17 @@ export const saveAgentEnvVars = async (prevState: any, inputData: AgentEnvVarsMo
         });
     });
 
+const actionAgentVolumeEditZodModel = agentVolumeEditZodModel.merge(z.object({
+    id: z.string().nullish(),
+}));
+
 export const saveAgentVolume = async (prevState: any, inputData: AgentVolumeEditModel & { id?: string }, agentId: string) =>
-    saveFormAction(inputData, agentVolumeEditZodModel, async (validatedData) => {
+    saveFormAction(inputData, actionAgentVolumeEditZodModel, async (validatedData) => {
         await isAuthorizedWriteForWorkload(agentId);
         await agentVolumeService.saveVolume({
-            agentId: agentId,
             ...validatedData,
+            agentId: agentId,
+            id: validatedData.id ?? undefined,
         });
     });
 

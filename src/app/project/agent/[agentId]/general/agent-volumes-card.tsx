@@ -16,10 +16,11 @@ function formatSize(mb: number): string {
     return `${mb} MB`;
 }
 
-export default function AgentVolumesCard({ volumes, projectId, readonly }: {
+export default function AgentVolumesCard({ volumes, projectId, readonly, storageClasses }: {
     volumes: AgentVolume[];
     projectId: string;
     readonly: boolean;
+    storageClasses: string[];
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -38,7 +39,8 @@ export default function AgentVolumesCard({ volumes, projectId, readonly }: {
     const openEditVolumeDialog = async (volume?: AgentVolume) => {
         await openDialog(<AgentVolumeEditOverlay
             existingVolume={volume as AgentVolumeEditModel & { storageClassName: string }}
-            agentId={projectId} />, {
+            agentId={projectId}
+            storageClasses={storageClasses} />, {
             maxWidth: 'max-w-xl',
         });
     };

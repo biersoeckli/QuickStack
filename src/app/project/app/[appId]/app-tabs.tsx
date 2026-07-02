@@ -26,7 +26,6 @@ import HealthCheckSettings from "./advanced/health-check-settings";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
 
@@ -36,7 +35,7 @@ export default function AppTabs({
     tabName,
     s3Targets,
     volumeBackups,
-    nodesInfo,
+    storageClasses,
     gitSshPublicKey,
 }: {
     app: AppExtendedModel;
@@ -44,7 +43,7 @@ export default function AppTabs({
     tabName: string;
     s3Targets: S3Target[];
     volumeBackups: VolumeBackupExtendedModel[];
-    nodesInfo: NodeInfoModel[];
+    storageClasses: string[];
     gitSshPublicKey?: string;
 }) {
     const router = useRouter();
@@ -98,7 +97,7 @@ export default function AppTabs({
                 <NodePortsCard readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
-                <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
+                <StorageList readonly={readonly} app={app} storageClasses={storageClasses} />
                 <FileMountsCard readonly={readonly} fileMounts={app.appFileMounts} workloadId={app.id} workloadType={'app'} />
                 <VolumeBackupList
                     readonly={readonly}

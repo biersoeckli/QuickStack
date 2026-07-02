@@ -50,6 +50,21 @@ class ClusterService {
         return nodes.find(node => node.isMasterNode)!; // even on HA Cluster, only one node is returned
     }
 
+    async getStorageClasses(): Promise<string[]> {
+        return await unstable_cache(async () => {
+            const storageClasses = await k3s.storage.listStorageClass();
+            return storageClasses.items
+                .map((storageClass) => storageClass.metadata?.name)
+                .filter((name): name is string => !!name)
+                .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
+                .sort((a, b) => a.localeCompare(b));
+        },
+            [Tags.storageClasses()], {
+            revalidate: 60,
+            tags: [Tags.storageClasses()]
+        })();
+    }
+
     async setNodeStatus(nodeName: string, schedulable: boolean) {
         try {
             await k3s.core.patchNode(

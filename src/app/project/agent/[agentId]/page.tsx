@@ -7,6 +7,7 @@ import { RequesterIdentity, ensureReadProjectWorkload } from "@/server/utils/sha
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import AgentDetailClient from "./agent-detail-client";
 import { CatchUtils } from "@/shared/utils/catch.utils";
+import clusterService from "@/server/services/cluster.service";
 
 export default async function AgentDetailPage({
     params,
@@ -19,7 +20,10 @@ export default async function AgentDetailPage({
     ensureReadProjectWorkload(identity, resolvedParams.agentId);
 
     const agent = await agentService.getById(resolvedParams.agentId);
-    const templateDeploymentDetails = await CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id));
+    const [templateDeploymentDetails, storageClasses] = await Promise.all([
+        CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id)),
+        clusterService.getStorageClasses(),
+    ]);
     const role = UserGroupUtils.getRolePermissionForProjectWorkload(session, resolvedParams.agentId);
 
     return (
@@ -28,7 +32,12 @@ export default async function AgentDetailPage({
                 title={agent.name}
                 subtitle={`Agent · ${agent.project.name}`}
             />
-            <AgentDetailClient agent={agent} role={role} templateInfo={templateDeploymentDetails ?? undefined} />
+            <AgentDetailClient
+                agent={agent}
+                role={role}
+                templateInfo={templateDeploymentDetails ?? undefined}
+                storageClasses={storageClasses}
+            />
         </div>
     );
 }

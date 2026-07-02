@@ -5,31 +5,34 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/custom/submit-button";
+import StorageClassCombobox from "@/components/custom/storage-class-combobox";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { AgentVolumeEditModel, agentVolumeEditZodModel, agentStorageClassNameZodModel } from "@/shared/model/volume-edit.model";
+import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import { useDialogContext } from "@/frontend/states/dialog-context";
 import { saveAgentVolume } from "./actions";
 
 export default function AgentVolumeEditOverlay({
     existingVolume,
-    agentId
+    agentId,
+    storageClasses
 }: {
     existingVolume?: AgentVolumeEditModel & { id?: string; storageClassName: string };
     agentId: string;
+    storageClasses: string[];
 }) {
     const { closeDialog } = useDialogContext();
+    const defaultStorageClassName = existingVolume?.storageClassName || storageClasses[0] || '';
 
     const form = useForm<AgentVolumeEditModel>({
         resolver: zodResolver(agentVolumeEditZodModel),
         defaultValues: {
             containerMountPath: existingVolume?.containerMountPath || '',
             size: existingVolume?.size || 1024,
-            storageClassName: existingVolume?.storageClassName || 'longhorn',
+            storageClassName: defaultStorageClassName,
         } as AgentVolumeEditModel,
     });
 
@@ -53,12 +56,12 @@ export default function AgentVolumeEditOverlay({
             form.reset({
                 containerMountPath: existingVolume.containerMountPath || '',
                 size: existingVolume.size || 1024,
-                storageClassName: existingVolume.storageClassName || 'longhorn',
+                storageClassName: defaultStorageClassName,
             } as AgentVolumeEditModel);
         }
-    }, [existingVolume, form]);
+    }, [defaultStorageClassName, existingVolume, form]);
 
-    const storageClassOptions = agentStorageClassNameZodModel.options;
+    const storageClassOptions = Array.from(new Set([...storageClasses, existingVolume?.storageClassName].filter(Boolean) as string[]));
 
     return <>
         <DialogHeader>
@@ -104,20 +107,19 @@ export default function AgentVolumeEditOverlay({
                     control={form.control}
                     name="storageClassName"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                             <FormLabel>Storage Class</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value || 'longhorn'}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select storage class" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {storageClassOptions.map(sc => (
-                                        <SelectItem key={sc} value={sc}>{sc}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <StorageClassCombobox
+                                    value={field.value}
+                                    storageClasses={storageClassOptions}
+                                    disabled={!!existingVolume}
+                                    onChange={(value) => form.setValue("storageClassName", value)}
+                                />
+                            </FormControl>
+                            <FormDescription>
+                                This cannot be changed after creation.
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}

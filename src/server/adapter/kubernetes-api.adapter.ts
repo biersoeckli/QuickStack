@@ -20,6 +20,7 @@ class K3sApiAdapter {
     batch: k8s.BatchV1Api;
     log: k8s.Log;
     network: k8s.NetworkingV1Api;
+    storage: k8s.StorageV1Api;
     customObjects: k8s.CustomObjectsApi;
     metrics: k8s.Metrics;
 
@@ -29,6 +30,7 @@ class K3sApiAdapter {
         this.batch = this.getK8sBatchApiClient();
         this.log = this.getK8sLogApiClient();
         this.network = this.getK8sNetworkApiClient();
+        this.storage = this.getK8sStorageApiClient();
         this.customObjects = this.getK8sCustomObjectsApiClient();
         this.metrics = this.getMetricsApiClient();
     }
@@ -77,6 +79,12 @@ class K3sApiAdapter {
         const kc = this.getKubeConfig()
         const networkClient = kc.makeApiClient(k8s.NetworkingV1Api);
         return networkClient;
+    }
+
+    getK8sStorageApiClient = () => {
+        const kc = this.getKubeConfig()
+        const storageClient = kc.makeApiClient(k8s.StorageV1Api);
+        return storageClient;
     }
 
     getMetricsApiClient = () => {

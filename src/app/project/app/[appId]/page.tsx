@@ -24,10 +24,10 @@ export default async function AppPage({
     const session = await isAuthorizedReadForApp(appId);
     const role = UserGroupUtils.getRolePermissionForApp(session, appId);
     const app = await appService.getExtendedById(appId);
-    const [s3Targets, volumeBackups, nodesInfo, apps, gitSshPublicKey] = await Promise.all([
+    const [s3Targets, volumeBackups, storageClasses, apps, gitSshPublicKey] = await Promise.all([
         s3TargetService.getAll(),
         volumeBackupService.getForApp(appId),
-        clusterService.getNodeInfo(),
+        clusterService.getStorageClasses(),
         appService.getAllAppsByProjectID(app.projectId),
         appGitSshKeyService.getPublicKey(appId),
     ]);
@@ -39,7 +39,7 @@ export default async function AppPage({
             s3Targets={s3Targets}
             gitSshPublicKey={gitSshPublicKey}
             app={app}
-            nodesInfo={nodesInfo}
+            storageClasses={storageClasses}
             tabName={resolvedSearchParams?.tabName ?? 'overview'} />
         <AppBreadcrumbs app={app} apps={apps} tabName={resolvedSearchParams?.tabName} />
     </>

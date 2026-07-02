@@ -140,7 +140,7 @@ class AgentService {
                     id: volume.id,
                     containerMountPath: volume.containerMountPath,
                     size: volume.size,
-                    storageClassName: volume.storageClassName as "longhorn",
+                    storageClassName: volume.storageClassName,
                     agentId: savedAgentId,
                 }, tx);
             }

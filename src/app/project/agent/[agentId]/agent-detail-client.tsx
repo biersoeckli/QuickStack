@@ -19,10 +19,11 @@ import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volume
 import FileMountsCard from "@/components/custom/file-mounts-card";
 import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
 
-export default function AgentDetailClient({ agent, role, templateInfo }: {
+export default function AgentDetailClient({ agent, role, templateInfo, storageClasses }: {
     agent: AgentExtendedModel;
     templateInfo?: AgentSanboxTemplateInfo;
     role: RolePermissionEnum | null;
+    storageClasses: string[];
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -58,6 +59,7 @@ export default function AgentDetailClient({ agent, role, templateInfo }: {
                             volumes={agent.agentVolumes}
                             projectId={agent.id}
                             readonly={readonly}
+                            storageClasses={storageClasses}
                         />
                         <FileMountsCard
                             fileMounts={agent.agentFileMounts}

@@ -88,7 +88,7 @@ export default function SharedStorageEditDialog({ children, app }: {
             if (selectedVolume) {
                 form.setValue("size", selectedVolume.size);
                 form.setValue("accessMode", selectedVolume.accessMode);
-                form.setValue("storageClassName", selectedVolume.storageClassName as 'longhorn' | 'local-path');
+                form.setValue("storageClassName", selectedVolume.storageClassName);
             }
         }
     }, [watchedSharedVolumeId, shareableVolumes, form]);
