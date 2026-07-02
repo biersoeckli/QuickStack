@@ -11,6 +11,7 @@ import { appContainerConfigZodModel } from "@/shared/model/app-container-config.
 import { AppContainerConfigInputModel } from "./app-container-config";
 import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 
 export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSourceInfoInputModel, appId: string) => {
     return simpleAction(async () => {
@@ -170,14 +171,14 @@ export const saveGeneralAppContainerConfig = async (prevState: any, inputData: A
         await isAuthorizedWriteForApp(appId);
         const existingApp = await appService.getById(appId);
 
-        // Convert args array to JSON string for storage
+        const containerCommandJson = ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerCommand);
         const containerArgsJson = validatedData.containerArgs && validatedData.containerArgs.length > 0
             ? JSON.stringify(validatedData.containerArgs.map(arg => arg.value))
             : null;
 
         await appService.save({
             ...existingApp,
-            containerCommand: validatedData.containerCommand?.trim() || null,
+            containerCommand: containerCommandJson,
             containerArgs: containerArgsJson,
             securityContextRunAsUser: validatedData.securityContextRunAsUser ?? null,
             securityContextRunAsGroup: validatedData.securityContextRunAsGroup ?? null,

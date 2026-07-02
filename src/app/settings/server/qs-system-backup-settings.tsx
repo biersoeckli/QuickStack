@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { listSystemBackups, runSystemBackupNow, setSystemBackupLocation, uploadAndRestoreSystemBackup, downloadSystemBackup } from "./actions";
 import { S3Target } from "@prisma/client";
@@ -51,7 +51,7 @@ export default function QuickStackSystemBackupSettings({
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: SystemBackupLocationSettingsModel) =>
         setSystemBackupLocation(state, payload),
         FormUtils.getInitialFormState<typeof systemBackupLocationSettingsZodModel>());

@@ -32,8 +32,9 @@ import RestApiSettings from "./rest-api-settings";
 export default async function ProjectPage({
     searchParams
 }: {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+    const resolvedSearchParams = await searchParams;
 
     const session = await getAdminUserSession();
 
@@ -74,7 +75,7 @@ export default async function ProjectPage({
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);
-    const defaultTab = typeof searchParams?.tab === 'string' ? searchParams.tab : 'general';
+    const defaultTab = typeof resolvedSearchParams?.tab === 'string' ? resolvedSearchParams.tab : 'general';
 
     return (
         <div className="flex-1 space-y-6 pt-6  pb-16">

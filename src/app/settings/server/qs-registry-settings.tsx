@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { setRegistryStorageLocation } from "./actions";
 import { S3Target } from "@prisma/client";
@@ -31,7 +31,7 @@ export default function QuickStackRegistrySettings({
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: RegistryStorageLocationSettingsModel) =>
         setRegistryStorageLocation(state, payload),
         FormUtils.getInitialFormState<typeof registryStorageLocationSettingsZodModel>());

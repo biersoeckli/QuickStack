@@ -82,8 +82,8 @@ class RegistryService {
         // Always update the ConfigMap so storage settings are never stale
         await this.createOrUpdateRegistryConfigMap(s3Target);
 
-        const deployments = await k3s.apps.listNamespacedDeployment(BUILD_NAMESPACE);
-        if (deployments.body.items.length > 0 && !forceDeploy) {
+        const deployments = await k3s.apps.listNamespacedDeployment({ namespace: BUILD_NAMESPACE });
+        if (deployments.items.length > 0 && !forceDeploy) {
             return;
         }
 
@@ -128,12 +128,12 @@ class RegistryService {
             },
         };
 
-        const listRes = await k3s.core.listNamespacedPersistentVolumeClaim(BUILD_NAMESPACE);
-        if (listRes.body.items.find(pvc => pvc.metadata?.name === REGISTRY_PVC_NAME)) {
+        const listRes = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: BUILD_NAMESPACE });
+        if (listRes.items.find(pvc => pvc.metadata?.name === REGISTRY_PVC_NAME)) {
             console.log("PVC already exists, skipping creation...");
             return;
         }
-        await k3s.core.createNamespacedPersistentVolumeClaim(BUILD_NAMESPACE, pvcManifest);
+        await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: BUILD_NAMESPACE, body: pvcManifest });
     }
 
     private async createOrUpdateRegistryService() {
@@ -161,13 +161,13 @@ class RegistryService {
             },
         };
 
-        const existingServices = await k3s.core.listNamespacedService(BUILD_NAMESPACE);
-        if (existingServices.body.items.find(svc => svc.metadata?.name === REGISTRY_SVC_NAME)) {
+        const existingServices = await k3s.core.listNamespacedService({ namespace: BUILD_NAMESPACE });
+        if (existingServices.items.find(svc => svc.metadata?.name === REGISTRY_SVC_NAME)) {
             console.log("Service already exists, deleting and recreating...");
-            await k3s.core.deleteNamespacedService(REGISTRY_SVC_NAME, BUILD_NAMESPACE);
+            await k3s.core.deleteNamespacedService({ name: REGISTRY_SVC_NAME, namespace: BUILD_NAMESPACE });
         }
 
-        await k3s.core.createNamespacedService(BUILD_NAMESPACE, serviceManifest);
+        await k3s.core.createNamespacedService({ namespace: BUILD_NAMESPACE, body: serviceManifest });
     }
 
     private async createOrUpdateRegistryDeployment(useLocalStorage = true) {
@@ -250,13 +250,13 @@ class RegistryService {
             },
         };
 
-        const existingDeployments = await k3s.apps.listNamespacedDeployment(BUILD_NAMESPACE);
-        if (existingDeployments.body.items.find(dep => dep.metadata?.name === deploymentName)) {
+        const existingDeployments = await k3s.apps.listNamespacedDeployment({ namespace: BUILD_NAMESPACE });
+        if (existingDeployments.items.find(dep => dep.metadata?.name === deploymentName)) {
             console.log("Deployment already exists, deleting and recreating...");
-            await k3s.apps.deleteNamespacedDeployment(deploymentName, BUILD_NAMESPACE);
+            await k3s.apps.deleteNamespacedDeployment({ name: deploymentName, namespace: BUILD_NAMESPACE });
         }
 
-        await k3s.apps.createNamespacedDeployment(BUILD_NAMESPACE, deploymentManifest);
+        await k3s.apps.createNamespacedDeployment({ namespace: BUILD_NAMESPACE, body: deploymentManifest });
     }
 
     private async createOrUpdateRegistryConfigMap(s3Target?: S3Target) {
@@ -315,13 +315,13 @@ http:
 `
             },
         };
-        const existingConfigMaps = await k3s.core.listNamespacedConfigMap(BUILD_NAMESPACE);
-        if (existingConfigMaps.body.items.find(cm => cm.metadata?.name === REGISTRY_CONFIG_MAP_NAME)) {
+        const existingConfigMaps = await k3s.core.listNamespacedConfigMap({ namespace: BUILD_NAMESPACE });
+        if (existingConfigMaps.items.find(cm => cm.metadata?.name === REGISTRY_CONFIG_MAP_NAME)) {
             console.log("ConfigMap already exists, deleting and recreating...");
-            await k3s.core.deleteNamespacedConfigMap(REGISTRY_CONFIG_MAP_NAME, BUILD_NAMESPACE);
+            await k3s.core.deleteNamespacedConfigMap({ name: REGISTRY_CONFIG_MAP_NAME, namespace: BUILD_NAMESPACE });
         }
 
-        await k3s.core.createNamespacedConfigMap(BUILD_NAMESPACE, configMapManifest);
+        await k3s.core.createNamespacedConfigMap({ namespace: BUILD_NAMESPACE, body: configMapManifest });
     }
 }
 

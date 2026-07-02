@@ -10,7 +10,7 @@ import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveBuildSettings } from "./actions";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
@@ -34,7 +34,7 @@ export default function QsBuildSettings({
         },
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
         FormUtils.getInitialFormState<typeof buildSettingsZodModel>()
     );

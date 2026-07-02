@@ -2,7 +2,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
         batch: {
             createNamespacedJob: vi.fn(),
-            listNamespacedJob: vi.fn().mockResolvedValue({ body: { items: [] } }),
+            listNamespacedJob: vi.fn().mockResolvedValue({ items: [] }),
             readNamespacedJobStatus: vi.fn(),
         },
         core: {
@@ -14,7 +14,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
         },
     },
 }));
-vi.mock('@/server/adapter/db.client', () => ({ default: { client: { app: { findMany: vi.fn() } } } }));
+vi.mock('@/server/adapter/db.client', () => ({ default: { client: { app: { findMany: vi.fn() }, agent: { findMany: vi.fn() } } } }));
 vi.mock('@/server/services/namespace.service', () => ({ default: { createNamespaceIfNotExists: vi.fn() } }));
 vi.mock('@/server/services/registry.service', () => ({
     __esModule: true,
@@ -57,6 +57,11 @@ vi.mock('@/server/services/app-git-ssh-key.service', () => ({
         deleteTemporaryBuildSecret: vi.fn(),
     },
 }));
+vi.mock('@/server/services/agent-git-ssh-key.service', () => ({
+    default: {
+        createTemporaryBuildSecret: vi.fn().mockResolvedValue('agent-git-ssh-build-secret'),
+    },
+}));
 vi.mock('@/server/services/pod.service', () => ({ default: {} }));
 vi.mock('@/server/services/deployment-logs.service', () => ({ dlog: vi.fn() }));
 
@@ -65,6 +70,7 @@ import gitService from '@/server/services/git.service';
 import dockerfileBuildJobBuilder from '@/server/services/build-job-builders/dockerfile-build-job-builder.service';
 import railpackBuildJobBuilder from '@/server/services/build-job-builders/railpack-build-job-builder.service';
 import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
+import agentGitSshKeyService from '@/server/services/agent-git-ssh-key.service';
 
 describe('BuildService.buildApp builder selection', () => {
     const dockerfileCheckSpy = vi.fn();
@@ -127,5 +133,24 @@ describe('BuildService.buildApp builder selection', () => {
         expect(railpackBuildJobBuilder.buildJobDefinition).toHaveBeenCalledWith(expect.objectContaining({
             gitSshPrivateKeySecretName: 'git-ssh-build-secret',
         }));
+    });
+
+    it('passes an Agent SSH build secret for GIT_SSH agents', async () => {
+        await buildService.buildAgent('deployment-1', {
+            id: 'agent-1',
+            projectId: 'project-1',
+            sourceType: 'GIT_SSH',
+            buildMethod: 'DOCKERFILE',
+            gitUrl: 'git@github.com:example/repo.git',
+            gitBranch: 'main',
+            dockerfilePath: './Dockerfile',
+        } as any);
+
+        expect(agentGitSshKeyService.createTemporaryBuildSecret).toHaveBeenCalledWith('agent-1', expect.stringMatching(/^build-agent-1-/));
+        expect(dockerfileBuildJobBuilder.buildJobDefinition).toHaveBeenCalledWith(expect.objectContaining({
+            workloadType: 'agent',
+            gitSshPrivateKeySecretName: 'agent-git-ssh-build-secret',
+        }));
+        expect(railpackBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
     });
 });

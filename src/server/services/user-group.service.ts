@@ -1,13 +1,70 @@
-import { Prisma, RoleAppPermission, UserGroup } from "@prisma/client";
+import { Prisma, UserGroup } from "@prisma/client";
 import dataAccess from "../adapter/db.client";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { RoleEditModel } from "@/shared/model/role-edit.model";
 import { adminRoleName } from "@/shared/model/role-extended.model.ts";
-import { UserGroupExtended } from "@/shared/model/sim-session.model";
+import { ProjectRolePermission, UserGroupExtended } from "@/shared/model/sim-session.model";
+
+type RoleProjectPermissionRecord = {
+    projectId: string;
+    project: {
+        apps: {
+            id: string;
+            name: string;
+        }[];
+        agents: {
+            id: string;
+            name: string;
+        }[];
+    };
+    createApps: boolean;
+    deleteApps: boolean;
+    writeApps: boolean;
+    readApps: boolean;
+    roleAppPermissions: {
+        appId: string;
+        permission: string;
+    }[];
+    roleAgentPermissions: {
+        agentId: string;
+        permission: string;
+    }[];
+};
 
 export class UserGroupService {
+    private mapProjectRolePermission(permission: RoleProjectPermissionRecord): ProjectRolePermission {
+        const appWorkloads = permission.project.apps.map((app) => ({
+            id: app.id,
+            name: app.name,
+        }));
+        const agentWorkloads = permission.project.agents?.map((agent) => ({
+            id: agent.id,
+            name: agent.name,
+        })) ?? [];
+
+        const appPermissions = permission.roleAppPermissions.map((wp) => ({
+            workloadId: wp.appId,
+            permission: wp.permission,
+        }));
+        const agentPermissions = permission.roleAgentPermissions?.map((wp) => ({
+            workloadId: wp.agentId,
+            permission: wp.permission,
+        })) ?? [];
+
+        return {
+            projectId: permission.projectId,
+            project: {
+                projectWorkloads: [...appWorkloads, ...agentWorkloads],
+            },
+            createWorkloads: permission.createApps,
+            deleteWorkloads: permission.deleteApps,
+            writeWorkloads: permission.writeApps,
+            readWorkloads: permission.readApps,
+            workloadPermissions: [...appPermissions, ...agentPermissions],
+        };
+    }
 
     async getRoleByUserMail(email: string): Promise<UserGroupExtended | null> {
         return await unstable_cache(async (mail: string) => await dataAccess.client.user.findFirst({
@@ -27,6 +84,12 @@ export class UserGroupService {
                                                 id: true,
                                                 name: true,
                                             }
+                                        },
+                                        agents: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                            }
                                         }
                                     }
                                 },
@@ -35,6 +98,7 @@ export class UserGroupService {
                                 writeApps: true,
                                 readApps: true,
                                 roleAppPermissions: true,
+                                roleAgentPermissions: true,
                             }
                         }
                     }
@@ -44,7 +108,14 @@ export class UserGroupService {
                 email: mail
             }
         }).then(user => {
-            return user?.userGroup ?? null;
+            if (!user?.userGroup) {
+                return null;
+            }
+
+            return {
+                ...user.userGroup,
+                roleProjectPermissions: user.userGroup.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
+            };
         }),
             [Tags.userGroups(), Tags.users()], {
             tags: [Tags.userGroups(), Tags.users()]
@@ -79,7 +150,7 @@ export class UserGroupService {
                     });
                 }
 
-                // save project and app permissions
+                // save project and workload permissions
 
                 await tx.roleProjectPermission.deleteMany({
                     where: {
@@ -88,29 +159,54 @@ export class UserGroupService {
                 });
 
                 for (let projectRolePermission of item.roleProjectPermissions) {
-                    const forThisProjectCustomAppRolesExist = projectRolePermission.roleAppPermissions.length > 0;
+                    const forThisProjectCustomWorkloadRolesExist = projectRolePermission.workloadPermissions.length > 0;
                     const projectRolePermissionData = {
                         userGroupId: savedRole.id,
                         projectId: projectRolePermission.projectId,
-                        createApps: forThisProjectCustomAppRolesExist ? false : projectRolePermission.createApps,
-                        deleteApps: forThisProjectCustomAppRolesExist ? false : projectRolePermission.deleteApps,
-                        writeApps: forThisProjectCustomAppRolesExist ? false : projectRolePermission.writeApps,
-                        readApps: projectRolePermission.readApps
+                        createApps: forThisProjectCustomWorkloadRolesExist ? false : projectRolePermission.createWorkloads,
+                        deleteApps: forThisProjectCustomWorkloadRolesExist ? false : projectRolePermission.deleteWorkloads,
+                        writeApps: forThisProjectCustomWorkloadRolesExist ? false : projectRolePermission.writeWorkloads,
+                        readApps: projectRolePermission.readWorkloads
                     };
                     const savedProjectRolePermission = await tx.roleProjectPermission.create({
                         data: projectRolePermissionData
                     });
 
-                    // save app permissions
+                    const project = await tx.project.findFirstOrThrow({
+                        where: { id: projectRolePermission.projectId },
+                        select: {
+                            apps: { select: { id: true } },
+                            agents: { select: { id: true } },
+                        },
+                    });
+                    const appIds = new Set(project.apps.map((a) => a.id));
+                    const agentIds = new Set(project.agents.map((a) => a.id));
+
+                    const appPermissions = projectRolePermission.workloadPermissions.filter((wp) => appIds.has(wp.workloadId));
+                    const agentPermissions = projectRolePermission.workloadPermissions.filter((wp) => agentIds.has(wp.workloadId));
+
                     await tx.roleAppPermission.deleteMany({
                         where: {
                             roleProjectPermissionId: savedProjectRolePermission.id
                         }
                     });
-
                     await tx.roleAppPermission.createMany({
-                        data: projectRolePermission.roleAppPermissions.map((app) => ({
-                            ...app,
+                        data: appPermissions.map((wp) => ({
+                            appId: wp.workloadId,
+                            permission: wp.permission,
+                            roleProjectPermissionId: savedProjectRolePermission.id
+                        }))
+                    });
+
+                    await tx.roleAgentPermission.deleteMany({
+                        where: {
+                            roleProjectPermissionId: savedProjectRolePermission.id
+                        }
+                    });
+                    await tx.roleAgentPermission.createMany({
+                        data: agentPermissions.map((wp) => ({
+                            agentId: wp.workloadId,
+                            permission: wp.permission,
                             roleProjectPermissionId: savedProjectRolePermission.id
                         }))
                     });
@@ -158,6 +254,12 @@ export class UserGroupService {
                                         id: true,
                                         name: true,
                                     }
+                                },
+                                agents: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    }
                                 }
                             }
                         },
@@ -166,15 +268,19 @@ export class UserGroupService {
                         writeApps: true,
                         readApps: true,
                         roleAppPermissions: true,
+                        roleAgentPermissions: true,
                     }
                 }
             }
-        }),
+        }).then((groups) => groups.map((group) => ({
+            ...group,
+            roleProjectPermissions: group.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
+        }))),
             [Tags.userGroups()], {
             tags: [Tags.userGroups()]
         })();
     }
-    async getById(id: string): Promise<UserGroup> {
+    async getById(id: string): Promise<UserGroupExtended> {
         return await unstable_cache(async () => await dataAccess.client.userGroup.findFirstOrThrow({
             where: {
                 id
@@ -190,6 +296,12 @@ export class UserGroupService {
                                         id: true,
                                         name: true,
                                     }
+                                },
+                                agents: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    }
                                 }
                             }
                         },
@@ -198,10 +310,14 @@ export class UserGroupService {
                         writeApps: true,
                         readApps: true,
                         roleAppPermissions: true,
+                        roleAgentPermissions: true,
                     }
                 }
             }
-        }),
+        }).then((group) => ({
+            ...group,
+            roleProjectPermissions: group.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
+        })),
             [Tags.userGroups(), id], {
             tags: [Tags.userGroups()]
         })();

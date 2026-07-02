@@ -7,14 +7,14 @@ import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { toast } from "sonner";
-import { LogsDialog } from "@/components/custom/logs-overlay";
+import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import { Button } from "@/components/ui/button";
 import { Download, Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
 import { LogsDownloadOverlay } from "./logs-download-overlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { usePodsStatus } from "@/frontend/states/zustand.states";
+import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 
 export default function Logs({
     app,
@@ -26,6 +26,7 @@ export default function Logs({
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
     const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
+    const { openDialog } = useDialog();
 
     const updateBuilds = async () => {
         try {
@@ -121,11 +122,9 @@ export default function Logs({
                     <div>
                         <Tooltip delayDuration={300}>
                             <TooltipTrigger>
-                                <LogsDialog namespace={app.projectId} podName={selectedPod.podName}>
-                                    <Button variant="secondary">
-                                        <Expand />
-                                    </Button>
-                                </LogsDialog>
+                                <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
+                                    <Expand />
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p>Fullscreen Logs</p>

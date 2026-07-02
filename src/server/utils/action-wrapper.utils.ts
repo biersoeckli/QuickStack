@@ -1,5 +1,5 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-import {  UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
+import { UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
 import { getServerSession } from "next-auth";
 import { ZodRawShape, ZodObject, z } from "zod";
 import { redirect } from "next/navigation";
@@ -14,8 +14,13 @@ import {
     ensureAdmin,
     ensureReadApp,
     ensureWriteApp,
-    RequesterIdentity
+    ensureReadAgent,
+    ensureWriteAgent,
+    RequesterIdentity,
+    ensureWriteProjectWorkload,
+    ensureReadProjectWorkload
 } from "./shared-authorization.utils";
+import { WorkloadType, zodWorkloadType } from "@/shared/model/runtime-type.model";
 
 /**
  * THIS FUNCTION RETURNS NULL IF NO USER IS LOGGED IN
@@ -30,8 +35,10 @@ export async function getUserSession(): Promise<UserSession | null> {
     if (!!session?.user?.email) {
         userGroup = await userGroupService.getRoleByUserMail(session.user.email);
     }
+    const userSession = session?.user as UserSession;
     return {
-        email: session?.user?.email as string,
+        email: userSession?.email as string,
+        userId: userSession?.userId as string,
         userGroup: userGroup ?? undefined,
     };
 }
@@ -61,6 +68,7 @@ export async function isAuthorizedForBackups() {
     return session;
 }
 
+/** @deprecated Use isAuthorizedReadForWorkload */
 export async function isAuthorizedReadForApp(appId: string) {
     const session = await getAuthUserSession();
     const identity: RequesterIdentity = { type: 'session', session };
@@ -68,10 +76,41 @@ export async function isAuthorizedReadForApp(appId: string) {
     return identity.session;
 }
 
+/** @deprecated Use isAuthorizedReadForWorkload */
+export async function isAuthorizedReadForAgent(agentId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureReadAgent(identity, agentId);
+    return identity.session;
+}
+
+/** @deprecated Use isAuthorizedWriteForWorkload */
 export async function isAuthorizedWriteForApp(appId: string) {
     const session = await getAuthUserSession();
     const identity: RequesterIdentity = { type: 'session', session };
     ensureWriteApp(identity, appId);
+    return identity.session;
+}
+
+/** @deprecated Use isAuthorizedWriteForWorkload */
+export async function isAuthorizedWriteForAgent(agentId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureWriteAgent(identity, agentId);
+    return identity.session;
+}
+
+export async function isAuthorizedWriteForWorkload(workloadId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureWriteProjectWorkload(identity, workloadId);
+    return identity.session;
+}
+
+export async function isAuthorizedReadForWorkload(workloadId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureReadProjectWorkload(identity, workloadId);
     return identity.session;
 }
 
@@ -81,6 +120,26 @@ export async function safeGetUserPermissionForApp(appId: string) {
         return null;
     }
     return UserGroupUtils.getRolePermissionForApp(session, appId);
+}
+
+export async function safeGetUserPermissionForAgent(agentId: string) {
+    const session = await getUserSession();
+    if (!session) {
+        return null;
+    }
+    return UserGroupUtils.getRolePermissionForAgent(session, agentId);
+}
+
+export async function workloadExecutor<A, B>(type: WorkloadType, executor: {
+    app: () => Promise<A>;
+    agent: () => Promise<B>;
+}): Promise<A | B> {
+    zodWorkloadType.parse(type);
+    const execFunc = executor[type];
+    if (!execFunc) {
+        throw new ServiceException('Invalid workload type.');
+    }
+    return execFunc();
 }
 
 export async function saveFormAction<ReturnType, TInputData, ZodType extends ZodRawShape>(
@@ -118,8 +177,8 @@ export async function saveFormAction<ReturnType, TInputData, ZodType extends Zod
 
 type SimpleActionResult<TReturn, TValidation = unknown> =
     TReturn extends ServerActionResult<any, infer D>
-        ? ServerActionResult<TValidation, NonNullable<D>>
-        : ServerActionResult<TValidation, TReturn>;
+    ? ServerActionResult<TValidation, NonNullable<D>>
+    : ServerActionResult<TValidation, TReturn>;
 
 export async function simpleAction<ReturnType, ValidationCallbackType = unknown>(
     func: () => Promise<ReturnType>,

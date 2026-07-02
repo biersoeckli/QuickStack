@@ -122,7 +122,7 @@ export class BaseDbToolService {
         const projectId = app.projectId;
 
         const existingDeployment = await deploymentService.getDeployment(projectId, toolAppName);
-        if (existingDeployment) { await k3s.apps.deleteNamespacedDeployment(toolAppName, projectId); }
+        if (existingDeployment) { await k3s.apps.deleteNamespacedDeployment({ name: toolAppName, namespace: projectId }); }
 
         const existingService = await svcService.getService(projectId, toolAppName);
         if (existingService) { await svcService.deleteService(projectId, toolAppName); }
@@ -182,9 +182,9 @@ export class BaseDbToolService {
 
         const existingIngress = await ingressService.getIngressByName(namespace, dbGateAppName);
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(KubeObjectNameUtils.getIngressName(dbGateAppName), namespace, ingressDefinition);
+            await k3s.network.replaceNamespacedIngress({ name: KubeObjectNameUtils.getIngressName(dbGateAppName), namespace: namespace, body: ingressDefinition });
         } else {
-            await k3s.network.createNamespacedIngress(namespace, ingressDefinition);
+            await k3s.network.createNamespacedIngress({ namespace: namespace, body: ingressDefinition });
         }
     }
 }

@@ -1,6 +1,18 @@
 import { ServiceException } from '@/shared/model/service.exception.model';
 import * as k8s from '@kubernetes/client-node';
 
+export function kubernetesPatchOptions(contentType: string) {
+    return {
+        promiseMiddleware: [{
+            pre: async (context: any) => {
+                context.setHeaderParam('Content-Type', contentType);
+                return context;
+            },
+            post: async (context: any) => context,
+        }],
+    } as any;
+}
+
 class K3sApiAdapter {
 
     core: k8s.CoreV1Api;

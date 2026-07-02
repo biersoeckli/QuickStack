@@ -13,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { S3Target, User } from "@prisma/client"
@@ -42,7 +42,7 @@ export default function UserEditOverlay({ children, user, userGroups }: {
     defaultValues: user
   });
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: UserEditModel) =>
     saveUser(state, {
       ...payload,

@@ -1,0 +1,46 @@
+import { AgentTemplateModel } from "@/shared/model/agent-template.model";
+
+export const opencodeAgentTemplate: AgentTemplateModel = {
+    name: "OpenCode",
+    iconName: "https://opencode.ai/favicon.svg",
+    templates: [{
+        inputSettings: [
+            {
+                key: "containerImageSource",
+                label: "Container Image",
+                value: "ghcr.io/anomalyco/opencode:latest",
+                isEnvVar: false,
+                randomGeneratedIfEmpty: false,
+            },
+        ],
+        name: "OpenCode",
+        sourceType: "CONTAINER",
+        buildMethod: "DOCKERFILE",
+        containerImageSource: "",
+        containerRegistryUsername: null,
+        containerRegistryPassword: null,
+        llmGatewayId: '',
+        modelAlias: '',
+        gitUrl: null,
+        gitBranch: null,
+        gitUsername: null,
+        gitToken: null,
+        dockerfilePath: "./Dockerfile",
+        cpuRequest: null,
+        cpuLimit: null,
+        memoryRequest: null,
+        memoryLimit: null,
+        systemPrompt: null,
+        encryptedEnvVars: undefined,
+        containerCommand: null,
+        containerArgs: null,
+        warmPoolReplicas: 0,
+        agentDomains: [],
+        agentVolumes: [{
+            containerMountPath: "/workspace",
+            size: 10000,
+            storageClassName: "longhorn",
+        }],
+        agentFileMounts: [],
+    }],
+};

@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume } from "@prisma/client"
@@ -37,7 +37,7 @@ export default function StorageRestoreDialog({ children, volume, app }: { childr
     resolver: zodResolver(volumeUploadZodModel)
   });
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: FormData) =>
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: FormData) =>
     restoreVolumeFromZip(state, payload, volume.id), FormUtils.getInitialFormState<typeof volumeUploadZodModel>());
 
   useEffect(() => {

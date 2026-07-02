@@ -1,4 +1,4 @@
-import k3s from "../adapter/kubernetes-api.adapter";
+import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
@@ -13,7 +13,7 @@ class ClusterService {
     async getNodeInfo(): Promise<NodeInfoModel[]> {
         return await unstable_cache(async () => {
             const nodeReturnInfo = await k3s.core.listNode();
-            return nodeReturnInfo.body.items.map((node) => {
+            return nodeReturnInfo.items.map((node) => {
                 return {
                     name: node.metadata?.name!,
                     status: node.status?.conditions?.filter((condition) => condition.type === 'Ready')[0].status!,
@@ -52,16 +52,17 @@ class ClusterService {
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {
         try {
-            await k3s.core.patchNode(nodeName, { "spec": { "unschedulable": schedulable ? null : true } }, undefined, undefined, undefined, undefined, undefined, {
-                headers: { 'Content-Type': 'application/strategic-merge-patch+json' },
-            });
+            await k3s.core.patchNode(
+                { name: nodeName, body: { spec: { unschedulable: schedulable ? null : true } } },
+                kubernetesPatchOptions('application/strategic-merge-patch+json'),
+            );
 
             if (!schedulable) {
                 // delete all pods on node
                 const pods = await k3s.core.listPodForAllNamespaces();
-                for (const pod of pods.body.items) {
+                for (const pod of pods.items) {
                     if (pod.spec?.nodeName === nodeName) {
-                        await k3s.core.deleteNamespacedPod(pod.metadata?.name!, pod.metadata?.namespace!);
+                        await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: pod.metadata?.namespace! });
                     }
                 }
             }

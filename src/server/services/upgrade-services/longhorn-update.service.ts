@@ -15,12 +15,9 @@ class LonghornUpdateService {
      */
     async getCurrentVersion(): Promise<string | undefined> {
         try {
-            const daemonSet = await k3s.apps.readNamespacedDaemonSet(
-                this.LONGHORN_MANAGER_NAME,
-                this.LONGHORN_NAMESPACE
-            );
+            const daemonSet = await k3s.apps.readNamespacedDaemonSet({ name: this.LONGHORN_MANAGER_NAME, namespace: this.LONGHORN_NAMESPACE });
 
-            const image = daemonSet.body.spec?.template?.spec?.containers?.[0]?.image;
+            const image = daemonSet.spec?.template?.spec?.containers?.[0]?.image;
             if (!image) {
                 return undefined;
             }
@@ -40,10 +37,7 @@ class LonghornUpdateService {
      */
     async isInstalled(): Promise<boolean> {
         try {
-            await k3s.apps.readNamespacedDaemonSet(
-                this.LONGHORN_MANAGER_NAME,
-                this.LONGHORN_NAMESPACE
-            );
+            await k3s.apps.readNamespacedDaemonSet({ name: this.LONGHORN_MANAGER_NAME, namespace: this.LONGHORN_NAMESPACE });
             return true;
         } catch (error) {
             return false;
@@ -108,8 +102,8 @@ class LonghornUpdateService {
      */
     async isUpgradeInProgress(): Promise<boolean> {
         try {
-            const podsResponse = await k3s.core.listNamespacedPod(this.LONGHORN_NAMESPACE);
-            const pods = podsResponse.body.items;
+            const podsResponse = await k3s.core.listNamespacedPod({ namespace: this.LONGHORN_NAMESPACE });
+            const pods = podsResponse.items;
 
             if (pods.length === 0) {
                 // No pods found, consider this as not upgrading
@@ -209,12 +203,9 @@ class LonghornUpdateService {
         let updatedPods = 0;
 
         try {
-            const daemonSet = await k3s.apps.readNamespacedDaemonSet(
-                this.LONGHORN_MANAGER_NAME,
-                this.LONGHORN_NAMESPACE
-            );
+            const daemonSet = await k3s.apps.readNamespacedDaemonSet({ name: this.LONGHORN_MANAGER_NAME, namespace: this.LONGHORN_NAMESPACE });
 
-            const status = daemonSet.body.status;
+            const status = daemonSet.status;
             if (status) {
                 desiredPods = status.desiredNumberScheduled || 0;
                 readyPods = status.numberReady || 0;

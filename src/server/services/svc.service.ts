@@ -14,16 +14,16 @@ class SvcService {
         if (!existingService) {
             return;
         }
-        const returnVal = await k3s.core.deleteNamespacedService(KubeObjectNameUtils.toServiceName(appId), projectId);
+        const returnVal = await k3s.core.deleteNamespacedService({ name: KubeObjectNameUtils.toServiceName(appId), namespace: projectId });
         console.log(`Deleted Service ${KubeObjectNameUtils.toServiceName(appId)} in namespace ${projectId}`);
         return returnVal;
     }
 
     async getService(projectId: string, appId: string) {
-        const allServices = await k3s.core.listNamespacedService(projectId);
-        if (allServices.body.items.some((item) => item.metadata?.name === KubeObjectNameUtils.toServiceName(appId))) {
-            const res = await k3s.core.readNamespacedService(KubeObjectNameUtils.toServiceName(appId), projectId);
-            return res.body;
+        const allServices = await k3s.core.listNamespacedService({ namespace: projectId });
+        if (allServices.items.some((item) => item.metadata?.name === KubeObjectNameUtils.toServiceName(appId))) {
+            const res = await k3s.core.readNamespacedService({ name: KubeObjectNameUtils.toServiceName(appId), namespace: projectId });
+            return res;
         }
     }
 
@@ -108,9 +108,9 @@ class SvcService {
         };
 
         if (existingService) {
-            await k3s.core.replaceNamespacedService(KubeObjectNameUtils.toServiceName(kubeAppName), namespace, body);
+            await k3s.core.replaceNamespacedService({ name: KubeObjectNameUtils.toServiceName(kubeAppName), namespace: namespace, body: body });
         } else {
-            await k3s.core.createNamespacedService(namespace, body);
+            await k3s.core.createNamespacedService({ namespace: namespace, body: body });
         }
 
     }

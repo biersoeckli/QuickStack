@@ -1,5 +1,10 @@
 export class Constants {
     static readonly QS_ANNOTATION_APP_ID = 'qs-app-id';
+    static readonly QS_ANNOTATION_AGENT_ID = 'qs-agent-id';
+    static readonly QS_ANNOTATION_WORKLOAD_ID = 'qs-workload-id';
+    static readonly QS_ANNOTATION_WORKLOAD_TYPE = 'qs-workload-type';
+    static readonly QS_ANNOTATION_AGENT_VOLUME_ID = 'qs-agent-volume-id';
+    static readonly QS_ANNOTATION_USER_ID = 'qs-user-id';
     static readonly QS_ANNOTATION_BUILD_NAME = 'qs-build-name';
     static readonly QS_ANNOTATION_PROJECT_ID = 'qs-project-id';
     static readonly QS_ANNOTATION_CONTAINER_TYPE = 'qs-containter-type';
@@ -11,6 +16,7 @@ export class Constants {
     static readonly QS_ANNOTATION_BUILD_QUEUED_AT = 'qs-build-queued-at';
     static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
     static readonly QS_ANNOTATION_GIT_SSH_SECRET = 'qs-git-ssh-secret';
+    static readonly QS_ANNOTATION_UPDATED_AT = 'qs-ressource-updated-at';
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';
@@ -29,4 +35,9 @@ export class Constants {
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
+    static readonly QS_AGENT_ROUTER_NAMESPACE = Constants.QS_NAMESPACE;
+    static readonly QS_AUTH_PROXY_IMAGE = 'ghcr.io/biersoeckli/quickstack-auth-proxy:latest';//'quickstack/auth-proxy:latest';
+    static readonly QS_AGENT_CLAIM_COOKIE = 'qs-agent-claim';
+    static readonly QS_AGENT_ACCESS_COOKIE = 'qs-agent-access';
+
 }

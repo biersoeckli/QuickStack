@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
-
 export default function SelectFormField<TFormType extends FieldValues>(
     {
         form,
@@ -23,7 +22,7 @@ export default function SelectFormField<TFormType extends FieldValues>(
         formDescription,
         onValueChange
     }: {
-        form: UseFormReturn<TFormType, any, undefined>;
+        form: UseFormReturn<TFormType, any, TFormType>;
         label: string | React.ReactNode;
         name: keyof TFormType;
         values: [string, string][];

@@ -9,11 +9,12 @@ export default async function RootLayout({
   children,
   params
 }: Readonly<{
-  params: { appId: string }
+  params: Promise<{ appId: string }>
   children: React.ReactNode;
 }>) {
 
-  const appId = params?.appId;
+  const resolvedParams = await params;
+  const appId = resolvedParams?.appId;
   if (!appId) {
     return <p>Could not find app with id {appId}</p>
   }
@@ -43,4 +44,3 @@ export default async function RootLayout({
     </div>
   );
 }
-

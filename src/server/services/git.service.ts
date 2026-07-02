@@ -7,13 +7,25 @@ import { FsUtils } from "../utils/fs.utils";
 import path from "path";
 import appGitSshKeyService from "./app-git-ssh-key.service";
 import fs from "fs";
+import agentGitSshKeyService from "./agent-git-ssh-key.service";
 
-type GitConnectionInfo = AppGitBranchesLookupModel & Pick<AppExtendedModel, 'id'>;
+type GitWorkloadType = 'app' | 'agent';
+type GitConnectionInfo = AppGitBranchesLookupModel & Pick<AppExtendedModel, 'id'> & { workloadType?: GitWorkloadType };
 type GitDockerfileDetectionInfo = GitConnectionInfo & Pick<AppExtendedModel, 'gitBranch'>;
+type GitContextInfo = {
+    id: string;
+    sourceType: string;
+    gitUrl?: string | null;
+    gitUsername?: string | null;
+    gitToken?: string | null;
+    gitBranch?: string | null;
+    dockerfilePath?: string | null;
+    workloadType?: GitWorkloadType;
+};
 
 class GitService {
 
-    async openGitContext<T>(app: AppExtendedModel, action: (ctx: InternalGitService) => Promise<T>): Promise<T> {
+    async openGitContext<T>(app: GitContextInfo, action: (ctx: InternalGitService) => Promise<T>): Promise<T> {
         try {
             let git: SimpleGit | undefined = undefined;
             let internalGitService: InternalGitService | undefined = undefined;
@@ -36,7 +48,7 @@ class GitService {
         try {
             const git = simpleGit();
             const sshKeyPath = input.sourceType === 'GIT_SSH'
-                ? await appGitSshKeyService.writePrivateKeyToTempFile(input.id)
+                ? await this.writePrivateKeyToTempFile(input)
                 : undefined;
             if (sshKeyPath) {
                 git.env('GIT_SSH_COMMAND', this.getGitSshCommand(sshKeyPath));
@@ -49,7 +61,7 @@ class GitService {
             throw this.mapGitConnectionError(error, input.sourceType);
         } finally {
             if (input.sourceType === 'GIT_SSH') {
-                await appGitSshKeyService.cleanupTempKeyFile(input.id);
+                await this.cleanupTempKeyFile(input);
             }
         }
     }
@@ -58,13 +70,13 @@ class GitService {
         return await this.openGitContext(input as AppExtendedModel, async (ctx) => ctx.detectDockerfilePath());
     }
 
-    private async cleanupLocalGitDataForApp(app: AppExtendedModel) {
+    private async cleanupLocalGitDataForApp(app: GitContextInfo) {
         const gitPath = PathUtils.gitRootPathForApp(app.id);
         await FsUtils.deleteDirIfExistsAsync(gitPath, true);
-        await appGitSshKeyService.cleanupTempKeyFile(app.id);
+        await this.cleanupTempKeyFile(app);
     }
 
-    private async pullLatestChangesFromRepo(app: AppExtendedModel) {
+    private async pullLatestChangesFromRepo(app: GitContextInfo) {
         console.log(`Pulling latest source for app ${app.id}...`);
         const gitPath = PathUtils.gitRootPathForApp(app.id);
 
@@ -73,7 +85,7 @@ class GitService {
 
         const git = simpleGit(gitPath);
         const sshKeyPath = app.sourceType === 'GIT_SSH'
-            ? await appGitSshKeyService.writePrivateKeyToTempFile(app.id)
+            ? await this.writePrivateKeyToTempFile(app)
             : undefined;
         if (sshKeyPath) {
             git.env('GIT_SSH_COMMAND', this.getGitSshCommand(sshKeyPath));
@@ -99,7 +111,22 @@ class GitService {
         return `ssh -i ${sshConfigPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`;
     }
 
-    private mapGitConnectionError(error: unknown, sourceType: AppExtendedModel['sourceType']) {
+    private async writePrivateKeyToTempFile(input: { id: string; workloadType?: GitWorkloadType }) {
+        if (input.workloadType === 'agent') {
+            return agentGitSshKeyService.writePrivateKeyToTempFile(input.id);
+        }
+        return appGitSshKeyService.writePrivateKeyToTempFile(input.id);
+    }
+
+    private async cleanupTempKeyFile(input: { id: string; workloadType?: GitWorkloadType }) {
+        if (input.workloadType === 'agent') {
+            await agentGitSshKeyService.cleanupTempKeyFile(input.id);
+            return;
+        }
+        await appGitSshKeyService.cleanupTempKeyFile(input.id);
+    }
+
+    private mapGitConnectionError(error: unknown, sourceType: string) {
         if (error instanceof Error) {
             if (error.message.includes('Permission denied')) {
                 if (sourceType === 'GIT_SSH') {
@@ -160,7 +187,7 @@ class GitService {
 class InternalGitService {
 
     constructor(private readonly git: SimpleGit,
-        private readonly app: AppExtendedModel
+        private readonly app: GitContextInfo
     ) { }
 
     async checkIfDockerfileExists() {

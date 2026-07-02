@@ -1,16 +1,10 @@
-import { PrismaClient, User } from "@prisma/client";
-import NextAuth, { NextAuthOptions, Session } from "next-auth"
-import EmailProvider from "next-auth/providers/email";
+import { User } from "@prisma/client";
+import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import { JWT } from "next-auth/jwt";
-import { UserSession } from "@/shared/model/sim-session.model";
 import dataAccess from "@/server/adapter/db.client";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
 import userService from "@/server/services/user.service";
-
-
-const saltRounds = 10;
+import { UserSession } from "@/shared/model/sim-session.model";
 
 export const authOptions: NextAuthOptions = {
     session: {
@@ -54,6 +48,34 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ],
+    callbacks: {
+        async jwt(data) {
+            // Initial sign in - store user info in token
+            if (data.token && data.token.email) {
+                const user = await userService.getUserByEmail(data.token.email);
+                const userId = user.id;
+                if (userId) {
+                    data.token.userId = userId;
+                }
+            }
+            return data.token;
+        },
+        async session({ session, token, user }) {
+            // Read user info from token and builds session object
+            if (token?.userId) {
+                const userSession = session.user as UserSession;
+                userSession.userId = token.userId as string;
+                session.user = userSession;
+                return session;
+            }
+
+            console.error('Could not generate session - missing userId in token');
+            console.error('session', session);
+            console.error('token', token);
+            console.error('user', user);
+            throw new Error("Could not generate session");
+        }
+    },
     adapter: PrismaAdapter(dataAccess.client),
 };
 

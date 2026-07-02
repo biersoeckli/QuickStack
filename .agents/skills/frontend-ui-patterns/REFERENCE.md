@@ -121,7 +121,7 @@ const result = await Actions.run(() => getProjectDetails(projectId));
 Map validation errors back to the form with:
 
 ```tsx
-FormUtils.mapValidationErrorsToForm(serverActionResult, form);
+FormUtils.mapValidationErrorsToForm<typeof zodModel>(serverActionResult, form);
 ```
 
 ## Zustand State Stores
@@ -176,58 +176,154 @@ Columns are tuples: `[accessorKey, headerLabel, isVisible, renderFn?]`
 
 ## Dialogs
 
-Use Zustand-backed global dialogs instead of one-off dialog state.
+Use Zustand-backed global dialogs instead of one-off dialog state. Keep trigger and dialog content in separate components (often separate files for reuse).
 
-### `useDialog`
+### Pattern: Trigger + Dialog Content
 
-Prefer responsive sizing options:
+**Trigger component** — opens dialog via `useDialog().openDialog()`:
 
 ```tsx
-const { openDialog } = useDialog();
+'use client'
 
-<Button
-    type="button"
-    onClick={() => openDialog(<ImportDialog />, {
-        width: 'calc(100vw - 2rem)',
-        maxWidth: '760px',
-        maxHeight: '90vh',
-    })}
->
-    Import
-</Button>
+import { useDialog } from "@/frontend/states/zustand.states";
+
+export default function MyTrigger({ children, someProp }: { children: React.ReactNode; someProp: string }) {
+    const { openDialog } = useDialog();
+
+    const handleOpen = () => {
+        openDialog(<MyDialogContent someProp={someProp} />, { maxWidth: '520px' });
+    };
+
+    return (
+        <div onClick={handleOpen}>
+            {children}
+        </div>
+    );
+}
 ```
 
-Inside dialog content, use `useDialogContext()` to close or resolve:
+**Dialog content — variant A: with form** (react-hook-form + Server Action):
 
 ```tsx
-function ImportDialog() {
+'use client'
+
+import { useDialogContext } from "@/frontend/states/dialog-context";
+import { DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+function MyFormDialog({ someProp }: { someProp: string }) {
+    const { closeDialog } = useDialogContext();
+
+    const form = useForm<MySchema>({
+        resolver: zodResolver(mySchema),
+        defaultValues: { name: someProp ?? '' },
+    });
+
+    const [state, formAction] = useActionState(
+        (prev, payload) => myServerAction(prev, payload),
+        FormUtils.getInitialFormState<typeof mySchema>()
+    );
+
+    useEffect(() => {
+        if (state.status === 'success') {
+            toast.success(state.message ?? 'Saved.');
+            closeDialog();
+        }
+        FormUtils.mapValidationErrorsToForm<typeof mySchema>(state, form);
+    }, [state]);
+
+    return (
+        <Form {...form}>
+            <form
+                className="flex max-h-[80vh] flex-col overflow-hidden"
+                action={() => form.handleSubmit((data) => formAction(data))()}
+            >
+                <DialogHeader>
+                    <DialogTitle>My Dialog</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="mt-4 flex-1 min-h-0">
+                    <div className="space-y-4 px-2">
+                        {/* form fields */}
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="mt-4">
+                    <SubmitButton>Save</SubmitButton>
+                    <Button type="button" variant="outline" onClick={() => closeDialog()}>
+                        Cancel
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+}
+```
+
+The success (primary) button is always the first button in the footer, cancel is always the last.
+
+**Dialog content — variant B: without form** (simple confirm/info dialog):
+
+```tsx
+'use client'
+
+import { useDialogContext } from "@/frontend/states/dialog-context";
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
+function MyConfirmDialog({ itemName }: { itemName: string }) {
     const { closeDialog } = useDialogContext();
 
     return (
         <>
             <DialogHeader>
-                <DialogTitle>Import</DialogTitle>
-                <DialogDescription>Optional description</DialogDescription>
+                <DialogTitle>Delete {itemName}?</DialogTitle>
+                <DialogDescription>This action cannot be undone.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => closeDialog(false)}>
-                        Cancel
-                    </Button>
-                    <Button type="button" onClick={() => closeDialog(true)}>
-                        Import
-                    </Button>
-                </div>
-            </div>
+           {/* Here additional content of the dialog can be added. If allot of content -> use ScrollArea */}
+            <DialogFooter className="mt-4">
+                <Button type="button" variant="outline" onClick={() => closeDialog(false)}>
+                    Cancel
+                </Button>
+                <Button type="button" variant="destructive" onClick={() => closeDialog(true)}>
+                    Delete
+                </Button>
+            </DialogFooter>
         </>
     );
 }
 ```
 
-Simple fixed-width dialogs can still use:
+Await result from trigger:
 
 ```tsx
-openDialog(<PublicDeployKeyDialog publicKey={publicKey} />, '680px');
+const confirmed = await openDialog(<MyConfirmDialog itemName="foo" />);
+if (confirmed) { /* delete */ }
+```
+
+### `useDialog` Sizing
+
+Second arg: `DialogSizeProps` object or shorthand string (= `maxWidth`):
+
+```tsx
+// Full size control
+openDialog(<Content />, {
+    width: 'calc(100vw - 2rem)',
+    maxWidth: '760px',
+    maxHeight: '90vh',
+});
+
+// Shorthand: string = maxWidth
+openDialog(<Content />, '680px');
+```
+
+### `useDialogContext`
+
+Inside dialog content, close with optional result:
+
+```tsx
+const { closeDialog } = useDialogContext();
+
+closeDialog();        // close, no result
+closeDialog(someData); // close, pass result to openDialog() awaiter
+```
 ```
 
 ### Confirm/Input Dialogs

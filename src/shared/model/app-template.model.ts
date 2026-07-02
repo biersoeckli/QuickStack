@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
-import { appVolumeTypeZodModel, storageClassNameZodModel } from "./volume-edit.model";
+import { appVolumeTypeZodModel, appStorageClassNameZodModel } from "./volume-edit.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined().optional(),
@@ -29,7 +29,7 @@ export const appTemplateContentZodModel = z.object({
     appDomains: AppDomainModel.array(),
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
-        storageClassName: storageClassNameZodModel.default('longhorn'),
+        storageClassName: appStorageClassNameZodModel.default('longhorn'),
         id: z.undefined().optional(),
         appId: z.undefined().optional(),
         createdAt: z.undefined().optional(),

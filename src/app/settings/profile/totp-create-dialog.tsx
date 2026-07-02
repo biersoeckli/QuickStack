@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { createNewTotpToken, verifyTotpToken } from "./actions";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,7 +29,7 @@ export default function TotpCreateDialog({
         resolver: zodResolver(totpZodModel)
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: TotpModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: TotpModel) =>
         verifyTotpToken(state, payload), FormUtils.getInitialFormState<typeof totpZodModel>());
 
     useEffect(() => {

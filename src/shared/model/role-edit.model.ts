@@ -2,18 +2,18 @@ import { stringToNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 
-const roleAppPermissionZodModle = z.object({
-  appId: z.string(),
+const workloadPermissionZodModel = z.object({
+  workloadId: z.string(),
   permission: z.string(),
 });
 
 const RoleProjectPermissionSchema = z.object({
   projectId: z.string(),
-  createApps: z.boolean(),
-  deleteApps: z.boolean(),
-  writeApps: z.boolean(),
-  readApps: z.boolean(),
-  roleAppPermissions: z.array(roleAppPermissionZodModle).optional().default([]),
+  createWorkloads: z.boolean(),
+  deleteWorkloads: z.boolean(),
+  writeWorkloads: z.boolean(),
+  readWorkloads: z.boolean(),
+  workloadPermissions: z.array(workloadPermissionZodModel).optional().default([]),
 });
 
 // Schema for UserRole.

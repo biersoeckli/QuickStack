@@ -108,7 +108,7 @@ export default function DbGateDbTool({
                                 variant="ghost"><Download /></Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>Download the "Files" folder from DB Gate.</p>
+                            <p>Download the &quot;Files&quot; folder from DB Gate.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -117,4 +117,3 @@ export default function DbGateDbTool({
         </div>
     </>;
 }
-

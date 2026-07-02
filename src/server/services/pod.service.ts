@@ -20,10 +20,10 @@ class PodService {
     }
 
     async getPodInfoByName(projectId: string, podName: string) {
-        const res = await k3s.core.readNamespacedPod(podName, projectId);
+        const res = await k3s.core.readNamespacedPod({ name: podName, namespace: projectId });
         return {
-            podName: res.body.metadata?.name!,
-            containerName: res.body.spec?.containers?.[0].name!
+            podName: res.metadata?.name!,
+            containerName: res.spec?.containers?.[0].name!
         } as PodsInfoModel;
     }
 
@@ -51,11 +51,15 @@ class PodService {
         return await standalonePodService.cpFromPod(namespace, podName, containerName, srcPath, zipOutputPath, cwd);
     }
 
+    async getPodsForAgent(projectId: string, agentId: string): Promise<PodsInfoModel[]> {
+        return standalonePodService.getPodsForAgent(projectId, agentId);
+    }
+
     async deleteRestorePodIfExists(namespace: string, name: string) {
-        const existingPods = await k3s.core.listNamespacedPod(namespace);
-        const pod = existingPods.body.items.find((item) => item.metadata?.labels?.app === name);
+        const existingPods = await k3s.core.listNamespacedPod({ namespace: namespace });
+        const pod = existingPods.items.find((item) => item.metadata?.labels?.app === name);
         if (pod) {
-            await k3s.core.deleteNamespacedPod(name, namespace);
+            await k3s.core.deleteNamespacedPod({ name: name, namespace: namespace });
         }
     }
 }

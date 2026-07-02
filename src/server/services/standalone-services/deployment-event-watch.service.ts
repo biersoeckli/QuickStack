@@ -60,8 +60,8 @@ class DeploymentEventWatchService {
         if (irrelevantNamespaces.includes(namespace)) return;
 
         try {
-            const podResponse = await k3s.core.readNamespacedPod(podName, namespace);
-            const pod = podResponse.body;
+            const podResponse = await k3s.core.readNamespacedPod({ name: podName, namespace: namespace });
+            const pod = podResponse;
             const deploymentId = pod.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
             if (!deploymentId) return;
 

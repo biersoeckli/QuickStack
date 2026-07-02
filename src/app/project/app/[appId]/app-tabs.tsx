@@ -7,7 +7,7 @@ import GeneralAppSource from "./general/app-source";
 import GeneralAppContainerConfig from "./general/app-container-config";
 import EnvEdit from "./environment/env-edit";
 import { S3Target } from "@prisma/client";
-import DomainsList from "./domains/domains";
+import DomainsCard from "../../../../components/custom/domains-card";
 import StorageList from "./volumes/storages";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import BuildsTab from "./overview/deployments";
@@ -15,7 +15,7 @@ import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
 import InternalHostnames from "./domains/ports-and-internal-hostnames";
 import NodePortsCard from "./domains/node-ports";
-import FileMount from "./volumes/file-mount";
+import FileMountsCard from "@/components/custom/file-mounts-card";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
 import VolumeBackupList from "./volumes/volume-backup";
@@ -93,13 +93,13 @@ export default function AppTabs({
                 <EnvEdit readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="domains" className="space-y-4">
-                <DomainsList readonly={readonly} app={app} />
+                <DomainsCard readonly={readonly} domains={app.appDomains} workloadId={app.id} workloadType={'app'} />
                 <InternalHostnames readonly={readonly} app={app} />
                 <NodePortsCard readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
                 <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
-                <FileMount readonly={readonly} app={app} />
+                <FileMountsCard readonly={readonly} fileMounts={app.appFileMounts} workloadId={app.id} workloadType={'app'} />
                 <VolumeBackupList
                     readonly={readonly}
                     app={app}

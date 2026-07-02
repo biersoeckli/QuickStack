@@ -25,6 +25,7 @@ import { getAuthUserSession } from "@/server/utils/action-wrapper.utils"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useBreadcrumbs } from "@/frontend/states/zustand.states"
 import { Separator } from "../ui/separator"
+import { Fragment } from "react"
 
 export function BreadcrumbsGenerator() {
 
@@ -36,7 +37,7 @@ export function BreadcrumbsGenerator() {
             <Separator orientation="vertical" className="mr-1 h-4" />
             {breadcrumbs && <Breadcrumb>
                 <BreadcrumbList>
-                    {breadcrumbs.map((x, index) => (<>
+                    {breadcrumbs.map((x, index) => (<Fragment key={x.name}>
                         {index > 0 && <BreadcrumbSeparator />}
                         <BreadcrumbItem key={x.name}>
                             {x.dropdownItems ? (
@@ -57,7 +58,7 @@ export function BreadcrumbsGenerator() {
                                 <BreadcrumbLink href={x.url ?? undefined}>{x.name}</BreadcrumbLink>
                             )}
                         </BreadcrumbItem>
-                    </>))}
+                    </Fragment>))}
                 </BreadcrumbList>
             </Breadcrumb>}
         </div>

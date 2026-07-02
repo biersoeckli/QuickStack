@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { updateLetsEncryptSettings } from "./actions";
 import { QsLetsEncryptSettingsModel, qsLetsEncryptSettingsZodModel } from "@/shared/model/qs-letsencrypt-settings.model";
@@ -26,7 +26,7 @@ export default function QuickStackLetsEncryptSettings({
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: QsLetsEncryptSettingsModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: QsLetsEncryptSettingsModel) =>
         updateLetsEncryptSettings(state, payload), FormUtils.getInitialFormState<typeof qsLetsEncryptSettingsZodModel>());
 
     useEffect(() => {
@@ -41,7 +41,7 @@ export default function QuickStackLetsEncryptSettings({
         <Card>
             <CardHeader>
                 <CardTitle>SSL Certificates</CardTitle>
-                <CardDescription>To issue SSL Certificates to your Apps, provide your Let's Encrypt email address.</CardDescription>
+                <CardDescription>To issue SSL Certificates to your Apps, provide your Let&apos;s Encrypt email address.</CardDescription>
             </CardHeader>
             <Form {...form}>
                 <form action={(e) => form.handleSubmit((data) => {
@@ -53,7 +53,7 @@ export default function QuickStackLetsEncryptSettings({
                             name="letsEncryptMail"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Let's Encrypt Email</FormLabel>
+                                    <FormLabel>Let&apos;s Encrypt Email</FormLabel>
                                     <FormControl>
                                         <Input  {...field} />
                                     </FormControl>

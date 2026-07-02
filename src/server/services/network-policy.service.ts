@@ -103,7 +103,7 @@ class NetworkPolicyService {
         if (policyType === 'ALLOW_ALL') {
             // Allow from same namespace and from Traefik (internet traffic comes through Traefik)
             rules.push({
-                from: [
+                _from: [
                     ...traefikFrom,
                     {
                         podSelector: {} // Selects all pods in the same namespace
@@ -114,7 +114,7 @@ class NetworkPolicyService {
             // Allow from Traefik (internet traffic comes through Traefik) and from DB-backup jobs.
             // Block other internal pod traffic.
             rules.push({
-                from: [
+                _from: [
                     ...traefikFrom,
                     ...backupPodFrom,
                     ...dbToolPod
@@ -123,14 +123,14 @@ class NetworkPolicyService {
         } else if (policyType === 'NAMESPACE_ONLY') {
             // Allow only from same namespace
             rules.push({
-                from: [{
+                _from: [{
                     podSelector: {} // Selects all pods in the same namespace
                 }]
             });
         } else if (policyType === 'DENY_ALL') {
             // No rules means deny all --> except the separate container for database backups
             rules.push({
-                from: [
+                _from: [
                     ...backupPodFrom,
                     ...dbToolPod
                 ]
@@ -148,7 +148,7 @@ class NetworkPolicyService {
                 }));
 
             rules.push({
-                from: [{
+                _from: [{
                     ipBlock: {
                         cidr: '0.0.0.0/0'
                     }
@@ -253,21 +253,21 @@ class NetworkPolicyService {
         if (!existingNetworkPolicy) {
             return;
         }
-        await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
+        await k3s.network.deleteNamespacedNetworkPolicy({ name: policyName, namespace: projectId });
     }
 
     private async applyNetworkPolicy(namespace: string, policyName: string, body: V1NetworkPolicy) {
         const existing = await this.getExistingNetworkPolicy(namespace, policyName);
         if (existing) {
-            await k3s.network.replaceNamespacedNetworkPolicy(policyName, namespace, body);
+            await k3s.network.replaceNamespacedNetworkPolicy({ name: policyName, namespace: namespace, body: body });
         } else {
-            await k3s.network.createNamespacedNetworkPolicy(namespace, body);
+            await k3s.network.createNamespacedNetworkPolicy({ namespace: namespace, body: body });
         }
     }
 
     private async getExistingNetworkPolicy(namespace: string, policyName: string) {
-        const allPolicies = await k3s.network.listNamespacedNetworkPolicy(namespace);
-        return allPolicies.body.items.find(np => np.metadata?.name === policyName);
+        const allPolicies = await k3s.network.listNamespacedNetworkPolicy({ namespace: namespace });
+        return allPolicies.items.find(np => np.metadata?.name === policyName);
     }
 
     async reconcileDbToolNetworkPolicy(dbToolAppName: string, dbAppId: string, projectId: string) {
@@ -299,7 +299,7 @@ class NetworkPolicyService {
                 ingress: [
                     {
                         // Allow from Traefik (internet traffic)
-                        from: [
+                        _from: [
                             {
                                 namespaceSelector: {
                                     matchLabels: {
@@ -374,7 +374,7 @@ class NetworkPolicyService {
         if (!existingNetworkPolicy) {
             return;
         }
-        await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
+        await k3s.network.deleteNamespacedNetworkPolicy({ name: policyName, namespace: projectId });
     }
 
     async reconcileFileBrowserNetworkPolicy(fileBrowserAppName: string, projectId: string) {
@@ -405,7 +405,7 @@ class NetworkPolicyService {
                 ingress: [
                     {
                         // Allow from Traefik (internet traffic)
-                        from: [
+                        _from: [
                             {
                                 namespaceSelector: {
                                     matchLabels: {
@@ -434,23 +434,23 @@ class NetworkPolicyService {
         if (!existingNetworkPolicy) {
             return;
         }
-        await k3s.network.deleteNamespacedNetworkPolicy(policyName, projectId);
+        await k3s.network.deleteNamespacedNetworkPolicy({ name: policyName, namespace: projectId });
     }
 
     async deleteAllNetworkPolicies() {
         const namespaces = await k3s.core.listNamespace();
         let deletedCount = 0;
 
-        for (const ns of namespaces.body.items) {
+        for (const ns of namespaces.items) {
             const namespace = ns.metadata?.name;
             if (!namespace) continue;
 
             try {
-                const policies = await k3s.network.listNamespacedNetworkPolicy(namespace);
-                for (const policy of policies.body.items) {
+                const policies = await k3s.network.listNamespacedNetworkPolicy({ namespace: namespace });
+                for (const policy of policies.items) {
                     const policyName = policy.metadata?.name;
                     if (policyName) {
-                        await k3s.network.deleteNamespacedNetworkPolicy(policyName, namespace);
+                        await k3s.network.deleteNamespacedNetworkPolicy({ name: policyName, namespace: namespace });
                         deletedCount++;
                     }
                 }

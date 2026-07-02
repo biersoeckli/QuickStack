@@ -12,15 +12,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { AppBasicAuth, AppFileMount } from "@prisma/client"
+import { AppBasicAuth } from "@prisma/client"
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
 import { toast } from "sonner"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
-import { Textarea } from "@/components/ui/textarea"
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model"
 import { saveBasicAuth } from "./actions"
 import { z } from "zod"
@@ -52,7 +51,7 @@ export default function BasicAuthEditDialog({
     }
   });
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: BasicAuthEditModel) =>
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: BasicAuthEditModel) =>
     saveBasicAuth(state, {
       ...payload,
       appId: app.id,

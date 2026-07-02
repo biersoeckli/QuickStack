@@ -13,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { Fragment, useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
@@ -40,7 +40,7 @@ export default function CreateTemplateAppSetupDialog({
         defaultValues: appTemplate
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: AppTemplateModel) => createAppFromTemplate(state, payload, projectId!),
         FormUtils.getInitialFormState<typeof appTemplateZodModel>());
 
@@ -76,7 +76,7 @@ export default function CreateTemplateAppSetupDialog({
             }}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Create App "{appTemplate?.name}"</DialogTitle>
+                        <DialogTitle>Create App &quot;{appTemplate?.name}&quot;</DialogTitle>
                         <DialogDescription>
                             Insert your values for the template.
                         </DialogDescription>
@@ -89,7 +89,7 @@ export default function CreateTemplateAppSetupDialog({
                                 })()}>
                                     <div className="space-y-6">
                                         {appTemplate?.templates.map((t, templateIndex) => (
-                                            <>
+                                            <Fragment key={templateIndex}>
                                                 {templateIndex > 0 && <div className="border-t pb-4"></div>}
                                                 {appTemplate?.templates.length > 1 &&
                                                     <div className="text-2xl font-semibold">{t.appModel.name}</div>}
@@ -108,6 +108,7 @@ export default function CreateTemplateAppSetupDialog({
                                                 />
                                                 {t.inputSettings.map((input, settingsIndex) => (
                                                     <FormField
+                                                        key={settingsIndex}
                                                         control={form.control}
                                                         name={`templates[${templateIndex}].inputSettings[${settingsIndex}].value` as any}
                                                         render={({ field }) => (
@@ -123,7 +124,7 @@ export default function CreateTemplateAppSetupDialog({
                                                         )}
                                                     />
                                                 ))}
-                                            </>
+                                            </Fragment>
                                         ))}
                                         <p className="text-red-500">{state.message}</p>
                                         <SubmitButton>Create</SubmitButton>

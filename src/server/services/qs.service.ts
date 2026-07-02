@@ -1,4 +1,4 @@
-import k3s from "../adapter/kubernetes-api.adapter";
+import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import { V1Deployment, V1Ingress, V1Service } from "@kubernetes/client-node";
 import namespaceService from "./namespace.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -66,8 +66,8 @@ class QuickStackService {
         await ingressSetupService.createTraefikRedirectMiddlewareIfNotExist();
 
         const ingressName = KubeObjectNameUtils.getIngressName(this.QUICKSTACK_NAMESPACE);
-        const existingIngresses = await k3s.network.listNamespacedIngress(this.QUICKSTACK_NAMESPACE);
-        const existingIngress = existingIngresses.body.items.find((item) => item.metadata?.name === ingressName);
+        const existingIngresses = await k3s.network.listNamespacedIngress({ namespace: this.QUICKSTACK_NAMESPACE });
+        const existingIngress = existingIngresses.items.find((item) => item.metadata?.name === ingressName);
 
         const ingressDefinition: V1Ingress = {
             apiVersion: 'networking.k8s.io/v1',
@@ -113,10 +113,10 @@ class QuickStackService {
         };
 
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(ingressName, this.QUICKSTACK_NAMESPACE, ingressDefinition);
+            await k3s.network.replaceNamespacedIngress({ name: ingressName, namespace: this.QUICKSTACK_NAMESPACE, body: ingressDefinition });
             console.log(`Ingress QuickStack for domain ${hostname} successfully updated.`);
         } else {
-            await k3s.network.createNamespacedIngress(this.QUICKSTACK_NAMESPACE, ingressDefinition);
+            await k3s.network.createNamespacedIngress({ namespace: this.QUICKSTACK_NAMESPACE, body: ingressDefinition });
             console.log(`Ingress QuickStack for domain ${hostname} successfully created.`);
         }
     }
@@ -156,35 +156,20 @@ class QuickStackService {
         if (await this.checkIfClusterIssuerExists()) {
             // update
             await k3s.customObjects.patchClusterCustomObject(
-                'cert-manager.io',          // group
-                'v1',                       // version
-                'clusterissuers',           // plural name of the custom resource
-                this.CLUSTER_ISSUER_NAME,   // name of the custom resource
-                clusterIssuerBody,           // object manifest
-                undefined, undefined, undefined, {
-                headers: { 'Content-Type': 'application/merge-patch+json' },
-            }
+                { group: 'cert-manager.io', version: 'v1', plural: 'clusterissuers', name: this.CLUSTER_ISSUER_NAME, body: clusterIssuerBody },
+                kubernetesPatchOptions('application/merge-patch+json'),
             );
         } else {
             // create
-            await k3s.customObjects.createClusterCustomObject(
-                'cert-manager.io',      // group
-                'v1',                   // version
-                'clusterissuers',       // plural name of the custom resource
-                clusterIssuerBody       // object manifest
-            );
+            await k3s.customObjects.createClusterCustomObject({ group: 'cert-manager.io', version: 'v1', plural: 'clusterissuers', body: clusterIssuerBody });
         }
     }
 
 
     async checkIfClusterIssuerExists() {
-        const res = await k3s.customObjects.listClusterCustomObject(
-            'cert-manager.io',      // group
-            'v1',              // namespace
-            'clusterissuers',       // plural name of the custom resource
-        );
-        if ((res.body as any) && (res.body as any)?.items && (res.body as any)?.items?.length > 0) {
-            const existingLetsecryptProduction = (res.body as any).items.find((item: any) => item.metadata.name === this.CLUSTER_ISSUER_NAME);
+        const res = await k3s.customObjects.listClusterCustomObject({ group: 'cert-manager.io', version: 'v1', plural: 'clusterissuers' });
+        if ((res as any) && (res as any)?.items && (res as any)?.items?.length > 0) {
+            const existingLetsecryptProduction = (res as any).items.find((item: any) => item.metadata.name === this.CLUSTER_ISSUER_NAME);
             if (existingLetsecryptProduction) {
                 return true;
             }
@@ -217,23 +202,23 @@ class QuickStackService {
             }
         };
 
-        const allServices = await k3s.core.listNamespacedService(this.QUICKSTACK_NAMESPACE);
-        const existingService = allServices.body.items.find(s => s.metadata!.name === serviceName);
+        const allServices = await k3s.core.listNamespacedService({ namespace: this.QUICKSTACK_NAMESPACE });
+        const existingService = allServices.items.find(s => s.metadata!.name === serviceName);
         if (existingService) {
             console.warn('Service already exists, deleting and recreating it');
-            await k3s.core.deleteNamespacedService(serviceName, this.QUICKSTACK_NAMESPACE);
+            await k3s.core.deleteNamespacedService({ name: serviceName, namespace: this.QUICKSTACK_NAMESPACE });
             console.log('Existing service deleted');
         } else {
             console.warn('Service does not exist, creating');
         }
-        await k3s.core.createNamespacedService(this.QUICKSTACK_NAMESPACE, body);
+        await k3s.core.createNamespacedService({ namespace: this.QUICKSTACK_NAMESPACE, body: body });
         console.log('Service created');
     }
 
     private async createOrUpdatePvc() {
         const pvcName = KubeObjectNameUtils.toPvcName(this.QUICKSTACK_DEPLOYMENT_NAME);
-        const allPvcs = await k3s.core.listNamespacedPersistentVolumeClaim(this.QUICKSTACK_NAMESPACE);
-        const existingPvc = allPvcs.body.items.find(p => p.metadata!.name === pvcName);
+        const allPvcs = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: this.QUICKSTACK_NAMESPACE });
+        const existingPvc = allPvcs.items.find(p => p.metadata!.name === pvcName);
 
         const storageClassName = existingPvc?.spec?.storageClassName || 'longhorn';
 
@@ -263,11 +248,11 @@ class QuickStackService {
             // Only the Size of PVC can be updated, so we need to delete and recreate the PVC
             // update PVC size
             existingPvc.spec!.resources!.requests!.storage = pvc.spec!.resources!.requests!.storage;
-            await k3s.core.replaceNamespacedPersistentVolumeClaim(pvcName, this.QUICKSTACK_NAMESPACE, existingPvc);
+            await k3s.core.replaceNamespacedPersistentVolumeClaim({ name: pvcName, namespace: this.QUICKSTACK_NAMESPACE, body: existingPvc });
             console.log('PVC updated');
         } else {
             console.warn('PVC does not exist, creating');
-            await k3s.core.createNamespacedPersistentVolumeClaim(this.QUICKSTACK_NAMESPACE, pvc);
+            await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: this.QUICKSTACK_NAMESPACE, body: pvc });
             console.log('PVC created');
         }
     }
@@ -337,10 +322,10 @@ class QuickStackService {
             }
         };
         if (existingDeployment.existingDeployments) {
-            await k3s.apps.replaceNamespacedDeployment(this.QUICKSTACK_DEPLOYMENT_NAME, this.QUICKSTACK_NAMESPACE, body);
+            await k3s.apps.replaceNamespacedDeployment({ name: this.QUICKSTACK_DEPLOYMENT_NAME, namespace: this.QUICKSTACK_NAMESPACE, body: body });
             console.log('Deployment updated');
         } else {
-            await k3s.apps.createNamespacedDeployment(this.QUICKSTACK_NAMESPACE, body);
+            await k3s.apps.createNamespacedDeployment({ namespace: this.QUICKSTACK_NAMESPACE, body: body });
             console.log('Deployment created');
         }
     }
@@ -353,15 +338,15 @@ class QuickStackService {
         const quickStackAlreadyDeployed = !!existingDeployments;
         if (quickStackAlreadyDeployed) {
             console.warn('QuickStack already deployed, deleting existing deployment (data wont be lost)');
-            await k3s.apps.deleteNamespacedDeployment(this.QUICKSTACK_DEPLOYMENT_NAME, this.QUICKSTACK_NAMESPACE);
+            await k3s.apps.deleteNamespacedDeployment({ name: this.QUICKSTACK_DEPLOYMENT_NAME, namespace: this.QUICKSTACK_NAMESPACE });
             console.log('Existing deployment deleted');
         }
         return nextAuthSecret;
     }
 
     async getExistingDeployment() {
-        const allDeployments = await k3s.apps.listNamespacedDeployment(this.QUICKSTACK_NAMESPACE);
-        const existingDeployments = allDeployments.body.items.find(d => d.metadata!.name === this.QUICKSTACK_DEPLOYMENT_NAME);
+        const allDeployments = await k3s.apps.listNamespacedDeployment({ namespace: this.QUICKSTACK_NAMESPACE });
+        const existingDeployments = allDeployments.items.find(d => d.metadata!.name === this.QUICKSTACK_DEPLOYMENT_NAME);
         const nextAuthSecret = existingDeployments?.spec?.template?.spec?.containers?.[0].env?.find(e => e.name === 'NEXTAUTH_SECRET')?.value;
         const nextAuthHostname = existingDeployments?.spec?.template?.spec?.containers?.[0].env?.find(e => e.name === 'NEXTAUTH_URL')?.value;
         const isCanaryDeployment = existingDeployments?.spec?.template?.spec?.containers?.[0].image?.includes('canary');

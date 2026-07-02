@@ -7,6 +7,114 @@ QuickStack deploys applications from container images or Git repositories into a
 **App**:
 A deployable workload managed by QuickStack.
 
+**Agent**:
+A long-lived, isolated container workspace managed by QuickStack for AI-assisted work.
+_Avoid_: App, fixed opencode runtime, automation run
+
+**Agent Name**:
+A user-defined label for an **Agent** that does not have to be unique.
+_Avoid_: agent id, Kubernetes name
+
+**Agent Runtime Secret**:
+Sensitive runtime context injected into a running **Agent**.
+_Avoid_: public agent config, plain environment config
+
+**Agent Environment Variable**:
+A user-defined environment value for an **Agent** whose value is stored encrypted by QuickStack.
+_Avoid_: plain env var, app env var
+
+**Agent Rate Limits**:
+CPU and memory requests and limits stored as integers (millicores for CPU, MB for memory) that control Kubernetes resource allocation per sandbox container instance.
+_Avoid_: resource quantities, K8s resource strings
+
+**Agent Container Configuration**:
+Runtime startup settings for an **Agent** container, including command, arguments, and pre-warmed sandbox count.
+_Avoid_: opencode config, app container config
+
+**Agent Warm Pool Replicas**:
+The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**.
+_Avoid_: app replicas, running agent instances
+
+**Agent Source**:
+The **Source** QuickStack uses to build or run an **Agent**.
+_Avoid_: agent config, general settings
+
+**Agent Build Output**:
+The internal container image produced from an **Agent Source** and used by the Agent's SandboxTemplate.
+_Avoid_: agent source, saved container image source
+
+**Agent Model Configuration**:
+The **LLM Gateway** and **LiteLLM Model Alias** selected for an **Agent**.
+_Avoid_: agent source when only model access is meant
+
+**Agent Template**:
+A reusable definition that can create one or more preconfigured **Agents** and their supporting Agent-specific resources.
+_Avoid_: fixed opencode runtime, app template when referring to Agent creation
+
+**Deploy (Agent)**:
+The explicit action that reconciles a saved **Agent** configuration from the database to Kubernetes SandboxTemplate and SandboxWarmPool resources.
+_Avoid_: auto-save, save-and-apply
+
+**LLM Gateway**:
+A QuickStack-managed connection to a LiteLLM-compatible service that brokers model access for **Agents**.
+_Avoid_: built-in model provider, hidden control-plane service
+
+**LiteLLM Admin Key**:
+A credential that allows QuickStack to manage models and virtual keys on an **LLM Gateway**.
+_Avoid_: agent API key, model API key
+
+**LiteLLM Model Alias**:
+A model name exposed by an **LLM Gateway** for selection by an **Agent**.
+_Avoid_: provider model id when the LiteLLM alias is meant
+
+**Project Type**:
+The workload category a **Project** can contain: either App or Agent.
+_Avoid_: mixed project, project mode
+
+**Project Workload**:
+The kind of deployable resource allowed by a **Project Type**.
+_Avoid_: mixed workload, generic app
+
+**Volume**:
+A persistent storage mount attached to an **App** or **Agent**, backed by a Kubernetes PersistentVolumeClaim.
+_Avoid_: disk, storage, PVC when referring to the domain concept
+
+**App Volume**:
+A **Volume** attached to an **App**, optionally shareable with other Apps in the same project.
+_Avoid_: app storage, app disk
+
+**Agent Volume**:
+A **Volume** attached to an **Agent**, not shareable and without backup scheduling.
+_Avoid_: agent storage, agent disk
+
+**File Mount**:
+A text file mounted into an **App** or **Agent** container at a configured container path.
+_Avoid_: config map when referring to the domain concept, mounted file
+
+**App File Mount**:
+A **File Mount** attached to an **App**.
+_Avoid_: app config file, app mounted file
+
+**Agent File Mount**:
+A **File Mount** attached to an **Agent**.
+_Avoid_: agent config file, agent mounted file
+
+**Workload Permission**:
+A permission grant for one specific **Project Workload** inside a **Project**.
+_Avoid_: app permission when the workload may be an Agent
+
+**Running Workload**:
+A **Project Workload** whose runtime instance is ready to serve user interaction or traffic.
+_Avoid_: deployed when describing user-visible readiness
+
+**App Project**:
+A **Project** whose **Project Type** allows only **Apps**.
+_Avoid_: normal project, container project
+
+**Agent Project**:
+A **Project** whose **Project Type** allows only **Agents**.
+_Avoid_: agent workspace, agent group
+
 **Source**:
 The origin QuickStack uses to build or run an **App**.
 
@@ -23,7 +131,7 @@ A Git repository accessed through an SSH clone URL using an app-specific deploy 
 _Avoid_: SSH repo
 
 **Container Image Source**:
-A container image reference QuickStack uses to run an **App** without building from Git.
+A container image reference QuickStack uses to run an **App** or **Agent** without building from Git.
 _Avoid_: Docker Container when referring to the domain concept
 
 **Deploy Key**:
@@ -31,7 +139,7 @@ A public SSH key registered with a Git provider to grant repository access to a 
 _Avoid_: SSH key when specifically referring to the provider-side access grant
 
 **Git Branch**:
-The named Git ref selected as the source revision stream for an **App**.
+The named Git ref selected as the source revision stream for an **App** or **Agent**.
 _Avoid_: branch name when referring to the selected source branch
 
 **App Node Port**:
@@ -108,6 +216,24 @@ _Avoid_: manual initial port requirement
 ## Relationships
 
 - An **App** can have zero or one **Configured Source**.
+- A **Project** has exactly one **Project Type**.
+- A **Project Type** is assigned when a **Project** is created and cannot be changed later.
+- An **App Project** can contain zero or more **Apps** and no **Agents**.
+- An **Agent Project** can contain zero or more **Agents** and no **Apps**.
+- An **Agent** belongs to exactly one **Agent Project**.
+- An **Agent** has exactly one **Agent Name**.
+- An **Agent** has exactly one **Agent Source**.
+- An **Agent** has exactly one **Agent Model Configuration**.
+- An **Agent** has exactly one set of **Agent Rate Limits** that apply per sandbox container instance.
+- An **Agent** has exactly one **Agent Container Configuration**.
+- An **Agent Template** can create one or more **Agents**.
+- A **Deploy (Agent)** reconciles the saved **Agent** configuration to its Kubernetes SandboxTemplate and SandboxWarmPool.
+- An **Agent** can have zero or more **Agent Environment Variables**.
+- A running **Agent** has exactly one **Agent Runtime Secret**.
+- An **Agent** uses exactly one **LLM Gateway**.
+- QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
+- A **Project Workload** means an **App** inside an **App Project** or an **Agent** inside an **Agent Project**.
+- A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Node Ports**.
 - A **Configured Source** belongs to exactly one **App**.
 - Only application workloads can use a **Git HTTPS Source** or **Git SSH Source**.

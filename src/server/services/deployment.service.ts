@@ -20,29 +20,30 @@ import fileBrowserService from "./file-browser-service";
 import podService from "./pod.service";
 import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 
 class DeploymentService {
 
     async getDeployment(namespace: string, appName: string) {
-        const allDeployments = await k3s.apps.listNamespacedDeployment(namespace);
-        if (allDeployments.body?.items?.some((item) => item.metadata?.name === appName)) {
-            const res = await k3s.apps.readNamespacedDeployment(appName, namespace);
-            return res.body;
+        const allDeployments = await k3s.apps.listNamespacedDeployment({ namespace: namespace });
+        if (allDeployments.items?.some((item) => item.metadata?.name === appName)) {
+            const res = await k3s.apps.readNamespacedDeployment({ name: appName, namespace: namespace });
+            return res;
         }
     }
 
     async getAllDeployments() {
         const allDeployments = await k3s.apps.listDeploymentForAllNamespaces();
-        return allDeployments.body.items;
+        return allDeployments.items;
     }
 
     async applyDeployment(namespace: string, appName: string, body: V1Deployment) {
         const existingDeployment = await this.getDeployment(namespace, appName);
         if (existingDeployment) {
-            await k3s.apps.replaceNamespacedDeployment(appName, namespace, body);
+            await k3s.apps.replaceNamespacedDeployment({ name: appName, namespace: namespace, body: body });
         } else {
-            await k3s.apps.createNamespacedDeployment(namespace, body);
+            await k3s.apps.createNamespacedDeployment({ namespace: namespace, body: body });
         }
     }
 
@@ -51,7 +52,7 @@ class DeploymentService {
         if (!existingDeployment) {
             return;
         }
-        const returnVal = await k3s.apps.deleteNamespacedDeployment(appId, projectId);
+        const returnVal = await k3s.apps.deleteNamespacedDeployment({ name: appId, namespace: projectId });
         console.log(`Deleted Deployment ${appId} in namespace ${projectId}`);
         return returnVal;
     }
@@ -61,7 +62,13 @@ class DeploymentService {
             throw new ServiceException("Deployment with more than one replica is not possible if access mode of one volume is ReadWriteOnce.");
         }
 
-        // Validate containerArgs is valid JSON array if provided
+        if (app.containerCommand) {
+            const validatedData = z.array(z.string()).safeParse(ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand));
+            if (!validatedData.success) {
+                throw new ServiceException("Container command must be a valid JSON array, e.g., [\"/bin/sh\", \"-lc\"]");
+            }
+        }
+
         if (app.containerArgs) {
             const parsed = JSON.parse(app.containerArgs);
             const validatedData = z.array(z.string()).safeParse(parsed);
@@ -145,7 +152,7 @@ class DeploymentService {
                                 name: app.id,
                                 image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
-                                ...(app.containerCommand ? { command: [app.containerCommand] } : {}),
+                                ...(app.containerCommand ? { command: ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
                                 ...(app.securityContextPrivileged ? { securityContext: { privileged: true } } : {}),
                                 ...(envVars.length > 0 ? { env: envVars } : {}),
@@ -278,16 +285,16 @@ class DeploymentService {
 
         if (existingDeployment) {
             dlog(deploymentId, `Replacing existing deployment...`);
-            const res = await k3s.apps.replaceNamespacedDeployment(app.id, app.projectId, body);
+            const res = await k3s.apps.replaceNamespacedDeployment({ name: app.id, namespace: app.projectId, body: body });
         } else {
             dlog(deploymentId, `Creating deployment...`);
-            const res = await k3s.apps.createNamespacedDeployment(app.projectId, body);
+            const res = await k3s.apps.createNamespacedDeployment({ namespace: app.projectId, body: body });
         }
         dlog(deploymentId, `Cleanup unused ressources from previous deployments...`);
         await configMapService.deleteUnusedConfigMaps(app);
         await pvcService.deleteUnusedPvcOfApp(app);
         await svcService.createOrUpdateServiceForApp(deploymentId, app);
-        await secretService.delteUnusedSecrets(app);
+        await secretService.deleteUnusedSecrets(app);
         dlog(deploymentId, `Updating ingress...`);
         await ingressService.createOrUpdateIngressForApp(deploymentId, app);
         dlog(deploymentId, `Deployment applied`);
@@ -299,7 +306,7 @@ class DeploymentService {
             throw new ServiceException("This app has not been deployed yet. Please deploy it first.");
         }
         existingDeployment.spec!.replicas = replicas;
-        return k3s.apps.replaceNamespacedDeployment(appId, projectId, existingDeployment);
+        return k3s.apps.replaceNamespacedDeployment({ name: appId, namespace: projectId, body: existingDeployment });
     }
 
     async setReplicasToZeroAndWaitForShutdown(projectId: string, appId: string) {
@@ -372,9 +379,9 @@ class DeploymentService {
         }
 
         // List ReplicaSets in the namespace to find those associated with the deployment
-        const replicaSetsForDeployment = await k3s.apps.listNamespacedReplicaSet(projectId, undefined, undefined, undefined, undefined, `app=${appId}`);
+        const replicaSetsForDeployment = await k3s.apps.listNamespacedReplicaSet({ namespace: projectId, labelSelector: `app=${appId}` });
 
-        const revisions = replicaSetsForDeployment.body.items.map((rs, index) => {
+        const revisions = replicaSetsForDeployment.items.map((rs, index) => {
             let status = this.mapReplicasetToStatus(rs);
             return {
                 replicasetName: rs.metadata?.name!,

@@ -206,7 +206,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>This volume is mounted from another app's volume</p>
+                                                    <p>This volume is mounted from another app&apos;s volume</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>

@@ -64,7 +64,7 @@ export default async function BackupsPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>No Backups configured</AlertTitle>
                     <AlertDescription>
-                        No backups are currently stored in the S3 targets. To configure backups for your apps, navigate to the settings of each app and configure a backup schedule in the "Storage" tab.
+                        No backups are currently stored in the S3 targets. To configure backups for your apps, navigate to the settings of each app and configure a backup schedule in the &quot;Storage&quot; tab.
                     </AlertDescription>
                 </Alert>}
                 <BackupsTable data={backupInfoModels} />

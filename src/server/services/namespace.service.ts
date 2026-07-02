@@ -16,7 +16,7 @@ class NamespaceService {
 
     async getNamespaces() {
         const k3sResponse = await k3s.core.listNamespace();
-        return k3sResponse.body.items.map((item) => item.metadata?.name).filter((name) => !!name);
+        return k3sResponse.items.map((item) => item.metadata?.name).filter((name) => !!name);
     }
 
     async createNamespaceIfNotExists(namespace: string) {
@@ -25,10 +25,12 @@ class NamespaceService {
             return;
         }
         await k3s.core.createNamespace({
-            metadata: {
-                name: namespace,
-                annotations: {
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: namespace
+            body: {
+                metadata: {
+                    name: namespace,
+                    annotations: {
+                        [Constants.QS_ANNOTATION_PROJECT_ID]: namespace
+                    }
                 }
             }
         });
@@ -37,7 +39,7 @@ class NamespaceService {
     async deleteNamespace(namespace: string) {
         const nameSpaces = await this.getNamespaces();
         if (nameSpaces.includes(namespace)) {
-            await k3s.core.deleteNamespace(namespace);
+            await k3s.core.deleteNamespace({ name: namespace });
         }
     }
 

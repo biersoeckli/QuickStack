@@ -52,8 +52,8 @@ class SetupPodService {
     }
 
     async getPodOrUndefined(projectId: string, podName: string) {
-        const res = await k3s.core.listNamespacedPod(projectId);
-        return res.body.items.find((item) => item.metadata?.name === podName);
+        const res = await k3s.core.listNamespacedPod({ namespace: projectId });
+        return res.items.find((item) => item.metadata?.name === podName);
     }
 
     async getPodsForApp(projectId: string, appId: string): Promise<{
@@ -62,8 +62,8 @@ class SetupPodService {
         uid?: string;
         status?: string;
     }[]> {
-        const res = await k3s.core.listNamespacedPod(projectId, undefined, undefined, undefined, undefined, `app=${appId}`);
-        return res.body.items.map((item) => ({
+        const res = await k3s.core.listNamespacedPod({ namespace: projectId, labelSelector: `app=${appId}` });
+        return res.items.map((item) => ({
             podName: item.metadata?.name!,
             containerName: item.spec?.containers?.[0].name!,
             uid: item.metadata?.uid,
@@ -271,14 +271,36 @@ class SetupPodService {
         });
     }
 
+    async getPodsForAgent(projectId: string, agentId: string): Promise<{
+        podName: string;
+        containerName: string;
+        uid?: string;
+        status?: string;
+    }[]> {
+        const res = await k3s.core.listNamespacedPod({ namespace: projectId });
+        return res.items
+            .filter((item) => {
+                const name = item.metadata?.name || '';
+                const containers = item.spec?.containers || [];
+                return name.includes(agentId) || containers.some((c) => c.name === 'agent');
+            })
+            .map((item) => ({
+                podName: item.metadata?.name!,
+                containerName: item.spec?.containers?.[0]?.name!,
+                uid: item.metadata?.uid,
+                status: item.status?.phase,
+            }))
+            .filter((item) => !!item.podName && !!item.containerName);
+    }
+
     async deleteAllFailedAndSuccededPods() {
         const projects = await dataAccess.client.project.findMany();
 
         for (const project of projects) {
-            const podsOfNamespace = await k3s.core.listNamespacedPod(project.id);
-            const failedPods = podsOfNamespace.body.items.filter((pod) => ['Failed', 'Succeeded'].includes(pod.status?.phase!));
+            const podsOfNamespace = await k3s.core.listNamespacedPod({ namespace: project.id });
+            const failedPods = podsOfNamespace.items.filter((pod) => ['Failed', 'Succeeded'].includes(pod.status?.phase!));
             for (const pod of failedPods) {
-                await k3s.core.deleteNamespacedPod(pod.metadata?.name!, project.id);
+                await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: project.id });
             }
         }
     }

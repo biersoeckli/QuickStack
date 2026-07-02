@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { ProfilePasswordChangeModel, profilePasswordChangeZodModel } from "@/shared/model/update-password.model";
 import { changePassword } from "./actions";
@@ -19,7 +19,7 @@ export default function ProfilePasswordChange() {
         resolver: zodResolver(profilePasswordChangeZodModel)
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: ProfilePasswordChangeModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: ProfilePasswordChangeModel) =>
         changePassword(state, payload), FormUtils.getInitialFormState<typeof profilePasswordChangeZodModel>());
 
     useEffect(() => {

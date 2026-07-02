@@ -25,11 +25,10 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar"
-import { App, Project } from "@prisma/client"
+import { Agent, App, Project } from "@prisma/client"
 import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
-import { useRouter } from "next/router"
-import { useEffect, useState } from "react"
+import { JSX, useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
 import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
@@ -37,17 +36,20 @@ import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
 export function SidebarCient({
   projects,
   session,
-  newVersionInfo
+  newVersionInfo,
+  agentsAvailable
 }: {
-  projects: (Project & { apps: App[] })[];
+  projects: (Project & { apps: App[]; agents: Agent[] })[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
+  agentsAvailable: boolean;
 }) {
 
   const path = usePathname();
 
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
+  const [currentlySelectedAgentId, setCurrentlySelectedAgentId] = useState<string | null>(null);
 
   const settingsMenu = [
     {
@@ -66,29 +68,53 @@ export function SidebarCient({
       url: "/settings/s3-targets",
       icon: Settings,
       adminOnly: true,
-    },
-    {
-      title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
-      url: "/settings/server",
+    }
+  ] as {
+    title: string | JSX.Element;
+    url: string;
+    icon?: React.ComponentType<any>;
+    adminOnly?: boolean;
+  }[];
+
+  if (agentsAvailable) {
+    settingsMenu.push({
+      title: "LLM Gateways",
+      url: "/settings/llm-gateways",
+      icon: Boxes,
       adminOnly: true,
-    },
-  ]
+    });
+  }
+
+  settingsMenu.push({
+    title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
+    url: "/settings/server",
+    adminOnly: true,
+  });
 
   useEffect(() => {
-    if (path.startsWith('/project/app/')) {
+    if (path.startsWith('/project/agent/')) {
+      const agentId = path.split('/')[3];
+      const project = projects.find(p => p.agents?.some(a => a.id === agentId));
+      setCurrentlySelectedProjectId(project?.id || null);
+      setCurrentlySelectedAgentId(agentId);
+      setCurrentlySelectedAppId(null);
+    } else if (path.startsWith('/project/app/')) {
       const appId = path.split('/')[3];
       const project = projects.find(p => p.apps.some(a => a.id === appId));
       setCurrentlySelectedProjectId(project?.id || null);
       setCurrentlySelectedAppId(appId);
+      setCurrentlySelectedAgentId(null);
 
     } else if (path.startsWith("/project")) {
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(null);
+      setCurrentlySelectedAgentId(null);
 
     } else {
       setCurrentlySelectedProjectId(null);
       setCurrentlySelectedAppId(null);
+      setCurrentlySelectedAgentId(null);
 
     }
   }, [path]);
@@ -157,49 +183,56 @@ export function SidebarCient({
                     <span>Projects</span>
                   </Link>
                 </SidebarMenuButton>
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
+                {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
                   <SidebarMenuAction>
                     <Plus />
                   </SidebarMenuAction>
                 </EditProjectDialog>}
                 <SidebarMenu>
-                  {projects.map((item) => (
-                    <DropdownMenu key={item.id}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild tooltip={{
-                          children: `Project: ${item.name}`,
-                          hidden: open,
-                        }}
-                          isActive={currentlySelectedProjectId === item.id}
-                        >
-                          <Link href={`/project/${item.id}`}>
-                            <Dot />  <span>{item.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                        {item.apps.length ? (<>
-                          <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction className="">
-                              <ChevronRight />
-                              <span className="sr-only">Toggle</span>
-                            </SidebarMenuAction>
-                          </DropdownMenuTrigger>
+                  {projects.map((item) => {
+                    const isAgentProject = item.projectType === 'AGENT';
+                    const workloads = isAgentProject ? (item.agents || []) : item.apps;
+                    const workloadPath = isAgentProject ? '/project/agent/' : '/project/app/';
+                    const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
 
-                          <DropdownMenuContent
-                            side={isMobile ? "bottom" : "right"}
-                            align={isMobile ? "end" : "start"}
-                            className="min-w-56 rounded-lg"
+                    return (
+                      <DropdownMenu key={item.id}>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton asChild tooltip={{
+                            children: `Project: ${item.name}`,
+                            hidden: open,
+                          }}
+                            isActive={currentlySelectedProjectId === item.id}
                           >
-                            {item.apps.map((app) => (
-                              <DropdownMenuItem asChild key={app.name}
-                                className={currentlySelectedAppId === app.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
-                                <a href={`/project/app/${app.id}`}>{app.name}</a>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </>) : null}
-                      </SidebarMenuItem>
-                    </DropdownMenu>
-                  ))}
+                            <Link href={`/project/${item.id}`}>
+                              <Dot />  <span>{item.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                          {workloads.length ? (<>
+                            <DropdownMenuTrigger asChild>
+                              <SidebarMenuAction className="">
+                                <ChevronRight />
+                                <span className="sr-only">Toggle</span>
+                              </SidebarMenuAction>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent
+                              side={isMobile ? "bottom" : "right"}
+                              align={isMobile ? "end" : "start"}
+                              className="min-w-56 rounded-lg"
+                            >
+                              {workloads.map((workload) => (
+                                <DropdownMenuItem asChild key={workload.name}
+                                  className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
+                                  <a href={`${workloadPath}${workload.id}`}>{workload.name}</a>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </>) : null}
+                        </SidebarMenuItem>
+                      </DropdownMenu>
+                    )
+                  })}
                 </SidebarMenu>
               </SidebarMenuItem>
             </SidebarMenu>

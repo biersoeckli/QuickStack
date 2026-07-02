@@ -7,10 +7,11 @@ import { PathUtils } from "../../utils/path.utils";
 import fsPromises from "fs/promises";
 import { App } from "@prisma/client";
 import path from "path";
-import { create } from 'tar'
 import scheduleService from "./schedule.service";
 import { DownloadableAppLogsModel } from "../../../shared/model/downloadable-app-logs.model";
 import { AppLogEntryModel } from "@/shared/model/app-tail-log-entry";
+
+const { create } = require('tar') as { create: any };
 
 class AppLogsService {
 

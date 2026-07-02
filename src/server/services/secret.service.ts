@@ -1,20 +1,34 @@
-import { V1Secret } from "@kubernetes/client-node";
+import { ApiException, V1Secret } from "@kubernetes/client-node";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 class SecretService {
 
     async createOrUpdateDockerPullSecret(app: AppExtendedModel) {
-        if (this.appNeedsNoSecret(app)) {
+        if (this.workloadNeedsNoPullSecret(app)) {
             return;
         }
-        const dockerImage = app.containerImageSource;
-        const dockerUsername = app.containerRegistryUsername;
-        const dockerPassword = app.containerRegistryPassword;
+        return this.createOrUpdateDockerPullSecretForWorkload(app, KubeObjectNameUtils.toSecretId(app.id));
+    }
 
-        const secretName = KubeObjectNameUtils.toSecretId(app.id);
-        const namespace = app.projectId;
+    async createOrUpdateAgentDockerPullSecret(agent: AgentExtendedModel) {
+        if (this.workloadNeedsNoPullSecret(agent)) {
+            return;
+        }
+        return this.createOrUpdateDockerPullSecretForWorkload(agent, KubeObjectNameUtils.toSecretId(agent.id));
+    }
+
+    private async createOrUpdateDockerPullSecretForWorkload(
+        workload: Pick<AppExtendedModel, 'id' | 'projectId' | 'containerImageSource' | 'containerRegistryUsername' | 'containerRegistryPassword'>,
+        secretName: string,
+    ) {
+        const dockerImage = workload.containerImageSource;
+        const dockerUsername = workload.containerRegistryUsername;
+        const dockerPassword = workload.containerRegistryPassword;
+        const namespace = workload.projectId;
         let dockerServer = dockerImage!.split("/")[0];
 
         // if no registry url is provided, use Docker Hub
@@ -48,8 +62,8 @@ class SecretService {
         return secretName;
     }
 
-    async delteUnusedSecrets(app: AppExtendedModel) {
-        if (this.appNeedsNoSecret(app)) {
+    async deleteUnusedSecrets(app: AppExtendedModel) {
+        if (this.workloadNeedsNoPullSecret(app)) {
             const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toSecretId(app.id));
             if (existingSecret) {
                 console.log(`Deleting secret ${existingSecret.metadata?.name}...`);
@@ -58,8 +72,14 @@ class SecretService {
         }
     }
 
-    private appNeedsNoSecret(app: { id: string; name: string; appType: string; projectId: string; sourceType: string; dockerfilePath: string; replicas: number; envVars: string; createdAt: Date; updatedAt: Date; project: { id: string; name: string; createdAt: Date; updatedAt: Date; }; appDomains: { id: string; createdAt: Date; updatedAt: Date; hostname: string; port: number; useSsl: boolean; redirectHttps: boolean; appId: string; }[]; appVolumes: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; size: number; accessMode: string; storageClassName: string; }[]; appPorts: { id: string; createdAt: Date; updatedAt: Date; port: number; appId: string; }[]; appFileMounts: { id: string; createdAt: Date; updatedAt: Date; appId: string; containerMountPath: string; content: string; }[]; containerImageSource?: string | null | undefined; containerRegistryUsername?: string | null | undefined; containerRegistryPassword?: string | null | undefined; gitUrl?: string | null | undefined; gitBranch?: string | null | undefined; gitUsername?: string | null | undefined; gitToken?: string | null | undefined; memoryReservation?: number | null | undefined; memoryLimit?: number | null | undefined; cpuReservation?: number | null | undefined; cpuLimit?: number | null | undefined; }) {
-        return app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH' || !app.containerImageSource || !app.containerRegistryUsername || !app.containerRegistryPassword;
+    async deleteUnusedAgentDockerPullSecret(agent: AgentExtendedModel) {
+        if (this.workloadNeedsNoPullSecret(agent)) {
+            await this.deleteSecretIfExists(agent.projectId, KubeObjectNameUtils.toSecretId(agent.id));
+        }
+    }
+
+    private workloadNeedsNoPullSecret(workload: { sourceType: string; containerImageSource?: string | null | undefined; containerRegistryUsername?: string | null | undefined; containerRegistryPassword?: string | null | undefined; }) {
+        return workload.sourceType === 'GIT' || workload.sourceType === 'GIT_SSH' || !workload.containerImageSource || !workload.containerRegistryUsername || !workload.containerRegistryPassword;
     }
 
     async createSecret(namespace: string, secretManifest: V1Secret) {
@@ -68,12 +88,12 @@ class SecretService {
             throw new Error('Secret name is required.');
         }
         console.log(`Creating secret ${secretName}...`);
-        await k3s.core.createNamespacedSecret(namespace, secretManifest);
+        await k3s.core.createNamespacedSecret({ namespace: namespace, body: secretManifest });
     }
 
     async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
         console.log(`Updating secret ${secretName}...`);
-        await k3s.core.replaceNamespacedSecret(secretName, namespace, secretManifest);
+        await k3s.core.replaceNamespacedSecret({ name: secretName, namespace: namespace, body: secretManifest });
     }
 
     async saveSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
@@ -86,7 +106,7 @@ class SecretService {
     }
 
     async deleteSecret(namespace: string, secretName: string) {
-        await k3s.core.deleteNamespacedSecret(secretName, namespace);
+        await k3s.core.deleteNamespacedSecret({ name: secretName, namespace: namespace });
     }
 
     async deleteSecretIfExists(namespace: string, secretName?: string) {
@@ -101,9 +121,87 @@ class SecretService {
     }
 
     async getExistingSecret(namespace: string, secretName: string) {
-        const existingSecrets = await k3s.core.listNamespacedSecret(namespace);
-        const existingSecret = existingSecrets.body.items.find(s => s.metadata?.name === secretName);
+        const existingSecrets = await k3s.core.listNamespacedSecret({ namespace: namespace });
+        const existingSecret = existingSecrets.items.find(s => s.metadata?.name === secretName);
         return existingSecret;
+    }
+
+    /**
+     * Creates or replaces a generic (Opaque) Secret with base64-encoded string data.
+     * Does NOT handle 404 on read gracefully — surfaces all non-404 errors.
+     */
+    async createOrReplaceGenericSecret(
+        name: string,
+        namespace: string,
+        data: Record<string, string>,
+    ): Promise<void> {
+        const base64Data: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+            base64Data[key] = Buffer.from(value).toString('base64');
+        }
+
+        const secretManifest: V1Secret = {
+            metadata: { name },
+            data: base64Data,
+        };
+
+        try {
+            const existingResponse = await k3s.core.readNamespacedSecret({ name: name, namespace: namespace });
+            secretManifest.metadata!.resourceVersion = existingResponse.metadata?.resourceVersion;
+            await k3s.core.replaceNamespacedSecret({ name: name, namespace: namespace, body: secretManifest });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code !== 404) {
+                console.error(`Failed to read Secret "${name}":`, error);
+                throw new ServiceException(
+                    `Failed to read Secret "${name}": ${error?.message || error}`,
+                );
+            }
+            await k3s.core.createNamespacedSecret({ namespace: namespace, body: secretManifest });
+        }
+    }
+
+    /**
+     * Reads a Secret and returns its decoded data as key-value pairs.
+     * Returns null when the Secret does not exist (404).
+     */
+    async getDecodedSecret(name: string, namespace: string): Promise<Record<string, string> | null> {
+        try {
+            const response = await k3s.core.readNamespacedSecret({ name: name, namespace: namespace });
+            const data = response.data || {};
+            const decoded: Record<string, string> = {};
+            for (const [key, value] of Object.entries(data)) {
+                decoded[key] = value ? Buffer.from(value, 'base64').toString('utf-8') : '';
+            }
+            return decoded;
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
+                return null;
+            }
+            console.error(`Failed to read Secret "${name}":`, error);
+            throw new ServiceException(
+                `Failed to read Secret "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    /**
+     * Deletes a Secret, silently ignoring 404 (not found).
+     */
+    async deleteSecretSafe(name: string, namespace: string): Promise<void> {
+        try {
+            await k3s.core.deleteNamespacedSecret({ name: name, namespace: namespace });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
+                return;
+            }
+            console.error(`Failed to delete Secret "${name}":`, error);
+            throw new ServiceException(
+                `Failed to delete Secret "${name}": ${error?.message || error}`,
+            );
+        }
     }
 }
 
