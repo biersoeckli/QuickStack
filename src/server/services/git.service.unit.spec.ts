@@ -23,10 +23,12 @@ import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import fs from 'fs';
 import path from 'path';
+import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 
 const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
 
 describe('GitService', () => {
+    createPrismaTestContext('git-service');
     beforeEach(() => {
         vi.clearAllMocks();
         gitMock.env.mockReturnValue(gitMock);
