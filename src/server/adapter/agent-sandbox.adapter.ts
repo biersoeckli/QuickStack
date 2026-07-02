@@ -2,7 +2,7 @@ import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import k3s, { kubernetesPatchOptions } from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
-import { ApiException } from "@kubernetes/client-node";
+import { ApiException, PatchStrategy } from "@kubernetes/client-node";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 export const SANDBOX_API_VERSION = 'v1beta1';
@@ -299,7 +299,7 @@ class AgentSandboxAdapter {
             // Exists — patch it
             await k3s.customObjects.patchNamespacedCustomObject(
                 { group: SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural, name, body: resource },
-                kubernetesPatchOptions('application/merge-patch+json'),
+                kubernetesPatchOptions(PatchStrategy.MergePatch),
             );
         } catch (err) {
             const error = err as ApiException<any>;

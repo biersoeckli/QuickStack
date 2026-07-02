@@ -1,16 +1,18 @@
 import { ServiceException } from '@/shared/model/service.exception.model';
 import * as k8s from '@kubernetes/client-node';
+import { ConfigurationOptions, PatchStrategy } from '@kubernetes/client-node';
 
-export function kubernetesPatchOptions(contentType: string) {
+export function kubernetesPatchOptions(contentType: PatchStrategy): ConfigurationOptions {
     return {
-        promiseMiddleware: [{
-            pre: async (context: any) => {
+        middleware: [{
+            pre: (context) => {
                 context.setHeaderParam('Content-Type', contentType);
-                return context;
+                return new k8s.Observable(Promise.resolve(context));
             },
-            post: async (context: any) => context,
+            post: (context) => new k8s.Observable(Promise.resolve(context)),
         }],
-    } as any;
+
+    };
 }
 
 class K3sApiAdapter {
