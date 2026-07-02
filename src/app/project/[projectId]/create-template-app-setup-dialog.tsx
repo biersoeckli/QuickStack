@@ -57,14 +57,12 @@ export default function CreateTemplateAppSetupDialog({
             }
         }
         FormUtils.mapValidationErrorsToForm<typeof appTemplateZodModel>(state, form);
-    }, [state]);
-
-    const values = form.watch();
+    }, [appTemplate?.templates.length, dialogClosed, form, state]);
 
     useEffect(() => {
         setIsOpen(!!appTemplate && !!projectId);
         form.reset(appTemplate);
-    }, [appTemplate, projectId]);
+    }, [appTemplate, form, projectId]);
 
     return (
         <>
@@ -84,7 +82,7 @@ export default function CreateTemplateAppSetupDialog({
                     <ScrollArea className="max-h-[70vh]">
                         <div className="px-2">
                             <Form {...form} >
-                                <form action={(e) => form.handleSubmit((data) => {
+                                <form action={() => form.handleSubmit((data) => {
                                     return formAction(data);
                                 })()}>
                                     <div className="space-y-6">

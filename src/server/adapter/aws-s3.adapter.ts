@@ -1,7 +1,6 @@
-import { DeleteObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 import { S3Target } from "@prisma/client";
-import { createReadStream } from "fs";
 
 class AwsS3Adapter {
 

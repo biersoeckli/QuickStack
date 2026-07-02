@@ -5,7 +5,6 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
 import { PathUtils } from "../utils/path.utils";
 import * as k8s from '@kubernetes/client-node';
-import { dlog } from "./deployment-logs.service";
 
 class ConfigMapService {
 

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,12 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ControllerRenderProps, FieldValues, UseFormReturn } from "react-hook-form"
+import { FieldValues, UseFormReturn } from "react-hook-form"
 import { FormControl, FormField, FormItem, FormLabel } from "../ui/form"
 import { Input } from "../ui/input"
 import { ScrollArea } from "../ui/scroll-area"
-
-type Checked = DropdownMenuCheckboxItemProps["checked"]
 
 export function MultiselectDropdownField<TFormType extends FieldValues>(
   {
@@ -72,13 +69,13 @@ export function MultiselectDropdownField<TFormType extends FieldValues>(
         <DropdownMenuLabel>Kantone</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <ScrollArea className="h-60">
-          {Array.from(values.entries()).map(([key, value]) => {
+          {Array.from(values.keys()).map((key) => {
             return <DropdownMenuCheckboxItem
               key={key}
               checked={values.get(key)}
               onCheckedChange={(checked) => {
                 setValues(new Map(values.set(key, checked)));
-                const value = Array.from(values.entries()).filter(([_, value]) => value).map(([key]) => key).join(",");
+                const value = Array.from(values.entries()).filter((entry) => entry[1]).map(([key]) => key).join(",");
                 form.setValue(name as any, value as any);
               }}
             >

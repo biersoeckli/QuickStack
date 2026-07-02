@@ -10,7 +10,7 @@ import agentFileMountService from '@/server/services/agent-file-mount.service';
 import dataAccess from '@/server/adapter/db.client';
 
 describe('agent-file-mount.service', () => {
-    const dbCtx = createPrismaTestContext('agent-file-mount');
+    createPrismaTestContext('agent-file-mount');
 
     let projectId: string;
     let llmGatewayId: string;

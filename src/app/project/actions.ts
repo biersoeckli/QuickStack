@@ -10,7 +10,6 @@ import { WorkloadType } from "@/shared/model/runtime-type.model";
 import appService from "@/server/services/app.service";
 import agentDomainService from "@/server/services/agent-domain.service";
 import agentFileMountService from "@/server/services/agent-file-mount.service";
-import dataAccess from "@/server/adapter/db.client";
 import { z } from "zod";
 import { FileMountEditModel, fileMountEditZodModel } from "@/shared/model/file-mount-edit.model";
 import buildService from "@/server/services/build.service";
@@ -84,7 +83,7 @@ export const saveFileMount = async (prevState: any, inputData: FileMountEditMode
         const { workloadId, ...fileMountData } = validatedData;
         await workloadExecutor(type, {
             app: () => appService.saveFileMount({
-                appId: validatedData.workloadId,
+                appId: workloadId,
                 ...fileMountData,
             }),
             agent: () => agentFileMountService.saveFileMount({

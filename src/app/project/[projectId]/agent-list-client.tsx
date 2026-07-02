@@ -3,10 +3,7 @@
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { Button } from "@/components/ui/button";
 import { Bot } from "lucide-react";
-import { CreateAgentDialog } from "./create-agent-dialog";
-import { useRouter } from "next/navigation";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "./create-project-actions";
 import Link from "next/link";
@@ -26,7 +23,6 @@ interface AgentListClientProps {
 }
 
 export default function AgentListClient({ agents, session, projectId }: AgentListClientProps) {
-    const router = useRouter();
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
 
     if (agents.length === 0 && !canCreate) {

@@ -46,7 +46,7 @@ export default function AgentVolumeEditOverlay({
             closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof agentVolumeEditZodModel>(state, form);
-    }, [state]);
+    }, [closeDialog, form, state]);
 
     useEffect(() => {
         if (existingVolume) {
@@ -71,7 +71,7 @@ export default function AgentVolumeEditOverlay({
         </DialogHeader>
         <Form {...form}>
             <form
-                action={(e) => form.handleSubmit((data) => formAction(data))()}
+                action={() => form.handleSubmit((data) => formAction(data))()}
                 className="space-y-4"
             >
                 <FormField

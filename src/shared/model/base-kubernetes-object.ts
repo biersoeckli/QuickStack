@@ -1,4 +1,3 @@
-import { V1ObjectMeta } from '@kubernetes/client-node';
 
 export interface KubernetesResource<
     TSpec = unknown,

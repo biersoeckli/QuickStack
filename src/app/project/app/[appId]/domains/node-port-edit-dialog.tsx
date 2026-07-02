@@ -51,7 +51,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof nodePortEditZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     useEffect(() => {
         if (appNodePort) {
@@ -61,7 +61,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                 protocol: appNodePort.protocol as 'TCP' | 'UDP',
             });
         }
-    }, [appNodePort]);
+    }, [appNodePort, form]);
 
     return (
         <>
@@ -77,7 +77,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

@@ -91,7 +91,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof roleEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     if (userGroup) {
@@ -136,7 +136,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
       } as UiProjectPermission));
       setProjectPermissions(initialPermissions);
     }
-  }, [userGroup, projects, isOpen]);
+  }, [userGroup, projects, isOpen, form]);
 
 
   const handleReadChange = (projectId: string, checked: boolean) => {
@@ -248,7 +248,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
           <ScrollArea className="max-h-[70vh]">
             <div className="px-3">
               <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                   return formAction(data);
                 }, console.error)()}>
                   <div className="space-y-4">

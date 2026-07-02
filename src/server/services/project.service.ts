@@ -3,7 +3,6 @@ import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Project } from "@prisma/client";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import deploymentService from "./deployment.service";
 import namespaceService from "./namespace.service";
 import buildService from "./build.service";
 import { ProjectExtendedModel } from "@/shared/model/project-extended.model";

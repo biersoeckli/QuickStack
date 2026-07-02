@@ -78,11 +78,11 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
             toast.success('Model configuration saved. Click "Deploy" to apply changes.');
         }
         FormUtils.mapValidationErrorsToForm<typeof agentModelConfigurationZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => formAction(data))()}>
+            <form action={() => form.handleSubmit((data) => formAction(data))()}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Model Configuration</CardTitle>

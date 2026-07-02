@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" },
                 totpToken: { label: "TOTP Token", type: "text" },
             },
-            async authorize(credentials, req) {
+            async authorize(credentials) {
                 if (!credentials) {
                     return null;
                 }

@@ -1,10 +1,8 @@
-import buildService from "@/server/services/build.service";
 import { z } from "zod";
 import stream from "stream";
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import { simpleRoute } from "@/server/utils/action-wrapper.utils";
 import podService from "@/server/services/pod.service";
-import { BUILD_NAMESPACE } from "@/server/services/registry.service";
 
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";

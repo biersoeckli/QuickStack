@@ -19,7 +19,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import TwoFaAuthForm from "./two-fa-auth"
-import { redirect } from "next/navigation"
 
 export default function UserLoginForm() {
     const form = useForm<AuthFormInputSchema>({

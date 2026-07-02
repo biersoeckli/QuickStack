@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
@@ -44,12 +44,12 @@ export default function WorkloadBuildsTable({
     const [selectedBuildForLogs, setSelectedBuildForLogs] = useState<DeploymentInfoModel | undefined>(undefined);
     const isGlobalView = !workloadId;
 
-    const fetchBuilds = async () => {
+    const fetchBuilds = useCallback(async () => {
         const response = await getWorkloadBuildsAction({ workloadId, workloadType });
         if (response.status === 'success') {
             setBuilds((response.data ?? []) as WorkloadBuildRow[]);
         }
-    };
+    }, [workloadId, workloadType]);
 
     useEffect(() => {
         if (!initialBuilds) {
@@ -57,7 +57,7 @@ export default function WorkloadBuildsTable({
         }
         const intervalId = setInterval(fetchBuilds, 10000);
         return () => clearInterval(intervalId);
-    }, [workloadId, workloadType]);
+    }, [fetchBuilds, initialBuilds, workloadId, workloadType]);
 
     const handleDeleteBuild = async (buildName: string) => {
         const confirm = await openConfirmDialog({

@@ -5,9 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Code } from "@/components/custom/code";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Button } from "@/components/ui/button";
-import { useBreadcrumbs, useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEffect } from "react";
 import { setNodeStatus } from "./actions";
 import AddClusterNodeDialog from "./add-cluster-node-dialog";
 

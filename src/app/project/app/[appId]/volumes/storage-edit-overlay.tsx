@@ -96,7 +96,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset({
@@ -106,7 +106,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
       sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     });
-  }, [volume]);
+  }, [app.replicas, form, volume]);
 
   const values = form.watch();
 
@@ -115,7 +115,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Volume</DialogTitle>
@@ -124,7 +124,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
+            <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             })()}>
               <div className="space-y-4">

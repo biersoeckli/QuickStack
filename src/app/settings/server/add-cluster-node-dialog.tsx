@@ -21,7 +21,7 @@ export default function AddClusterNodeDialog({ children, clusterJoinToken }: { c
             <div onClick={() => setIsOpen(true)}>
                 {children}
             </div>
-            <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
                 <DialogContent className="sm:max-w-[700px]">
                     <DialogHeader>
                         <DialogTitle>Add Cluster Node</DialogTitle>

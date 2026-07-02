@@ -122,7 +122,6 @@ class QuickStackService {
     }
 
     async createOrUpdateCertIssuer(letsencryptMail: string) {
-        const now = new Date();
         const clusterIssuerBody = {
             apiVersion: 'cert-manager.io/v1',
             kind: 'ClusterIssuer',

@@ -22,7 +22,7 @@ class K3sUpdateService {
         try {
             await k3s.apps.readNamespacedDeployment({ name: this.SYSTEM_UPGRADE_CONTROLLER_NAME, namespace: this.SYSTEM_UPGRADE_NAMESPACE });
             return true;
-        } catch (error) {
+        } catch {
             // Deployment not found
             return false;
         }
@@ -153,7 +153,7 @@ class K3sUpdateService {
                     serverPlan,
                     agentPlan
                 };
-            } catch (error) {
+            } catch {
                 // Plans don't exist
                 return undefined;
             }

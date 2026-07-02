@@ -23,11 +23,6 @@ import { toast } from "sonner"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { VolumeUploadModel, volumeUploadZodModel } from "@/shared/model/volume-upload.model"
 
-const accessModes = [
-  { label: "ReadWriteOnce", value: "ReadWriteOnce" },
-  { label: "ReadWriteMany", value: "ReadWriteMany" },
-] as const
-
 export default function StorageRestoreDialog({ children, volume, app }: { children: React.ReactNode; volume: AppVolume; app: AppExtendedModel; }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -48,18 +43,18 @@ export default function StorageRestoreDialog({ children, volume, app }: { childr
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof volumeUploadZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset();
-  }, [volume, app, children]);
+  }, [volume, app, children, form]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Restore Volume</DialogTitle>

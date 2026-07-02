@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { useState } from "react";
-import { AuthFormInputSchema, authFormInputSchemaZod, TwoFaInputSchema, twoFaInputSchemaZod } from "@/shared/model/auth-form"
+import { AuthFormInputSchema, TwoFaInputSchema, twoFaInputSchemaZod } from "@/shared/model/auth-form"
 import { signIn } from "next-auth/react";
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"

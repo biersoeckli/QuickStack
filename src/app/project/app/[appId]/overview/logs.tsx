@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LogsStreamed from "../../../../../components/custom/logs-streamed";
 import { getPodsForApp as getPodsForAppAction } from "./actions";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
@@ -25,10 +25,10 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
-    const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
+    const { subscribeToStatusChanges } = usePodsStatus();
     const { openDialog } = useDialog();
 
-    const updateBuilds = async () => {
+    const updateBuilds = useCallback(async () => {
         try {
             const response = await getPodsForAppAction(app.id);
             if (response.status === 'success' && response.data) {
@@ -41,7 +41,7 @@ export default function Logs({
             console.error(ex);
             toast.error('An unknown error occurred while loading pods.');
         }
-    }
+    }, [app.id])
 
     useEffect(() => {
         updateBuilds();
@@ -57,7 +57,7 @@ export default function Logs({
             }
         });
         return () => unsubscribe();
-    }, [app.id]);
+    }, [app.id, subscribeToStatusChanges, updateBuilds]);
 
     useEffect(() => {
         if (appPods && selectedPod && !appPods.find(p => p.podName === selectedPod.podName)) {
@@ -70,7 +70,7 @@ export default function Logs({
             // no pod selected yet, initialize with first pod
             setSelectedPod(appPods[0]);
         }
-    }, [appPods]);
+    }, [appPods, selectedPod]);
 
     return <>
         <Card>

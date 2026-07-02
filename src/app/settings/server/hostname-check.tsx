@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { getConfiguredHostname } from "./actions";
-import { ExternalLink, Link } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function HostnameCheck() {

@@ -58,7 +58,7 @@ export default function FileMountEditOverlay({
             closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof fileMountEditZodModel>(state, form);
-    }, [state]);
+    }, [closeDialog, form, state]);
 
     return (
         <Form {...form}>

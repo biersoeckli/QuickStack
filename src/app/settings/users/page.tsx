@@ -1,9 +1,7 @@
 'use server'
 
-import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
-import S3TargetEditOverlay from "./user-edit-overlay";
-import { Button } from "@/components/ui/button";
 import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 import UsersTable from "./users-table";
 import userService from "@/server/services/user.service";
@@ -16,7 +14,6 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 import UserGroupsTable from "./user-groups-table";
-import appService from "@/server/services/app.service";
 import projectService from "@/server/services/project.service";
 
 export default async function UsersAndGroupsPage() {

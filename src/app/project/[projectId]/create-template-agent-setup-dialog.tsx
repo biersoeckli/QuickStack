@@ -73,14 +73,14 @@ export default function CreateTemplateAgentSetupDialog({
             dialogClosed?.();
         }
         FormUtils.mapValidationErrorsToForm<typeof agentTemplateZodModel>(state, form);
-    }, [state]);
+    }, [agentTemplate?.templates.length, dialogClosed, form, state]);
 
     useEffect(() => {
         setIsOpen(!!agentTemplate && !!projectId);
         form.reset(agentTemplate);
         setModelAliases({});
         setLoadingAliases({});
-    }, [agentTemplate, projectId]);
+    }, [agentTemplate, form, projectId]);
 
     const loadModelAliases = async (templateIndex: number, gatewayId: string) => {
         form.setValue(`templates.${templateIndex}.modelAlias` as any, undefined);

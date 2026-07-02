@@ -17,7 +17,7 @@ import {
   SidebarMenuAction,
   useSidebar
 } from "@/components/ui/sidebar"
-import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Server, Settings, Settings2, User, User2 } from "lucide-react"
+import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Settings, Settings2, User, User2 } from "lucide-react"
 import Link from "next/link"
 import { EditProjectDialog } from "./projects/edit-project-dialog"
 import { SidebarLogoutButton } from "./sidebar-logout-button"
@@ -117,16 +117,11 @@ export function SidebarCient({
       setCurrentlySelectedAgentId(null);
 
     }
-  }, [path]);
+  }, [path, projects]);
 
   const {
-    state,
     open,
-    setOpen,
-    openMobile,
-    setOpenMobile,
     isMobile,
-    toggleSidebar,
   } = useSidebar()
 
   return (

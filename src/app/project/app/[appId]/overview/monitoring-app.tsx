@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getRessourceDataApp } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
@@ -15,9 +15,9 @@ export default function MonitoringTab({
 }) {
 
     const [selectedPod, setSelectedPod] = useState<PodsResourceInfoModel | undefined>(undefined);
-    const [error, setError] = useState<string | undefined>(undefined);
+    const [, setError] = useState<string | undefined>(undefined);
 
-    const updateValues = async () => {
+    const updateValues = useCallback(async () => {
         setError(undefined);
         try {
             const response = await getRessourceDataApp(app.projectId, app.id);
@@ -32,13 +32,13 @@ export default function MonitoringTab({
             console.error(ex);
             setError('An unknown error occurred.');
         }
-    }
+    }, [app.id, app.projectId])
 
     useEffect(() => {
         updateValues();
         const intervalId = setInterval(updateValues, 10000);
         return () => clearInterval(intervalId);
-    }, [app]);
+    }, [app, updateValues]);
 
     return <>
         <Card>

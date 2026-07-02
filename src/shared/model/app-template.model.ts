@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
+import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appVolumeTypeZodModel, appStorageClassNameZodModel } from "./volume-edit.model";
 

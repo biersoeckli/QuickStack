@@ -10,9 +10,7 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
-import pvcService from "./pvc.service";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
-import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 
 class AgentRuntimeService {
 

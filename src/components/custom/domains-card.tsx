@@ -34,7 +34,7 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
     };
 
     const openEditDomainDialog = async (domain?: DomainEditModel) => {
-        const result = await openDialog(<DomainEditOverlay
+        await openDialog(<DomainEditOverlay
             existingDomain={domain}
             workloadId={workloadId}
             workloadType={workloadType} />, {

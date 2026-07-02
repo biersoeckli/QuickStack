@@ -18,7 +18,7 @@ import { AppExtendedModel, AppExtendedWriteModel } from '@/shared/model/app-exte
 import { Project } from '@prisma/client';
 
 describe('REST API v1 integration', () => {
-    const ctx = createPrismaTestContext('rest-api-v1');
+    createPrismaTestContext('rest-api-v1');
     const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
     const { deployRegistry } = createK3sTestContext(undefined);
 
@@ -193,7 +193,7 @@ async function createProjectAndGitApp(apiKey: string) {
     return { project: createdProject, app: createdApp };
 }
 
-async function createGitAppForProject(projectId: string, apiKey: string, appId?: string) {
+async function createGitAppForProject(projectId: string, apiKey: string) {
     const app = createGitAppPayload(undefined, projectId, 'API Dummy Node');
     const createdApp = await expectApiJson(
         await apiFetch('/api/v1/apps', apiKey, {

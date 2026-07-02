@@ -27,7 +27,7 @@ export default function AgentStatusBar({
 
     const [instanceCount, setInstanceCount] = useState(0);
     const [runningCount, setRunningCount] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
 
     const fetchStatus = useCallback(async () => {
         try {

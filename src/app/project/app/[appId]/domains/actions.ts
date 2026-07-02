@@ -1,7 +1,6 @@
 'use server'
 
 import { AppPortModel, appPortZodModel } from "@/shared/model/default-port.model";
-import { domainEditZodModel } from "@/shared/model/domain-edit.model";
 import { nodePortEditZodModel } from "@/shared/model/node-port-edit.model";
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";

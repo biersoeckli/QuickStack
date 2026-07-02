@@ -10,7 +10,6 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { toast } from "sonner";
 import { saveAgentRateLimits } from "./actions";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
@@ -41,11 +40,11 @@ export default function AgentRateLimitsCard({ agent, readonly }: {
             toast.success('Rate limits saved. Click "Deploy" to apply changes.');
         }
         FormUtils.mapValidationErrorsToForm<typeof agentRateLimitsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => formAction(data))()}>
+            <form action={() => form.handleSubmit((data) => formAction(data))()}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Container Rate Limits</CardTitle>

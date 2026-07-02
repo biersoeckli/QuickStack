@@ -5,7 +5,6 @@ import agentService from "@/server/services/agent.service";
 import PageTitle from "@/components/custom/page-title";
 import { RequesterIdentity, ensureReadProjectWorkload } from "@/server/utils/shared-authorization.utils";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import AgentDetailClient from "./agent-detail-client";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 

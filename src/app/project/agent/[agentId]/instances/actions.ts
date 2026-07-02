@@ -12,7 +12,7 @@ export const startInstance = async (agentId: string) =>
 
 export const stopInstance = async (agentId: string, claimName: string) =>
     simpleAction(async () => {
-        const session = await isAuthorizedWriteForWorkload(agentId);
+        await isAuthorizedWriteForWorkload(agentId);
         await agentRuntimeService.stopInstance(agentId, claimName);
     });
 

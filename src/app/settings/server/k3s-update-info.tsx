@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { checkK3sUpgradeControllerStatus, installK3sUpgradeController, startK3sUpgrade } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuestionMarkCircledIcon, QuestionMarkIcon } from "@radix-ui/react-icons";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { K3sReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter";
 
 export default function K3sUpdateInfo({

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { EditIcon, Plus, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
-import { WorkloadType } from "@/shared/model/runtime-type.model";
 import AgentVolumeEditOverlay from "@/app/project/agent/[agentId]/general/agent-volume-edit-overlay";
 import { AgentVolume } from "@prisma/client";
 import { AgentVolumeEditModel } from "@/shared/model/volume-edit.model";

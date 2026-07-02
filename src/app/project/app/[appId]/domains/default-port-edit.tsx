@@ -45,13 +45,11 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof appPortZodModel>(state, form);
-    }, [state]);
-
-    const values = form.watch();
+    }, [form, state]);
 
     useEffect(() => {
         form.reset(appPort);
-    }, [appPort]);
+    }, [appPort, form]);
 
 
     return (
@@ -59,7 +57,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
             <div onClick={() => setIsOpen(true)}>
                 {children}
             </div>
-            <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Edit Internal Port</DialogTitle>
@@ -68,7 +66,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

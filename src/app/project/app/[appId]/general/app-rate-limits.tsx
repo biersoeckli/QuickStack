@@ -7,7 +7,6 @@ import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveGeneralAppRateLimits } from "./actions";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
@@ -56,7 +55,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
             });
         }
         FormUtils.mapValidationErrorsToForm<typeof appRateLimitsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return <>
         <Card>
@@ -65,7 +64,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                 <CardDescription>Provide optional rate Limits per running container instance.</CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

@@ -14,7 +14,7 @@ import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 
 describe('project.service', () => {
     const dbCtx = createPrismaTestContext('project-service');
-    const { getClients, getKubeConfig } = createK3sTestContext();
+    createK3sTestContext();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -105,8 +105,6 @@ describe('project.service', () => {
             await new Promise((resolve) => setTimeout(resolve, 3000));
 
             const projects = await dbCtx.getDataAccess().client.project.findMany();
-            const allNamespaces = await namespaceService.getNamespaces();
-
             expect(projects).toHaveLength(0);
             // expect(allNamespaces.find(namespace => namespace === created.id)).toBeFalsy();
             expect(revalidateTag).toHaveBeenCalledWith(Tags.projects());

@@ -1,6 +1,5 @@
 'use client' // Error boundaries must be Client Components
 
-import { Button } from "@/components/ui/button"
 import { cn } from "@/frontend/utils/utils";
 import { AlertCircle } from "lucide-react"
 import { Inter } from "next/font/google";
@@ -12,7 +11,6 @@ const inter = Inter({
 
 export default function GlobalError({
     error,
-    reset,
 }: {
     error: Error & { digest?: string }
     reset: () => void

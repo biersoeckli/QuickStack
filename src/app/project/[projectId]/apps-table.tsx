@@ -6,17 +6,15 @@ import Link from "next/link";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Bot, Container, Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
+import { Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { App, Project } from "@prisma/client";
+import { App } from "@prisma/client";
 import { deleteApp } from "./actions";
-import { useBreadcrumbs, useConfirmDialog } from "@/frontend/states/zustand.states";
-import { useEffect } from "react";
+import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditAppDialog } from "./edit-app-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import PodStatusIndicator from "@/components/custom/pod-status-indicator";
-import CreateProjectActions from "./create-project-actions";
 
 
 export default function AppTable({

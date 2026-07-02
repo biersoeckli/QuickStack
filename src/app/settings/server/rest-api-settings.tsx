@@ -7,7 +7,6 @@ import LoadingSpinner from '@/components/ui/loading-spinner';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { setOpenApiSpecEnabled } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RestApiSettings({

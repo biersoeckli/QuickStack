@@ -1,7 +1,5 @@
 'use client';
 
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useBreadcrumbs } from "@/frontend/states/zustand.states";
 import { useEffect } from "react";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
@@ -19,6 +17,6 @@ export default function AppBreadcrumbs({ app, apps, tabName }: { app: AppExtende
                 active: a.id === app.id,
             })),
         },
-    ]), []);
+    ]), [app.id, app.name, app.project.name, app.projectId, apps, setBreadcrumbs, tabName]);
     return <></>;
 }

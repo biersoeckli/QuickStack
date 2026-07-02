@@ -147,7 +147,6 @@ vi.mock('@/server/services/deployment-logs.service', () => ({
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
-import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import secretService from '@/server/services/secret.service';
 import namespaceService from '@/server/services/namespace.service';
@@ -201,14 +200,6 @@ function mockAgentWithRelations(id: string, name: string, projectId: string = 'p
         ...overrides,
     };
 }
-
-const PROJECT_STUB = { id: 'proj-test-agent', name: 'Agent Project', projectType: 'AGENT' };
-const GATEWAY_STUB = {
-    id: 'gateway-1',
-    name: 'Test Gateway',
-    baseUrl: 'https://litellm.example.com',
-    encryptedAdminKey: 'encrypted:gw-key',
-};
 
 function getOpenCodeConfigFromTemplateCall(callIndex = 0) {
     const resource = vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mock.calls[callIndex][0] as any;

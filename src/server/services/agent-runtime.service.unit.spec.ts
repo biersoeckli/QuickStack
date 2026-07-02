@@ -66,7 +66,6 @@ import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
 import secretService from '@/server/services/secret.service';
-import { CryptoUtils } from '@/server/utils/crypto.utils';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
 

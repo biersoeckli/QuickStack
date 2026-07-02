@@ -57,7 +57,7 @@ export function SimpleDataTable<TData>({
 
     useEffect(() => {
         const outData = data.map((item) => {
-            for (const [accessorKey, headerName, isVisible, customRowDefinition] of columns) {
+            for (const [accessorKey, , , customRowDefinition] of columns) {
                 if (!customRowDefinition) {
                     continue;
                 }
@@ -82,7 +82,7 @@ export function SimpleDataTable<TData>({
         };
         setInitialTableState(mergedConfig);
 
-    }, [data, columns]);
+    }, [data, columns, tableIdentifier, pathName]);
 
     if (!columnInputData || !initialTableState) {
         return <FullLoadingSpinner />;
@@ -109,7 +109,7 @@ export function SimpleDataTable<TData>({
         return allCellValues.join(' ').includes(searchTerm.toLowerCase());
     };
 
-    const indexOfFirstVisibleColumn = columns.findIndex(([_, __, isVisible]) => isVisible);
+    const indexOfFirstVisibleColumn = columns.findIndex((column) => column[2]);
     const dataColumns = columns.map(([accessorKey, header, isVisible, customRowDefinition], columnIndex) => {
 
         const columnFiltersForThisColumn = columnFilters?.filter(filter => filter.accessorKey === accessorKey);

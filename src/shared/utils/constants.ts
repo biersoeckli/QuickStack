@@ -36,7 +36,7 @@ export class Constants {
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
     static readonly QS_AGENT_ROUTER_NAMESPACE = Constants.QS_NAMESPACE;
-    static readonly QS_AUTH_PROXY_IMAGE = 'ghcr.io/biersoeckli/quickstack-auth-proxy:latest';//'quickstack/auth-proxy:latest';
+    static readonly QS_AUTH_PROXY_IMAGE = 'quickstack/auth-proxy:canary';
     static readonly QS_AGENT_CLAIM_COOKIE = 'qs-agent-claim';
     static readonly QS_AGENT_ACCESS_COOKIE = 'qs-agent-access';
 

@@ -112,7 +112,7 @@ class K3sApiAdapter {
                 // If it exists, patch it
                 await client.patch(spec);
                 console.log(`Updated ${spec.kind}/${name}`);
-            } catch (error) {
+            } catch {
                 await client.create(spec);
                 console.log(`Created ${spec.kind}/${name}`);
             }

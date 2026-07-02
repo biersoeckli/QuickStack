@@ -1,4 +1,4 @@
-import { getAuthUserSession, isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
 import appService from "@/server/services/app.service";
 import AppTabs from "./app-tabs";
 import AppBreadcrumbs from "./app-breadcrumbs";

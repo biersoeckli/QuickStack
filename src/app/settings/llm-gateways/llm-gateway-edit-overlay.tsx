@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
@@ -51,7 +50,7 @@ function LlmGatewayForm({ gateway }: { gateway?: LlmGatewayModel }) {
             closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof llmGatewayEditZodModel>(state, form);
-    }, [state]);
+    }, [closeDialog, form, gateway?.id, state]);
 
     const runConnectionTest = async () => {
         const values = form.getValues();

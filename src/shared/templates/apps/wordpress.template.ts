@@ -1,6 +1,5 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
-import { mariadbAppTemplate } from "../databases/mariadb.template";
 
 export const wordpressAppTemplate: AppTemplateModel = {
     name: "WordPress",

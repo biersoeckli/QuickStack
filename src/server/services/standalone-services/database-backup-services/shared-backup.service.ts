@@ -51,7 +51,7 @@ class SharedBackupService {
 
         const logStream = new stream.PassThrough();
 
-        const k3sStreamRequest = await k3s.log.log(namespace || BACKUP_NAMESPACE, pod.podName, pod.containerName, logStream, {
+        await k3s.log.log(namespace || BACKUP_NAMESPACE, pod.podName, pod.containerName, logStream, {
             follow: true,
             tailLines: undefined,
             timestamps: true,

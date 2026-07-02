@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ChevronDown, EditIcon, Plus, Trash2, TrashIcon, UserPlus } from "lucide-react";
+import { ChevronDown, EditIcon, Plus, Trash2, TrashIcon, UserPlus } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import React from "react";

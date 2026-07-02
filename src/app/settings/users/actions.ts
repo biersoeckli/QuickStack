@@ -1,7 +1,7 @@
 'use server'
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
-import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import userService from "@/server/services/user.service";
 import { UserEditModel, userEditZodModel } from "@/shared/model/user-edit.model";

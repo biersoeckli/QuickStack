@@ -14,8 +14,6 @@ export default function TraefikIpPropagationCard({ initialStatus }: { initialSta
     const [enabled, setEnabled] = useState<boolean>((initialStatus.externalTrafficPolicy ?? 'Cluster') === 'Local');
     const [isPending, startTransition] = useTransition();
 
-    const currentEnabled = (status.externalTrafficPolicy ?? 'Cluster') === 'Local';
-
     const handleApply = () => {
         startTransition(async () => {
             const result = await applyTraefikIpPropagation(enabled);

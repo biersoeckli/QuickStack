@@ -1,20 +1,14 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, TrashIcon } from "lucide-react";
+import { EditIcon, TrashIcon } from "lucide-react";
 import DialogEditDialog from "./s3-target-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { AppVolume, S3Target } from "@prisma/client";
+import { S3Target } from "@prisma/client";
 import React from "react";
-import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
-import S3TargetEditOverlay from "./s3-target-edit-overlay";
-import { deleteVolume } from "@/app/project/app/[appId]/volumes/actions";
 import { deleteS3Target } from "./actions";
 
 export default function S3TargetsTable({ targets }: {

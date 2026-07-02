@@ -1,9 +1,8 @@
 'use server'
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
-import { isAuthorizedWriteForAgent, isAuthorizedReadForAgent, getAuthUserSession, simpleAction, isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, simpleAction, isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload } from "@/server/utils/action-wrapper.utils";
 import { ensureDeleteAgentInProject, RequesterIdentity } from "@/server/utils/shared-authorization.utils";
-import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
 import podService from "@/server/services/pod.service";
 import eventService from "@/server/services/event.service";

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import React from "react";
 import {
@@ -26,7 +26,7 @@ export default function BuildLogsStreamed({
     const [logs, setLogs] = useState<string>('');
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-    const initializeConnection = async (controller: AbortController) => {
+    const initializeConnection = useCallback(async (controller: AbortController) => {
         // Initiate the first call to connect to SSE API
 
         setLogs('Loading...');
@@ -61,7 +61,7 @@ export default function BuildLogsStreamed({
                 setLogs((prevLogs) => prevLogs + value);
             }
         }
-    }
+    }, [deploymentId])
 
     useEffect(() => {
         if (!deploymentId) {
@@ -75,7 +75,7 @@ export default function BuildLogsStreamed({
             setLogs('');
             controller.abort();
         };
-    }, [deploymentId]);
+    }, [deploymentId, initializeConnection]);
 
     useEffect(() => {
         if (textAreaRef.current) {

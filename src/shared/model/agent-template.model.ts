@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { AgentDomainModel, AgentFileMountModel, AgentModel, AgentVolumeModel } from "./generated-zod";
-import { agentStorageClassNameZodModel } from "./volume-edit.model";
 import { appTemplateInputSettingsZodModel } from "./app-template.model";
 import { AgentExtendedWriteZodModel } from "./agent-extended.model";
 

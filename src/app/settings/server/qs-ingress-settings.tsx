@@ -6,7 +6,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { useActionState, useEffect } from "react";
@@ -38,9 +37,8 @@ export default function QuickStackIngressSettings({
             toast.success('Settings updated successfully. It may take a few seconds for the changes to take effect.');
         }
         FormUtils.mapValidationErrorsToForm<typeof qsIngressSettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
-    const sourceTypeField = form.watch();
     return <>
         <Card>
             <CardHeader>
@@ -48,7 +46,7 @@ export default function QuickStackIngressSettings({
                 <CardDescription>Change the domain settings for your QuickStack instance.</CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction({
                         ...data,
                         disableNodePortAccess: !data.disableNodePortAccess

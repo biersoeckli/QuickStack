@@ -285,10 +285,10 @@ class DeploymentService {
 
         if (existingDeployment) {
             dlog(deploymentId, `Replacing existing deployment...`);
-            const res = await k3s.apps.replaceNamespacedDeployment({ name: app.id, namespace: app.projectId, body: body });
+            await k3s.apps.replaceNamespacedDeployment({ name: app.id, namespace: app.projectId, body: body });
         } else {
             dlog(deploymentId, `Creating deployment...`);
-            const res = await k3s.apps.createNamespacedDeployment({ namespace: app.projectId, body: body });
+            await k3s.apps.createNamespacedDeployment({ namespace: app.projectId, body: body });
         }
         dlog(deploymentId, `Cleanup unused ressources from previous deployments...`);
         await configMapService.deleteUnusedConfigMaps(app);
@@ -381,7 +381,7 @@ class DeploymentService {
         // List ReplicaSets in the namespace to find those associated with the deployment
         const replicaSetsForDeployment = await k3s.apps.listNamespacedReplicaSet({ namespace: projectId, labelSelector: `app=${appId}` });
 
-        const revisions = replicaSetsForDeployment.items.map((rs, index) => {
+        const revisions = replicaSetsForDeployment.items.map((rs) => {
             let status = this.mapReplicasetToStatus(rs);
             return {
                 replicasetName: rs.metadata?.name!,

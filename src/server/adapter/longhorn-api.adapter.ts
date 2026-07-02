@@ -103,12 +103,10 @@ class LonghornApiAdapter {
         let totalStorageMaximum = 0;
         let totalStorageAvailable = 0;
         let totalStorageReserved = 0;
-        let totalStorageScheduled = 0;
         Object.values(data.disks).forEach(disk => {
             totalStorageMaximum += disk.storageMaximum;
             totalStorageAvailable += disk.storageAvailable;
             totalStorageReserved += disk.storageReserved;
-            totalStorageScheduled += disk.storageScheduled;
         });
 
         // The available Storage is the total storage minus the reserved storage (which is not available for scheduling --> 30% of disk space)

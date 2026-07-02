@@ -5197,6 +5197,11 @@ eslint-plugin-react@^7.37.0:
     string.prototype.matchall "^4.0.12"
     string.prototype.repeat "^1.0.0"
 
+eslint-plugin-unused-imports@^4.4.1:
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-unused-imports/-/eslint-plugin-unused-imports-4.4.1.tgz#a831f0a2937d7631eba30cb87091ab7d3a5da0e1"
+  integrity sha512-oZGYUz1X3sRMGUB+0cZyK2VcvRX5lm/vB56PgNNcU+7ficUCKm66oZWKUubXWnOuPjQ8PvmXtCViXBMONPe7tQ==
+
 eslint-scope@^8.2.0:
   version "8.2.0"
   resolved "https://registry.yarnpkg.com/eslint-scope/-/eslint-scope-8.2.0.tgz#377aa6f1cb5dc7592cfd0b7f892fd0cf352ce442"

@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -65,7 +64,7 @@ export default function DomainEditOverlay({
             closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof domainEditZodModel>(state, form);
-    }, [state]);
+    }, [closeDialog, form, state]);
 
     useEffect(() => {
         if (existingDomain) {
@@ -159,7 +158,7 @@ export default function DomainEditOverlay({
                 <DialogDescription>Configure a custom domain for external access.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => formAction(data))()}>
+                <form action={() => form.handleSubmit((data) => formAction(data))()}>
                     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'custom' | 'quickstack')} className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="custom">Custom Domain</TabsTrigger>

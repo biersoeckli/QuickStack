@@ -7,7 +7,6 @@ import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveEnvVariables } from "./actions";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
@@ -34,7 +33,7 @@ export default function EnvEdit({ app, readonly }: {
             });
         }
         FormUtils.mapValidationErrorsToForm<typeof appEnvVariablesZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return <>
         <Card>
@@ -47,7 +46,7 @@ export default function EnvEdit({ app, readonly }: {
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

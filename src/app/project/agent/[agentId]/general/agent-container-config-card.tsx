@@ -47,12 +47,12 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
             toast.success('Container configuration saved. Click "Deploy" to apply changes.');
         }
         FormUtils.mapValidationErrorsToForm<typeof agentContainerConfigZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Form {...form}>
             <TooltipProvider delayDuration={150}>
-                <form action={(e) => form.handleSubmit((data) => formAction(data))()}>
+                <form action={() => form.handleSubmit((data) => formAction(data))()}>
                     <Card>
                         <CardHeader>
                             <CardTitle>Container Configuration</CardTitle>

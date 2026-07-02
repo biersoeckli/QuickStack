@@ -67,7 +67,7 @@ export default function ResourcesNodes({
   const { setBreadcrumbs } = useBreadcrumbs();
   useEffect(
     () => setBreadcrumbs([{ name: 'Monitoring', url: '/monitoring' }]
-    ), []);
+    ), [setBreadcrumbs]);
 
   const clusterStats = useMemo(() => {
     if (!updatedNodeRessources) return {

@@ -1,4 +1,3 @@
-import { stringToBoolean } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const registryStorageLocationSettingsZodModel = z.object({

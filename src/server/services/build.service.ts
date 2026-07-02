@@ -3,7 +3,6 @@ import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { BuildJobModel } from "@/shared/model/build-job";
 import { GlobalBuildJobModel } from "@/shared/model/global-build-job.model";
-import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import { Constants } from "../../shared/utils/constants";

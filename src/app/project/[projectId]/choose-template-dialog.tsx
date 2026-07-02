@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { AgentTemplateModel } from "@/shared/model/agent-template.model";
 import { agentTemplates } from "@/shared/templates/all-agent.templates";
+import Image from "next/image";
 
 
 
@@ -102,7 +103,7 @@ export default function ChooseTemplateDialog({
                                                 setChosenAppTemplate(template as AppTemplateModel);
                                             }
                                         }} >
-                                        {iconSrc && <img src={iconSrc} className="h-10 mx-auto" />}
+                                        {iconSrc && <Image src={iconSrc} alt={`${template.name} icon`} width={40} height={40} className="h-10 w-10 mx-auto object-contain" unoptimized />}
                                         <h3 className="text-lg font-semibold">{template.name}</h3>
                                     </div>
                                 );

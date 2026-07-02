@@ -4,7 +4,6 @@ import hostnameDnsProviderService from "../hostname-dns-provider.service";
 import { KubeObjectNameUtils } from "../../utils/kube-object-name.utils";
 import deploymentService from "../deployment.service";
 import { V1Deployment, V1Ingress } from "@kubernetes/client-node";
-import { Constants } from "@/shared/utils/constants";
 import k3s from "../../adapter/kubernetes-api.adapter";
 import ingressService from "../ingress.service";
 import svcService from "../svc.service";

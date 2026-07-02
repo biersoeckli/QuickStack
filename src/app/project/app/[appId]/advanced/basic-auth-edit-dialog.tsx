@@ -25,11 +25,6 @@ import { saveBasicAuth } from "./actions"
 import { z } from "zod"
 
 
-const accessModes = [
-  { label: "ReadWriteOnce", value: "ReadWriteOnce" },
-  { label: "ReadWriteMany", value: "ReadWriteMany" },
-] as const
-
 export default function BasicAuthEditDialog({
   children,
   basicAuth,
@@ -67,18 +62,18 @@ export default function BasicAuthEditDialog({
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof basicAuthEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset(basicAuth);
-  }, [basicAuth, app]);
+  }, [basicAuth, app, form]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Basic Authentication</DialogTitle>
@@ -87,7 +82,7 @@ export default function BasicAuthEditDialog({
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
+            <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             }, console.error)()}>
               <div className="space-y-4">

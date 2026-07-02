@@ -2,19 +2,11 @@
 
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { Spinner } from "@/components/ui/spinner"
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { MultiStateProgress } from './multi-state-progress';
 
 interface ProjectStatusIndicatorProps {
     projectId: string;
-}
-
-interface ProjectStatus {
-    runningAppsPercent: number;
-    shutdownAppsPercent: number;
-    errorAndDeployingAppsPercent: number;
-    runningAppsCount?: number;
-    appCount?: number;
 }
 
 export default function ProjectStatusIndicator({ projectId }: ProjectStatusIndicatorProps) {

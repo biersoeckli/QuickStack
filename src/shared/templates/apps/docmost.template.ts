@@ -1,9 +1,8 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { getPostgresAppTemplate } from "../databases/postgres.template";
-import { getRedisAppTemplate, postCreateRedisAppTemplate } from "../databases/redis.template";
+import { getRedisAppTemplate } from "../databases/redis.template";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
 import { AppTemplateUtils } from "@/server/utils/app-template.utils";
 
 export const docmostAppTemplate: AppTemplateModel = {

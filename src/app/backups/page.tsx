@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession, isAuthorizedForBackups } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedForBackups } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import backupService from "@/server/services/standalone-services/backup.service";
 import BackupsTable from "./backups-table";

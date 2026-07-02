@@ -1,27 +1,10 @@
 'use client'
 
 import { signOut } from "next-auth/react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarHeader,
-    SidebarFooter,
-    SidebarMenuSub,
-    SidebarMenuSubItem
-} from "@/components/ui/sidebar"
-import { AppleIcon, Calendar, ChartNoAxesCombined, ChevronDown, ChevronUp, FolderClosed, Home, Inbox, LogOut, Plus, Search, Server, Settings, Settings2, User, User2 } from "lucide-react"
-import Link from "next/link"
-import { EditProjectDialog } from "./projects/edit-project-dialog"
-import projectService from "@/server/services/project.service"
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
+
+
+import { LogOut } from "lucide-react"
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 
 export function SidebarLogoutButton() {

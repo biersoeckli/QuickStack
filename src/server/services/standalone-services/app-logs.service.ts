@@ -71,7 +71,7 @@ class AppLogsService {
         try {
             const dateStr = fileName.replace('.tar.gz', '').split("_")[1];
             return new Date(dateStr);
-        } catch (error) {
+        } catch {
             console.error("Error parsing date from file name", fileName);
             return undefined;
         }

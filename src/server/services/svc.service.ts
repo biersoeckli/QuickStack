@@ -1,10 +1,6 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
-import { V1PersistentVolumeClaim } from "@kubernetes/client-node";
-import { ServiceException } from "@/shared/model/service.exception.model";
-import { AppVolume } from "@prisma/client";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import { Constants } from "../../shared/utils/constants";
 import { dlog } from "./deployment-logs.service";
 
 class SvcService {

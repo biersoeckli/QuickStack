@@ -77,18 +77,18 @@ export default function VolumeBackupEditDialog({
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof volumeBackupEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset(volumeBackup);
-  }, [volumeBackup, volumes, s3Targets]);
+  }, [volumeBackup, volumes, s3Targets, form]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Backup Configuration</DialogTitle>
@@ -97,7 +97,7 @@ export default function VolumeBackupEditDialog({
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
+            <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             }, console.error)()}>
               <div className="space-y-4">

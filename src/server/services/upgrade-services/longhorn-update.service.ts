@@ -1,7 +1,7 @@
 import k3s from "../../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { qsVersionInfoAdapter, LonghornReleaseInfo, K3sReleaseInfo } from "../../adapter/qs-versioninfo.adapter";
+import { qsVersionInfoAdapter, LonghornReleaseInfo } from "../../adapter/qs-versioninfo.adapter";
 import paramService, { ParamService } from "../param.service";
 
 class LonghornUpdateService {
@@ -39,7 +39,7 @@ class LonghornUpdateService {
         try {
             await k3s.apps.readNamespacedDaemonSet({ name: this.LONGHORN_MANAGER_NAME, namespace: this.LONGHORN_NAMESPACE });
             return true;
-        } catch (error) {
+        } catch {
             return false;
         }
     }

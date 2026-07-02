@@ -3,7 +3,6 @@ import { V1Deployment } from "@kubernetes/client-node";
 import namespaceService from "./namespace.service";
 import podService from "./pod.service";
 import registryApiAdapter from "../adapter/registry-api.adapter";
-import paramService, { ParamService } from "./param.service";
 import { Constants } from "@/shared/utils/constants";
 import { S3Target } from "@prisma/client";
 import s3TargetService from "./s3-target.service";

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ReactFlow, Background, Controls, Node, Edge, MarkerType, Handle, Position } from '@xyflow/react';
+import { ReactFlow, Node, Edge, MarkerType, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { App, AppDomain, AppPort } from '@prisma/client';
-import { Globe, Network, Lock, Cloud, Shield, ArrowDown, HeartPulse } from 'lucide-react';
+import { Globe, Network, Lock, Cloud, Shield, HeartPulse } from 'lucide-react';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { useRouter } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

@@ -155,7 +155,7 @@ export default function AgentInstancesCard({
         }
     };
 
-    const handleOpenTerminal = async (claimName: string) => {
+    const handleOpenTerminal = async () => {
         // Terminal opening is delegated to parent component via callback
         // For now, this is a placeholder — terminal per instance needs pod discovery
     };
@@ -321,7 +321,7 @@ export default function AgentInstancesCard({
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8"
-                                                            onClick={() => handleOpenTerminal(item.name)}
+                                                            onClick={() => handleOpenTerminal()}
                                                         >
                                                             <Terminal className="h-4 w-4" />
                                                         </Button>

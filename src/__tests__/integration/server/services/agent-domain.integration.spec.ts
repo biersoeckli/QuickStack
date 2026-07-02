@@ -10,7 +10,7 @@ import agentDomainService from '@/server/services/agent-domain.service';
 import dataAccess from '@/server/adapter/db.client';
 
 describe('agent-domain.service', () => {
-    const dbCtx = createPrismaTestContext('agent-domain');
+    createPrismaTestContext('agent-domain');
 
     let projectId: string;
     let llmGatewayId: string;

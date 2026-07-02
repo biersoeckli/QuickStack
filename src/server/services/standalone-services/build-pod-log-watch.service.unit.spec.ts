@@ -28,7 +28,6 @@ vi.mock('@/server/services/registry.service', () => ({
 }));
 
 import k3s from '@/server/adapter/kubernetes-api.adapter';
-import { dlog } from '@/server/services/deployment-logs.service';
 import buildPodLogWatchService from '@/server/services/standalone-services/build-pod-log-watch.service';
 import stream from 'stream';
 

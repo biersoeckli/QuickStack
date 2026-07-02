@@ -1,6 +1,6 @@
 'use server'
 
-import { getAdminUserSession, getAuthUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import s3TargetService from "@/server/services/s3-target.service";
 import S3TargetsTable from "./s3-targets-table";

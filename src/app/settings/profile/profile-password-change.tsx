@@ -6,7 +6,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { useActionState, useEffect } from "react";
@@ -31,9 +30,8 @@ export default function ProfilePasswordChange() {
             form.clearErrors();
         }
         FormUtils.mapValidationErrorsToForm<typeof profilePasswordChangeZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
-    const sourceTypeField = form.watch();
     return <>
         <Card>
             <CardHeader>
@@ -41,7 +39,7 @@ export default function ProfilePasswordChange() {
                 <CardDescription>Change your existing login password.</CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

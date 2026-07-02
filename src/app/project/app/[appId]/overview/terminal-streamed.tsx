@@ -1,11 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import { useRef, useState } from "react";
 import React from "react";
-import {
-    HoverCard,
-    HoverCardContent,
-    HoverCardTrigger,
-} from "@/components/ui/hover-card"
+
+
 import { TerminalSetupInfoModel } from "@/shared/model/terminal-setup-info.model";
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
@@ -28,7 +24,6 @@ export default function TerminalStreamed({
     terminalInfo: TerminalSetupInfoModel;
     terminalTypes?: TerminalType[];
 }) {
-    const [isConnected, setIsConnected] = useState(false);
     const terminalWindow = useRef<HTMLDivElement>(null);
 
     const [terminal, setTerminal] = useState<Terminal | undefined>(undefined);

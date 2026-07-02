@@ -2,10 +2,8 @@
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import projectService from "@/server/services/project.service";
-import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
-import { UserGroupUtils } from "@/shared/utils/role.utils";
-import { ServiceException } from "@/shared/model/service.exception.model";
 import { ProjectTypeModel } from "@/shared/model/project-type.model";
 
 const createProjectSchema = z.object({
@@ -16,7 +14,7 @@ const createProjectSchema = z.object({
 
 export const createProject = async (projectName: string, projectType: string, projectId?: string) =>
     saveFormAction({ projectName, projectType, projectId }, createProjectSchema, async (validatedData) => {
-        const session = await getAdminUserSession();
+        await getAdminUserSession();
         await projectService.save({
             id: validatedData.projectId ?? undefined,
             name: validatedData.projectName,

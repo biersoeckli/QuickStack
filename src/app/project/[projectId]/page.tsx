@@ -12,7 +12,6 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 import AgentListClient from "./agent-list-client";
 
 export default async function AppsPage({
-    searchParams,
     params
 }: {
     searchParams?: Promise<{ [key: string]: string | undefined }>;

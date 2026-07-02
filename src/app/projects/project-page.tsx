@@ -2,8 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 
-import Link from "next/link";
-import { getAuthUserSession, getUserSession } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import projectService from "@/server/services/project.service";
 import ProjectsTable from "./projects-table";
 import { EditProjectDialog } from "./edit-project-dialog";

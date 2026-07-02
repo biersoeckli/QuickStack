@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash, Plus } from "lucide-react";
 import FormLabelWithQuestion from "@/components/custom/form-label-with-question";
-import { useFormState } from "react-dom";
 import { saveHealthCheck } from "./actions";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
@@ -68,7 +67,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
             toast.success('Health Check Settings Saved');
         }
         FormUtils.mapValidationErrorsToForm<typeof healthCheckZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Card>
@@ -79,7 +78,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     formAction(data);
                 })()}>
                     <CardContent className="space-y-6">

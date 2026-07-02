@@ -6,7 +6,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { useActionState, useEffect } from "react";
@@ -36,11 +35,11 @@ export default function QuickStackPublicIpSettings({
             toast.success('Settings updated successfully.');
         }
         FormUtils.mapValidationErrorsToForm<typeof qsPublicIpv4SettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     useEffect(() => {
         form.reset({ publicIpv4 });
-    }, [publicIpv4]);
+    }, [form, publicIpv4]);
 
     return <>
         <Card>
@@ -52,7 +51,7 @@ export default function QuickStackPublicIpSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

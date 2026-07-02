@@ -11,7 +11,6 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useActionState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { saveAgentEnvVars } from "./actions";
@@ -61,11 +60,11 @@ export default function AgentEnvVarsCard({ agent, readonly }: {
             toast.success('Environment variables saved. Click "Deploy" to apply changes.');
         }
         FormUtils.mapValidationErrorsToForm<typeof agentEnvVarsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => formAction(data))()}>
+            <form action={() => form.handleSubmit((data) => formAction(data))()}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Environment Variables</CardTitle>

@@ -48,18 +48,18 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof s3TargetEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset(target);
-  }, [target]);
+  }, [form, target]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit S3 Target</DialogTitle>
@@ -67,7 +67,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
           <ScrollArea className="max-h-[70vh]">
             <div className="px-2">
               <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                   return formAction(data);
                 })()}>
                   <div className="space-y-4">

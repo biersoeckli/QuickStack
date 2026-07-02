@@ -78,7 +78,7 @@ export default function SharedStorageEditDialog({ children, app }: {
                 setIsLoadingVolumes(false);
             });
         }
-    }, [isOpen, app.id]);
+    }, [isOpen, app.id, app.appVolumes]);
 
     // Watch selected volume and auto-fill fields
     const watchedSharedVolumeId = form.watch("sharedVolumeId");
@@ -91,7 +91,7 @@ export default function SharedStorageEditDialog({ children, app }: {
                 form.setValue("storageClassName", selectedVolume.storageClassName as 'longhorn' | 'local-path');
             }
         }
-    }, [watchedSharedVolumeId, shareableVolumes]);
+    }, [watchedSharedVolumeId, shareableVolumes, form]);
 
     useEffect(() => {
         if (state.status === 'success') {
@@ -102,14 +102,14 @@ export default function SharedStorageEditDialog({ children, app }: {
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <>
             <div onClick={() => setIsOpen(true)}>
                 {children}
             </div>
-            <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Mount Shared Volume</DialogTitle>
@@ -118,7 +118,7 @@ export default function SharedStorageEditDialog({ children, app }: {
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

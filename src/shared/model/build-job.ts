@@ -1,4 +1,3 @@
-import { GitCommit } from "lucide-react";
 import { z } from "zod";
 import { appBuildMethodZodModel } from "./app-source-info.model";
 import { zodWorkloadType } from "./runtime-type.model";

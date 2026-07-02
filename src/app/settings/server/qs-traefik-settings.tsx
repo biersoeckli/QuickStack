@@ -6,7 +6,6 @@ import { Form } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
@@ -46,7 +45,7 @@ export default function QuickStackTraefikSettings({
             toast.success('Traefik settings updated successfully.');
         }
         FormUtils.mapValidationErrorsToForm<typeof traefikSettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     const readinessText = `${initialStatus.readyReplicas ?? 0}/${initialStatus.replicas ?? 0} pods ready`;
     const lastRestart = initialStatus.restartedAt ? new Date(initialStatus.restartedAt).toLocaleString() : 'Not restarted yet';
@@ -60,7 +59,7 @@ export default function QuickStackTraefikSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

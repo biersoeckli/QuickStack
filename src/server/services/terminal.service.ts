@@ -1,4 +1,4 @@
-import { TerminalSetupInfoModel, terminalSetupInfoZodModel } from "../../shared/model/terminal-setup-info.model";
+import { terminalSetupInfoZodModel } from "../../shared/model/terminal-setup-info.model";
 import { DefaultEventsMap, Socket } from "socket.io";
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';

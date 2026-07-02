@@ -3,12 +3,11 @@
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveGeneralAppContainerConfig } from "./actions";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -57,7 +56,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
             });
         }
         FormUtils.mapValidationErrorsToForm<typeof appContainerConfigZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     const values = form.watch();
 
@@ -71,7 +70,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
             </CardHeader>
             <Form {...form}>
                 <TooltipProvider delayDuration={150}>
-                    <form action={(e) => form.handleSubmit((data) => {
+                    <form action={() => form.handleSubmit((data) => {
                         return formAction(data);
                     })()}>
                         <CardContent className="space-y-6">

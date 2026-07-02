@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form"
 import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { S3Target, User } from "@prisma/client"
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -56,20 +55,20 @@ export default function UserEditOverlay({ children, user, userGroups }: {
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof userEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     if (user) {
       form.reset(user);
     }
-  }, [user]);
+  }, [form, user]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{user?.id ? 'Edit' : 'Create'} User</DialogTitle>
@@ -77,7 +76,7 @@ export default function UserEditOverlay({ children, user, userGroups }: {
           <ScrollArea className="max-h-[70vh]">
             <div className="px-2">
               <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                   return formAction(data);
                 })()}>
                   <div className="space-y-4">

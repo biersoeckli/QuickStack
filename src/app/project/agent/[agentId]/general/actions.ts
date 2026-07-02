@@ -22,8 +22,6 @@ import {
     agentContainerConfigZodModel,
     AgentContainerConfigModel,
 } from "@/shared/model/agent-config.model";
-import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
-import { RequesterIdentity, ensureWriteProjectWorkload } from "@/server/utils/shared-authorization.utils";
 import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import agentVolumeService from "@/server/services/agent-volume.service";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";

@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { getLatestAppEvents } from "./actions";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ export function AppEventsDialog({
   const [isOpen, setIsOpen] = React.useState(false);
   const [events, setEvents] = React.useState<EventInfoModel[] | undefined>(undefined);
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       const eventsResponse = await getLatestAppEvents(app.id);
       if (eventsResponse.status === 'success') {
@@ -39,7 +39,7 @@ export function AppEventsDialog({
       console.error(error);
       toast.error('An error occured while loading events.');
     }
-  }
+  }, [app.id])
 
   useEffect(() => {
     if (isOpen) {
@@ -47,7 +47,7 @@ export function AppEventsDialog({
     } else {
       setEvents(undefined);
     }
-  }, [isOpen]);
+  }, [isOpen, loadEvents]);
 
   return (<>
     <div onClick={() => setIsOpen(true)} className="cursor-pointer"> {children}</div>

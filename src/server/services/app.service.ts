@@ -2,7 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppPort, AppVolume, Prisma } from "@prisma/client";
-import { AppExtendedModel, AppExtendedWriteModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppExtendedWriteModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";

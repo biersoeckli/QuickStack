@@ -1,10 +1,8 @@
-import { randomBytes } from 'crypto';
 import k3s from '../adapter/kubernetes-api.adapter';
 import { KubeObjectNameUtils } from '../utils/kube-object-name.utils';
 import ingressService from './ingress.service';
 import hostnameDnsProviderService from './hostname-dns-provider.service';
 import { V1Ingress } from '@kubernetes/client-node';
-import { AppTemplateUtils } from '../utils/app-template.utils';
 import { CryptoUtils } from '../utils/crypto.utils';
 
 class LonghornUiService {

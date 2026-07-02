@@ -6,7 +6,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
@@ -44,7 +43,7 @@ export default function QsBuildSettings({
             toast.success('Build settings saved.');
         }
         FormUtils.mapValidationErrorsToForm<typeof buildSettingsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     const watchedBuildNode = form.watch('buildNode');
     const isK3sNative = watchedBuildNode === Constants.BUILD_NODE_K3S_NATIVE_VALUE;
@@ -59,7 +58,7 @@ export default function QsBuildSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     const payload = {
                         ...data,
                         buildNode: data.buildNode === Constants.BUILD_AUTO_NODE_VALUE || data.buildNode === '' ? null : data.buildNode,

@@ -10,7 +10,9 @@ export class AgentTemplateUtils {
     ) {
         this.populateRandomValues(inputValues);
 
-        const { inputSettings, ...agent } = agentTemplate;
+        const agent = Object.fromEntries(
+            Object.entries(agentTemplate).filter(([key]) => key !== 'inputSettings')
+        ) as Omit<typeof agentTemplate, 'inputSettings'>;
         const envVars: AgentEnvVarModel[] = [];
 
         for (const input of inputValues) {

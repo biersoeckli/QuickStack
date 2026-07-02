@@ -10,7 +10,7 @@ import agentVolumeService from '@/server/services/agent-volume.service';
 import dataAccess from '@/server/adapter/db.client';
 
 describe('agent-volume.service', () => {
-    const dbCtx = createPrismaTestContext('agent-volume');
+    createPrismaTestContext('agent-volume');
 
     let projectId: string;
     let llmGatewayId: string;

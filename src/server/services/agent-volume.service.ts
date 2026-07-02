@@ -27,7 +27,8 @@ class AgentVolumeService {
                     data: input as Prisma.AgentVolumeUpdateInput,
                 });
             } else {
-                const { id: _, ...createData } = input;
+                const createData = { ...input };
+                delete createData.id;
                 await db.agentVolume.create({
                     data: createData,
                 });
