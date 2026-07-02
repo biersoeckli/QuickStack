@@ -100,7 +100,7 @@ class AgentTemplateService {
             })))
             : null;
 
-        const { inputSettings, ...templateBase } = template;
+        const { inputSettings: _, ...templateBase } = template;
         const writeModel: AgentExtendedWriteModel = {
             ...templateBase,
             ...agent,

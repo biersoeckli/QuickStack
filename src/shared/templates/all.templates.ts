@@ -20,6 +20,7 @@ import { AppExtendedModel } from "../model/app-extended.model";
 import { tikaAppTemplate } from "./apps/tika.template";
 import { libredeskAppTemplate, postCreateLibredeskAppTemplate } from "./apps/libredesk.template";
 import { chiselAppTemplate, postCreateChiselAppTemplate } from "./apps/chisel.template";
+import { litellmAppTemplate, postCreateLiteLLMAppTemplate } from "./apps/litellm.template";
 
 
 export const databaseTemplates: AppTemplateModel[] = [
@@ -72,7 +73,8 @@ export const appTemplates: AppTemplateModel[] = [
     openwebuiAppTemplate,
     tikaAppTemplate,
     libredeskAppTemplate,
-    chiselAppTemplate
+    chiselAppTemplate,
+    litellmAppTemplate
 ];
 
 export const postCreateTemplateFunctions: Map<string, (createdApps: AppExtendedModel[]) => Promise<AppExtendedModel[]>> = new Map([
@@ -83,6 +85,7 @@ export const postCreateTemplateFunctions: Map<string, (createdApps: AppExtendedM
     [duplicatiAppTemplate.name, postCreateDuplicatiAppTemplate],
     [n8nAppTemplate.name, postCreateN8NAppTemplate],
     [chiselAppTemplate.name, postCreateChiselAppTemplate],
+    [litellmAppTemplate.name, postCreateLiteLLMAppTemplate],
 ]);
 
 
