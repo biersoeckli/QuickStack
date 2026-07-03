@@ -88,21 +88,56 @@ describe('agent-domain.service', () => {
                 agentId,
                 hostname: 'missing.example.com',
                 port: 8080,
+                useSsl: true,
+                redirectHttps: true,
             })).rejects.toThrow('Agent domain not found.');
         });
 
-        it('rejects duplicate hostname across different agents', async () => {
+        it('allows duplicate hostname across different agents', async () => {
             const agent2 = await dataAccess.client.agent.create({
                 data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: 'm2' },
             });
 
-            await agentDomainService.saveDomain({ agentId, hostname: 'shared.example.com', port: 8080 });
+            await agentDomainService.saveDomain({
+                agentId,
+                hostname: 'shared.example.com',
+                port: 8080,
+                useSsl: true,
+                redirectHttps: true,
+            });
 
             await expect(agentDomainService.saveDomain({
                 agentId: agent2.id,
                 hostname: 'shared.example.com',
                 port: 9090,
-            })).rejects.toThrow('Domain is already assigned to another Agent.');
+                useSsl: true,
+                redirectHttps: true,
+            })).resolves.toBeUndefined();
+
+            const agent1Domains = await dataAccess.client.agentDomain.findMany({ where: { agentId } });
+            const agent2Domains = await dataAccess.client.agentDomain.findMany({ where: { agentId: agent2.id } });
+            expect(agent1Domains).toHaveLength(1);
+            expect(agent2Domains).toHaveLength(1);
+            expect(agent1Domains[0].hostname).toBe('shared.example.com');
+            expect(agent2Domains[0].hostname).toBe('shared.example.com');
+        });
+
+        it('rejects duplicate hostname for the same agent', async () => {
+            await agentDomainService.saveDomain({
+                agentId,
+                hostname: 'same-agent.example.com',
+                port: 8080,
+                useSsl: true,
+                redirectHttps: true,
+            });
+
+            await expect(agentDomainService.saveDomain({
+                agentId,
+                hostname: 'same-agent.example.com',
+                port: 9090,
+                useSsl: true,
+                redirectHttps: true,
+            })).rejects.toThrow('Domain is already assigned to this Agent.');
         });
     });
 

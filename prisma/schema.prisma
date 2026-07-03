@@ -300,7 +300,7 @@ model AgentGitSshKey {
 
 model AgentDomain {
   id            String  @id @default(uuid())
-  hostname      String  @unique
+  hostname      String
   useSsl        Boolean @default(true)
   redirectHttps Boolean @default(true)
   port          Int
@@ -309,6 +309,8 @@ model AgentDomain {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([agentId, hostname])
 }
 
 model AgentVolume {

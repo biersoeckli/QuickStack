@@ -12,11 +12,15 @@ class AgentDomainService {
             where: { id: input.agentId },
         });
 
-        const existingDomainWithSameHostname = await db.agentDomain.findUnique({
-            where: { hostname: input.hostname },
+        const duplicateDomainForAgent = await db.agentDomain.findFirst({
+            where: {
+                agentId: input.agentId,
+                hostname: input.hostname,
+                ...(input.id ? { id: { not: input.id } } : {}),
+            },
         });
-        if (existingDomainWithSameHostname && existingDomainWithSameHostname.agentId !== input.agentId) {
-            throw new ServiceException('Domain is already assigned to another Agent.');
+        if (duplicateDomainForAgent) {
+            throw new ServiceException('Domain is already assigned to this Agent.');
         }
 
         try {
