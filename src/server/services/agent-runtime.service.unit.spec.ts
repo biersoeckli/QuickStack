@@ -61,6 +61,7 @@ vi.mock('@/server/utils/crypto.utils', () => ({
         decrypt: vi.fn((value: string) => value.replace('encrypted:', '')),
     },
 }));
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';

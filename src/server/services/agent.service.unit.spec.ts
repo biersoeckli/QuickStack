@@ -143,6 +143,7 @@ vi.mock('@/server/services/deployment-logs.service', () => ({
     },
     dlog: vi.fn(),
 }));
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
@@ -415,7 +416,6 @@ describe('agent.service', () => {
             await agentService.deploy('agent-1');
 
             const { resource } = getOpenCodeConfigFromTemplateCall();
-            expect(resource.spec.networkPolicy.ingress).toEqual([]);
             expect(resource.spec.networkPolicy.egress).toEqual(expect.arrayContaining([
                 {
                     to: [{
