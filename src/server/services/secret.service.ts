@@ -93,7 +93,8 @@ class SecretService {
 
     async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
         console.log(`Updating secret ${secretName}...`);
-        await k3s.core.replaceNamespacedSecret({ name: secretName, namespace: namespace, body: secretManifest });
+        await this.deleteSecret(namespace, secretName);
+        await this.createSecret(namespace, secretManifest);
     }
 
     async saveSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
