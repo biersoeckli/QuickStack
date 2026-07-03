@@ -88,6 +88,10 @@ export class KubeObjectNameUtils {
         return `secret-${id}`;
     }
 
+    static toPullSecretId(id: string): `pullsec-${string}` {
+        return `pullsec-${id.substring(0, 55)}`;
+    }
+
     static toDbGateId(appId: string): `dbgate-${string}` {
         return `dbgate-${appId}`;
     }

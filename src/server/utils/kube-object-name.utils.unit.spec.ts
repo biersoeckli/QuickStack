@@ -84,6 +84,19 @@ describe('KubeObjectNameUtils', () => {
         });
     });
 
+    describe('toPullSecretId', () => {
+        it('should convert ID to pull secret name format', () => {
+            const result = KubeObjectNameUtils.toPullSecretId('agent-test');
+            expect(result).toBe('pullsec-agent-test');
+        });
+
+        it('should return a name with max length 63', () => {
+            const result = KubeObjectNameUtils.toPullSecretId('a'.repeat(100));
+            expect(result).toBe(`pullsec-${'a'.repeat(55)}`);
+            expect(result.length).toBeLessThanOrEqual(63);
+        });
+    });
+
     describe('toAgentWorkspacePvcName', () => {
         it('should generate a deterministic name for the same inputs', () => {
             const first = KubeObjectNameUtils.toAgentWorkspacePvcName('user-1', 'agent-volume-1');

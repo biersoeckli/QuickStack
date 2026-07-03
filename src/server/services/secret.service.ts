@@ -11,14 +11,14 @@ class SecretService {
         if (this.workloadNeedsNoPullSecret(app)) {
             return;
         }
-        return this.createOrUpdateDockerPullSecretForWorkload(app, KubeObjectNameUtils.toSecretId(app.id));
+        return this.createOrUpdateDockerPullSecretForWorkload(app, KubeObjectNameUtils.toPullSecretId(app.id));
     }
 
     async createOrUpdateAgentDockerPullSecret(agent: AgentExtendedModel) {
         if (this.workloadNeedsNoPullSecret(agent)) {
             return;
         }
-        return this.createOrUpdateDockerPullSecretForWorkload(agent, KubeObjectNameUtils.toSecretId(agent.id));
+        return this.createOrUpdateDockerPullSecretForWorkload(agent, KubeObjectNameUtils.toPullSecretId(agent.id));
     }
 
     private async createOrUpdateDockerPullSecretForWorkload(
@@ -64,7 +64,7 @@ class SecretService {
 
     async deleteUnusedSecrets(app: AppExtendedModel) {
         if (this.workloadNeedsNoPullSecret(app)) {
-            const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toSecretId(app.id));
+            const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toPullSecretId(app.id));
             if (existingSecret) {
                 console.log(`Deleting secret ${existingSecret.metadata?.name}...`);
                 await this.deleteSecret(app.projectId, existingSecret.metadata?.name!);
@@ -74,7 +74,7 @@ class SecretService {
 
     async deleteUnusedAgentDockerPullSecret(agent: AgentExtendedModel) {
         if (this.workloadNeedsNoPullSecret(agent)) {
-            await this.deleteSecretIfExists(agent.projectId, KubeObjectNameUtils.toSecretId(agent.id));
+            await this.deleteSecretIfExists(agent.projectId, KubeObjectNameUtils.toPullSecretId(agent.id));
         }
     }
 
