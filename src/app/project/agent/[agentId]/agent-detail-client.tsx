@@ -42,7 +42,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                 <TabsList>
                     <TabsTrigger value="instances"><Bot className="mr-2 h-4 w-4" /> Instances</TabsTrigger>
                     {hasGitSource && <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>}
-                    <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />Configuration</TabsTrigger>
+                    {!readonly && <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />Configuration</TabsTrigger>}
                 </TabsList>
 
                 <TabsContent value="general" className="pt-4">

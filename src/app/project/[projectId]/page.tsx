@@ -29,6 +29,8 @@ export default async function AppsPage({
 
     if (isAgentProject) {
         const agents = await agentService.getAllByProjectId(projectId);
+        const relevantAgents = agents.filter((agent) =>
+            UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id));
         return (
             <div className="flex-1 space-y-4 pt-6">
                 <PageTitle
@@ -37,7 +39,7 @@ export default async function AppsPage({
                     {UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId) &&
                         <CreateProjectActions projectId={projectId} projectType="agent" />}
                 </PageTitle>
-                <AgentListClient agents={agents} session={session} projectId={projectId} />
+                <AgentListClient agents={relevantAgents} session={session} projectId={projectId} />
                 <ProjectBreadcrumbs project={project} />
             </div>
         );
