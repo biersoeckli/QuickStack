@@ -20,6 +20,7 @@ import configMapService from "./config-map.service";
 import agentDomainService from "./agent-domain.service";
 import agentVolumeService from "./agent-volume.service";
 import agentFileMountService from "./agent-file-mount.service";
+import agentNetworkPolicyService from "./agent-network-policy.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import crypto from "crypto";
 import buildService from "./build.service";
@@ -46,6 +47,13 @@ class AgentService {
                     agentVolumes: true,
                     agentFileMounts: true,
                     agentGitSshKey: true,
+                    agentNetworkPolicy: {
+                        include: {
+                            rules: {
+                                include: { targetApp: true },
+                            },
+                        },
+                    },
                 },
                 orderBy: { name: 'asc' },
             }),
@@ -65,6 +73,13 @@ class AgentService {
                     agentVolumes: true,
                     agentFileMounts: true,
                     agentGitSshKey: true,
+                    agentNetworkPolicy: {
+                        include: {
+                            rules: {
+                                include: { targetApp: true },
+                            },
+                        },
+                    },
                 },
             });
         }
@@ -78,6 +93,13 @@ class AgentService {
                     agentVolumes: true,
                     agentFileMounts: true,
                     agentGitSshKey: true,
+                    agentNetworkPolicy: {
+                        include: {
+                            rules: {
+                                include: { targetApp: true },
+                            },
+                        },
+                    },
                 },
             }),
             [Tags.agent(agentId)],
@@ -86,9 +108,9 @@ class AgentService {
     }
 
     /**
-     * Upserts an Agent along with its sub-resources (domains, volumes, file mounts)
+     * Upserts an Agent along with its sub-resources (domains, volumes, file mounts, network policy)
      * in a single transaction. Delegates per-item save logic to the respective
-     * sub-services ({@link agentDomainService}, {@link agentVolumeService}, {@link agentFileMountService}).
+     * sub-services ({@link agentDomainService}, {@link agentVolumeService}, {@link agentFileMountService}, {@link agentNetworkPolicyService}).
      *
      * - If {@link AgentExtendedWriteModel.id} is provided and the agent exists → update.
      * - If the id is provided but no agent exists → create with that id.
@@ -107,6 +129,7 @@ class AgentService {
                 agentDomains: agentDomainsInput,
                 agentVolumes: agentVolumesInput,
                 agentFileMounts: agentFileMountsInput,
+                agentNetworkPolicy: agentNetworkPolicyInput,
                 ...agentInputData
             } = agentExtendedInput;
             const savedAgent = await this.saveAgent(agentInputData, tx);
@@ -170,6 +193,37 @@ class AgentService {
                 for (const existing of existingFileMounts) {
                     if (!keepIds.has(existing.id)) {
                         await agentFileMountService.deleteFileMount(existing.id, tx);
+                    }
+                }
+            }
+
+            if (agentNetworkPolicyInput) {
+                await agentNetworkPolicyService.saveSettings({
+                    allowInternetAccess: agentNetworkPolicyInput.allowInternetAccess ?? true,
+                    agentId: savedAgentId,
+                }, tx);
+
+                for (const rule of agentNetworkPolicyInput.rules) {
+                    await agentNetworkPolicyService.saveEgressRule({
+                        id: rule.id,
+                        type: 'EGRESS',
+                        targetAppId: rule.targetAppId,
+                        port: rule.port ?? 443,
+                        protocol: (rule.protocol as 'TCP' | 'UDP') ?? 'TCP',
+                        agentId: savedAgentId,
+                    }, tx);
+                }
+                // Delete rules that are no longer in the incoming model
+                {
+                    const existingPolicy = await tx.agentNetworkPolicy.findUnique({ where: { agentId: savedAgentId } });
+                    if (existingPolicy) {
+                        const existingRules = await tx.agentNetworkPolicyRule.findMany({ where: { agentNetworkPolicyId: existingPolicy.id } });
+                        const keepIds = new Set(agentNetworkPolicyInput.rules.map((r) => r.id).filter(Boolean) as string[]);
+                        for (const existing of existingRules) {
+                            if (!keepIds.has(existing.id)) {
+                                await agentNetworkPolicyService.deleteEgressRule(existing.id, tx);
+                            }
+                        }
                     }
                 }
             }
@@ -354,6 +408,7 @@ class AgentService {
                 volumePvcData,
                 fileVolumes,
                 fileVolumeMounts,
+                agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
             }, {
                 dockerPullSecretName,
                 deploymentId,

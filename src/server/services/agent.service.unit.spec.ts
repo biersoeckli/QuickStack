@@ -157,6 +157,22 @@ import ingressService from '@/server/services/ingress.service';
 import buildService from '@/server/services/build.service';
 import agentService from './agent.service';
 
+const agentRelationsInclude = {
+    project: true,
+    llmGateway: true,
+    agentDomains: true,
+    agentVolumes: true,
+    agentFileMounts: true,
+    agentGitSshKey: true,
+    agentNetworkPolicy: {
+        include: {
+            rules: {
+                include: { targetApp: true },
+            },
+        },
+    },
+};
+
 function mockAgent(id: string, name: string, projectId: string = 'proj-test-agent') {
     return {
         id,
@@ -187,6 +203,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         agentVolumes: [],
         agentFileMounts: [],
         agentGitSshKey: null,
+        agentNetworkPolicy: null,
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
     };
@@ -284,7 +301,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agents);
             expect(dataAccess.client.agent.findMany).toHaveBeenCalledWith({
                 where: { projectId: 'proj-test-agent' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true, agentGitSshKey: true },
+                include: agentRelationsInclude,
                 orderBy: { name: 'asc' },
             });
         });
@@ -300,7 +317,7 @@ describe('agent.service', () => {
             expect(result).toEqual(agent);
             expect(dataAccess.client.agent.findFirstOrThrow).toHaveBeenCalledWith({
                 where: { id: 'agent-1' },
-                include: { project: true, llmGateway: true, agentDomains: true, agentVolumes: true, agentFileMounts: true, agentGitSshKey: true },
+                include: agentRelationsInclude,
             });
         });
     });
@@ -362,6 +379,166 @@ describe('agent.service', () => {
                     'gpt-4o': { name: 'gpt-4o' },
                 },
             }));
+        });
+
+        it('omits SandboxTemplate networkPolicy when agent has no policy', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One') as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            expect(resource.spec.networkPolicy).toBeUndefined();
+        });
+
+        it('writes DNS, internet, and app egress rules when internet access is enabled', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentNetworkPolicy: {
+                    id: 'policy-1',
+                    agentId: 'agent-1',
+                    allowInternetAccess: true,
+                    rules: [{
+                        id: 'rule-1',
+                        agentNetworkPolicyId: 'policy-1',
+                        type: 'EGRESS',
+                        targetAppId: 'app-api',
+                        targetApp: { id: 'app-api', name: 'API', projectId: 'proj-test-agent' },
+                        port: 8080,
+                        protocol: 'TCP',
+                        createdAt: new Date('2025-01-01'),
+                        updatedAt: new Date('2025-01-01'),
+                    }],
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                },
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            expect(resource.spec.networkPolicy.ingress).toEqual([]);
+            expect(resource.spec.networkPolicy.egress).toEqual(expect.arrayContaining([
+                {
+                    to: [{
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'kube-system',
+                            },
+                        },
+                        podSelector: {
+                            matchExpressions: [{
+                                key: 'k8s-app',
+                                operator: 'In',
+                                values: ['kube-dns', 'coredns'],
+                            }],
+                        },
+                    }],
+                    ports: [
+                        { protocol: 'UDP', port: 53 },
+                        { protocol: 'TCP', port: 53 },
+                    ],
+                },
+                {
+                    to: [{
+                        ipBlock: {
+                            cidr: '0.0.0.0/0',
+                            except: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16'],
+                        },
+                    }],
+                },
+                {
+                    to: [{
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'proj-test-agent',
+                            },
+                        },
+                        podSelector: {
+                            matchLabels: {
+                                app: 'app-api',
+                            },
+                        },
+                    }],
+                    ports: [{ protocol: 'TCP', port: 8080 }],
+                },
+            ]));
+        });
+
+        it('does not write internet egress when internet access is disabled', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentNetworkPolicy: {
+                    id: 'policy-1',
+                    agentId: 'agent-1',
+                    allowInternetAccess: false,
+                    rules: [{
+                        id: 'rule-1',
+                        agentNetworkPolicyId: 'policy-1',
+                        type: 'EGRESS',
+                        targetAppId: 'app-api',
+                        targetApp: { id: 'app-api', name: 'API', projectId: 'proj-test-agent' },
+                        port: 443,
+                        protocol: 'TCP',
+                        createdAt: new Date('2025-01-01'),
+                        updatedAt: new Date('2025-01-01'),
+                    }],
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                },
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            expect(resource.spec.networkPolicy.egress).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({
+                    to: [expect.objectContaining({
+                        ipBlock: expect.objectContaining({ cidr: '0.0.0.0/0' }),
+                    })],
+                }),
+            ]));
+        });
+
+        it('uses target app project in cross-project egress namespaceSelector', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentNetworkPolicy: {
+                    id: 'policy-1',
+                    agentId: 'agent-1',
+                    allowInternetAccess: false,
+                    rules: [{
+                        id: 'rule-1',
+                        agentNetworkPolicyId: 'policy-1',
+                        type: 'EGRESS',
+                        targetAppId: 'app-db',
+                        targetApp: { id: 'app-db', name: 'DB', projectId: 'proj-target' },
+                        port: 5432,
+                        protocol: 'TCP',
+                        createdAt: new Date('2025-01-01'),
+                        updatedAt: new Date('2025-01-01'),
+                    }],
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                },
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getOpenCodeConfigFromTemplateCall();
+            expect(resource.spec.networkPolicy.egress).toEqual(expect.arrayContaining([
+                {
+                    to: [{
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'proj-target',
+                            },
+                        },
+                        podSelector: {
+                            matchLabels: {
+                                app: 'app-db',
+                            },
+                        },
+                    }],
+                    ports: [{ protocol: 'TCP', port: 5432 }],
+                },
+            ]));
         });
 
         it('does not duplicate /v1 in LiteLLM baseURL', async () => {

@@ -1,7 +1,7 @@
 'use server'
 
 import agentService from "@/server/services/agent.service";
-import { isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import {
     agentModelConfigurationZodModel,
     AgentModelConfigurationModel,
@@ -24,6 +24,14 @@ import {
 } from "@/shared/model/agent-config.model";
 import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import agentVolumeService from "@/server/services/agent-volume.service";
+import agentNetworkPolicyService from "@/server/services/agent-network-policy.service";
+import projectService from "@/server/services/project.service";
+import {
+    AgentNetworkPolicyEgressRuleEditModel,
+    agentNetworkPolicyEgressRuleEditZodModel,
+    AgentNetworkPolicySettingsModel,
+    agentNetworkPolicySettingsZodModel,
+} from "@/shared/model/agent-network-policy-edit.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import agentGitSshKeyService from "@/server/services/agent-git-ssh-key.service";
@@ -209,4 +217,45 @@ export const deleteAgentVolume = async (volumeId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForWorkload(volumeId);
         await agentVolumeService.deleteVolume(volumeId);
+    });
+
+export const saveAgentNetworkPolicySettings = async (prevState: any, inputData: AgentNetworkPolicySettingsModel, agentId: string) =>
+    saveFormAction(inputData, agentNetworkPolicySettingsZodModel, async (validatedData) => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentNetworkPolicyService.saveSettings({
+            ...validatedData,
+            agentId,
+        });
+    });
+
+const actionAgentNetworkPolicyEgressRuleEditZodModel = agentNetworkPolicyEgressRuleEditZodModel.merge(z.object({
+    id: z.string().nullish(),
+}));
+
+export const saveAgentNetworkPolicyEgressRule = async (prevState: any, inputData: AgentNetworkPolicyEgressRuleEditModel & { id?: string }, agentId: string) =>
+    saveFormAction(inputData, actionAgentNetworkPolicyEgressRuleEditZodModel, async (validatedData) => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentNetworkPolicyService.saveEgressRule({
+            ...validatedData,
+            agentId,
+            id: validatedData.id ?? undefined,
+        });
+    });
+
+export const deleteAgentNetworkPolicyEgressRule = async (ruleId: string) =>
+    simpleAction(async () => {
+        const rule = await agentNetworkPolicyService.getEgressRuleById(ruleId);
+        await isAuthorizedWriteForWorkload(rule.agentNetworkPolicy.agentId);
+        await agentNetworkPolicyService.deleteEgressRule(ruleId);
+    });
+
+export const getAppsForAgentNetworkPolicy = async (agentId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForWorkload(agentId);
+        const projects = await projectService.getAll();
+        return projects.map((project) => ({
+            id: project.id,
+            name: project.name,
+            apps: project.apps.map((app) => ({ id: app.id, name: app.name })),
+        }));
     });

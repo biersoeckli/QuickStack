@@ -10,6 +10,8 @@ import {
     ContainerCommangArgsUtils,
 } from "@/shared/utils/container-command-args.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import networkPolicyService from "./network-policy.service";
+import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.service";
 
 const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
 
@@ -36,6 +38,7 @@ export type AgentSandboxTemplateConfig = {
     }[];
     fileVolumes: V1Volume[];
     fileVolumeMounts: V1VolumeMount[];
+    agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig;
 };
 
 export type SandboxTemplateDeploymentInfo = {
@@ -118,6 +121,7 @@ class AgentSandboxTemplateBuilder {
                 name: 'workspace',
                 mountPath: '/srv',
             }];
+        const networkPolicy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy(agent.agentNetworkPolicy);
 
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
@@ -138,6 +142,7 @@ class AgentSandboxTemplateBuilder {
             spec: {
                 envVarsInjectionPolicy: 'Disallowed',
                 networkPolicyManagement: 'Managed',
+                ...(networkPolicy ? { networkPolicy } : {}),
                 service: true,
                 podTemplate: {
                     spec: {

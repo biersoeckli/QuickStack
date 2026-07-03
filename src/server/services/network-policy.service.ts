@@ -4,6 +4,14 @@ import { V1NetworkPolicy, V1NetworkPolicyEgressRule, V1NetworkPolicyIngressRule,
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
 import { appNetworkPolicy, AppNetworkPolicyType } from "@/shared/model/network-policy.model";
+import type { SandboxTemplateNetworkPolicy } from "../adapter/api-clients/types/agents.models";
+import type { AgentNetworkPolicyRuleWithTargetAppModel } from "@/shared/model/agent-extended.model";
+import { QS_AUTH_PROXY_SERVICE_NAME } from "./qs-auth-proxy.service";
+
+export type AgentSandboxTemplateNetworkPolicyConfig = {
+    allowInternetAccess: boolean;
+    rules: AgentNetworkPolicyRuleWithTargetAppModel[];
+} | null;
 
 class NetworkPolicyService {
 
@@ -46,6 +54,97 @@ class NetworkPolicyService {
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
+    }
+
+    buildAgentSandboxTemplateNetworkPolicy(
+        agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig,
+    ): SandboxTemplateNetworkPolicy | undefined {
+        if (!agentNetworkPolicy) {
+            return undefined;
+        }
+
+        const egress: NonNullable<SandboxTemplateNetworkPolicy>['egress'] = [{
+            to: [{
+                namespaceSelector: {
+                    matchLabels: {
+                        'kubernetes.io/metadata.name': 'kube-system',
+                    },
+                },
+                podSelector: {
+                    matchExpressions: [{
+                        key: 'k8s-app',
+                        operator: 'In',
+                        values: ['kube-dns', 'coredns'],
+                    }],
+                },
+            }],
+            ports: [
+                { protocol: 'UDP', port: 53 },
+                { protocol: 'TCP', port: 53 },
+            ],
+        }];
+
+        if (agentNetworkPolicy.allowInternetAccess) {
+            egress.push({
+                to: [{
+                    ipBlock: {
+                        cidr: '0.0.0.0/0',
+                        except: [
+                            '10.0.0.0/8',
+                            '172.16.0.0/12',
+                            '192.168.0.0/16',
+                            '169.254.0.0/16',
+                        ],
+                    },
+                }],
+            });
+        }
+
+        const seen = new Set<string>();
+        for (const rule of agentNetworkPolicy.rules) {
+            if (rule.type && rule.type !== 'EGRESS') {
+                continue;
+            }
+            const targetProjectId = rule.targetApp.projectId;
+            const protocol = rule.protocol || 'TCP';
+            const dedupeKey = `${rule.targetAppId}:${targetProjectId}:${rule.port}:${protocol}`;
+            if (seen.has(dedupeKey)) {
+                continue;
+            }
+            seen.add(dedupeKey);
+
+            egress.push({
+                to: [{
+                    namespaceSelector: {
+                        matchLabels: {
+                            'kubernetes.io/metadata.name': targetProjectId,
+                        },
+                    },
+                    podSelector: {
+                        matchLabels: {
+                            app: rule.targetAppId,
+                        },
+                    },
+                }],
+                ports: [{
+                    protocol,
+                    port: rule.port,
+                }],
+            });
+        }
+
+        return {
+            ingress: [{
+                from: [{
+                    podSelector: {
+                        matchLabels: {
+                            app: QS_AUTH_PROXY_SERVICE_NAME,
+                        },
+                    },
+                }],
+            }],
+            egress,
+        };
     }
 
     private normalizePolicy(raw: string): AppNetworkPolicyType {
@@ -465,5 +564,3 @@ class NetworkPolicyService {
 
 const networkPolicyService = new NetworkPolicyService();
 export default networkPolicyService;
-
-

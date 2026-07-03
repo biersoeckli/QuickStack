@@ -58,4 +58,21 @@ describe('network-policy.service', () => {
             ])
         );
     });
+
+    it('allows ingress from auth proxy to all sandbox ports', () => {
+        const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
+            allowInternetAccess: false,
+            rules: [],
+        });
+
+        expect(policy?.ingress).toEqual([{
+            _from: [{
+                podSelector: {
+                    matchLabels: {
+                        app: 'qs-auth-proxy',
+                    },
+                },
+            }],
+        }]);
+    });
 });

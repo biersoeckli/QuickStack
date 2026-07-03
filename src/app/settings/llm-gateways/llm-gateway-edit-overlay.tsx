@@ -285,7 +285,7 @@ export default function LlmGatewayEditOverlay({
             if (await openConfirmDialog({
                 title: 'Deploy created apps?',
                 description: `The ressources for the LiteLLM instance have been created. Do you want to deploy the created apps now?`,
-                okButton: 'Deploy',
+                okButton: 'Deploy Now',
                 cancelButton: 'Later',
             })) {
                 for (const appId of createdApps) {

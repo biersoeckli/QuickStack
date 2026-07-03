@@ -17,6 +17,7 @@ import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-i
 import DomainsCard from "@/components/custom/domains-card";
 import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volumes-card";
 import FileMountsCard from "@/components/custom/file-mounts-card";
+import AgentNetworkPolicyCard from "./general/agent-network-policy-card";
 import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
 
 export default function AgentDetailClient({ agent, role, templateInfo, storageClasses }: {
@@ -67,6 +68,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                             workloadType={'agent'}
                             readonly={readonly}
                         />
+                        <AgentNetworkPolicyCard agent={agent} readonly={readonly} />
                         <AgentEnvVarsCard agent={agent} readonly={readonly} />
                     </div>
                 </TabsContent>

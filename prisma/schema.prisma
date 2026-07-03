@@ -253,9 +253,38 @@ model Agent {
   agentVolumes         AgentVolume[]
   agentFileMounts      AgentFileMount[]
   agentGitSshKey       AgentGitSshKey?
+  agentNetworkPolicy   AgentNetworkPolicy?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AgentNetworkPolicy {
+  id                  String  @id @default(uuid())
+  agentId             String  @unique
+  agent               Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  allowInternetAccess Boolean @default(true)
+
+  rules AgentNetworkPolicyRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentNetworkPolicyRule {
+  id                   String             @id @default(uuid())
+  agentNetworkPolicyId String
+  agentNetworkPolicy   AgentNetworkPolicy @relation(fields: [agentNetworkPolicyId], references: [id], onDelete: Cascade)
+  type                 String             @default("EGRESS") // EGRESS (always EGRESS for agents)
+  targetAppId          String
+  targetApp            App                @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
+  port                 Int
+  protocol             String             @default("TCP") // TCP, UDP
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentNetworkPolicyId, targetAppId, port, protocol, type])
 }
 
 model AgentGitSshKey {
@@ -367,6 +396,8 @@ model App {
   appBasicAuths      AppBasicAuth[]
   appGitSshKey       AppGitSshKey?
   roleAppPermissions RoleAppPermission[]
+
+  agentNetworkPolicyRules AgentNetworkPolicyRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

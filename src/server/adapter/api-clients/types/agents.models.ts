@@ -10,6 +10,9 @@ export type SandboxList =
 export type SandboxTemplate =
     agentExtendedConponents['schemas']['io.x-k8s.agents.extensions.v1beta1.SandboxTemplate'];
 
+export type SandboxTemplateNetworkPolicy =
+    SandboxTemplate['spec']['networkPolicy'];
+
 export type SandboxTemplateList =
     agentExtendedConponents['schemas']['io.x-k8s.agents.extensions.v1beta1.SandboxTemplateList'];
 
