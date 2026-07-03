@@ -66,7 +66,7 @@ describe('network-policy.service', () => {
         });
 
         expect(policy?.ingress).toEqual([{
-            _from: [{
+            from: [{
                 podSelector: {
                     matchLabels: {
                         app: 'qs-auth-proxy',
