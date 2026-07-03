@@ -48,6 +48,7 @@ class AppTemplateService {
                     await appService.saveAppExtendedModel(app, tx);
                 }
             }
+            return createdTemplates.map(x => x.id);
         });
     }
 
