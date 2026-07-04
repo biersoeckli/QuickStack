@@ -1,17 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { useDialog } from "@/frontend/states/zustand.states";
-import { useDialogContext } from "@/frontend/states/dialog-context";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Bot, ExternalLink, Files, Logs, Play, Square, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { createAgentAccessUrl, startInstance, stopInstance } from "./actions";
+import { startInstance, stopInstance } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { LogsDialogContent } from "@/components/custom/logs-overlay";
@@ -27,8 +25,6 @@ import DeploymentStatusBadge from "@/app/project/app/[appId]/overview/deployment
 import { AgentDomain } from "@prisma/client";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Spinner } from "@/components/ui/spinner";
-import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import AgentAccessDialogContent from "./agent-access-dialog";
 
 interface InstanceInfo {
