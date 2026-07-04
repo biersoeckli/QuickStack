@@ -81,7 +81,7 @@ export const AgentExtendedWriteZodModel = AgentModel
     .omit(agentWriteOmitFields)
     .extend({
         id: z.string().optional(),
-        modelAlias: z.array(z.string().trim().min(1)).min(1),
+        modelAlias: z.array(z.string().trim().min(1)),
         agentDomains: AgentDomainModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
         agentVolumes: AgentVolumeModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
         agentFileMounts: AgentFileMountModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
