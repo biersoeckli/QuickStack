@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, updateRegistry } from "./actions";
+import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, redeployQuickStackAuthProxy, updateRegistry } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
@@ -93,6 +93,16 @@ export default function QuickStackMaintenanceSettings({
                         Toast.fromAction(() => updateRegistry());
                     }
                 }}><RotateCcw /> Force Update Registry</Button>
+
+                <Button variant="secondary" onClick={async () => {
+                    if (await useConfirm.openConfirmDialog({
+                        title: 'Redeploy QuickStack Auth Proxy',
+                        description: 'This action will force redeploy the QuickStack auth proxy.',
+                        okButton: "Redeploy Auth Proxy"
+                    })) {
+                        Toast.fromAction(() => redeployQuickStackAuthProxy());
+                    }
+                }}><RotateCcw /> Redeploy Auth Proxy</Button>
 
             </CardContent>
         </Card>

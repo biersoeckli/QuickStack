@@ -1,8 +1,9 @@
-import k3s from "../adapter/kubernetes-api.adapter";
+import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import { Constants } from "../../shared/utils/constants";
 import namespaceService from "./namespace.service";
 import paramService from "./param.service";
 import secretService from "./secret.service";
+import { PatchStrategy } from "@kubernetes/client-node";
 
 export const QS_AUTH_PROXY_SERVICE_NAME = 'qs-auth-proxy';
 export const QS_AUTH_PROXY_SERVICE_PORT = 3000;
@@ -114,6 +115,30 @@ class QsAuthProxyService {
 
         await k3s.applyResource(serviceManifest, namespace);
         await k3s.applyResource(deploymentManifest, namespace);
+    }
+
+    async forceRedeploy() {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
+        await this.ensure();
+
+        await k3s.apps.patchNamespacedDeployment(
+            {
+                name: QS_AUTH_PROXY_SERVICE_NAME,
+                namespace,
+                body: {
+                    spec: {
+                        template: {
+                            metadata: {
+                                annotations: {
+                                    'kubectl.kubernetes.io/restartedAt': new Date().toISOString(),
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            kubernetesPatchOptions(PatchStrategy.MergePatch),
+        );
     }
 }
 

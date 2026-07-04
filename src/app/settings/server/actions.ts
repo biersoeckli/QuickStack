@@ -33,6 +33,7 @@ import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.serv
 import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import longhornUiService from "@/server/services/longhorn-ui.service";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
+import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
   saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
@@ -194,6 +195,13 @@ export const updateRegistry = async () =>
     const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
     await registryService.deployRegistry(registryLocation!, true);
     return new SuccessActionResult(undefined, 'Registry will be updated, this might take a few seconds.');
+  });
+
+export const redeployQuickStackAuthProxy = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await qsAuthProxyService.forceRedeploy();
+    return new SuccessActionResult(undefined, 'QuickStack auth proxy will be redeployed, this might take a few seconds.');
   });
 
 export const deleteAllFailedAndSuccededPods = async () =>
