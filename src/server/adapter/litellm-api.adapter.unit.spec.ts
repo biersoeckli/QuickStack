@@ -59,6 +59,72 @@ describe('LiteLlmApiAdapter', () => {
         });
     });
 
+    describe('listModelInfo', () => {
+        it('maps LiteLLM metadata for OpenCode config generation', async () => {
+            vi.spyOn(global, 'fetch').mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: vi.fn().mockResolvedValue({
+                    data: [{
+                        model_name: 'gpt-5',
+                        model_info: {
+                            display_name: 'GPT 5',
+                            max_input_tokens: 128000,
+                            max_output_tokens: '8192',
+                            supports_reasoning: true,
+                            default_reasoning_effort: 'medium',
+                            reasoning_summary: 'auto',
+                            text_verbosity: 'low',
+                        },
+                    }, {
+                        model_name: 'claude-sonnet',
+                        model_info: {
+                            metadata: {
+                                max_context_tokens: 200000,
+                                output_token_limit: 16000,
+                                thinking_budget_tokens: 4096,
+                            },
+                        },
+                    }, {
+                        model_name: '',
+                        model_info: { max_input_tokens: 1 },
+                    }],
+                }),
+            } as any);
+
+            await expect(liteLlmApiAdapter.listModelInfo('https://litellm.example.com', 'secret')).resolves.toEqual([
+                {
+                    modelName: 'claude-sonnet',
+                    contextLimit: 200000,
+                    outputLimit: 16000,
+                    thinkingBudgetTokens: 4096,
+                },
+                {
+                    modelName: 'gpt-5',
+                    displayName: 'GPT 5',
+                    contextLimit: 128000,
+                    outputLimit: 8192,
+                    supportsReasoning: true,
+                    defaultReasoningEffort: 'medium',
+                    reasoningSummary: 'auto',
+                    textVerbosity: 'low',
+                },
+            ]);
+        });
+
+        it('tolerates missing model info fields', async () => {
+            vi.spyOn(global, 'fetch').mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: vi.fn().mockResolvedValue({ data: [{ model_name: 'gpt-4o' }] }),
+            } as any);
+
+            await expect(liteLlmApiAdapter.listModelInfo('https://litellm.example.com', 'secret')).resolves.toEqual([
+                { modelName: 'gpt-4o' },
+            ]);
+        });
+    });
+
     describe('createVirtualKey', () => {
         it('creates a virtual key restricted to the given model alias', async () => {
             let capturedBody: string | null = null;
@@ -74,12 +140,12 @@ describe('LiteLlmApiAdapter', () => {
             const result = await liteLlmApiAdapter.createVirtualKey(
                 'https://litellm.example.com',
                 'admin-secret',
-                'gpt-4o',
+                ['gpt-4o', 'claude-3-5-sonnet'],
             );
 
             expect(result).toBe('sk-v-test-key-123');
             const parsed = JSON.parse(capturedBody!);
-            expect(parsed.models).toEqual(['gpt-4o']);
+            expect(parsed.models).toEqual(['gpt-4o', 'claude-3-5-sonnet']);
             expect(parsed.max_budget).toBeUndefined();
             expect(parsed.duration).toBeUndefined();
         });
@@ -100,7 +166,7 @@ describe('LiteLlmApiAdapter', () => {
             await liteLlmApiAdapter.createVirtualKey(
                 'https://litellm.example.com',
                 'admin-secret',
-                'gpt-4o',
+                ['gpt-4o'],
             );
 
             expect(capturedUrl).toBe('https://litellm.example.com/key/generate');
@@ -119,7 +185,7 @@ describe('LiteLlmApiAdapter', () => {
             } as any);
 
             await expect(
-                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', 'gpt-4o'),
+                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', ['gpt-4o']),
             ).rejects.toThrow('LiteLLM request failed with status 500: Internal Server Error');
         });
 
@@ -131,7 +197,7 @@ describe('LiteLlmApiAdapter', () => {
             } as any);
 
             await expect(
-                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', 'gpt-4o'),
+                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', ['gpt-4o']),
             ).rejects.toThrow('LiteLLM authentication failed. Please check the LiteLLM Admin Key.');
         });
 
@@ -143,7 +209,7 @@ describe('LiteLlmApiAdapter', () => {
             } as any);
 
             await expect(
-                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', 'gpt-4o'),
+                liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin', ['gpt-4o']),
             ).rejects.toThrow('LiteLLM virtual key response did not contain a key field.');
         });
     });

@@ -20,7 +20,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
         containerRegistryUsername: null,
         containerRegistryPassword: null,
         llmGatewayId: '',
-        modelAlias: '',
+        modelAlias: [],
         gitUrl: null,
         gitBranch: null,
         gitUsername: null,

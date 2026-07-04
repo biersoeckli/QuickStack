@@ -11,6 +11,7 @@ import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
+import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 
 class AgentRuntimeService {
 
@@ -22,7 +23,10 @@ class AgentRuntimeService {
         if (!agent) {
             throw new ServiceException('Agent not found.');
         }
-        return agent;
+        return {
+            ...agent,
+            modelAlias: AgentModelAliasUtils.normalize(agent.modelAlias),
+        };
     }
 
     private toSecretName(agentId: string): string {
@@ -60,17 +64,9 @@ class AgentRuntimeService {
         return data;
     }
 
-    /**
-     * Ensures the agent runtime secret exists.
-     * Creates a new LiteLLM virtual key and secret if missing; reuses existing if present.
-     */
-    private async ensureRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
+    private async createRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
         const namespace = agent.project.id;
         const secretName = this.toSecretName(agent.id);
-        const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
-        if (existingSecret) {
-            return; // Secret already exists, reuse it
-        }
 
         if (!agent.llmGateway) {
             throw new ServiceException('LLM Gateway not found for Agent.');
@@ -81,10 +77,14 @@ class AgentRuntimeService {
         }
 
         const adminKey = CryptoUtils.decrypt(gateway.encryptedAdminKey);
+        const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
+        if (modelAliases.length === 0) {
+            throw new ServiceException('At least one model alias must be selected for Agent.');
+        }
         const virtualKey = await liteLlmApiAdapter.createVirtualKey(
             gateway.baseUrl,
             adminKey,
-            agent.modelAlias,
+            modelAliases,
         );
 
         const decryptedEnvVars = this.decryptEnvVars(agent.encryptedEnvVars ?? null);
@@ -96,6 +96,42 @@ class AgentRuntimeService {
         );
 
         await secretService.createOrReplaceGenericSecret(secretName, namespace, secretData);
+    }
+
+    /**
+     * Ensures the agent runtime secret exists.
+     * Creates a new LiteLLM virtual key and secret if missing; reuses existing if present.
+     */
+    private async ensureRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
+        const namespace = agent.project.id;
+        const secretName = this.toSecretName(agent.id);
+        const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
+        if (existingSecret) {
+            return;
+        }
+
+        await this.createRuntimeSecret(agent);
+    }
+
+    /**
+     * Replaces the stored runtime virtual key so deploys apply current model permissions.
+     */
+    async refreshRuntimeSecret(agentId: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+        const secretName = this.toSecretName(agent.id);
+        const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
+
+        if (existingSecret?.QS_VIRTUAL_KEY && agent.llmGateway?.encryptedAdminKey) {
+            const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+            await liteLlmApiAdapter.deleteVirtualKey(
+                agent.llmGateway.baseUrl,
+                adminKey,
+                existingSecret.QS_VIRTUAL_KEY,
+            );
+        }
+
+        await this.createRuntimeSecret(agent);
     }
 
     private resolveClaimStatus(claim: any): DeploymentStatus {

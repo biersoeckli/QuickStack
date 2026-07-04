@@ -28,6 +28,11 @@ import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
+import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+
+type AgentSaveInput =
+    | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
+    | (Omit<Prisma.AgentUncheckedUpdateInput, 'modelAlias'> & { modelAlias?: unknown });
 
 class AgentService {
 
@@ -36,9 +41,16 @@ class AgentService {
         return !!(result ?? false);
     }
 
+    private normalizeAgentModelAliases<T extends { modelAlias: unknown }>(agent: T): Omit<T, 'modelAlias'> & { modelAlias: string[] } {
+        return {
+            ...agent,
+            modelAlias: AgentModelAliasUtils.normalize(agent.modelAlias),
+        };
+    }
+
     async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
         return await unstable_cache(
-            async (pid: string) => dataAccess.client.agent.findMany({
+            async (pid: string) => (await dataAccess.client.agent.findMany({
                 where: { projectId: pid },
                 include: {
                     project: true,
@@ -56,7 +68,7 @@ class AgentService {
                     },
                 },
                 orderBy: { name: 'asc' },
-            }),
+            })).map((agent) => this.normalizeAgentModelAliases(agent)),
             [Tags.agents(projectId)],
             { tags: [Tags.agents(projectId)] },
         )(projectId);
@@ -64,7 +76,7 @@ class AgentService {
 
     async getById(agentId: string, tx?: Prisma.TransactionClient): Promise<AgentExtendedModel> {
         if (tx) {
-            return await tx.agent.findFirstOrThrow({
+            const agent = await tx.agent.findFirstOrThrow({
                 where: { id: agentId },
                 include: {
                     project: true,
@@ -82,9 +94,10 @@ class AgentService {
                     },
                 },
             });
+            return this.normalizeAgentModelAliases(agent);
         }
         return await unstable_cache(
-            async (id: string) => dataAccess.client.agent.findFirstOrThrow({
+            async (id: string) => this.normalizeAgentModelAliases(await dataAccess.client.agent.findFirstOrThrow({
                 where: { id },
                 include: {
                     project: true,
@@ -101,7 +114,7 @@ class AgentService {
                         },
                     },
                 },
-            }),
+            })),
             [Tags.agent(agentId)],
             { tags: [Tags.agent(agentId)] },
         )(agentId);
@@ -244,7 +257,7 @@ class AgentService {
         return result;
     }
 
-    async saveAgent(data: Prisma.AgentUncheckedCreateInput | Prisma.AgentUncheckedUpdateInput, tx: Prisma.TransactionClient = dataAccess.client): Promise<Agent> {
+    async saveAgent(data: AgentSaveInput, tx: Prisma.TransactionClient = dataAccess.client): Promise<Agent> {
         const isCreate = !('id' in data) || !data.id;
 
         let savedItem: Agent | null = null;
@@ -257,6 +270,10 @@ class AgentService {
                     value: CryptoUtils.encrypt(ev.value),
                 }));
                 data.encryptedEnvVars = JSON.stringify(encrypted);
+            }
+
+            if ('modelAlias' in data && data.modelAlias !== undefined) {
+                data.modelAlias = JSON.stringify(AgentModelAliasUtils.normalize(data.modelAlias));
             }
 
             if (isCreate) {
@@ -393,11 +410,15 @@ class AgentService {
             if (!containerImageSource) {
                 throw new ServiceException('Container image source is missing. Cannot deploy for Agent.');
             }
+            await agentRuntimeService.refreshRuntimeSecret(agent.id);
+            const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
+            const modelMetadata = await this.loadLiteLlmModelMetadata(agent, modelAliases);
             await agentSandboxAdapter.reconcileSandboxTemplate(agentSandboxTemplateBuilder.buildSandboxTemplateResource({
                 id: agent.id,
                 projectId: agent.project.id,
                 containerImageSource,
-                modelAlias: agent.modelAlias,
+                modelAlias: modelAliases,
+                modelMetadata,
                 llmGateway: agent.llmGateway,
                 cpuRequest: agent.cpuRequest ?? null,
                 cpuLimit: agent.cpuLimit ?? null,
@@ -447,6 +468,24 @@ class AgentService {
         return await dataAccess.client.agent.findUniqueOrThrow({
             where: { id: agentId },
         });
+    }
+
+    private async loadLiteLlmModelMetadata(agent: AgentExtendedModel, modelAliases: string[]) {
+        if (!agent.llmGateway?.encryptedAdminKey) {
+            return {};
+        }
+
+        try {
+            const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+            const modelInfo = await liteLlmApiAdapter.listModelInfo(agent.llmGateway.baseUrl, adminKey);
+            const selectedAliases = new Set(modelAliases);
+            return Object.fromEntries(modelInfo
+                .filter((item) => selectedAliases.has(item.modelName))
+                .map((item) => [item.modelName, item]));
+        } catch (error) {
+            console.warn(`Could not load LiteLLM model metadata for agent ${agent.id}:`, error);
+            return {};
+        }
     }
 
     /**

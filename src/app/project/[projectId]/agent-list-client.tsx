@@ -71,7 +71,7 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                         </Link>
                     )],
                     ['llmGateway.name', 'LLM Gateway', true],
-                    ['modelAlias', 'Model Alias', true],
+                    ['modelAlias', 'Model Aliases', true, (item: AgentExtendedModel) => item.modelAlias.join(', ')],
                     ['createdAt', 'Created', true, (item: AgentExtendedModel) =>
                         new Date(item.createdAt).toLocaleDateString()
                     ],

@@ -34,7 +34,7 @@ describe('agent-file-mount.service', () => {
                 name: 'Test Agent',
                 projectId,
                 llmGatewayId,
-                modelAlias: 'test-model',
+                modelAlias: JSON.stringify(['test-model']),
             },
         });
         agentId = agent.id;
@@ -76,7 +76,7 @@ describe('agent-file-mount.service', () => {
 
         it('rejects update when file mount belongs to another agent', async () => {
             const agent2 = await dataAccess.client.agent.create({
-                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: 'm2' },
+                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: JSON.stringify(['m2']) },
             });
             const created = await dataAccess.client.agentFileMount.create({
                 data: { agentId: agent2.id, containerMountPath: '/other.txt', content: 'other' },

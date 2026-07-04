@@ -35,7 +35,7 @@ describe('agent-domain.service', () => {
                 name: 'Test Agent',
                 projectId,
                 llmGatewayId,
-                modelAlias: 'test-model',
+                modelAlias: JSON.stringify(['test-model']),
             },
         });
         agentId = agent.id;
@@ -95,7 +95,7 @@ describe('agent-domain.service', () => {
 
         it('allows duplicate hostname across different agents', async () => {
             const agent2 = await dataAccess.client.agent.create({
-                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: 'm2' },
+                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: JSON.stringify(['m2']) },
             });
 
             await agentDomainService.saveDomain({
@@ -188,7 +188,7 @@ describe('agent-domain.service', () => {
 
         it('throws when domain does not belong to agent', async () => {
             const agent2 = await dataAccess.client.agent.create({
-                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: 'm2' },
+                data: { name: 'Agent 2', projectId, llmGatewayId, modelAlias: JSON.stringify(['m2']) },
             });
             const domain = await dataAccess.client.agentDomain.create({
                 data: { agentId: agent2.id, hostname: 'other.example.com', port: 8080 },

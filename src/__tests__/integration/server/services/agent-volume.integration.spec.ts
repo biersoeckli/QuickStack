@@ -34,7 +34,7 @@ describe('agent-volume.service', () => {
                 name: 'Test Agent',
                 projectId,
                 llmGatewayId,
-                modelAlias: 'test-model',
+                modelAlias: JSON.stringify(['test-model']),
             },
         });
         agentId = agent.id;

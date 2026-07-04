@@ -93,7 +93,7 @@ describe("agent-template.service", () => {
             name: "OpenCode",
             projectId: "project-1",
             llmGatewayId: "gateway-1",
-            modelAlias: "gpt-4o",
+            modelAlias: JSON.stringify(["gpt-4o"]),
             sourceType: "CONTAINER",
             buildMethod: "DOCKERFILE",
             containerImageSource: "ghcr.io/anomalyco/opencode:latest",
@@ -125,7 +125,7 @@ describe("agent-template.service", () => {
     it("creates an OpenCode agent template with workspace volume", async () => {
         const template = structuredClone(opencodeAgentTemplate);
         template.templates[0].llmGatewayId = "gateway-1";
-        template.templates[0].modelAlias = "gpt-4o";
+        template.templates[0].modelAlias = ["gpt-4o"];
 
         await agentTemplateService.createAgentFromTemplate("project-1", template);
 
@@ -136,7 +136,7 @@ describe("agent-template.service", () => {
                 name: "OpenCode",
                 projectId: "project-1",
                 llmGatewayId: "gateway-1",
-                modelAlias: "gpt-4o",
+                modelAlias: JSON.stringify(["gpt-4o"]),
                 sourceType: "CONTAINER",
                 buildMethod: "DOCKERFILE",
                 containerImageSource: "ghcr.io/anomalyco/opencode:latest",
@@ -158,7 +158,7 @@ describe("agent-template.service", () => {
         dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1", projectType: "APP" });
         const template = structuredClone(opencodeAgentTemplate);
         template.templates[0].llmGatewayId = "gateway-1";
-        template.templates[0].modelAlias = "gpt-4o";
+        template.templates[0].modelAlias = ["gpt-4o"];
 
         await expect(agentTemplateService.createAgentFromTemplate("project-1", template))
             .rejects.toThrow(ServiceException);

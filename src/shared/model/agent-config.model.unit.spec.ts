@@ -7,7 +7,7 @@ function validAgentConfig(overrides: Record<string, unknown> = {}) {
         name: 'Agent One',
         projectId: 'project-1',
         llmGatewayId: 'gateway-1',
-        modelAlias: 'gpt-4o',
+        modelAlias: ['gpt-4o'],
         sourceType: 'CONTAINER',
         buildMethod: 'DOCKERFILE',
         containerImageSource: 'my/image:latest',

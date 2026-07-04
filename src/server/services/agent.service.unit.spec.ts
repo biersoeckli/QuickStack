@@ -44,6 +44,7 @@ const liteLlmMocks = vi.hoisted(() => ({
     createVirtualKey: vi.fn(),
     deleteVirtualKey: vi.fn(),
     listModelAliases: vi.fn(),
+    listModelInfo: vi.fn(),
 }));
 
 const namespaceServiceMocks = vi.hoisted(() => ({
@@ -53,6 +54,7 @@ const namespaceServiceMocks = vi.hoisted(() => ({
 const agentRuntimeServiceMocks = vi.hoisted(() => ({
     listInstances: vi.fn(),
     stopAllInstances: vi.fn(),
+    refreshRuntimeSecret: vi.fn(),
 }));
 
 const pvcServiceMocks = vi.hoisted(() => ({
@@ -180,7 +182,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         name,
         projectId,
         llmGatewayId: 'gateway-1',
-        modelAlias: 'gpt-4o',
+        modelAlias: ['gpt-4o'],
         sourceType: 'CONTAINER',
         buildMethod: 'DOCKERFILE',
         containerImageSource: 'custom/opencode:latest',
@@ -239,6 +241,7 @@ describe('agent.service', () => {
         vi.mocked(namespaceService.createNamespaceIfNotExists).mockResolvedValue(undefined);
         vi.mocked(agentRuntimeService.listInstances).mockResolvedValue([]);
         vi.mocked(agentRuntimeService.stopAllInstances).mockResolvedValue(undefined);
+        vi.mocked(liteLlmApiAdapter.listModelInfo).mockResolvedValue([]);
         vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({ volume: {} as any, volumeMount: {} as any });
         vi.mocked(pvcService.deleteUnusedPvcForAgent).mockResolvedValue(undefined);
         vi.mocked(pvcService.deleteAllPvcForAgent).mockResolvedValue(undefined);
@@ -259,7 +262,7 @@ describe('agent.service', () => {
                 name: 'My Agent',
                 projectId: 'proj-test-agent',
                 llmGatewayId: 'gateway-1',
-                modelAlias: 'gpt-4o',
+                modelAlias: ['gpt-4o'],
             });
 
             expect(dataAccess.client.agent.create).toHaveBeenCalledWith({
@@ -268,7 +271,7 @@ describe('agent.service', () => {
                     name: 'My Agent',
                     projectId: 'proj-test-agent',
                     llmGatewayId: 'gateway-1',
-                    modelAlias: 'gpt-4o',
+                    modelAlias: JSON.stringify(['gpt-4o']),
                 }),
             });
         });
@@ -295,7 +298,7 @@ describe('agent.service', () => {
     describe('getAllByProjectId', () => {
         it('returns agents for a project with relations', async () => {
             const agents = [mockAgent('agent-1', 'Agent One'), mockAgent('agent-2', 'Agent Two')];
-            vi.mocked(dataAccess.client.agent.findMany).mockResolvedValue(agents);
+            vi.mocked(dataAccess.client.agent.findMany).mockResolvedValue(agents as any);
 
             const result = await agentService.getAllByProjectId('proj-test-agent');
 
@@ -311,7 +314,7 @@ describe('agent.service', () => {
     describe('getById', () => {
         it('returns a single agent with relations', async () => {
             const agent = mockAgent('agent-1', 'Agent One');
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agent);
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agent as any);
 
             const result = await agentService.getById('agent-1');
 
@@ -327,12 +330,25 @@ describe('agent.service', () => {
         it('reconciles SandboxTemplate for OpenCode Web runtime', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue({
                 ...mockAgentWithRelations('agent-1', 'Agent One'),
+                modelAlias: [JSON.stringify(['moonshotai/Kimi-K2.6', 'deepseek-v4-pro', 'gemini/gemini-flash-lite-latest'])],
                 containerImageSource: 'custom/opencode:latest',
                 cpuRequest: 250,
                 cpuLimit: 1000,
                 memoryRequest: 512,
                 memoryLimit: 1024,
             } as any);
+            vi.mocked(liteLlmApiAdapter.listModelInfo).mockResolvedValue([{
+                modelName: 'moonshotai/Kimi-K2.6',
+                displayName: 'Kimi K2.6',
+                contextLimit: 128000,
+                outputLimit: 8192,
+                supportsReasoning: true,
+                defaultReasoningEffort: 'medium',
+                reasoningSummary: 'auto',
+            }, {
+                modelName: 'deepseek-v4-pro',
+                contextLimit: 64000,
+            }]);
 
             await agentService.deploy('agent-1');
 
@@ -366,7 +382,7 @@ describe('agent.service', () => {
             }));
             expect(config).toEqual(expect.objectContaining({
                 $schema: 'https://opencode.ai/config.json',
-                model: 'quickstack-litellm/gpt-4o',
+                model: 'quickstack-litellm/moonshotai/Kimi-K2.6',
                 server: { hostname: '0.0.0.0', port: 4096 },
             }));
             expect(config.provider['quickstack-litellm']).toEqual(expect.objectContaining({
@@ -377,7 +393,25 @@ describe('agent.service', () => {
                     apiKey: '{env:QS_VIRTUAL_KEY}',
                 },
                 models: {
-                    'gpt-4o': { name: 'gpt-4o' },
+                    'moonshotai/Kimi-K2.6': {
+                        name: 'Kimi K2.6',
+                        limit: { context: 128000, output: 8192 },
+                        options: {
+                            reasoningEffort: 'medium',
+                            reasoningSummary: 'auto',
+                        },
+                        variants: {
+                            reasoning: {
+                                reasoningEffort: 'medium',
+                                reasoningSummary: 'auto',
+                            },
+                        },
+                    },
+                    'deepseek-v4-pro': {
+                        name: 'deepseek-v4-pro',
+                        limit: { context: 64000 },
+                    },
+                    'gemini/gemini-flash-lite-latest': { name: 'gemini/gemini-flash-lite-latest' },
                 },
             }));
         });
@@ -792,12 +826,12 @@ describe('agent.service', () => {
             await agentService.saveAgent({
                 id: agentId,
                 llmGatewayId: 'new-gateway',
-                modelAlias: 'new-model',
+                modelAlias: ['new-model', 'claude-3-5-sonnet'],
             });
 
             const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
             expect((updateCall as any).data.llmGatewayId).toBe('new-gateway');
-            expect((updateCall as any).data.modelAlias).toBe('new-model');
+            expect((updateCall as any).data.modelAlias).toBe(JSON.stringify(['new-model', 'claude-3-5-sonnet']));
         });
 
         it('saves only provided fields', async () => {

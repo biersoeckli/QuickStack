@@ -42,17 +42,7 @@ class AgentTemplateService {
 
                 for (const tmpl of template.templates) {
                     const createdAgentId = await this.createAgentFromTemplateContent(projectId, tmpl, tx);
-                    const extendedAgent = await tx.agent.findFirstOrThrow({
-                        where: { id: createdAgentId },
-                        include: {
-                            project: true,
-                            llmGateway: true,
-                            agentDomains: true,
-                            agentVolumes: true,
-                            agentFileMounts: true,
-                        },
-                    });
-                    createdAgents.push(extendedAgent as AgentExtendedModel);
+                    createdAgents.push(await agentService.getById(createdAgentId, tx));
                 }
 
                 const postCreate = postCreateAgentTemplateFunctions.get(template.name);
@@ -79,7 +69,7 @@ class AgentTemplateService {
         if (!template.llmGatewayId) {
             throw new ServiceException("Please select an LLM Gateway for each Agent.");
         }
-        if (!template.modelAlias) {
+        if (!template.modelAlias?.length) {
             throw new ServiceException("Please select a model alias for each Agent.");
         }
 

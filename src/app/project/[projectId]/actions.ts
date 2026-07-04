@@ -28,7 +28,7 @@ const createAppSchema = z.object({
 const createAgentSchema = z.object({
     agentName: z.string().min(1),
     llmGatewayId: z.string().min(1),
-    modelAlias: z.string().min(1),
+    modelAlias: z.array(z.string().min(1)).min(1),
 });
 
 export const createApp = async (appName: string, projectId: string, appId?: string) =>
@@ -65,13 +65,13 @@ export const createAgentFromTemplate = async (prevState: any, inputData: AgentTe
         if (validatedData.templates.some(x => x.inputSettings.some(y => !y.randomGeneratedIfEmpty && !y.value))) {
             throw new ServiceException('Please fill out all required fields.');
         }
-        if (validatedData.templates.some(x => !x.llmGatewayId || !x.modelAlias)) {
+        if (validatedData.templates.some(x => !x.llmGatewayId || !x.modelAlias?.length)) {
             throw new ServiceException('Please select an LLM Gateway and model alias for each Agent.');
         }
         await agentTemplateService.createAgentFromTemplate(projectId, validatedData);
     });
 
-export const createAgent = async (agentName: string, projectId: string, llmGatewayId: string, modelAlias: string) =>
+export const createAgent = async (agentName: string, projectId: string, llmGatewayId: string, modelAlias: string[]) =>
     saveFormAction({ agentName, llmGatewayId, modelAlias }, createAgentSchema, async (validatedData) => {
         const session = await getAuthUserSession();
         const identity: RequesterIdentity = { type: 'session', session };

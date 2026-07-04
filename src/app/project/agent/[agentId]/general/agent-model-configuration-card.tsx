@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SelectBox from "@/components/custom/multiselect-field";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { agentModelConfigurationZodModel, AgentModelConfigurationModel } from "@/shared/model/agent-config.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
@@ -36,7 +37,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
         resolver: zodResolver(agentModelConfigurationZodModel),
         defaultValues: {
             llmGatewayId: agent.llmGatewayId || '',
-            modelAlias: agent.modelAlias || '',
+            modelAlias: agent.modelAlias || [],
         },
         disabled: readonly,
     });
@@ -100,6 +101,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                                     <Select
                                         onValueChange={(value) => {
                                             field.onChange(value);
+                                            form.setValue('modelAlias', []);
                                             setSelectedGatewayId(value);
                                         }}
                                         defaultValue={field.value ?? ''}
@@ -138,24 +140,18 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                                     ) : modelAliases.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">No model aliases available</p>
                                     ) : (
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value ?? ''}
-                                            disabled={readonly}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a model alias" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {modelAliases.map((alias) => (
-                                                    <SelectItem key={alias} value={alias}>
-                                                        {alias}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SelectBox
+                                                multiple
+                                                value={field.value ?? []}
+                                                onChange={(value) => field.onChange(Array.isArray(value) ? value : [])}
+                                                options={modelAliases.map((alias) => ({ value: alias, label: alias }))}
+                                                placeholder="Select model aliases"
+                                                inputPlaceholder="Search model aliases..."
+                                                emptyPlaceholder="No model aliases found."
+                                                className={readonly ? "pointer-events-none opacity-50" : undefined}
+                                            />
+                                        </FormControl>
                                     )}
                                     <FormMessage />
                                 </FormItem>

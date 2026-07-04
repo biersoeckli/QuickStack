@@ -10,6 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SelectBox from "@/components/custom/multiselect-field";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -83,7 +84,7 @@ export default function CreateTemplateAgentSetupDialog({
     }, [agentTemplate, form, projectId]);
 
     const loadModelAliases = async (templateIndex: number, gatewayId: string) => {
-        form.setValue(`templates.${templateIndex}.modelAlias` as any, undefined);
+        form.setValue(`templates.${templateIndex}.modelAlias` as any, []);
         setLoadingAliases((current) => ({ ...current, [templateIndex]: true }));
         try {
             const result = await Actions.run(() => getModelAliasesForGateway(gatewayId));
@@ -178,20 +179,18 @@ export default function CreateTemplateAgentSetupDialog({
                                                                 <Loader2 className="h-4 w-4 animate-spin" /> Loading model aliases...
                                                             </div>
                                                         ) : (
-                                                            <Select value={field.value} onValueChange={field.onChange} disabled={!form.watch(`templates.${templateIndex}.llmGatewayId` as any)}>
-                                                                <FormControl>
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select a model alias" />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    {(modelAliases[templateIndex] ?? []).map((alias) => (
-                                                                        <SelectItem key={alias} value={alias}>
-                                                                            {alias}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
+                                                            <FormControl>
+                                                                <SelectBox
+                                                                    multiple
+                                                                    value={field.value ?? []}
+                                                                    onChange={(value) => field.onChange(Array.isArray(value) ? value : [])}
+                                                                    options={(modelAliases[templateIndex] ?? []).map((alias) => ({ value: alias, label: alias }))}
+                                                                    placeholder="Select model aliases"
+                                                                    inputPlaceholder="Search model aliases..."
+                                                                    emptyPlaceholder="No model aliases found."
+                                                                    className={!form.watch(`templates.${templateIndex}.llmGatewayId` as any) ? "pointer-events-none opacity-50" : undefined}
+                                                                />
+                                                            </FormControl>
                                                         )}
                                                         <FormMessage />
                                                     </FormItem>

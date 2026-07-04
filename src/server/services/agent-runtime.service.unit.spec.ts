@@ -84,7 +84,7 @@ function mockAgent(overrides: Record<string, any> = {}) {
         project: PROJECT,
         llmGatewayId: GATEWAY.id,
         llmGateway: GATEWAY,
-        modelAlias: 'gpt-4o',
+        modelAlias: ['gpt-4o', 'claude-3-5-sonnet'],
         sourceType: 'CONTAINER',
         buildMethod: 'DOCKERFILE',
         containerImageSource: null,
@@ -156,7 +156,7 @@ describe('agent-runtime.service', () => {
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
                 'adminkey',
-                'gpt-4o',
+                ['gpt-4o', 'claude-3-5-sonnet'],
             );
         });
 
@@ -347,7 +347,7 @@ describe('agent-runtime.service', () => {
 
         it('returns DEPLOYED when claim is ready', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true) as any);
 
             const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
 
@@ -362,7 +362,7 @@ describe('agent-runtime.service', () => {
                 metadata: { name: AGENT_ID },
                 spec: { warmPoolRef: { name: AGENT_ID } },
                 status: { conditions: [{ type: 'Ready', status: 'False', message: 'Something went wrong' }] },
-            });
+            } as any);
 
             const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
 
@@ -371,7 +371,7 @@ describe('agent-runtime.service', () => {
 
         it('compares status text for deployed to Running', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true));
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true) as any);
 
             const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
 

@@ -51,7 +51,7 @@ describe('AgentSandboxAdapter', () => {
                         },
                     },
                 },
-            });
+            } as any);
 
             expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -121,7 +121,7 @@ describe('AgentSandboxAdapter', () => {
                     kind: 'SandboxTemplate',
                     metadata: { name, namespace },
                     spec: {},
-                }),
+                } as any),
             ).rejects.toThrow('Invalid apiVersion for sandboxtemplates');
         });
 
@@ -132,7 +132,7 @@ describe('AgentSandboxAdapter', () => {
                     kind: 'WrongKind',
                     metadata: { name, namespace },
                     spec: {},
-                }),
+                } as any),
             ).rejects.toThrow('Invalid kind for sandboxtemplates');
         });
 
@@ -143,7 +143,7 @@ describe('AgentSandboxAdapter', () => {
                     kind: 'SandboxWarmPool',
                     metadata: { name, namespace },
                     spec: {},
-                }),
+                } as any),
             ).rejects.toThrow('Invalid apiVersion for sandboxwarmpools');
         });
 
@@ -154,7 +154,7 @@ describe('AgentSandboxAdapter', () => {
                     kind: 'WrongKind',
                     metadata: { name, namespace },
                     spec: {},
-                }),
+                } as any),
             ).rejects.toThrow('Invalid kind for sandboxwarmpools');
         });
 

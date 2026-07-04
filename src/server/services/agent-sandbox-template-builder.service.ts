@@ -12,6 +12,8 @@ import {
 import { ServiceException } from "@/shared/model/service.exception.model";
 import networkPolicyService from "./network-policy.service";
 import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.service";
+import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+import type { LiteLlmModelMetadata } from "../adapter/litellm-api.adapter";
 
 const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
 
@@ -24,7 +26,8 @@ export type AgentSandboxTemplateConfig = {
     id: string;
     projectId: string;
     containerImageSource: string;
-    modelAlias: string;
+    modelAlias: string[];
+    modelMetadata?: Record<string, LiteLlmModelMetadata>;
     llmGateway?: { baseUrl: string } | null;
     cpuRequest?: number | null;
     cpuLimit?: number | null;
@@ -59,11 +62,43 @@ class AgentSandboxTemplateBuilder {
         return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
     }
 
+    private buildModelConfig(modelAlias: string, metadata?: LiteLlmModelMetadata) {
+        const limit = {
+            ...(metadata?.contextLimit ? { context: metadata.contextLimit } : {}),
+            ...(metadata?.outputLimit ? { output: metadata.outputLimit } : {}),
+        };
+        const options = {
+            ...(metadata?.defaultReasoningEffort ? { reasoningEffort: metadata.defaultReasoningEffort } : {}),
+            ...(metadata?.reasoningSummary ? { reasoningSummary: metadata.reasoningSummary } : {}),
+            ...(metadata?.textVerbosity ? { textVerbosity: metadata.textVerbosity } : {}),
+            ...(metadata?.thinkingBudgetTokens ? { thinking: { type: 'enabled', budgetTokens: metadata.thinkingBudgetTokens } } : {}),
+        };
+        const variants = metadata?.supportsReasoning ? {
+            reasoning: {
+                ...(metadata.defaultReasoningEffort ? { reasoningEffort: metadata.defaultReasoningEffort } : {}),
+                ...(metadata.reasoningSummary ? { reasoningSummary: metadata.reasoningSummary } : {}),
+                ...(metadata.textVerbosity ? { textVerbosity: metadata.textVerbosity } : {}),
+                ...(metadata.thinkingBudgetTokens ? { thinking: { type: 'enabled', budgetTokens: metadata.thinkingBudgetTokens } } : {}),
+            },
+        } : undefined;
+
+        return {
+            name: metadata?.displayName ?? modelAlias,
+            ...(Object.keys(limit).length > 0 ? { limit } : {}),
+            ...(Object.keys(options).length > 0 ? { options } : {}),
+            ...(variants ? { variants } : {}),
+        };
+    }
+
     buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
-        const modelAlias = agent.modelAlias;
+        const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
+        const defaultModelAlias = modelAliases[0];
+        if (!defaultModelAlias) {
+            throw new ServiceException('At least one model alias must be selected for Agent.');
+        }
         return {
             $schema: 'https://opencode.ai/config.json',
-            model: `${OPENCODE_PROVIDER_ID}/${modelAlias}`,
+            model: `${OPENCODE_PROVIDER_ID}/${defaultModelAlias}`,
             provider: {
                 [OPENCODE_PROVIDER_ID]: {
                     npm: '@ai-sdk/openai-compatible',
@@ -72,11 +107,10 @@ class AgentSandboxTemplateBuilder {
                         baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
                         apiKey: '{env:QS_VIRTUAL_KEY}',
                     },
-                    models: {
-                        [modelAlias]: {
-                            name: modelAlias,
-                        },
-                    },
+                    models: Object.fromEntries(modelAliases.map((modelAlias) => [
+                        modelAlias,
+                        this.buildModelConfig(modelAlias, agent.modelMetadata?.[modelAlias]),
+                    ])),
                 },
             },
             server: {

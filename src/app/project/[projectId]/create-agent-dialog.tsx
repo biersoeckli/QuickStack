@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import SelectBox from "@/components/custom/multiselect-field";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { createAgent, getLlmGateways, getModelAliasesForGateway } from "./actions";
@@ -37,7 +38,7 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
     const [name, setName] = useState('');
     const [selectedGatewayId, setSelectedGatewayId] = useState('');
     const [modelAliases, setModelAliases] = useState<string[]>([]);
-    const [selectedModelAlias, setSelectedModelAlias] = useState('');
+    const [selectedModelAliases, setSelectedModelAliases] = useState<string[]>([]);
     const [loadingGateways, setLoadingGateways] = useState(false);
     const [loadingAliases, setLoadingAliases] = useState(false);
     const [gateways, setGateways] = useState<LlmGatewayOption[]>([]);
@@ -62,7 +63,7 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
     useEffect(() => {
         if (!selectedGatewayId) {
             setModelAliases([]);
-            setSelectedModelAlias('');
+            setSelectedModelAliases([]);
             return;
         }
         loadModelAliases(selectedGatewayId);
@@ -70,7 +71,7 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
 
     const loadModelAliases = async (gatewayId: string) => {
         setLoadingAliases(true);
-        setSelectedModelAlias('');
+        setSelectedModelAliases([]);
         try {
             const result = await Actions.run(() => getModelAliasesForGateway(gatewayId));
             setModelAliases(result as string[]);
@@ -84,13 +85,13 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
     };
 
     const handleSubmit = async () => {
-        if (!name.trim() || !selectedGatewayId || !selectedModelAlias) {
+        if (!name.trim() || !selectedGatewayId || selectedModelAliases.length === 0) {
             return;
         }
 
         setSubmitting(true);
         const result = await Toast.fromAction(
-            () => createAgent(name.trim(), projectId, selectedGatewayId, selectedModelAlias),
+            () => createAgent(name.trim(), projectId, selectedGatewayId, selectedModelAliases),
             'Agent created'
         );
 
@@ -101,7 +102,7 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
         setSubmitting(false);
     };
 
-    const canSubmit = name.trim() && selectedGatewayId && selectedModelAlias && !submitting;
+    const canSubmit = name.trim() && selectedGatewayId && selectedModelAliases.length > 0 && !submitting;
 
     return (
         <>
@@ -157,18 +158,15 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
                     ) : modelAliases.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No model aliases available</p>
                     ) : (
-                        <Select value={selectedModelAlias} onValueChange={setSelectedModelAlias}>
-                            <SelectTrigger id="model-alias">
-                                <SelectValue placeholder="Select a model alias" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {modelAliases.map((alias) => (
-                                    <SelectItem key={alias} value={alias}>
-                                        {alias}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <SelectBox
+                            multiple
+                            value={selectedModelAliases}
+                            onChange={(value) => setSelectedModelAliases(Array.isArray(value) ? value : [])}
+                            options={modelAliases.map((alias) => ({ value: alias, label: alias }))}
+                            placeholder="Select model aliases"
+                            inputPlaceholder="Search model aliases..."
+                            emptyPlaceholder="No model aliases found."
+                        />
                     )}
                 </div>
             </div>
