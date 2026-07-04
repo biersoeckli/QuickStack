@@ -26,6 +26,7 @@ function validAgentConfig(overrides: Record<string, unknown> = {}) {
         encryptedEnvVars: null,
         containerCommand: undefined,
         containerArgs: undefined,
+        workingDir: null,
         warmPoolReplicas: 0,
         envVars: [],
         createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -170,6 +171,7 @@ describe('agentConfigZodModel', () => {
             const result = agentConfigZodModel.safeParse(validAgentConfig({
                 containerCommand: [{ value: 'sh' }],
                 containerArgs: [{ value: '-c' }, { value: 'sleep 3600' }],
+                workingDir: '/workspace/app',
                 warmPoolReplicas: '3',
             }));
 
@@ -177,8 +179,17 @@ describe('agentConfigZodModel', () => {
             if (result.success) {
                 expect(result.data.containerCommand).toEqual([{ value: 'sh' }]);
                 expect(result.data.containerArgs).toEqual([{ value: '-c' }, { value: 'sleep 3600' }]);
+                expect(result.data.workingDir).toBe('/workspace/app');
                 expect(result.data.warmPoolReplicas).toBe(3);
             }
+        });
+
+        it('rejects relative working directory paths', () => {
+            const result = agentConfigZodModel.safeParse(validAgentConfig({
+                workingDir: 'workspace/app',
+            }));
+
+            expect(result.success).toBe(false);
         });
 
         it('rejects warm pool replicas outside the allowed range', () => {

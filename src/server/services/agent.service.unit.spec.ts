@@ -201,6 +201,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         encryptedEnvVars: null,
         containerCommand: null,
         containerArgs: null,
+        workingDir: null,
         warmPoolReplicas: 0,
         agentDomains: [],
         agentVolumes: [],
@@ -221,14 +222,9 @@ function mockAgentWithRelations(id: string, name: string, projectId: string = 'p
     };
 }
 
-function getOpenCodeConfigFromTemplateCall(callIndex = 0) {
+function getSandboxTemplateResourceFromTemplateCall(callIndex = 0) {
     const resource = vi.mocked(agentSandboxAdapter.reconcileSandboxTemplate).mock.calls[callIndex][0] as any;
-    const container = resource.spec.podTemplate.spec.containers[0];
-    const configEnv = container.env.find((item: { name: string }) => item.name === 'OPENCODE_CONFIG_CONTENT');
-    return {
-        resource,
-        config: JSON.parse(configEnv.value),
-    };
+    return { resource };
 }
 
 describe('agent.service', () => {
@@ -352,7 +348,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource, config } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
 
             expect(resource.apiVersion).toBe('extensions.agents.x-k8s.io/v1beta1');
             expect(resource.kind).toBe('SandboxTemplate');
@@ -364,12 +360,13 @@ describe('agent.service', () => {
             expect(container).toEqual(expect.objectContaining({
                 name: 'agent',
                 image: 'custom/opencode:latest',
-                command: ['/bin/sh', '-lc'],
-                args: ['cd /workspace && exec opencode web --hostname 0.0.0.0 --port 4096'],
                 workingDir: '/workspace',
-                ports: [{ name: 'opencode-web', containerPort: 4096, protocol: 'TCP' }],
                 envFrom: [{ secretRef: { name: expect.stringContaining('secret-') } }],
             }));
+            expect(container.command).toBeUndefined();
+            expect(container.args).toBeUndefined();
+            expect(container.ports).toEqual([]);
+            expect(container.env).toBeUndefined();
             expect(container.resources).toEqual({
                 requests: { cpu: '250m', memory: '512M' },
                 limits: { cpu: '1000m', memory: '1024M' },
@@ -380,40 +377,6 @@ describe('agent.service', () => {
                 args: ['--noauth', '--root', '/srv', '--baseurl', '/files', '--port', '80'],
                 ports: [{ name: 'filebrowser-web', containerPort: 80, protocol: 'TCP' }],
             }));
-            expect(config).toEqual(expect.objectContaining({
-                $schema: 'https://opencode.ai/config.json',
-                model: 'quickstack-litellm/moonshotai/Kimi-K2.6',
-                server: { hostname: '0.0.0.0', port: 4096 },
-            }));
-            expect(config.provider['quickstack-litellm']).toEqual(expect.objectContaining({
-                npm: '@ai-sdk/openai-compatible',
-                name: 'QuickStack LiteLLM',
-                options: {
-                    baseURL: 'https://litellm.example.com/v1',
-                    apiKey: '{env:QS_VIRTUAL_KEY}',
-                },
-                models: {
-                    'moonshotai/Kimi-K2.6': {
-                        name: 'Kimi K2.6',
-                        limit: { context: 128000, output: 8192 },
-                        options: {
-                            reasoningEffort: 'medium',
-                            reasoningSummary: 'auto',
-                        },
-                        variants: {
-                            reasoning: {
-                                reasoningEffort: 'medium',
-                                reasoningSummary: 'auto',
-                            },
-                        },
-                    },
-                    'deepseek-v4-pro': {
-                        name: 'deepseek-v4-pro',
-                        limit: { context: 64000 },
-                    },
-                    'gemini/gemini-flash-lite-latest': { name: 'gemini/gemini-flash-lite-latest' },
-                },
-            }));
         });
 
         it('omits SandboxTemplate networkPolicy when agent has no policy', async () => {
@@ -421,7 +384,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             expect(resource.spec.networkPolicy).toBeUndefined();
         });
 
@@ -449,7 +412,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             expect(resource.spec.networkPolicy.egress).toEqual(expect.arrayContaining([
                 {
                     to: [{
@@ -521,7 +484,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             expect(resource.spec.networkPolicy.egress).not.toEqual(expect.arrayContaining([
                 expect.objectContaining({
                     to: [expect.objectContaining({
@@ -555,7 +518,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             expect(resource.spec.networkPolicy.egress).toEqual(expect.arrayContaining([
                 {
                     to: [{
@@ -573,19 +536,6 @@ describe('agent.service', () => {
                     ports: [{ protocol: 'TCP', port: 5432 }],
                 },
             ]));
-        });
-
-        it('does not duplicate /v1 in LiteLLM baseURL', async () => {
-            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue({
-                ...mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
-                    llmGateway: { id: 'gateway-1', baseUrl: 'https://litellm.example.com/v1/', encryptedAdminKey: 'encrypted:gw-key' },
-                }),
-            } as any);
-
-            await agentService.deploy('agent-1');
-
-            const { config } = getOpenCodeConfigFromTemplateCall();
-            expect(config.provider['quickstack-litellm'].options.baseURL).toBe('https://litellm.example.com/v1');
         });
 
         it('rejects deploy when agent not found', async () => {
@@ -640,7 +590,7 @@ describe('agent.service', () => {
 
             await agentService.deploy('agent-1');
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             const container = resource.spec.podTemplate.spec.containers[0];
             expect(container.command).toEqual(['sh']);
             expect(container.args).toEqual(['-c', 'echo ready && sleep 3600']);
@@ -668,7 +618,7 @@ describe('agent.service', () => {
             expect(configMapService.createOrUpdateConfigMapForAgent).toHaveBeenCalledWith(agent);
             expect(configMapService.deleteUnusedConfigMapsForAgent).toHaveBeenCalledWith(agent);
 
-            const { resource } = getOpenCodeConfigFromTemplateCall();
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
             expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
                 { name: 'cm-file-mount-1', configMap: { name: 'cm-file-mount-1' } },
             ]));
@@ -775,6 +725,7 @@ describe('agent.service', () => {
                 memoryLimit: 1024,
                 containerCommand: JSON.stringify([{ value: 'sh' }]),
                 containerArgs: JSON.stringify([{ value: '-c' }, { value: 'sleep 3600' }].map(arg => arg.value)),
+                workingDir: '/workspace/app',
                 warmPoolReplicas: 3,
                 systemPrompt: 'You are a helpful assistant.',
             });
@@ -790,6 +741,7 @@ describe('agent.service', () => {
                     memoryLimit: 1024,
                     containerCommand: '[{"value":"sh"}]',
                     containerArgs: '["-c","sleep 3600"]',
+                    workingDir: '/workspace/app',
                     warmPoolReplicas: 3,
                     systemPrompt: 'You are a helpful assistant.',
                 },

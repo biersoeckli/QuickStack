@@ -112,6 +112,7 @@ describe("agent-template.service", () => {
             encryptedEnvVars: null,
             containerCommand: null,
             containerArgs: null,
+            workingDir: null,
             warmPoolReplicas: 0,
             project: { id: "project-1", projectType: "AGENT" },
             llmGateway: { id: "gateway-1" },

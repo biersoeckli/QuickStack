@@ -31,6 +31,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
             containerArgs: agent.containerArgs
                 ? JSON.parse(agent.containerArgs).map((arg: string) => ({ value: arg }))
                 : [],
+            workingDir: agent.workingDir ?? '',
             warmPoolReplicas: agent.warmPoolReplicas ?? 0,
         },
         disabled: readonly,
@@ -75,6 +76,24 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                     argsHint="Overrides the agent container CMD. Add one item per argument in the order the process should receive them."
                                 />
                             </div>
+
+                            <FormField
+                                control={form.control}
+                                name="workingDir"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Working Directory</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="/workspace"
+                                                {...field}
+                                                value={field.value ?? ''}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}

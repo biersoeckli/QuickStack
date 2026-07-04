@@ -34,6 +34,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
         encryptedEnvVars: undefined,
         containerCommand: null,
         containerArgs: null,
+        workingDir: '/workspace',
         warmPoolReplicas: 0,
         agentDomains: [],
         agentVolumes: [{

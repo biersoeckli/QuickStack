@@ -26,6 +26,7 @@ export const AgentModel = z.object({
   encryptedEnvVars: z.string().nullish(),
   containerCommand: z.string().nullish(),
   containerArgs: z.string().nullish(),
+  workingDir: z.string().nullish(),
   warmPoolReplicas: z.number().int(),
   createdAt: z.date(),
   updatedAt: z.date(),

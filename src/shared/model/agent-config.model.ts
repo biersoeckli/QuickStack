@@ -41,6 +41,13 @@ export const agentConfigZodModel = AgentModel.extend(z.object({
     memoryLimit: stringToOptionalNumber,
     containerCommand: containerCommandArgsZodModel.shape.containerCommand,
     containerArgs: containerCommandArgsZodModel.shape.containerArgs,
+    workingDir: z.preprocess((val) => {
+        if (typeof val === 'string') {
+            const trimmed = val.trim();
+            return trimmed ? trimmed : null;
+        }
+        return val;
+    }, z.string().startsWith('/', 'Working directory must be an absolute path.').nullish()),
     warmPoolReplicas: z.preprocess((val) => {
         if (val === null || val === undefined || val === '') {
             return 0;
@@ -145,6 +152,7 @@ export type AgentRateLimitsModel = z.infer<typeof agentRateLimitsZodModel>;
 export const agentContainerConfigZodModel = agentConfigZodModel.pick({
     containerCommand: true,
     containerArgs: true,
+    workingDir: true,
     warmPoolReplicas: true,
 });
 export type AgentContainerConfigModel = z.infer<typeof agentContainerConfigZodModel>;

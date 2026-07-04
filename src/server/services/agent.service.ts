@@ -426,9 +426,11 @@ class AgentService {
                 memoryLimit: agent.memoryLimit ?? null,
                 containerCommand: agent.containerCommand ?? null,
                 containerArgs: agent.containerArgs ?? null,
+                workingDir: agent.workingDir ?? null,
                 volumePvcData,
                 fileVolumes,
                 fileVolumeMounts,
+                agentDomains: agent.agentDomains,
                 agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
             }, {
                 dockerPullSecretName,

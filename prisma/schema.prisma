@@ -246,6 +246,7 @@ model Agent {
   encryptedEnvVars String?
   containerCommand String?
   containerArgs    String?
+  workingDir       String?
   warmPoolReplicas Int     @default(0)
 
   roleAgentPermissions RoleAgentPermission[]

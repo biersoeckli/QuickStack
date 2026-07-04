@@ -9,16 +9,11 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import {
     ContainerCommangArgsUtils,
 } from "@/shared/utils/container-command-args.utils";
-import { ServiceException } from "@/shared/model/service.exception.model";
 import networkPolicyService from "./network-policy.service";
 import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.service";
-import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import type { LiteLlmModelMetadata } from "../adapter/litellm-api.adapter";
+import { AgentDomain } from "@prisma/client";
 
-const OPENCODE_PROVIDER_ID = 'quickstack-litellm';
-
-const OPENCODE_WORKDIR = '/workspace';
-export const OPENCODE_WEB_PORT = 4096;
 const FILEBROWSER_PORT = 80;
 const FILEBROWSER_BASE_URL = '/files';
 
@@ -35,12 +30,14 @@ export type AgentSandboxTemplateConfig = {
     memoryLimit?: number | null;
     containerCommand?: string | null;
     containerArgs?: string | null;
+    workingDir?: string | null;
     volumePvcData: {
         volume: V1Volume;
         volumeMount: V1VolumeMount;
     }[];
     fileVolumes: V1Volume[];
     fileVolumeMounts: V1VolumeMount[];
+    agentDomains: AgentDomain[];
     agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig;
 };
 
@@ -54,78 +51,13 @@ export type SandboxTemplateDeploymentInfo = {
 
 class AgentSandboxTemplateBuilder {
 
-    private normalizeLiteLlmBaseUrl(baseUrl: string): string {
-        const trimmed = baseUrl.trim().replace(/\/+$/, '');
-        if (!trimmed) {
-            throw new ServiceException('LLM Gateway base URL is missing for Agent.');
-        }
-        return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
-    }
-
-    private buildModelConfig(modelAlias: string, metadata?: LiteLlmModelMetadata) {
-        const limit = {
-            ...(metadata?.contextLimit ? { context: metadata.contextLimit } : {}),
-            ...(metadata?.outputLimit ? { output: metadata.outputLimit } : {}),
-        };
-        const options = {
-            ...(metadata?.defaultReasoningEffort ? { reasoningEffort: metadata.defaultReasoningEffort } : {}),
-            ...(metadata?.reasoningSummary ? { reasoningSummary: metadata.reasoningSummary } : {}),
-            ...(metadata?.textVerbosity ? { textVerbosity: metadata.textVerbosity } : {}),
-            ...(metadata?.thinkingBudgetTokens ? { thinking: { type: 'enabled', budgetTokens: metadata.thinkingBudgetTokens } } : {}),
-        };
-        const variants = metadata?.supportsReasoning ? {
-            reasoning: {
-                ...(metadata.defaultReasoningEffort ? { reasoningEffort: metadata.defaultReasoningEffort } : {}),
-                ...(metadata.reasoningSummary ? { reasoningSummary: metadata.reasoningSummary } : {}),
-                ...(metadata.textVerbosity ? { textVerbosity: metadata.textVerbosity } : {}),
-                ...(metadata.thinkingBudgetTokens ? { thinking: { type: 'enabled', budgetTokens: metadata.thinkingBudgetTokens } } : {}),
-            },
-        } : undefined;
-
-        return {
-            name: metadata?.displayName ?? modelAlias,
-            ...(Object.keys(limit).length > 0 ? { limit } : {}),
-            ...(Object.keys(options).length > 0 ? { options } : {}),
-            ...(variants ? { variants } : {}),
-        };
-    }
-
-    buildOpenCodeConfig(agent: AgentSandboxTemplateConfig) {
-        const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
-        const defaultModelAlias = modelAliases[0];
-        if (!defaultModelAlias) {
-            throw new ServiceException('At least one model alias must be selected for Agent.');
-        }
-        return {
-            $schema: 'https://opencode.ai/config.json',
-            model: `${OPENCODE_PROVIDER_ID}/${defaultModelAlias}`,
-            provider: {
-                [OPENCODE_PROVIDER_ID]: {
-                    npm: '@ai-sdk/openai-compatible',
-                    name: 'QuickStack LiteLLM',
-                    options: {
-                        baseURL: this.normalizeLiteLlmBaseUrl(agent.llmGateway?.baseUrl || ''),
-                        apiKey: '{env:QS_VIRTUAL_KEY}',
-                    },
-                    models: Object.fromEntries(modelAliases.map((modelAlias) => [
-                        modelAlias,
-                        this.buildModelConfig(modelAlias, agent.modelMetadata?.[modelAlias]),
-                    ])),
-                },
-            },
-            server: {
-                hostname: '0.0.0.0',
-                port: OPENCODE_WEB_PORT,
-            },
-        };
-    }
-
     buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
         const effectiveImage = agent.containerImageSource;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const customCommand = ContainerCommangArgsUtils.parseStoredContainerCommandArray(agent.containerCommand);
         const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;
         const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
+        const workingDir = agent.workingDir?.trim() || '/workspace';
 
         const hasCustomVolumes = agent.volumePvcData.length > 0;
 
@@ -142,9 +74,9 @@ class AgentSandboxTemplateBuilder {
             ? agent.volumePvcData.map(v => v.volumeMount)
             : [{
                 name: 'workspace',
-                mountPath: OPENCODE_WORKDIR,
+                mountPath: workingDir,
             }];
-        const agentVolumeMounts = [...agentWorkspaceVolumeMounts, ...agent.fileVolumeMounts];
+        const agentVolumeMounts = [...agentWorkspaceVolumeMounts, ...agent.fileVolumeMounts] as V1VolumeMount[];
 
         const filebrowserVolumeMounts = hasCustomVolumes
             ? agent.volumePvcData.map(v => ({
@@ -187,26 +119,19 @@ class AgentSandboxTemplateBuilder {
                             name: 'agent',
                             image: effectiveImage,
                             ...(usesDefaultOpenCodeStartup
-                                ? {
-                                    command: ['/bin/sh', '-lc'],
-                                    args: [`cd ${OPENCODE_WORKDIR} && exec opencode web --hostname 0.0.0.0 --port ${OPENCODE_WEB_PORT}`],
-                                }
+                                ? {}
                                 : {
                                     ...(customCommand ? { command: customCommand } : {}),
                                     ...(customArgs ? { args: customArgs } : {}),
                                 }),
-                            workingDir: OPENCODE_WORKDIR,
-                            ports: [{
-                                name: 'opencode-web',
-                                containerPort: OPENCODE_WEB_PORT,
+                            workingDir: workingDir,
+                            ports: agent.agentDomains.map((domain, index) => ({
+                                name: `port-${index + 1}`,
+                                containerPort: domain.port,
                                 protocol: 'TCP',
-                            }],
+                            })),
                             volumeMounts: agentVolumeMounts,
                             envFrom: [{ secretRef: { name: secretName } }],
-                            env: [{
-                                name: 'OPENCODE_CONFIG_CONTENT',
-                                value: JSON.stringify(this.buildOpenCodeConfig(agent)),
-                            }],
                             resources: {
                                 requests: {
                                     ...(agent.cpuRequest ? {
