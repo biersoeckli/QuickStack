@@ -1,0 +1,28 @@
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ARG VERSION_ARG=unknown
+RUN CGO_ENABLED=0 GOOS=linux go build \
+	-ldflags="-s -w -X main.version=${VERSION_ARG}" \
+	-o /out/quickstack-auth-proxy .
+
+FROM alpine:3.24
+
+RUN addgroup -S app && adduser -S -G app app
+
+WORKDIR /app
+
+COPY --from=builder /out/quickstack-auth-proxy /app/quickstack-auth-proxy
+
+ENV PORT=3000
+EXPOSE 3000
+
+USER app
+
+ENTRYPOINT ["/app/quickstack-auth-proxy"]

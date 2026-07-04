@@ -52,7 +52,7 @@ class AgentAccessService {
         const path = input.view === 'files' ? '/files' : '/';
         return {
             url: `${protocol}://${domain.hostname}${path}?token=${encodeURIComponent(token)}`,
-            expiresAt: Math.floor(Date.now() / 1000) + Number(process.env.AGENT_JWT_TTL_SECONDS || '3600'),
+            expiresAt: Math.floor(Date.now() / 1000) + Number(30), // valid for 20 seconds
         };
     }
 

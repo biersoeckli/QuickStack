@@ -1,0 +1,10 @@
+.git
+.github
+.devcontainer
+old
+Dockerfile
+README*
+*.md
+tmp
+dist
+node_modules
