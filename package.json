@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "openapi-generate": "bash update-k8s-custom-crds.sh"
+    "openapi-generate": "bash scripts/update-k8s-custom-crds.sh && bash scripts/update-openapi.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",

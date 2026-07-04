@@ -4255,6 +4255,175 @@
                   }
                 }
               },
+              "volumeClaimTemplates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "spec"
+                  ],
+                  "properties": {
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "annotations": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "labels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "spec": {
+                      "type": "object",
+                      "properties": {
+                        "accessModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "x-kubernetes-list-type": "atomic"
+                        },
+                        "dataSource": {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "properties": {
+                            "apiGroup": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "x-kubernetes-map-type": "atomic"
+                        },
+                        "dataSourceRef": {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "properties": {
+                            "apiGroup": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "namespace": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "resources": {
+                          "type": "object",
+                          "properties": {
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                                "anyOf": [
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ],
+                                "x-kubernetes-int-or-string": true
+                              }
+                            },
+                            "requests": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                                "anyOf": [
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ],
+                                "x-kubernetes-int-or-string": true
+                              }
+                            }
+                          }
+                        },
+                        "selector": {
+                          "type": "object",
+                          "properties": {
+                            "matchExpressions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "key",
+                                  "operator"
+                                ],
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "operator": {
+                                    "type": "string"
+                                  },
+                                  "values": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "x-kubernetes-list-type": "atomic"
+                                  }
+                                }
+                              },
+                              "x-kubernetes-list-type": "atomic"
+                            },
+                            "matchLabels": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "x-kubernetes-map-type": "atomic"
+                        },
+                        "storageClassName": {
+                          "type": "string"
+                        },
+                        "volumeAttributesClassName": {
+                          "type": "string"
+                        },
+                        "volumeMode": {
+                          "type": "string"
+                        },
+                        "volumeName": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "x-kubernetes-list-type": "atomic"
+              },
               "warmPoolRef": {
                 "type": "object",
                 "required": [
@@ -10668,6 +10837,15 @@
                   }
                 },
                 "x-kubernetes-list-type": "atomic"
+              },
+              "volumeClaimTemplatesPolicy": {
+                "type": "string",
+                "default": "Disallowed",
+                "enum": [
+                  "Disallowed",
+                  "Allowed",
+                  "Overrides"
+                ]
               }
             }
           }

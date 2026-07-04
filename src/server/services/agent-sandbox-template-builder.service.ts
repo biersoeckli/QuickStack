@@ -174,6 +174,7 @@ class AgentSandboxTemplateBuilder {
                 },
             },
             spec: {
+                volumeClaimTemplatesPolicy: 'Disallowed', // Default by CRD
                 envVarsInjectionPolicy: 'Disallowed',
                 networkPolicyManagement: 'Managed',
                 ...(networkPolicy ? { networkPolicy } : {}),

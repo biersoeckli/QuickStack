@@ -11,9 +11,8 @@ CRDS=(
 )
 
 OPENAPI_DIR="./src/server/adapter/api-clients/openapi"
-TYPES_DIR="./src/server/adapter/api-clients/types"
 
-mkdir -p "$OPENAPI_DIR" "$TYPES_DIR"
+mkdir -p "$OPENAPI_DIR"
 
 for entry in "${CRDS[@]}"; do
   read -r group version <<< "$entry"
@@ -23,12 +22,8 @@ for entry in "${CRDS[@]}"; do
   kubectl get --raw "/openapi/v3/apis/${group}/${version}" \
     | jq . > "${OPENAPI_DIR}/${base}-openapi.json"
 
-  echo "→ Generiere TypeScript-Typen …"
-  npx openapi-typescript "${OPENAPI_DIR}/${base}-openapi.json" \
-    --output "${TYPES_DIR}/${base}.openapi.ts"
-
   echo "✓ ${base} fertig"
   echo
 done
 
-echo "Alle CRDs aktualisiert."
+echo "Alle CRD OpenAPI-JSONs aktualisiert."

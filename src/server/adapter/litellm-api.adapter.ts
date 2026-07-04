@@ -1,15 +1,5 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-
-type LiteLlmModelInfoResponse = {
-    data?: LiteLlmModelInfo[];
-};
-
-export type LiteLlmModelInfo = {
-    model_name?: string;
-    model_info?: Record<string, unknown> | null;
-    litellm_params?: Record<string, unknown> | null;
-    [key: string]: unknown;
-};
+import { LiteLlmDeleteKeyRequest, LiteLlmGenerateKeyRequest, LiteLlmGenerateKeyResponse, LiteLlmModelInfo, LiteLlmModelInfoResponse } from "./api-clients/types/litellm.models";
 
 export type LiteLlmModelMetadata = {
     modelName: string;
@@ -24,7 +14,6 @@ export type LiteLlmModelMetadata = {
     thinkingBudgetTokens?: number;
 };
 
-// todo use the swagger api
 class LiteLlmApiAdapter {
     private async fetchJson<T>(baseUrl: string, adminKey: string, path: string, init?: RequestInit): Promise<T> {
         let response: Response;
@@ -60,9 +49,10 @@ class LiteLlmApiAdapter {
     }
 
     async createVirtualKey(baseUrl: string, adminKey: string, modelAliases: string[]): Promise<string> {
-        const response = await this.fetchJson<{ key?: string }>(baseUrl, adminKey, '/key/generate', {
+        const requestBody: LiteLlmGenerateKeyRequest = { models: modelAliases };
+        const response = await this.fetchJson<LiteLlmGenerateKeyResponse>(baseUrl, adminKey, '/key/generate', {
             method: 'POST',
-            body: JSON.stringify({ models: modelAliases }),
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.key) {
@@ -72,9 +62,10 @@ class LiteLlmApiAdapter {
     }
 
     async deleteVirtualKey(baseUrl: string, adminKey: string, key: string): Promise<void> {
+        const requestBody: LiteLlmDeleteKeyRequest = { keys: [key] };
         await this.fetchJson<unknown>(baseUrl, adminKey, '/key/delete', {
             method: 'POST',
-            body: JSON.stringify({ keys: [key] }),
+            body: JSON.stringify(requestBody),
         });
     }
 

@@ -758,6 +758,53 @@ export interface components {
                     /** Format: int32 */
                     ttlSecondsAfterFinished?: number;
                 };
+                volumeClaimTemplates?: {
+                    metadata?: {
+                        annotations?: {
+                            [key: string]: string;
+                        };
+                        labels?: {
+                            [key: string]: string;
+                        };
+                        name?: string;
+                    };
+                    spec: {
+                        accessModes?: string[];
+                        dataSource?: {
+                            apiGroup?: string;
+                            kind: string;
+                            name: string;
+                        };
+                        dataSourceRef?: {
+                            apiGroup?: string;
+                            kind: string;
+                            name: string;
+                            namespace?: string;
+                        };
+                        resources?: {
+                            limits?: {
+                                [key: string]: number | string;
+                            };
+                            requests?: {
+                                [key: string]: number | string;
+                            };
+                        };
+                        selector?: {
+                            matchExpressions?: {
+                                key: string;
+                                operator: string;
+                                values?: string[];
+                            }[];
+                            matchLabels?: {
+                                [key: string]: string;
+                            };
+                        };
+                        storageClassName?: string;
+                        volumeAttributesClassName?: string;
+                        volumeMode?: string;
+                        volumeName?: string;
+                    };
+                }[];
                 warmPoolRef: {
                     name: string;
                 };
@@ -2506,6 +2553,11 @@ export interface components {
                         volumeName?: string;
                     };
                 }[];
+                /**
+                 * @default Disallowed
+                 * @enum {string}
+                 */
+                volumeClaimTemplatesPolicy: "Disallowed" | "Allowed" | "Overrides";
             };
         };
         /** @description SandboxTemplateList is a list of SandboxTemplate */
