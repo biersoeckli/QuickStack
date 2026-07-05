@@ -18,6 +18,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
             listNamespacedSecret: vi.fn(),
             readNamespacedSecret: vi.fn(),
             createNamespacedSecret: vi.fn(),
+            deleteNamespacedSecret: vi.fn(),
         },
     },
 }));
@@ -111,5 +112,49 @@ describe('ingress.service Agent access', () => {
             expect.objectContaining({ kind: 'Deployment', metadata: expect.objectContaining({ name: 'qs-auth-proxy' }) }),
             'quickstack',
         );
+    });
+
+    it('deletes all per-agent ingresses and their TLS secrets', async () => {
+        vi.mocked(k3s.network.listNamespacedIngress).mockResolvedValue({
+            items: [{
+                metadata: {
+                    name: 'agent-access-abc123',
+                    annotations: {
+                        'qs-agent-id': 'agent-1',
+                    },
+                },
+                spec: {
+                    rules: [{ host: 'one.example.com' }],
+                },
+            }, {
+                metadata: {
+                    name: 'agent-access-def456',
+                    annotations: {
+                        'qs-agent-id': 'agent-1',
+                    },
+                },
+                spec: {
+                    rules: [{ host: 'two.example.com' }],
+                },
+            }, {
+                metadata: {
+                    name: 'agent-access-other',
+                    annotations: {
+                        'qs-agent-id': 'agent-2',
+                    },
+                },
+                spec: {
+                    rules: [{ host: 'other.example.com' }],
+                },
+            }],
+        } as any);
+
+        await ingressService.deleteAllAgentIngresses('agent-1');
+
+        expect(k3s.network.deleteNamespacedIngress).toHaveBeenCalledTimes(2);
+        expect(k3s.network.deleteNamespacedIngress).toHaveBeenCalledWith({ name: 'agent-access-abc123', namespace: 'quickstack' });
+        expect(k3s.network.deleteNamespacedIngress).toHaveBeenCalledWith({ name: 'agent-access-def456', namespace: 'quickstack' });
+        expect(k3s.core.deleteNamespacedSecret).toHaveBeenCalledWith({ name: 'secret-tls-agent-access-abc123', namespace: 'quickstack' });
+        expect(k3s.core.deleteNamespacedSecret).toHaveBeenCalledWith({ name: 'secret-tls-agent-access-def456', namespace: 'quickstack' });
     });
 });

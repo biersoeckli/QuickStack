@@ -17,7 +17,8 @@ import {
     ensureWriteAgent,
     RequesterIdentity,
     ensureWriteProjectWorkload,
-    ensureReadProjectWorkload
+    ensureReadProjectWorkload,
+    ensureDeleteProjectWorkloadInProject
 } from "./shared-authorization.utils";
 import { WorkloadType, zodWorkloadType } from "@/shared/model/runtime-type.model";
 
@@ -110,6 +111,13 @@ export async function isAuthorizedReadForWorkload(workloadId: string) {
     const session = await getAuthUserSession();
     const identity: RequesterIdentity = { type: 'session', session };
     ensureReadProjectWorkload(identity, workloadId);
+    return identity.session;
+}
+
+export async function isAuthorizedDeleteForProject(projectId: string) {
+    const session = await getAuthUserSession();
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureDeleteProjectWorkloadInProject(identity, projectId);
     return identity.session;
 }
 

@@ -17,6 +17,7 @@ import { getLlmGateways, getModelAliasesForGateway } from "../../../[projectId]/
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { LlmGatewayModel } from "@/shared/model/llm-gateway.model";
 import { Loader2 } from "lucide-react";
+import { Code } from "@/components/custom/code";
 
 export default function AgentModelConfigurationCard({ agent, readonly }: {
     agent: AgentExtendedModel;
@@ -88,7 +89,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                     <CardHeader>
                         <CardTitle>Model Configuration</CardTitle>
                         <CardDescription>
-                            Configure the LLM gateway and model for this agent.
+                            Configure the LLM gateway and model for this agent. If set, a Virtual Access Key will be created and mounted as an environment variable <Code>QS_VIRTUAL_KEY</Code> in the agent container.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

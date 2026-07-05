@@ -15,7 +15,7 @@ export function kubernetesPatchOptions(contentType: PatchStrategy): Configuratio
     };
 }
 
-class K3sApiAdapter {
+export class K3sApiAdapter {
 
     core: k8s.CoreV1Api;
     apps: k8s.AppsV1Api;
@@ -35,6 +35,13 @@ class K3sApiAdapter {
         this.storage = this.getK8sStorageApiClient();
         this.customObjects = this.getK8sCustomObjectsApiClient();
         this.metrics = this.getMetricsApiClient();
+    }
+
+    /**
+     * Checks if the provided error is a k8s "Not Found" error (HTTP 404).
+     */
+    static isNotFoundError(error: any): boolean {
+        return error?.code === 404;
     }
 
     getKubeConfig = () => {

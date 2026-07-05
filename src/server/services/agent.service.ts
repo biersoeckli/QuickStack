@@ -29,6 +29,8 @@ import deploymentLogService, { dlog } from "./deployment-logs.service";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+import { AgentModel } from "@/shared/model/generated-zod";
+import z from "zod";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -135,7 +137,7 @@ class AgentService {
      */
     async saveAgentExtendedModel(
         agentExtendedInput: AgentExtendedWriteModel,
-        tx?: Prisma.TransactionClient,
+        inputTx?: Prisma.TransactionClient,
     ): Promise<AgentExtendedModel> {
         const run = async (tx: Prisma.TransactionClient) => {
             const {
@@ -150,6 +152,16 @@ class AgentService {
 
 
             // Sub-resources via dedicated sub-services
+            // Delete stale domains before upserts so newly created domains without id are not removed immediately.
+            {
+                const existingDomains = await tx.agentDomain.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agentDomainsInput.map((d) => d.id).filter(Boolean) as string[]);
+                for (const existing of existingDomains) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentDomainService.deleteDomain(existing.id, tx);
+                    }
+                }
+            }
             for (const domain of agentDomainsInput) {
                 await agentDomainService.saveDomain({
                     id: domain.id,
@@ -160,27 +172,8 @@ class AgentService {
                     agentId: savedAgentId,
                 }, tx);
             }
-            // Delete sub-items that are no longer in the incoming model
-            {
-                const existingDomains = await tx.agentDomain.findMany({ where: { agentId: savedAgentId } });
-                const keepIds = new Set(agentDomainsInput.map((d) => d.id).filter(Boolean) as string[]);
-                for (const existing of existingDomains) {
-                    if (!keepIds.has(existing.id)) {
-                        await agentDomainService.deleteDomain(existing.id, tx);
-                    }
-                }
-            }
 
-            for (const volume of agentVolumesInput) {
-                await agentVolumeService.saveVolume({
-                    id: volume.id,
-                    containerMountPath: volume.containerMountPath,
-                    size: volume.size,
-                    storageClassName: volume.storageClassName,
-                    agentId: savedAgentId,
-                }, tx);
-            }
-            // Delete volumes that are no longer in the incoming model
+            // Delete stale volumes before upserts so newly created volumes without id are not removed immediately.
             {
                 const existingVolumes = await tx.agentVolume.findMany({ where: { agentId: savedAgentId } });
                 const keepIds = new Set(agentVolumesInput.map((v) => v.id).filter(Boolean) as string[]);
@@ -190,16 +183,17 @@ class AgentService {
                     }
                 }
             }
-
-            for (const fileMount of agentFileMountsInput) {
-                await agentFileMountService.saveFileMount({
-                    id: fileMount.id,
-                    containerMountPath: fileMount.containerMountPath,
-                    content: fileMount.content,
+            for (const volume of agentVolumesInput) {
+                await agentVolumeService.saveVolume({
+                    id: volume.id,
+                    containerMountPath: volume.containerMountPath,
+                    size: volume.size,
+                    storageClassName: volume.storageClassName,
                     agentId: savedAgentId,
                 }, tx);
             }
-            // Delete file mounts that are no longer in the incoming model
+
+            // Delete stale file mounts before upserts so newly created mounts without id are not removed immediately.
             {
                 const existingFileMounts = await tx.agentFileMount.findMany({ where: { agentId: savedAgentId } });
                 const keepIds = new Set(agentFileMountsInput.map((f) => f.id).filter(Boolean) as string[]);
@@ -209,6 +203,14 @@ class AgentService {
                     }
                 }
             }
+            for (const fileMount of agentFileMountsInput) {
+                await agentFileMountService.saveFileMount({
+                    id: fileMount.id,
+                    containerMountPath: fileMount.containerMountPath,
+                    content: fileMount.content,
+                    agentId: savedAgentId,
+                }, tx);
+            }
 
             if (agentNetworkPolicyInput) {
                 await agentNetworkPolicyService.saveSettings({
@@ -216,17 +218,7 @@ class AgentService {
                     agentId: savedAgentId,
                 }, tx);
 
-                for (const rule of agentNetworkPolicyInput.rules) {
-                    await agentNetworkPolicyService.saveEgressRule({
-                        id: rule.id,
-                        type: 'EGRESS',
-                        targetAppId: rule.targetAppId,
-                        port: rule.port ?? 443,
-                        protocol: (rule.protocol as 'TCP' | 'UDP') ?? 'TCP',
-                        agentId: savedAgentId,
-                    }, tx);
-                }
-                // Delete rules that are no longer in the incoming model
+                // Delete stale egress rules before upserts so newly created rules without id are not removed immediately.
                 {
                     const existingPolicy = await tx.agentNetworkPolicy.findUnique({ where: { agentId: savedAgentId } });
                     if (existingPolicy) {
@@ -239,13 +231,24 @@ class AgentService {
                         }
                     }
                 }
+
+                for (const rule of agentNetworkPolicyInput.rules) {
+                    await agentNetworkPolicyService.saveEgressRule({
+                        id: rule.id,
+                        type: 'EGRESS',
+                        targetAppId: rule.targetAppId,
+                        port: rule.port ?? 443,
+                        protocol: (rule.protocol as 'TCP' | 'UDP') ?? 'TCP',
+                        agentId: savedAgentId,
+                    }, tx);
+                }
             }
 
             return await this.getById(savedAgentId, tx);
         };
 
-        if (tx) {
-            return await run(tx);
+        if (inputTx) {
+            return await run(inputTx);
         }
 
         const result = await dataAccess.client.$transaction(async (innerTx) => {
@@ -257,7 +260,8 @@ class AgentService {
         return result;
     }
 
-    async saveAgent(data: AgentSaveInput, tx: Prisma.TransactionClient = dataAccess.client): Promise<Agent> {
+    async saveAgent(data: AgentSaveInput, inputTx?: Prisma.TransactionClient): Promise<Agent> {
+        const tx = inputTx ?? dataAccess.client;
         const isCreate = !('id' in data) || !data.id;
 
         let savedItem: Agent | null = null;
@@ -277,22 +281,36 @@ class AgentService {
             }
 
             if (isCreate) {
+                // Additional Fields of ExtendedModels as input need to be removed
+                const cleanedData = AgentModel.omit({
+                    createdAt: true,
+                    updatedAt: true,
+                    id: true,
+                }).parse(data);
                 savedItem = await tx.agent.create({
                     data: {
                         id: KubeObjectNameUtils.toAgentId(data.name as string),
-                        ...data
+                        ...cleanedData,
                     } as Prisma.AgentUncheckedCreateInput,
                 });
             } else {
+                // Additional Fields of ExtendedModels as input need to be removed
+                const agentModel = AgentModel.extend(z.object({
+                    createdAt: z.date().optional(),
+                    updatedAt: z.date().optional(),
+                }).shape)
+                const cleanedData = agentModel.parse(data);
                 savedItem = await tx.agent.update({
                     where: { id: data.id as string },
-                    data: data as Prisma.AgentUncheckedUpdateInput,
+                    data: cleanedData as Prisma.AgentUncheckedUpdateInput,
                 });
             }
             return savedItem;
         } finally {
-            if (savedItem) { revalidateTag(Tags.agent(savedItem.id)); }
-            if (savedItem) { revalidateTag(Tags.agents(savedItem?.projectId)); }
+            if (!inputTx) {
+                if (savedItem) { revalidateTag(Tags.agent(savedItem.id)); }
+                if (savedItem) { revalidateTag(Tags.agents(savedItem?.projectId)); }
+            }
         }
     }
 
@@ -494,10 +512,10 @@ class AgentService {
      * Deletes an Agent and all associated resources using a safe cleanup order:
      *
      * 1. Extract virtual key from runtime secret if the agent is running.
-     * 2. Stop runtime resources (SandboxClaim + runtime Secret) — idempotent.
+     * 2. Stop runtime resources (SandboxClaim) — idempotent.
      * 3. Delete the LiteLLM virtual key via the Gateway API.
      *    If this fails the DB Agent is preserved so cleanup can be retried.
-     * 4. Delete SandboxWarmPool and SandboxTemplate from K8s.
+     * 4. Delete all Agent-owned Kubernetes resources.
      * 5. Delete the DB Agent record in a transaction.
      */
     async deleteById(agentId: string): Promise<void> {
@@ -552,8 +570,13 @@ class AgentService {
         }
 
         // 4. Delete K8s sandbox resources (best-effort before DB cleanup)
+        await ingressService.deleteAllAgentIngresses(agentId);
+        await configMapService.deleteAllConfigMapsForAgent(existing);
+        await secretService.deleteSecretSafe(KubeObjectNameUtils.toSecretId(agentId), namespace);
+        await secretService.deleteSecretSafe(KubeObjectNameUtils.toPullSecretId(agentId), namespace);
         await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
         await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
+
         // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
         await dataAccess.client.$transaction(async (tx) => {
             const current = await tx.agent.findUnique({

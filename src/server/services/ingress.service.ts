@@ -1,5 +1,5 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import k3s from "../adapter/kubernetes-api.adapter";
+import k3s, { K3sApiAdapter } from "../adapter/kubernetes-api.adapter";
 import { V1Ingress, V1Secret } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
@@ -142,14 +142,33 @@ class IngressService {
     }
 
     async deleteAgentIngress(hostname: string) {
-        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         const resourceName = this.getAgentAccessResourceName(hostname);
+        await this.deleteAgentIngressResource(resourceName);
+    }
+
+    private async deleteAgentIngressResource(resourceName: string) {
+        const namespace = Constants.QS_AGENT_ROUTER_NAMESPACE;
         try {
             await k3s.network.deleteNamespacedIngress({ name: resourceName, namespace: namespace });
         } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
+            if (!K3sApiAdapter.isNotFoundError(error)) {
                 throw new ServiceException(`Failed to delete ingress/${resourceName}: ${error?.message || error}`);
             }
+        }
+
+        try {
+            await k3s.core.deleteNamespacedSecret({ name: this.tlsSecretNameFor(resourceName), namespace: namespace });
+        } catch (error: any) {
+            if (!K3sApiAdapter.isNotFoundError(error)) {
+                throw new ServiceException(`Failed to delete TLS secret for ingress/${resourceName}: ${error?.message || error}`);
+            }
+        }
+    }
+
+    async deleteAllAgentIngresses(agentId: string) {
+        const routes = await this.listAgentIngress(agentId);
+        for (const route of routes) {
+            await this.deleteAgentIngressResource(route.resourceName);
         }
     }
 
@@ -173,7 +192,7 @@ class IngressService {
                 }
             }
         } catch (error: any) {
-            if (error?.response?.statusCode !== 404) {
+            if (!K3sApiAdapter.isNotFoundError(error)) {
                 throw new ServiceException(
                     `Failed to list agent Ingresses: ${error?.message || error}`,
                 );

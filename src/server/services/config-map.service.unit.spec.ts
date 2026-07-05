@@ -111,4 +111,43 @@ describe('config-map.service', () => {
         expect(k3sMocks.deleteNamespacedConfigMap).toHaveBeenCalledTimes(1);
         expect(k3sMocks.deleteNamespacedConfigMap).toHaveBeenCalledWith({ name: 'cm-file-mount-old', namespace: 'proj-1' });
     });
+
+    it('deletes all agent file mount config maps', async () => {
+        k3sMocks.listNamespacedConfigMap.mockResolvedValue({
+            items: [{
+                metadata: {
+                    name: 'cm-file-mount-1',
+                    annotations: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: 'agent-1',
+                        'qs-agent-file-mount-id': 'file-mount-1',
+                    },
+                },
+            }, {
+                metadata: {
+                    name: 'cm-file-mount-2',
+                    annotations: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: 'agent-1',
+                        'qs-agent-file-mount-id': 'file-mount-2',
+                    },
+                },
+            }, {
+                metadata: {
+                    name: 'cm-other-agent',
+                    annotations: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: 'agent-2',
+                        'qs-agent-file-mount-id': 'file-mount-other',
+                    },
+                },
+            }],
+        });
+
+        await configMapService.deleteAllConfigMapsForAgent({
+            id: 'agent-1',
+            projectId: 'proj-1',
+        });
+
+        expect(k3sMocks.deleteNamespacedConfigMap).toHaveBeenCalledTimes(2);
+        expect(k3sMocks.deleteNamespacedConfigMap).toHaveBeenCalledWith({ name: 'cm-file-mount-1', namespace: 'proj-1' });
+        expect(k3sMocks.deleteNamespacedConfigMap).toHaveBeenCalledWith({ name: 'cm-file-mount-2', namespace: 'proj-1' });
+    });
 });

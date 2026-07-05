@@ -11,9 +11,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useState } from "react";
 import { CreateAgentDialog } from "./create-agent-dialog";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
+import { useDialog } from "@/frontend/states/zustand.states";
 
 
 export default function CreateProjectActions({
@@ -24,12 +24,17 @@ export default function CreateProjectActions({
     projectType?: WorkloadType;
 }) {
 
-    const [templateType, setTemplateType] = useState<"database" | "template" | "agent-template" | undefined>(undefined);
+    const { openDialog } = useDialog();
     const isAgentProject = projectType.toLocaleLowerCase() === 'agent';
+    const openTemplateDialog = (templateType: "database" | "template" | "agent-template") => {
+        openDialog(
+            <ChooseTemplateDialog projectId={projectId} templateType={templateType} />,
+            { maxWidth: '1000px' }
+        );
+    };
 
     return (
         <>
-            <ChooseTemplateDialog projectId={projectId} templateType={templateType} onClose={() => setTemplateType(undefined)} />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button><Plus /> Create {isAgentProject ? 'Agent' : 'App'}</Button></DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -38,15 +43,15 @@ export default function CreateProjectActions({
                             <CreateAgentDialog projectId={projectId}>
                                 <DropdownMenuItem><Bot /> Empty Agent</DropdownMenuItem>
                             </CreateAgentDialog>
-                            <DropdownMenuItem onClick={() => setTemplateType('agent-template')}><Blocks /> Template</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openTemplateDialog('agent-template')}><Blocks /> Template</DropdownMenuItem>
                         </>
                     ) : (
                         <>
                             <EditAppDialog projectId={projectId}>
                                 <DropdownMenuItem><File /> Empty App</DropdownMenuItem>
                             </EditAppDialog>
-                            <DropdownMenuItem onClick={() => setTemplateType('database')}><Database /> Database</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTemplateType('template')}><Blocks /> Template</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openTemplateDialog('database')}><Database /> Database</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openTemplateDialog('template')}><Blocks /> Template</DropdownMenuItem>
                         </>
                     )}
                 </DropdownMenuContent>

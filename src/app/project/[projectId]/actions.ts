@@ -2,7 +2,7 @@
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
-import { getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAuthUserSession, isAuthorizedDeleteForProject, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
 import appTemplateService from "@/server/services/app-template.service";
 import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-template.model";
@@ -114,4 +114,11 @@ export const deleteApp = async (appId: string) =>
         }
         // delete the app drom database and all kubernetes objects
         await appService.deleteById(appId);
+    });
+
+export const deleteAgent = async (agentId: string) =>
+    simpleAction(async () => {
+        const agent = await agentService.getById(agentId);
+        await isAuthorizedDeleteForProject(agent.projectId);
+        await agentService.deleteById(agentId);
     });

@@ -167,6 +167,13 @@ class ConfigMapService {
         }
     }
 
+    async deleteAllConfigMapsForAgent(agent: Pick<AgentExtendedModel, 'id' | 'projectId'>) {
+        const existingConfigMaps = await this.getConfigMapsForAgentFileMounts(agent.projectId, agent.id);
+        for (const cm of existingConfigMaps) {
+            await k3s.core.deleteNamespacedConfigMap({ name: cm.metadata!.name!, namespace: agent.projectId });
+        }
+    }
+
     async deleteConfigMapIfExists(namespace: string, configMapName: string) {
         const existingConfigMap = await this.getExistingConfigMap(namespace, configMapName);
         if (!!existingConfigMap) {

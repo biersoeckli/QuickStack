@@ -3,10 +3,15 @@
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { Bot } from "lucide-react";
+import { Bot, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "./create-project-actions";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { Toast } from "@/frontend/utils/toast.utils";
+import { deleteAgent } from "./actions";
 import {
     Empty,
     EmptyContent,
@@ -24,6 +29,8 @@ interface AgentListClientProps {
 
 export default function AgentListClient({ agents, session, projectId }: AgentListClientProps) {
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    const canDelete = UserGroupUtils.sessionCanDeleteAgentsForProject(session, projectId);
+    const { openConfirmDialog } = useConfirmDialog();
 
     if (agents.length === 0 && !canCreate) {
         return (
@@ -77,6 +84,40 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                     ],
                 ]}
                 data={agents}
+                actionCol={(item) => (
+                    <div className="flex justify-end">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <Link href={`/project/agent/${item.id}`}>
+                                    <DropdownMenuItem>
+                                        <Eye /> <span>Show Agent Details</span>
+                                    </DropdownMenuItem>
+                                </Link>
+                                {canDelete && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            className="text-red-500"
+                                            onClick={() => openConfirmDialog({
+                                                title: "Delete Agent",
+                                                description: "Are you sure you want to delete this agent? All data will be lost and this action cannot be undone.",
+                                            }).then((result) => result ? Toast.fromAction(() => deleteAgent(item.id), 'Agent deleted successfully') : undefined)}
+                                        >
+                                            <Trash /> <span>Delete Agent</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                )}
                 tableIdentifier="agent-list"
             />
         </div>

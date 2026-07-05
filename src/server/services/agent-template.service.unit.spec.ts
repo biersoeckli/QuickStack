@@ -81,7 +81,7 @@ describe("agent-template.service", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1", projectType: "AGENT" });
-        dbGatewayMocks.findUnique.mockResolvedValue({ id: "gateway-1" });
+        dbGatewayMocks.findUnique.mockResolvedValue({ id: "gateway-1", baseUrl: "https://litellm.example" });
         dbAgentMocks.findUnique.mockResolvedValue(null);
         dbAgentMocks.create.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
         dbAgentMocks.update.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
@@ -115,7 +115,7 @@ describe("agent-template.service", () => {
             workingDir: null,
             warmPoolReplicas: 0,
             project: { id: "project-1", projectType: "AGENT" },
-            llmGateway: { id: "gateway-1" },
+            llmGateway: { id: "gateway-1", baseUrl: "https://litellm.example" },
             agentDomains: [],
             agentVolumes: [],
             agentFileMounts: [],
@@ -131,9 +131,9 @@ describe("agent-template.service", () => {
         await agentTemplateService.createAgentFromTemplate("project-1", template);
 
         expect(dbAgentMocks.update).toHaveBeenCalledWith({
-            where: { id: expect.stringMatching(/^agent-open-code-/) },
+            where: { id: "agent-opencode" },
             data: expect.objectContaining({
-                id: expect.stringMatching(/^agent-open-code-/),
+                id: "agent-opencode",
                 name: "OpenCode",
                 projectId: "project-1",
                 llmGatewayId: "gateway-1",

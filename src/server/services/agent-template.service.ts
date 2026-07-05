@@ -7,7 +7,6 @@ import { AgentTemplateContentModel, AgentTemplateModel } from "@/shared/model/ag
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { agentTemplates, postCreateAgentTemplateFunctions } from "@/shared/templates/all-agent.templates";
 import { AgentTemplateUtils } from "../utils/agent-template.utils";
-import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { CryptoUtils } from "../utils/crypto.utils";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
@@ -48,9 +47,13 @@ class AgentTemplateService {
                 const postCreate = postCreateAgentTemplateFunctions.get(template.name);
                 if (postCreate) {
                     const updatedAgents = await postCreate(createdAgents, context);
+                    const mergedAgentsById = new Map(createdAgents.map((agent) => [agent.id, agent]));
                     for (const agent of updatedAgents) {
-                        await agentService.saveAgentExtendedModel(agent as AgentExtendedWriteModel, tx);
+                        const persistedAgent = await agentService.saveAgentExtendedModel(agent as AgentExtendedWriteModel, tx);
+                        mergedAgentsById.set(persistedAgent.id, persistedAgent);
                     }
+
+                    return createdAgents.map((agent) => mergedAgentsById.get(agent.id) ?? agent);
                 }
 
                 return createdAgents;
@@ -82,7 +85,6 @@ class AgentTemplateService {
         }
 
         const { agent, envVars } = AgentTemplateUtils.mapTemplateInputValuesToAgent(template, template.inputSettings);
-        const agentId = KubeObjectNameUtils.toAgentId(agent.name);
         const encryptedEnvVars = envVars.length > 0
             ? JSON.stringify(envVars.map((ev) => ({
                 name: ev.name,
@@ -94,15 +96,14 @@ class AgentTemplateService {
         const writeModel: AgentExtendedWriteModel = {
             ...templateBase,
             ...agent,
-            id: agentId,
             projectId,
             encryptedEnvVars,
         };
 
-        await agentService.saveAgentExtendedModel(writeModel, tx);
+        const createdAgent = await agentService.saveAgentExtendedModel(writeModel, tx);
         await namespaceService.createNamespaceIfNotExists(projectId);
 
-        return agentId;
+        return createdAgent.id;
     }
 }
 

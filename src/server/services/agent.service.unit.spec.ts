@@ -66,11 +66,13 @@ const pvcServiceMocks = vi.hoisted(() => ({
 const configMapServiceMocks = vi.hoisted(() => ({
     createOrUpdateConfigMapForAgent: vi.fn(),
     deleteUnusedConfigMapsForAgent: vi.fn(),
+    deleteAllConfigMapsForAgent: vi.fn(),
 }));
 
 const ingressServiceMocks = vi.hoisted(() => ({
     listAgentIngress: vi.fn(),
     deleteAgentIngress: vi.fn(),
+    deleteAllAgentIngresses: vi.fn(),
     createOrUpdateAgentIngress: vi.fn(),
 }));
 
@@ -648,12 +650,15 @@ describe('agent.service', () => {
             );
             expect(agentRuntimeService.stopAllInstances).toHaveBeenCalledWith('agent-1');
             expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
-            expect(secretService.deleteSecretSafe).not.toHaveBeenCalled(); // not called in new impl
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
                 'gw-key',
                 'sk-v-key-123',
             );
+            expect(ingressService.deleteAllAgentIngresses).toHaveBeenCalledWith('agent-1');
+            expect(configMapService.deleteAllConfigMapsForAgent).toHaveBeenCalledWith(agentMock);
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('secret-agent-1', 'proj-test-agent');
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('pullsec-agent-1', 'proj-test-agent');
             expect(agentSandboxAdapter.deleteSandboxWarmPool).toHaveBeenCalledWith('agent-1', 'proj-test-agent');
             expect(agentSandboxAdapter.deleteSandboxTemplate).toHaveBeenCalledWith('agent-1', 'proj-test-agent');
         });
