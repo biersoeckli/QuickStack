@@ -6,6 +6,7 @@ import PageTitle from "@/components/custom/page-title";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 export default async function BuildsPage() {
     const session = await getAuthUserSession();
@@ -21,6 +22,9 @@ export default async function BuildsPage() {
                 title="Builds"
                 subtitle="Overview of all build jobs across all workloads."
             />
+            <BreadcrumbSetter items={[
+                { name: "Builds", url: "/builds" },
+            ]} />
             <WorkloadBuildsTable initialBuilds={filteredBuilds} />
         </div>
     );

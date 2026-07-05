@@ -4,7 +4,7 @@ import { useBreadcrumbs } from "@/frontend/states/zustand.states";
 import { useEffect } from "react";
 
 export default function ProjectBreadcrumbs({ project }: { project: { name: string } }) {
-    const { setBreadcrumbs } = useBreadcrumbs();
+    const setBreadcrumbs = useBreadcrumbs((state) => state.setBreadcrumbs);
     useEffect(() => setBreadcrumbs([
         { name: "Projects", url: "/" },
         { name: project.name }

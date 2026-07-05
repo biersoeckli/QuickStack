@@ -11,6 +11,7 @@ import {
     AlertDescription,
     AlertTitle,
 } from "@/components/ui/alert"
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 
 export default async function BackupsPage() {
@@ -30,6 +31,9 @@ export default async function BackupsPage() {
                 title={'Backups'}
                 subtitle={`View all backups wich are stored in all S3 Target destinations. If a backup exists from an app wich doesnt exist anymore, it will be shown as orphaned.`}>
             </PageTitle>
+            <BreadcrumbSetter items={[
+                { name: "Backups", url: "/backups" },
+            ]} />
             <div className="space-y-4">
                 {!backupData && <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
