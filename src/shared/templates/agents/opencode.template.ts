@@ -50,7 +50,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
             size: 5120,
             storageClassName: "longhorn",
         }],
-        agentFileMounts: [],
+        agentFileMounts: []
     }],
 };
 

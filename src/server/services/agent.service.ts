@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Agent } from "@prisma/client";
-import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
+import { AgentExtendedWriteModel, AgentExtendedModel, AgentExtendedWriteZodModel } from "@/shared/model/agent-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
@@ -29,8 +29,6 @@ import deploymentLogService, { dlog } from "./deployment-logs.service";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
-import { AgentModel } from "@/shared/model/generated-zod";
-import z from "zod";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -146,7 +144,7 @@ class AgentService {
                 agentFileMounts: agentFileMountsInput,
                 agentNetworkPolicy: agentNetworkPolicyInput,
                 ...agentInputData
-            } = agentExtendedInput;
+            } = AgentExtendedWriteZodModel.parse(agentExtendedInput);
             const savedAgent = await this.saveAgent(agentInputData, tx);
             const savedAgentId = savedAgent.id;
 
@@ -281,28 +279,16 @@ class AgentService {
             }
 
             if (isCreate) {
-                // Additional Fields of ExtendedModels as input need to be removed
-                const cleanedData = AgentModel.omit({
-                    createdAt: true,
-                    updatedAt: true,
-                    id: true,
-                }).parse(data);
                 savedItem = await tx.agent.create({
                     data: {
                         id: KubeObjectNameUtils.toAgentId(data.name as string),
-                        ...cleanedData,
+                        ...data,
                     } as Prisma.AgentUncheckedCreateInput,
                 });
             } else {
-                // Additional Fields of ExtendedModels as input need to be removed
-                const agentModel = AgentModel.extend(z.object({
-                    createdAt: z.date().optional(),
-                    updatedAt: z.date().optional(),
-                }).shape)
-                const cleanedData = agentModel.parse(data);
                 savedItem = await tx.agent.update({
                     where: { id: data.id as string },
-                    data: cleanedData as Prisma.AgentUncheckedUpdateInput,
+                    data: data as Prisma.AgentUncheckedUpdateInput,
                 });
             }
             return savedItem;

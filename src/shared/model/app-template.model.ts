@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appVolumeTypeZodModel, appStorageClassNameZodModel } from "./volume-edit.model";
+import { AppExtendedWriteZodModel } from "./app-extended.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined().optional(),
@@ -23,9 +24,9 @@ export const appTemplateInputSettingsZodModel = z.object({
 });
 export type AppTemplateInputSettingsModel = z.infer<typeof appTemplateInputSettingsZodModel>;
 
-export const appTemplateContentZodModel = z.object({
+export const appTemplateContentZodModel = AppExtendedWriteZodModel.extend(z.object({
     inputSettings: appTemplateInputSettingsZodModel.array(),
-    appModel: appModelWithRelations,
+    /*appModel: appModelWithRelations,
     appDomains: AppDomainModel.array(),
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
@@ -46,8 +47,8 @@ export const appTemplateContentZodModel = z.object({
         appId: z.undefined().optional(),
         createdAt: z.undefined().optional(),
         updatedAt: z.undefined().optional(),
-    }).array(),
-});
+    }).array(),*/
+}).shape);
 export type AppTemplateContentModel = z.infer<typeof appTemplateContentZodModel>;
 
 export const appTemplateZodModel = z.object({
