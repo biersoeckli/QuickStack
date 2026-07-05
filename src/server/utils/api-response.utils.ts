@@ -24,7 +24,7 @@ export class ApiUtils {
             );
 
             let mappedObject = z.object(mappedShape);
-            const catchall = schema._def.catchall as any;
+            const catchall = schema._def.catchall;
 
             if (catchall instanceof z.ZodNever) {
                 mappedObject = mappedObject.strict();
@@ -54,11 +54,11 @@ export class ApiUtils {
         }
 
         if (schema instanceof z.ZodUnion) {
-            return z.union((schema._def.options as any[]).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+            return z.union((schema._def.options).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
         }
 
         if (schema instanceof z.ZodTuple) {
-            const mappedItems = (schema._def.items as any[]).map(item => ApiUtils.mapDateSchemaToStringDate(item)) as [z.ZodTypeAny, ...z.ZodTypeAny[]];
+            const mappedItems = (schema._def.items).map(item => ApiUtils.mapDateSchemaToStringDate(item)) as [z.ZodTypeAny, ...z.ZodTypeAny[]];
             const mappedTuple = z.tuple(mappedItems);
 
             return schema._def.rest ? mappedTuple.rest(ApiUtils.mapDateSchemaToStringDate(schema._def.rest)) : mappedTuple;
@@ -67,16 +67,16 @@ export class ApiUtils {
         if (schema instanceof z.ZodRecord) {
             return z.record(
                 schema._def.keyType as z.ZodString | z.ZodNumber | z.ZodSymbol,
-                ApiUtils.mapDateSchemaToStringDate(schema._def.valueType as any)
+                ApiUtils.mapDateSchemaToStringDate(schema._def.valueType)
             );
         }
 
         if (schema instanceof z.ZodLazy) {
-            return z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter() as any));
+            return z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter()));
         }
 
         if (schema instanceof z.ZodPromise) {
-            return z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap() as any));
+            return z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap()));
         }
 
         return schema;

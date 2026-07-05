@@ -8,7 +8,7 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { LlmGatewayEditModel, llmGatewayEditZodModel } from "@/shared/model/llm-gateway-edit.model";
 import { LlmGatewayModel } from "@/shared/model/llm-gateway.model";
-import { deployLiteLlmGatewayInstance, saveLlmGateway, testLlmGatewayConnection } from "./actions";
+import { deployLiteLlmGatewayInstance, getLiteLlmInfosFromAppId, saveLlmGateway, testLlmGatewayConnection } from "./actions";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/custom/submit-button";
@@ -293,6 +293,13 @@ export default function LlmGatewayEditOverlay({
                 }
                 toast.success(`Started LiteLLM instance deployment.`);
             }
+            // create gateway in settings
+            const liteLlmInfos = await Toast.fromAction(() => getLiteLlmInfosFromAppId(createdApps[2]), 'Retrieved LiteLLM instance information.', 'Retrieving LiteLLM instance information...');
+            await Toast.fromAction(() => saveLlmGateway({}, {
+                name: 'Internal LiteLLM Gateway',
+                baseUrl: liteLlmInfos.data!.baseUrl,
+                adminKey: liteLlmInfos.data!.adminKey,
+            }), 'Created LLM Gateway for LiteLLM instance.', 'Creating LLM Gateway for LiteLLM instance...');
         }
     };
 

@@ -110,9 +110,14 @@ describe("agent-template.service", () => {
             memoryLimit: null,
             systemPrompt: null,
             encryptedEnvVars: null,
-            containerCommand: null,
-            containerArgs: null,
-            workingDir: null,
+            containerCommand: JSON.stringify([
+                "/bin/sh",
+                "-lc",
+            ]),
+            containerArgs: JSON.stringify([
+                "exec opencode web --hostname 0.0.0.0 --port 4096",
+            ]),
+            workingDir: "/workspace",
             warmPoolReplicas: 0,
             project: { id: "project-1", projectType: "AGENT" },
             llmGateway: { id: "gateway-1", baseUrl: "https://litellm.example" },
@@ -147,11 +152,35 @@ describe("agent-template.service", () => {
         expect(dbAgentVolumeMocks.create).toHaveBeenCalledWith({
             data: {
                 containerMountPath: "/workspace",
-                size: 10000,
+                size: 5120,
                 storageClassName: "longhorn",
                 agentId: "agent-opencode",
             },
         });
+        expect(dbAgentFileMountMocks.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                containerMountPath: "/root/.config/opencode/opencode.json",
+                agentId: "agent-opencode",
+            }),
+        });
+        const opencodeConfigMount = dbAgentFileMountMocks.create.mock.calls.find(([call]) =>
+            call.data.containerMountPath === "/root/.config/opencode/opencode.json"
+        )?.[0];
+        expect(JSON.parse(opencodeConfigMount.data.content)).toEqual(expect.objectContaining({
+            model: "quickstack-litellm/gpt-4o",
+            provider: expect.objectContaining({
+                "quickstack-litellm": expect.objectContaining({
+                    options: expect.objectContaining({
+                        baseURL: "https://litellm.example/v1",
+                        apiKey: "{env:QS_VIRTUAL_KEY}",
+                    }),
+                }),
+            }),
+            server: {
+                hostname: "0.0.0.0",
+                port: 4096,
+            },
+        }));
         expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith("project-1");
     });
 

@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
-import { appVolumeTypeZodModel, appStorageClassNameZodModel } from "./volume-edit.model";
-import { AppExtendedWriteZodModel } from "./app-extended.model";
+import { appStorageClassNameZodModel, appVolumeTypeZodModel } from "./volume-edit.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined().optional(),
@@ -24,10 +23,15 @@ export const appTemplateInputSettingsZodModel = z.object({
 });
 export type AppTemplateInputSettingsModel = z.infer<typeof appTemplateInputSettingsZodModel>;
 
-export const appTemplateContentZodModel = AppExtendedWriteZodModel.extend(z.object({
+export const appTemplateContentZodModel = z.object({
     inputSettings: appTemplateInputSettingsZodModel.array(),
-    /*appModel: appModelWithRelations,
-    appDomains: AppDomainModel.array(),
+    appModel: appModelWithRelations,
+    appDomains: AppDomainModel.extend({
+        id: z.undefined().optional(),
+        appId: z.undefined().optional(),
+        createdAt: z.undefined().optional(),
+        updatedAt: z.undefined().optional(),
+    }).array(),
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
         storageClassName: appStorageClassNameZodModel.default('longhorn'),
@@ -47,8 +51,8 @@ export const appTemplateContentZodModel = AppExtendedWriteZodModel.extend(z.obje
         appId: z.undefined().optional(),
         createdAt: z.undefined().optional(),
         updatedAt: z.undefined().optional(),
-    }).array(),*/
-}).shape);
+    }).array(),
+});
 export type AppTemplateContentModel = z.infer<typeof appTemplateContentZodModel>;
 
 export const appTemplateZodModel = z.object({

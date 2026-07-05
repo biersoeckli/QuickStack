@@ -14,6 +14,7 @@ import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { deleteAgentNetworkPolicyEgressRule, saveAgentNetworkPolicySettings } from "./actions";
 import AgentNetworkPolicyEgressRuleEditOverlay from "./agent-network-policy-egress-rule-edit-overlay";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InternalHostnameUtils } from "@/server/utils/internal-hostname.utils";
 
 type AgentNetworkPolicyRule = NonNullable<AgentExtendedModel['agentNetworkPolicy']>['rules'][number];
 
@@ -59,7 +60,7 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
     };
 
     const copyInternalHostname = (rule: AgentNetworkPolicyRule) => {
-        const internalHostname = `http://svc-${rule.targetAppId}.${rule.targetApp.projectId}.svc.cluster.local:${rule.port}`;
+        const internalHostname = InternalHostnameUtils.getInternalBaseUrlForApp(rule.targetApp, rule.port);
         navigator.clipboard.writeText(internalHostname);
         toast.success('Copied internal hostname to clipboard');
     };

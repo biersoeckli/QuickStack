@@ -7,6 +7,8 @@ import { DatabaseTemplateInfoModel } from "@/shared/model/database-template-info
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import dataAccess from "../adapter/db.client";
 import { Prisma } from "@prisma/client";
+import { revalidateTag } from "next/cache";
+import { Tags } from "../utils/cache-tag-generator.utils";
 
 class AppTemplateService {
 
@@ -14,42 +16,46 @@ class AppTemplateService {
         if (!allTemplates.find(x => x.name === template.name)) {
             throw new ServiceException(`Template with name '${template.name}' not found.`);
         }
+        try {
+            return await dataAccess.client.$transaction(async (tx) => {
+                let databaseInfo: DatabaseTemplateInfoModel | undefined;
 
-        return await dataAccess.client.$transaction(async (tx) => {
-            let databaseInfo: DatabaseTemplateInfoModel | undefined;
+                const createdTemplates: AppExtendedModel[] = [];
 
-            const createdTemplates: AppExtendedModel[] = [];
+                for (const tmpl of template.templates) {
+                    const createdAppId = await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings, tx);
+                    let extendedApp = await appService.getExtendedById(createdAppId, false, tx);
 
-            for (const tmpl of template.templates) {
-                const createdAppId = await this.createAppFromTemplateContent(projectId, tmpl, tmpl.inputSettings, tx);
-                let extendedApp = await appService.getExtendedById(createdAppId, false, tx);
-
-                // used for templates with multiple apps and a database
-                if (databaseInfo) {
-                    AppTemplateUtils.replacePlaceholdersInEnvVariablesWithDatabaseInfo(extendedApp, databaseInfo);
-                    await appService.save({
-                        id: createdAppId,
-                        envVars: extendedApp.envVars
-                    }, false, tx);
-                    extendedApp = await appService.getExtendedById(createdAppId, false, tx);
+                    // used for templates with multiple apps and a database
+                    if (databaseInfo) {
+                        AppTemplateUtils.replacePlaceholdersInEnvVariablesWithDatabaseInfo(extendedApp, databaseInfo);
+                        await appService.save({
+                            id: createdAppId,
+                            envVars: extendedApp.envVars
+                        }, false, tx);
+                        extendedApp = await appService.getExtendedById(createdAppId, false, tx);
+                    }
+                    if (extendedApp.appType !== 'APP') {
+                        databaseInfo = AppTemplateUtils.getDatabaseModelFromApp(extendedApp);
+                    }
+                    createdTemplates.push(extendedApp);
                 }
-                if (extendedApp.appType !== 'APP') {
-                    databaseInfo = AppTemplateUtils.getDatabaseModelFromApp(extendedApp);
-                }
-                createdTemplates.push(extendedApp);
-            }
 
-            // run post create function if exists for this template
-            const postFunctionForTempalte = postCreateTemplateFunctions.get(template.name);
-            if (postFunctionForTempalte) {
-                const updatedApps = await postFunctionForTempalte(createdTemplates);
-                // save updated apps todo
-                for (const app of updatedApps) {
-                    await appService.saveAppExtendedModel(app, tx);
+                // run post create function if exists for this template
+                const postFunctionForTempalte = postCreateTemplateFunctions.get(template.name);
+                if (postFunctionForTempalte) {
+                    const updatedApps = await postFunctionForTempalte(createdTemplates);
+                    // save updated apps todo
+                    for (const app of updatedApps) {
+                        await appService.saveAppExtendedModel(app, tx);
+                    }
                 }
-            }
-            return createdTemplates.map(x => x.id);
-        });
+                return createdTemplates.map(x => x.id);
+            });
+        } finally {
+            revalidateTag(Tags.projects());
+            revalidateTag(Tags.apps(projectId));
+        }
     }
 
     private async createAppFromTemplateContent(projectId: string, template: AppTemplateContentModel,
