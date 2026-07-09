@@ -3,7 +3,35 @@
 import mockNextJsCaching from '@/__tests__/nextjs-cache.utils';
 mockNextJsCaching();
 
-vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+const k3sMockState = vi.hoisted(() => {
+    const namespaces = new Set<string>();
+
+    return {
+        namespaces,
+        core: {
+            listNamespace: vi.fn(async () => ({
+                items: Array.from(namespaces).map((name) => ({ metadata: { name } })),
+            })),
+            createNamespace: vi.fn(async ({ body }: { body: { metadata?: { name?: string } } }) => {
+                const name = body.metadata?.name;
+                if (name) {
+                    namespaces.add(name);
+                }
+                return {};
+            }),
+            deleteNamespace: vi.fn(async ({ name }: { name: string }) => {
+                namespaces.delete(name);
+                return {};
+            }),
+        },
+    };
+});
+
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
+    default: {
+        core: k3sMockState.core,
+    },
+}));
 
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { v1Api } from '@/server/api/v1/api-index';
@@ -20,6 +48,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     beforeEach(() => {
         process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ?? 'test-nextauth-secret';
+        k3sMockState.namespaces.clear();
         vi.clearAllMocks();
     });
 
