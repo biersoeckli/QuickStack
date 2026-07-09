@@ -41,6 +41,24 @@ class AgentService {
         return !!(result ?? false);
     }
 
+    private get agentInclude() {
+        return {
+            project: true,
+            llmGateway: true,
+            agentDomains: true,
+            agentVolumes: true,
+            agentFileMounts: true,
+            agentGitSshKey: true,
+            agentNetworkPolicy: {
+                include: {
+                    rules: {
+                        include: { targetApp: true },
+                    },
+                },
+            },
+        };
+    }
+
     private normalizeAgentModelAliases<T extends { modelAlias: unknown }>(agent: T): Omit<T, 'modelAlias'> & { modelAlias: string[] } {
         return {
             ...agent,
@@ -48,25 +66,28 @@ class AgentService {
         };
     }
 
+    async getAll(): Promise<AgentExtendedModel[]> {
+        const agents = (await dataAccess.client.agent.findMany({
+            include: this.agentInclude,
+            orderBy: { name: 'asc' },
+        })).map((agent) => this.normalizeAgentModelAliases(agent));
+
+        agents.sort((a, b) => {
+            const projectComparison = a.project.name.localeCompare(b.project.name, undefined, { sensitivity: 'base' });
+            if (projectComparison !== 0) {
+                return projectComparison;
+            }
+            return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+
+        return agents;
+    }
+
     async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
         return await unstable_cache(
             async (pid: string) => (await dataAccess.client.agent.findMany({
                 where: { projectId: pid },
-                include: {
-                    project: true,
-                    llmGateway: true,
-                    agentDomains: true,
-                    agentVolumes: true,
-                    agentFileMounts: true,
-                    agentGitSshKey: true,
-                    agentNetworkPolicy: {
-                        include: {
-                            rules: {
-                                include: { targetApp: true },
-                            },
-                        },
-                    },
-                },
+                include: this.agentInclude,
                 orderBy: { name: 'asc' },
             })).map((agent) => this.normalizeAgentModelAliases(agent)),
             [Tags.agents(projectId)],
@@ -78,43 +99,29 @@ class AgentService {
         if (tx) {
             const agent = await tx.agent.findFirstOrThrow({
                 where: { id: agentId },
-                include: {
-                    project: true,
-                    llmGateway: true,
-                    agentDomains: true,
-                    agentVolumes: true,
-                    agentFileMounts: true,
-                    agentGitSshKey: true,
-                    agentNetworkPolicy: {
-                        include: {
-                            rules: {
-                                include: { targetApp: true },
-                            },
-                        },
-                    },
-                },
+                include: this.agentInclude,
             });
             return this.normalizeAgentModelAliases(agent);
         }
         return await unstable_cache(
             async (id: string) => this.normalizeAgentModelAliases(await dataAccess.client.agent.findFirstOrThrow({
                 where: { id },
-                include: {
-                    project: true,
-                    llmGateway: true,
-                    agentDomains: true,
-                    agentVolumes: true,
-                    agentFileMounts: true,
-                    agentGitSshKey: true,
-                    agentNetworkPolicy: {
-                        include: {
-                            rules: {
-                                include: { targetApp: true },
-                            },
-                        },
-                    },
-                },
+                include: this.agentInclude,
             })),
+            [Tags.agent(agentId)],
+            { tags: [Tags.agent(agentId)] },
+        )(agentId);
+    }
+
+    async getByIdOrUndefined(agentId: string): Promise<AgentExtendedModel | null> {
+        return await unstable_cache(
+            async (id: string) => {
+                const agent = await dataAccess.client.agent.findFirst({
+                    where: { id },
+                    include: this.agentInclude,
+                });
+                return agent ? this.normalizeAgentModelAliases(agent) : null;
+            },
             [Tags.agent(agentId)],
             { tags: [Tags.agent(agentId)] },
         )(agentId);
@@ -279,6 +286,14 @@ class AgentService {
             }
 
             if (isCreate) {
+                const project = await tx.project.findUnique({
+                    where: { id: data.projectId as string },
+                    select: { projectType: true },
+                });
+                if (!project || project.projectType !== 'AGENT') {
+                    throw new ServiceException("Agents can only be created in Agent Projects.");
+                }
+
                 savedItem = await tx.agent.create({
                     data: {
                         id: KubeObjectNameUtils.toAgentId(data.name as string),

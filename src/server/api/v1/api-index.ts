@@ -3,7 +3,9 @@ import { Elysia } from 'elysia';
 import { ApiUtils } from '../../utils/api-response.utils';
 import { projectRoutes } from './project/route';
 import { appRoutes } from './app/route';
-import { deployRoutes } from './app/deploy/route';
+import { appDeployRoutes } from './app/deploy/route';
+import { agentRoutes } from './agent/route';
+import { agentDeployRoutes } from './agent/deploy/route';
 
 export const v1Api = new Elysia({ prefix: '/api/v1' })
     .derive(ApiUtils.deriveFunc)
@@ -37,4 +39,6 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
     })
     .use(projectRoutes)
     .use(appRoutes)
-    .use(deployRoutes);
+    .use(agentRoutes)
+    .use(agentDeployRoutes)
+    .use(appDeployRoutes);

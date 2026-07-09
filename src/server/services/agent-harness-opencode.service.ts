@@ -55,6 +55,7 @@ class AgentHarnessOpenCodeService implements AgentHarnessService {
         return {
             $schema: 'https://opencode.ai/config.json',
             model: `${OPENCODE_PROVIDER_ID}/${defaultModelAlias}`,
+            enabled_providers: [OPENCODE_PROVIDER_ID],
             provider: {
                 [OPENCODE_PROVIDER_ID]: {
                     npm: '@ai-sdk/openai-compatible',

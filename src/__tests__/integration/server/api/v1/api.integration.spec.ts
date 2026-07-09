@@ -10,10 +10,13 @@ import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { v1Api } from '@/server/api/v1/api-index';
+import dataAccess from '@/server/adapter/db.client';
+import agentService from '@/server/services/agent.service';
 import restApiKeyService from '@/server/services/rest-api-key.service';
 import userGroupService from '@/server/services/user-group.service';
 import userService from '@/server/services/user.service';
 import { PathUtils } from '@/server/utils/path.utils';
+import { AgentExtendedModel, AgentExtendedWriteModel } from '@/shared/model/agent-extended.model';
 import { AppExtendedModel, AppExtendedWriteModel } from '@/shared/model/app-extended.model';
 import { Project } from '@prisma/client';
 
@@ -137,6 +140,100 @@ describe('REST API v1 integration', () => {
 
     }, 420_000);
 
+    it('create, read, update and delete agent through the api', async () => {
+        const apiKey = await createAdminApiKey();
+
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Test Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const agent = createAgentPayload(undefined, createdProject.id, gateway.id, 'API Test Agent');
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: agent,
+            }),
+        ) as AgentExtendedModel;
+        expect(createdAgent).toMatchObject({
+            id: expect.stringContaining('api-test-agent'),
+            name: 'API Test Agent',
+            projectId: createdProject.id,
+            llmGatewayId: gateway.id,
+            modelAlias: ['gpt-4o'],
+            sourceType: 'CONTAINER',
+            buildMethod: 'DOCKERFILE',
+        });
+
+        createdAgent.name = 'API Test Agent Updated';
+        createdAgent.warmPoolReplicas = 2;
+        const updatedAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: createdAgent,
+            }),
+        );
+        expect(updatedAgent).toMatchObject({
+            id: createdAgent.id,
+            name: 'API Test Agent Updated',
+            warmPoolReplicas: 2,
+        });
+
+        const fetchedAgent = await expectApiJson(
+            await apiFetch(`/api/v1/agents/${createdAgent.id}`, apiKey),
+        );
+        expect(fetchedAgent).toMatchObject({
+            id: createdAgent.id,
+            name: 'API Test Agent Updated',
+            projectId: createdProject.id,
+            modelAlias: ['gpt-4o'],
+            project: {
+                id: createdProject.id,
+                projectType: 'AGENT',
+            },
+            llmGateway: {
+                id: gateway.id,
+                name: 'API Test Gateway',
+            },
+        });
+
+        const allAgents = await expectApiJson(
+            await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
+        );
+        expect(allAgents).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                id: createdAgent.id,
+            }),
+        ]));
+
+        const deleteSpy = vi.spyOn(agentService, 'deleteById').mockImplementation(async (agentId: string) => {
+            await dataAccess.client.agent.delete({ where: { id: agentId } });
+        });
+        try {
+            await expectApiJson(
+                await apiFetch(`/api/v1/agents/${createdAgent.id}`, apiKey, {
+                    method: 'DELETE',
+                }),
+            );
+            expect(deleteSpy).toHaveBeenCalledWith(createdAgent.id);
+
+            const agentsAfterDelete = await expectApiJson(
+                await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
+            );
+            expect(agentsAfterDelete).toEqual(expect.not.arrayContaining([
+                expect.objectContaining({
+                    id: createdAgent.id,
+                }),
+            ]));
+        } finally {
+            deleteSpy.mockRestore();
+        }
+    }, 420_000);
+
     it('deploys an app and retrieves deployment details and logs through the api', async () => {
         const apiKey = await createAdminApiKey();
         await deployRegistry();
@@ -212,14 +309,14 @@ async function createGitAppForProject(projectId: string, apiKey: string) {
     return createdApp as AppExtendedModel;
 }
 
-async function createApiProject(apiKey: string) {
+async function createApiProject(apiKey: string, projectType: 'APP' | 'AGENT' = 'APP') {
     const suffix = Date.now();
-    const projectName = `API Project ${suffix}`;
+    const projectName = `API ${projectType} Project ${suffix}`;
 
     const createdProject = await expectApiJson(
         await apiFetch('/api/v1/projects', apiKey, {
             method: 'POST',
-            body: { name: projectName, projectType: 'APP' },
+            body: { name: projectName, projectType },
         })
     ) as Project;
     expect(createdProject.name).toBe(projectName);
@@ -256,6 +353,28 @@ function createGitAppPayload(id: string | undefined, projectId: string, name: st
         appFileMounts: [],
         appVolumes: [],
         appBasicAuths: [],
+    };
+    if (id) {
+        return { ...retVal, id };
+    }
+    return retVal;
+}
+
+function createAgentPayload(id: string | undefined, projectId: string, llmGatewayId: string, name: string): AgentExtendedWriteModel {
+    const retVal = {
+        name,
+        projectId,
+        llmGatewayId,
+        modelAlias: ['gpt-4o'],
+        sourceType: 'CONTAINER',
+        buildMethod: 'DOCKERFILE',
+        containerImageSource: 'custom/opencode:latest',
+        dockerfilePath: './Dockerfile',
+        warmPoolReplicas: 0,
+        agentDomains: [],
+        agentVolumes: [],
+        agentFileMounts: [],
+        agentNetworkPolicy: null,
     };
     if (id) {
         return { ...retVal, id };

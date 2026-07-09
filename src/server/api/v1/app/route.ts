@@ -91,11 +91,15 @@ export const appRoutes = new Elysia()
                 throw new ServiceException('projectId cannot be changed for an existing app.');
             }
         }
-        return await appService.saveAppExtendedModel({ ...existing, ...body });
+        return await appService.saveAppExtendedModel(body);
     }, {
         body: AppExtendedWriteZodModel,
         response: ApiUtils.mapReponseModel(AppExtendedZodModel),
-        detail: { summary: 'Create or update app', security: [{ bearerAuth: [] }] }
+        detail: {
+            summary: 'Create or update app.',
+            description: 'When an ID is set, the app will be updated. Otherwise a new one will be created.',
+            security: [{ bearerAuth: [] }]
+        }
     })
     .delete('/apps/:id', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()

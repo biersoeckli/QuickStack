@@ -12,7 +12,7 @@ import { appDeploymentLogsResponseZodModel } from '@/shared/model/app-tail-log-e
 import { deploymentDetailsResponseZodModel } from '@/shared/model/deployment-info.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 
-export const deployRoutes = new Elysia()
+export const appDeployRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
     .get('/apps/:appId/deploy', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()

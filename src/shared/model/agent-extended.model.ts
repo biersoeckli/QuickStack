@@ -46,6 +46,11 @@ const agentWriteOmitFields = {
     updatedAt: true,
 } as const;
 
+const agentWriteOmitFieldsSubItems = {
+    ...agentWriteOmitFields,
+    agentId: true,
+} as const;
+
 const agentNetworkPolicyRuleWriteMeta = z.object({
     id: z.string().optional(),
     agentNetworkPolicyId: z.string().optional(),
@@ -59,7 +64,11 @@ const agentNetworkPolicyRuleWriteMeta = z.object({
 /** Write schema for a rule: only `targetAppId` is required, all other fields have defaults. */
 const AgentNetworkPolicyRuleWriteZodModel = AgentNetworkPolicyRuleModel
     .merge(agentNetworkPolicyRuleWriteMeta)
-    .omit(agentWriteOmitFields);
+    .omit({
+        ...agentWriteOmitFields,
+        agentNetworkPolicyId: true,
+
+    });
 
 const agentNetworkPolicyWriteMeta = z.object({
     id: z.string().optional(),
@@ -71,7 +80,7 @@ const agentNetworkPolicyWriteMeta = z.object({
 
 const AgentNetworkPolicyWriteZodModel = AgentNetworkPolicyModel
     .merge(agentNetworkPolicyWriteMeta)
-    .omit(agentWriteOmitFields)
+    .omit(agentWriteOmitFieldsSubItems)
     .extend({
         rules: AgentNetworkPolicyRuleWriteZodModel.array(),
     });
@@ -82,9 +91,9 @@ export const AgentExtendedWriteZodModel = AgentModel
     .extend({
         id: z.string().optional(),
         modelAlias: z.array(z.string().trim().min(1)),
-        agentDomains: AgentDomainModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
-        agentVolumes: AgentVolumeModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
-        agentFileMounts: AgentFileMountModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFields).array(),
+        agentDomains: AgentDomainModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
+        agentVolumes: AgentVolumeModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
+        agentFileMounts: AgentFileMountModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
         agentNetworkPolicy: AgentNetworkPolicyWriteZodModel.nullish(),
     });
 
