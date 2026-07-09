@@ -15,6 +15,7 @@ vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import appService from '@/server/services/app.service';
 import dataAccess from '@/server/adapter/db.client';
+import { AppExtendedWriteModel } from '@/shared/model/app-extended.model';
 
 describe('app.service integration - subitem ownership guards', () => {
     createPrismaTestContext('app-service-subitem-ownership');
@@ -138,4 +139,43 @@ describe('app.service integration - subitem ownership guards', () => {
         await expect(dataAccess.client.appBasicAuth.findUniqueOrThrow({ where: { id: basicAuth.id } }))
             .resolves.toMatchObject({ appId: sourceApp.id, username: 'source-user' });
     });
+
+    it('rolls back created App when a nested subitem save fails', async () => {
+        const { sourceApp } = await createProjectAndApps();
+        await dataAccess.client.appDomain.create({
+            data: { appId: sourceApp.id, hostname: 'taken.example.com', port: 8080, useSsl: true, redirectHttps: true },
+        });
+
+        await expect(appService.saveAppExtendedModel(createAppPayload(sourceApp.projectId, 'Rollback App', 'taken.example.com')))
+            .rejects.toThrow('Hostname is already in use by this or another app.');
+
+        await expect(dataAccess.client.app.findUnique({ where: { id: 'app-rollback-app' } }))
+            .resolves.toBeNull();
+    });
 });
+
+function createAppPayload(projectId: string, name: string, hostname: string): AppExtendedWriteModel {
+    return {
+        name,
+        appType: 'APP',
+        projectId,
+        sourceType: 'CONTAINER',
+        buildMethod: 'RAILPACK',
+        containerImageSource: 'nginx:latest',
+        dockerfilePath: './Dockerfile',
+        replicas: 1,
+        envVars: '',
+        ingressNetworkPolicy: 'ALLOW_ALL',
+        egressNetworkPolicy: 'ALLOW_ALL',
+        useNetworkPolicy: true,
+        healthCheckPeriodSeconds: 15,
+        healthCheckTimeoutSeconds: 5,
+        healthCheckFailureThreshold: 3,
+        appDomains: [{ hostname, port: 8080, useSsl: true, redirectHttps: true }],
+        appPorts: [],
+        appNodePorts: [],
+        appFileMounts: [],
+        appVolumes: [],
+        appBasicAuths: [],
+    };
+}

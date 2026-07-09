@@ -197,82 +197,100 @@ class AppService {
                 }
             }
         } finally {
-            revalidateTag(Tags.apps(item.projectId as string));
-            revalidateTag(Tags.app(item.id as string));
-            revalidateTag(Tags.projects());
-            revalidateTag(Tags.userGroups());
-            revalidateTag(Tags.users());
+            if (!tx) {
+                revalidateTag(Tags.apps(item.projectId as string));
+                revalidateTag(Tags.app(item.id as string));
+                revalidateTag(Tags.projects());
+                revalidateTag(Tags.userGroups());
+                revalidateTag(Tags.users());
+            }
         }
         return savedItem;
     }
 
-    async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient) {
+    async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient): Promise<AppExtendedModel> {
+        const run = async (innerTx: Prisma.TransactionClient) => {
+            // for new objects, make sure some params are optional, wich will be created by prisma
+            const optionalParam = z.object({
+                id: z.string().optional(),
+                appId: z.string().optional(),
+                createdAt: z.date().optional(),
+                updatedAt: z.date().optional(),
+            });
 
-        // for new objects, make sure some params are optional, wich will be created by prisma
-        const optionalParam = z.object({
-            id: z.string().optional(),
-            appId: z.string().optional(),
-            createdAt: z.date().optional(),
-            updatedAt: z.date().optional(),
+            const parsedAppModel = AppModel.extend(optionalParam.shape).parse(app);
+            const savedApp = await this.save({
+                ...parsedAppModel,
+                id: app.id
+            }, false, innerTx);
+
+            const savedAppId = savedApp.id;
+
+            const parsedDomains = AppDomainModel.extend(optionalParam.shape).array().parse(app.appDomains);
+            for (const domain of parsedDomains) {
+                await this.saveDomain({
+                    ...domain,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedVolumes = AppVolumeModel.extend(optionalParam.shape).array().parse(app.appVolumes);
+            for (const volume of parsedVolumes) {
+                await this.saveVolume({
+                    ...volume,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedFileMounts = AppFileMountModel.extend(optionalParam.shape).array().parse(app.appFileMounts);
+            for (const fileMount of parsedFileMounts) {
+                await this.saveFileMount({
+                    ...fileMount,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedPorts = AppPortModel.extend(optionalParam.shape).array().parse(app.appPorts);
+            for (const port of parsedPorts) {
+                await this.savePort({
+                    ...port,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedNodePorts = AppNodePortModel.extend(optionalParam.shape).array().parse(app.appNodePorts);
+            for (const nodePort of parsedNodePorts) {
+                await this.saveNodePort({
+                    ...nodePort,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedBasicAuths = AppBasicAuthModel.extend(optionalParam.shape).array().parse(app.appBasicAuths);
+            for (const basicAuth of parsedBasicAuths) {
+                await this.saveBasicAuth({
+                    ...basicAuth,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            return await this.getExtendedById(savedAppId, false, innerTx);
+        };
+
+        if (tx) {
+            return await run(tx);
+        }
+
+        const result = await dataAccess.client.$transaction(async (innerTx) => {
+            return await run(innerTx);
         });
 
-        const parsedAppModel = AppModel.merge(optionalParam).parse(app);
-        const savedApp = await this.save({
-            ...parsedAppModel,
-            id: app.id
-        }, false, tx);
-
-        const savedAppId = savedApp.id;
-
-        const parsedDomains = AppDomainModel.merge(optionalParam).array().parse(app.appDomains);
-        for (const domain of parsedDomains) {
-            await this.saveDomain({
-                ...domain,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedVolumes = AppVolumeModel.merge(optionalParam).array().parse(app.appVolumes);
-        for (const volume of parsedVolumes) {
-            await this.saveVolume({
-                ...volume,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedFileMounts = AppFileMountModel.merge(optionalParam).array().parse(app.appFileMounts);
-        for (const fileMount of parsedFileMounts) {
-            await this.saveFileMount({
-                ...fileMount,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedPorts = AppPortModel.merge(optionalParam).array().parse(app.appPorts);
-        for (const port of parsedPorts) {
-            await this.savePort({
-                ...port,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedNodePorts = AppNodePortModel.merge(optionalParam).array().parse(app.appNodePorts);
-        for (const nodePort of parsedNodePorts) {
-            await this.saveNodePort({
-                ...nodePort,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedBasicAuths = AppBasicAuthModel.merge(optionalParam).array().parse(app.appBasicAuths);
-        for (const basicAuth of parsedBasicAuths) {
-            await this.saveBasicAuth({
-                ...basicAuth,
-                appId: savedAppId
-            }, tx);
-        }
-
-        return await this.getExtendedById(savedAppId, false, tx);
+        revalidateTag(Tags.apps(result.projectId));
+        revalidateTag(Tags.app(result.id));
+        revalidateTag(Tags.projects());
+        revalidateTag(Tags.userGroups());
+        revalidateTag(Tags.users());
+        return result;
     }
 
     async regenerateWebhookId(appId: string) {
@@ -288,7 +306,7 @@ class AppService {
     async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppDomain;
         const client = tx || dataAccess.client;
-        const existingApp = await this.getExtendedById(domainToBeSaved.appId as string);
+        const existingApp = await this.getExtendedById(domainToBeSaved.appId as string, false, client);
         const existingDomainWithSameHostname = await client.appDomain.findFirst({
             where: {
                 hostname: domainToBeSaved.hostname as string,
@@ -326,8 +344,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -444,8 +464,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -527,8 +549,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -593,8 +617,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -633,7 +659,7 @@ class AppService {
     async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppBasicAuth;
         const client = tx || dataAccess.client;
-        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, tx);
+        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, client);
         try {
             if (itemToBeSaved.id) {
                 const existingBasicAuthForApp = await client.appBasicAuth.findFirst({
@@ -658,8 +684,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -766,8 +794,10 @@ class AppService {
                 });
             }
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }

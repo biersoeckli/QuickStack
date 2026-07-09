@@ -9,12 +9,16 @@ vi.mock('next/cache', () => ({
 
 vi.mock('@/server/adapter/db.client', () => ({
     default: {
-        client: {
+        client: (() => {
+            const client = {
             project: { findUnique: vi.fn() },
             app: { create: vi.fn(), update: vi.fn() },
             appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
             appPort: { create: vi.fn() },
-        },
+                $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(client)),
+            };
+            return client;
+        })(),
     },
 }));
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
@@ -67,7 +71,7 @@ describe('app.service', () => {
                 nodePort: 30080,
                 protocol: 'TCP',
             }),
-            undefined
+            expect.any(Object)
         );
     });
 
