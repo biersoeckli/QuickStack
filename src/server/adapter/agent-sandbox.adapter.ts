@@ -1,11 +1,13 @@
 import { KubernetesResource } from "@/shared/model/base-kubernetes-object";
 import k3s, { kubernetesPatchOptions } from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
+import { Sandbox, SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
 import { ApiException, PatchStrategy } from "@kubernetes/client-node";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
+export const BASE_SANDBOX_API_GROUP = 'agents.x-k8s.io';
 export const SANDBOX_API_VERSION = 'v1beta1';
+export const SANDBOX_PLURAL = 'sandboxes';
 export const TEMPLATE_PLURAL = 'sandboxtemplates';
 export const WARMPOOL_PLURAL = 'sandboxwarmpools';
 export const CLAIM_PLURAL = 'sandboxclaims';
@@ -26,6 +28,28 @@ class AgentSandboxAdapter {
                 return false;
             }
             throw error;
+        }
+    }
+
+    async getSandbox(name: string, namespace: string): Promise<Sandbox | null> {
+        try {
+            const response = await k3s.customObjects.getNamespacedCustomObject({
+                group: BASE_SANDBOX_API_GROUP,
+                version: SANDBOX_API_VERSION,
+                namespace,
+                plural: SANDBOX_PLURAL,
+                name,
+            });
+            return response as Sandbox;
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
+                return null;
+            }
+            console.error(`Failed to get Sandbox "${name}":`, error);
+            throw new ServiceException(
+                `Failed to get Sandbox "${name}": ${error?.message || error}`,
+            );
         }
     }
 

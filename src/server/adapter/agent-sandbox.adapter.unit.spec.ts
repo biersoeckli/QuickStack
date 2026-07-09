@@ -286,6 +286,30 @@ describe('AgentSandboxAdapter', () => {
         });
     });
 
+    describe('Sandbox operations', () => {
+        it('retrieves a Sandbox', async () => {
+            const sandboxBody = { metadata: { name, namespace }, status: { selector: 'app=sandbox' } };
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue(sandboxBody as any);
+
+            const result = await agentSandboxAdapter.getSandbox(name, namespace);
+
+            expect(result).toEqual(sandboxBody);
+            expect(k3s.customObjects.getNamespacedCustomObject).toHaveBeenCalledWith(
+                { group: 'agents.x-k8s.io', version: 'v1beta1', namespace, plural: 'sandboxes', name },
+            );
+        });
+
+        it('returns null when Sandbox is not found', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { code: 404 }),
+            );
+
+            const result = await agentSandboxAdapter.getSandbox(name, namespace);
+
+            expect(result).toBeNull();
+        });
+    });
+
     describe('waitForSandboxReady', () => {
         it('resolves when SandboxClaim returns Ready=True', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({

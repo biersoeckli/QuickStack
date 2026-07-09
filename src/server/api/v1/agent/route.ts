@@ -97,10 +97,10 @@ export const agentRoutes = new Elysia()
             security: [{ bearerAuth: [] }]
         }
     })
-    .delete('/agents/:id', async ({ params, identity }) => {
+    .delete('/agents/:agentId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
-        const existing = await agentService.getByIdOrUndefined(params.id);
+        const existing = await agentService.getByIdOrUndefined(params.agentId);
         if (!existing) throw new ApiNotFoundException();
 
         ensureDeleteProjectWorkloadInProject(identity, existing.projectId);
@@ -109,7 +109,7 @@ export const agentRoutes = new Elysia()
         return undefined;
     }, {
         params: z.object({
-            id: z.string(),
+            agentId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(z.undefined()),
         detail: { summary: 'Delete agent', security: [{ bearerAuth: [] }] }

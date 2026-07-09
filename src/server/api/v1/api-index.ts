@@ -6,6 +6,7 @@ import { appRoutes } from './app/route';
 import { appDeployRoutes } from './app/deploy/route';
 import { agentRoutes } from './agent/route';
 import { agentDeployRoutes } from './agent/deploy/route';
+import { agentSandboxRoutes } from './agent/sandbox/route';
 
 export const v1Api = new Elysia({ prefix: '/api/v1' })
     .derive(ApiUtils.deriveFunc)
@@ -41,4 +42,5 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
     .use(appRoutes)
     .use(agentRoutes)
     .use(agentDeployRoutes)
+    .use(agentSandboxRoutes)
     .use(appDeployRoutes);

@@ -13,6 +13,12 @@ import secretService from "./secret.service";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 
+export type StartAgentInstanceOptions = {
+    timeoutMs?: number;
+    env?: Record<string, string>;
+    idleTimeoutMinutes?: number;
+};
+
 class AgentRuntimeService {
 
     private async getAgentOrThrow(agentId: string): Promise<AgentExtendedModel> {
@@ -197,9 +203,12 @@ class AgentRuntimeService {
      * - Creates claim with agent instance label
      * - Waits for sandbox readiness
      */
-    async startInstance(agentId: string, userId: string): Promise<{ claimName: string }> {
+    async startInstance(agentId: string, userId: string, options?: StartAgentInstanceOptions | number): Promise<{ claimName: string }> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
+        const startOptions: StartAgentInstanceOptions = typeof options === 'number'
+            ? { timeoutMs: options }
+            : options ?? {};
 
         await this.ensureRuntimeSecret(agent);
 
@@ -210,11 +219,18 @@ class AgentRuntimeService {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,
+            }, {
+                env: startOptions.env,
+                idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
             }),
         );
 
         try {
-            await agentSandboxAdapter.waitForSandboxReady(claimName, namespace);
+            if (startOptions.timeoutMs !== undefined) {
+                await agentSandboxAdapter.waitForSandboxReady(claimName, namespace, startOptions.timeoutMs);
+            } else {
+                await agentSandboxAdapter.waitForSandboxReady(claimName, namespace);
+            }
         } catch (error) {
             revalidateTag(Tags.agent(agentId));
             revalidateTag(Tags.agents(agent.projectId));

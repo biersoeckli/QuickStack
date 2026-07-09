@@ -198,6 +198,10 @@ class AgentSandboxTemplateBuilder {
         namespace: string,
         warmPoolName: string,
         labels?: Record<string, string>,
+        options?: {
+            env?: Record<string, string>;
+            idleTimeoutMinutes?: number;
+        },
     ): SandboxClaim {
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
@@ -211,6 +215,15 @@ class AgentSandboxTemplateBuilder {
                 warmPoolRef: {
                     name: warmPoolName,
                 },
+                ...(options?.env ? {
+                    env: Object.entries(options.env).map(([name, value]) => ({ name, value })),
+                } : {}),
+                ...(options?.idleTimeoutMinutes ? {
+                    lifecycle: {
+                        shutdownPolicy: 'Delete',
+                        ttlSecondsAfterFinished: options.idleTimeoutMinutes * 60,
+                    },
+                } : {}),
             },
         };
     }

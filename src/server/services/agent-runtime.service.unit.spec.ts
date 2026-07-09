@@ -237,6 +237,32 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('passes per-sandbox env and idle timeout to SandboxClaim', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startInstance(AGENT_ID, USER_ID, {
+                env: { FOO: 'bar' },
+                idleTimeoutMinutes: 10,
+                timeoutMs: 123_000,
+            });
+
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    spec: expect.objectContaining({
+                        warmPoolRef: { name: AGENT_ID },
+                        env: [{ name: 'FOO', value: 'bar' }],
+                        lifecycle: { shutdownPolicy: 'Delete', ttlSecondsAfterFinished: 600 },
+                    }),
+                }),
+            );
+            expect(agentSandboxAdapter.waitForSandboxReady).toHaveBeenCalledWith(
+                expect.stringMatching(/^ac-/),
+                SANDBOX_NAMESPACE,
+                123_000,
+            );
+        });
+
         it('waits for sandbox readiness', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
