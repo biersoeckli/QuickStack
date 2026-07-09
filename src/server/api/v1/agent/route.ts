@@ -51,7 +51,7 @@ export const agentRoutes = new Elysia()
             projectId: z.string().optional(),
         }),
         response: ApiUtils.mapReponseModel(z.array(AgentExtendedZodModel)),
-        detail: { summary: 'List agents', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'List agents', operationId: 'listAgents', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     })
     .get('/agents/:agentId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -67,7 +67,7 @@ export const agentRoutes = new Elysia()
             agentId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(AgentExtendedZodModel),
-        detail: { summary: 'Get agent', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get agent', operationId: 'getAgent', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     })
     .post('/agents', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -94,6 +94,8 @@ export const agentRoutes = new Elysia()
         detail: {
             summary: 'Create or update agent.',
             description: 'When an ID is set, the agent will be updated. Otherwise a new one will be created.',
+            operationId: 'saveAgent',
+            tags: ['Agents'],
             security: [{ bearerAuth: [] }]
         }
     })
@@ -112,5 +114,5 @@ export const agentRoutes = new Elysia()
             agentId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(z.undefined()),
-        detail: { summary: 'Delete agent', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Delete agent', operationId: 'deleteAgent', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     });

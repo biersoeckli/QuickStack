@@ -32,7 +32,7 @@ export const appDeployRoutes = new Elysia()
             appId: z.string()
         }),
         response: ApiUtils.mapReponseModel(deploymentDetailsResponseZodModel.array()),
-        detail: { summary: 'List app deployments', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'List app deployments', operationId: 'listAppDeployments', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/deploy/:deployemtId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -55,7 +55,7 @@ export const appDeployRoutes = new Elysia()
             deployemtId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(deploymentDetailsResponseZodModel),
-        detail: { summary: 'Get app deployment', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get app deployment', operationId: 'getAppDeployment', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/deploy/:deployemtId/logs', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -84,7 +84,7 @@ export const appDeployRoutes = new Elysia()
             tailLines: z.coerce.number().int().positive().max(5000).optional(),
         }),
         response: ApiUtils.mapReponseModel(appDeploymentLogsResponseZodModel),
-        detail: { summary: 'Get app deployment logs', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get app deployment logs', operationId: 'getAppDeploymentLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .post('/apps/:appId/deploy', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -102,5 +102,5 @@ export const appDeployRoutes = new Elysia()
             forceRebuild: z.coerce.boolean().optional().default(false),
         }),
         response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() })),
-        detail: { summary: 'Deploy app', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Deploy app', operationId: 'deployApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     });

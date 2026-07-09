@@ -45,7 +45,7 @@ export const appRoutes = new Elysia()
             projectId: z.string().optional(),
         }),
         response: ApiUtils.mapReponseModel(z.array(AppExtendedZodModel)),
-        detail: { summary: 'List apps', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'List apps', operationId: 'listApps', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -61,7 +61,7 @@ export const appRoutes = new Elysia()
             appId: z.string(),
         }),
         response: ApiUtils.mapReponseModel(AppExtendedZodModel),
-        detail: { summary: 'Get app', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get app', operationId: 'getApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/logs', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -85,7 +85,7 @@ export const appRoutes = new Elysia()
             lines: z.coerce.number().int().positive().max(5000).optional().default(200)
         }),
         response: ApiUtils.mapReponseModel(appLogsResponseZodModel),
-        detail: { summary: 'Get current app logs', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Get current app logs', operationId: 'getAppLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .post('/apps', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -111,6 +111,8 @@ export const appRoutes = new Elysia()
         detail: {
             summary: 'Create or update app.',
             description: 'When an ID is set, the app will be updated. Otherwise a new one will be created.',
+            operationId: 'saveApp',
+            tags: ['Apps'],
             security: [{ bearerAuth: [] }]
         }
     })
@@ -129,5 +131,5 @@ export const appRoutes = new Elysia()
             id: z.string(),
         }),
         response: ApiUtils.mapReponseModel(z.undefined()),
-        detail: { summary: 'Delete app', security: [{ bearerAuth: [] }] }
+        detail: { summary: 'Delete app', operationId: 'deleteApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     });

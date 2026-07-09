@@ -30,6 +30,8 @@ export const agentDeployRoutes = new Elysia()
         detail: {
             summary: 'Deploy agent',
             description: 'Deploys the agent with the given ID. This does not start any agent, it just applies the configuration to the SandboxTemplate.',
+            operationId: 'deployAgent',
+            tags: ['Agents'],
             security: [{ bearerAuth: [] }]
         }
     });
