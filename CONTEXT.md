@@ -185,6 +185,14 @@ _Avoid_: strict REST update, PATCH update (when this specific behavior is meant)
 A **POST Upsert** where every required business field must be provided on every create and update; partial field writes are not supported and all sub-collections are fully replaced by the supplied list.
 _Avoid_: partial update, PATCH-style update
 
+**Nested Create Identity Stripping**:
+The REST API behavior where sub-resource ids inside an **App** or **Agent** create payload are ignored so copied read payloads create fresh sub-resources.
+_Avoid_: cloning existing subitems, preserving nested ids on create
+
+**Subitem Ownership Guard**:
+The rule that an existing nested sub-resource id can only update the sub-resource when it already belongs to the parent **App** or **Agent** being saved.
+_Avoid_: moving subitems between workloads, reassigning nested resources by id
+
 **API Key Self-Management**:
 Management of a **REST API Key** by its owning **User** through authenticated profile interactions.
 _Avoid_: machine-managed keys
@@ -258,6 +266,8 @@ _Avoid_: manual initial port requirement
 - A **Project** write via REST API uses **POST Upsert**.
 - An **App** write via REST API uses **POST Upsert**.
 - An **App** created through REST API receives its id from server-side generation.
+- An **App** or **Agent** created through REST API applies **Nested Create Identity Stripping**.
+- An **App** or **Agent** write enforces **Subitem Ownership Guard** for nested sub-resources.
 - An **App Project Assignment** is set once on create and cannot be changed by update.
 - An **App** write via REST API uses **Full Schema Write** semantics: all required business fields must be present on every create and update, and all sub-collections are fully replaced.
 - An **App** update must include `projectId` and its value must equal the existing **App Project Assignment**.

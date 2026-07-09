@@ -12,6 +12,26 @@ import { AgentExtendedWriteModel, AgentExtendedWriteZodModel, AgentExtendedZodMo
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 
+function stripAgentSubObjectIdsForCreate(body: AgentExtendedWriteModel): AgentExtendedWriteModel {
+    const agentNetworkPolicy = body.agentNetworkPolicy
+        ? (() => {
+            const { id: _id, rules, ...policy } = body.agentNetworkPolicy;
+            return {
+                ...policy,
+                rules: rules.map(({ id: _ruleId, ...rule }) => rule),
+            };
+        })()
+        : body.agentNetworkPolicy;
+
+    return {
+        ...body,
+        agentDomains: body.agentDomains.map(({ id: _id, ...domain }) => domain),
+        agentVolumes: body.agentVolumes.map(({ id: _id, ...volume }) => volume),
+        agentFileMounts: body.agentFileMounts.map(({ id: _id, ...fileMount }) => fileMount),
+        agentNetworkPolicy,
+    };
+}
+
 export const agentRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
     .get('/agents', async ({ query, identity }) => {
@@ -66,7 +86,8 @@ export const agentRoutes = new Elysia()
             }
         }
 
-        return await agentService.saveAgentExtendedModel(body);
+        const saveBody = body.id ? body : stripAgentSubObjectIdsForCreate(body);
+        return await agentService.saveAgentExtendedModel(saveBody);
     }, {
         body: AgentExtendedWriteZodModel,
         response: ApiUtils.mapReponseModel(AgentExtendedZodModel),

@@ -14,6 +14,18 @@ import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { appLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
 
+function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtendedWriteModel {
+    return {
+        ...body,
+        appDomains: body.appDomains.map(({ id: _id, ...domain }) => domain),
+        appPorts: body.appPorts.map(({ id: _id, ...port }) => port),
+        appNodePorts: body.appNodePorts.map(({ id: _id, ...nodePort }) => nodePort),
+        appFileMounts: body.appFileMounts.map(({ id: _id, ...fileMount }) => fileMount),
+        appVolumes: body.appVolumes.map(({ id: _id, ...volume }) => volume),
+        appBasicAuths: body.appBasicAuths.map(({ id: _id, ...basicAuth }) => basicAuth),
+    };
+}
+
 export const appRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
     .get('/apps', async ({ query, identity }) => {
@@ -91,7 +103,8 @@ export const appRoutes = new Elysia()
                 throw new ServiceException('projectId cannot be changed for an existing app.');
             }
         }
-        return await appService.saveAppExtendedModel(body);
+        const saveBody = body.id ? body : stripAppSubObjectIdsForCreate(body);
+        return await appService.saveAppExtendedModel(saveBody);
     }, {
         body: AppExtendedWriteZodModel,
         response: ApiUtils.mapReponseModel(AppExtendedZodModel),

@@ -301,6 +301,15 @@ class AppService {
                     domainToBeSaved.id !== existingDomainWithSameHostname?.id) {
                     throw new ServiceException("Hostname is already in use by this or another app.");
                 }
+                const existingDomainForApp = await client.appDomain.findFirst({
+                    where: {
+                        id: domainToBeSaved.id as string,
+                        appId: domainToBeSaved.appId as string,
+                    }
+                });
+                if (!existingDomainForApp) {
+                    throw new ServiceException("App domain has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appDomain.update({
                     where: {
                         id: domainToBeSaved.id as string
@@ -413,6 +422,15 @@ class AppService {
 
         try {
             if (volumeToBeSaved.id) {
+                const existingVolumeForApp = await client.appVolume.findFirst({
+                    where: {
+                        id: volumeToBeSaved.id as string,
+                        appId: volumeToBeSaved.appId as string,
+                    }
+                });
+                if (!existingVolumeForApp) {
+                    throw new ServiceException("App volume has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appVolume.update({
                     where: {
                         id: volumeToBeSaved.id as string
@@ -487,6 +505,15 @@ class AppService {
 
         try {
             if (fileMountToBeSaved.id) {
+                const existingFileMountForApp = await client.appFileMount.findFirst({
+                    where: {
+                        id: fileMountToBeSaved.id as string,
+                        appId: fileMountToBeSaved.appId as string,
+                    }
+                });
+                if (!existingFileMountForApp) {
+                    throw new ServiceException("App file mount has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appFileMount.update({
                     where: {
                         id: fileMountToBeSaved.id as string
@@ -544,6 +571,15 @@ class AppService {
         }
         try {
             if (portToBeSaved.id) {
+                const existingPortForApp = await client.appPort.findFirst({
+                    where: {
+                        id: portToBeSaved.id as string,
+                        appId: portToBeSaved.appId as string,
+                    }
+                });
+                if (!existingPortForApp) {
+                    throw new ServiceException("App port has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appPort.update({
                     where: {
                         id: portToBeSaved.id as string
@@ -600,6 +636,15 @@ class AppService {
         const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, tx);
         try {
             if (itemToBeSaved.id) {
+                const existingBasicAuthForApp = await client.appBasicAuth.findFirst({
+                    where: {
+                        id: itemToBeSaved.id as string,
+                        appId: itemToBeSaved.appId as string,
+                    }
+                });
+                if (!existingBasicAuthForApp) {
+                    throw new ServiceException("App basic auth has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appBasicAuth.update({
                     where: {
                         id: itemToBeSaved.id as string
@@ -702,6 +747,15 @@ class AppService {
         let savedItem: AppNodePort;
         try {
             if (nodePortToBeSaved.id) {
+                const existingNodePortForApp = await client.appNodePort.findFirst({
+                    where: {
+                        id: nodePortToBeSaved.id as string,
+                        appId: nodePortToBeSaved.appId as string,
+                    }
+                });
+                if (!existingNodePortForApp) {
+                    throw new ServiceException("App node port has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appNodePort.update({
                     where: { id: nodePortToBeSaved.id as string },
                     data: nodePortToBeSaved,

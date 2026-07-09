@@ -12,6 +12,7 @@ vi.mock('@/server/adapter/db.client', () => ({
         client: {
             project: { findUnique: vi.fn() },
             app: { create: vi.fn(), update: vi.fn() },
+            appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
             appPort: { create: vi.fn() },
         },
     },
@@ -85,6 +86,35 @@ describe('app.service', () => {
         })).rejects.toThrow('Apps can only be created in App Projects.');
 
         expect(dataAccess.client.app.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects moving an App Domain from another App by id', async () => {
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({
+            id: 'target-app',
+        }) as never);
+        vi.mocked(dataAccess.client.appDomain.findFirst)
+            .mockResolvedValueOnce({
+                id: 'domain-from-other-app',
+                appId: 'source-app',
+                hostname: 'example.com',
+                port: 80,
+                useSsl: true,
+                redirectHttps: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })
+            .mockResolvedValueOnce(null);
+
+        await expect(appService.saveDomain({
+            id: 'domain-from-other-app',
+            appId: 'target-app',
+            hostname: 'example.com',
+            port: 80,
+            useSsl: true,
+            redirectHttps: true,
+        })).rejects.toThrow('App domain has ID, but existing item for app was not found.');
+
+        expect(dataAccess.client.appDomain.update).not.toHaveBeenCalled();
     });
 });
 
