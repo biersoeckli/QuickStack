@@ -1,151 +1,69 @@
 'use client';
 
-import { SubmitButton } from "@/components/custom/submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { FormUtils } from "@/frontend/utils/form.utilts";
-import { agentEnvVarsZodModel, AgentEnvVarsModel } from "@/shared/model/agent-config.model";
-import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useActionState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { saveAgentEnvVars } from "./actions";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
+import { Toast } from "@/frontend/utils/toast.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
+import { EditIcon, Plus, TrashIcon } from "lucide-react";
+import { deleteAgentEnvVar } from "./actions";
+import AgentEnvVarEditOverlay from "./agent-env-var-edit-overlay";
 
-interface AgentEnvVarEntry {
-    name: string;
-    encryptedValue: string;
-}
-
-function parseEncryptedEnvVars(raw: string | null): AgentEnvVarEntry[] {
-    if (!raw) return [];
+function getEnvironmentVariableNames(encryptedEnvVars: string | null | undefined): string[] {
+    if (!encryptedEnvVars) return [];
     try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(encryptedEnvVars) as Array<{ name?: unknown }>;
+        return parsed.flatMap((envVar) => typeof envVar.name === 'string' ? [envVar.name] : []);
     } catch {
         return [];
     }
 }
 
-export default function AgentEnvVarsCard({ agent, readonly }: {
-    agent: AgentExtendedModel;
-    readonly: boolean;
-}) {
-    const existingEnvVars = parseEncryptedEnvVars(agent.encryptedEnvVars ?? null);
+export default function AgentEnvVarsCard({ agent, readonly }: { agent: AgentExtendedModel; readonly: boolean }) {
+    const { openConfirmDialog } = useConfirmDialog();
+    const { openDialog } = useDialog();
+    const environmentVariableNames = getEnvironmentVariableNames(agent.encryptedEnvVars);
 
-    const form = useForm<AgentEnvVarsModel>({
-        resolver: zodResolver(agentEnvVarsZodModel),
-        defaultValues: {
-            envVars: existingEnvVars.map((ev) => ({ name: ev.name, value: '' })),
-        },
-        disabled: readonly,
-    });
-
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "envVars",
-    });
-
-    const [state, formAction] = useActionState(
-        (state: ServerActionResult<any, any>, payload: AgentEnvVarsModel) =>
-            saveAgentEnvVars(state, payload, agent.id),
-        FormUtils.getInitialFormState<typeof agentEnvVarsZodModel>(),
-    );
-
-    useEffect(() => {
-        if (state.status === 'success') {
-            toast.success('Environment variables saved. Click "Deploy" to apply changes.');
-        }
-        FormUtils.mapValidationErrorsToForm<typeof agentEnvVarsZodModel>(state, form);
-    }, [form, state]);
+    const openEditDialog = async (name?: string) => {
+        await openDialog(<AgentEnvVarEditOverlay agentId={agent.id} existingName={name} />, { maxWidth: 'max-w-md' });
+    };
+    const deleteEnvironmentVariable = async (name: string) => {
+        const confirmed = await openConfirmDialog({
+            title: 'Delete Environment Variable',
+            description: `Remove ${name}? This takes effect after deploying the agent.`,
+            okButton: 'Delete Environment Variable',
+        });
+        if (confirmed) await Toast.fromAction(() => deleteAgentEnvVar(agent.id, name), 'Deleted Env Variable Successfully');
+    };
 
     return (
-        <Form {...form}>
-            <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Environment Variables</CardTitle>
-                        <CardDescription>
-                            Values are encrypted at rest and cannot be viewed after saving. Re-enter values to update them.
-                            Names starting with <code className="text-xs bg-muted px-1 rounded">QS_</code> are reserved by QuickStack.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {fields.length === 0 && (
-                            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                                No environment variables configured.
-                            </div>
-                        )}
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-start gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name={`envVars.${index}.name`}
-                                    render={({ field }) => (
-                                        <FormItem className="w-48">
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="NAME"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`envVars.${index}.value`}
-                                    render={({ field }) => (
-                                        <FormItem className="flex-1">
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="Value"
-                                                    type="password"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="mt-0"
-                                    onClick={() => remove(index)}
-                                    disabled={readonly}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                        {!readonly && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => append({ name: '', value: '' })}
-                            >
-                                <Plus className="mr-1 h-4 w-4" />
-                                Add Variable
-                            </Button>
-                        )}
-                    </CardContent>
-                    {!readonly && (
-                        <CardFooter className="gap-4">
-                            <SubmitButton>Save Environment Variables</SubmitButton>
-                            {state?.status === 'error' && !state?.errors && (
-                                <p className="text-sm text-red-500">{state.message}</p>
-                            )}
-                        </CardFooter>
-                    )}
-                </Card>
-            </form>
-        </Form>
+        <Card>
+            <CardHeader>
+                <CardTitle>Environment Variables</CardTitle>
+                <CardDescription>
+                    Values are encrypted at rest and never shown. Names starting with <code className="rounded bg-muted px-1 text-xs">QS_</code> are reserved by QuickStack.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableCaption>{environmentVariableNames.length} Environment Variables</TableCaption>
+                    <TableHeader><TableRow>
+                        <TableHead>Key</TableHead>
+                        {!readonly && <TableHead className="w-[100px]">Actions</TableHead>}
+                    </TableRow></TableHeader>
+                    <TableBody>
+                        {environmentVariableNames.map((name) => <TableRow key={name}>
+                            <TableCell className="font-medium">{name}</TableCell>
+                            {!readonly && <TableCell className="flex gap-2">
+                                <Button variant="ghost" onClick={() => openEditDialog(name)}><EditIcon /></Button>
+                                <Button variant="ghost" onClick={() => deleteEnvironmentVariable(name)}><TrashIcon /></Button>
+                            </TableCell>}
+                        </TableRow>)}
+                    </TableBody>
+                </Table>
+            </CardContent>
+            {!readonly && <CardFooter><Button onClick={() => openEditDialog()}><Plus /> Add Environment Variable</Button></CardFooter>}
+        </Card>
     );
 }

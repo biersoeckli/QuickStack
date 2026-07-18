@@ -1,6 +1,7 @@
 'use server'
 
 import agentService from "@/server/services/agent.service";
+import agentEnvironmentVariableService from "@/server/services/agent-environment-variable.service";
 import { isAuthorizedReadForWorkload, isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import {
     agentModelConfigurationZodModel,
@@ -17,10 +18,11 @@ import {
     AgentRateLimitsModel,
     agentSystemPromptZodModel,
     AgentSystemPromptModel,
-    agentEnvVarsZodModel,
-    AgentEnvVarsModel,
+    agentEnvVarEditZodModel,
+    AgentEnvVarEditModel,
     agentContainerConfigZodModel,
     AgentContainerConfigModel,
+    isQuickStackReservedEnvName,
 } from "@/shared/model/agent-config.model";
 import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import agentVolumeService from "@/server/services/agent-volume.service";
@@ -190,13 +192,21 @@ export const saveAgentSystemPrompt = async (prevState: any, inputData: AgentSyst
         });
     });
 
-export const saveAgentEnvVars = async (prevState: any, inputData: AgentEnvVarsModel, agentId: string) =>
-    saveFormAction(inputData, agentEnvVarsZodModel, async (validatedData) => {
+export const saveAgentEnvVar = async (prevState: any, inputData: AgentEnvVarEditModel, agentId: string) =>
+    saveFormAction(inputData, agentEnvVarEditZodModel, async (validatedData) => {
         await isAuthorizedWriteForWorkload(agentId);
-        await agentService.saveAgent({
-            ...validatedData,
-            id: agentId
-        });
+        if (isQuickStackReservedEnvName(validatedData.name)) {
+            throw new FormValidationException(`The environment variable name "${validatedData.name}" is reserved and cannot be used.`, {
+                name: [`The environment variable name "${validatedData.name}" is reserved and cannot be used.`],
+            });
+        }
+        await agentEnvironmentVariableService.saveEnvironmentVariable(agentId, validatedData);
+    });
+
+export const deleteAgentEnvVar = async (agentId: string, name: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentEnvironmentVariableService.deleteEnvironmentVariable(agentId, name);
     });
 
 const actionAgentVolumeEditZodModel = agentVolumeEditZodModel.merge(z.object({

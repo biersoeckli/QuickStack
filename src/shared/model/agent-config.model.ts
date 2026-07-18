@@ -31,6 +31,11 @@ export const agentEnvVarFormModel = z.object({
     envVars: z.array(agentEnvVarModel).default([]),
 });
 
+export const agentEnvVarEditZodModel = agentEnvVarModel.extend({
+    originalName: z.string().optional(),
+})
+export type AgentEnvVarEditModel = z.infer<typeof agentEnvVarEditZodModel>;
+
 export const agentConfigZodModel = AgentModel.extend(z.object({
     modelAlias: z.array(z.string().trim().min(1)).min(1, 'Select at least one model alias.'),
     sourceType: z.enum(["GIT", "GIT_SSH", "CONTAINER"]).default("CONTAINER"),

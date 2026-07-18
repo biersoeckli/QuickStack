@@ -65,7 +65,7 @@ export const agentSandboxRoutes = new Elysia()
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
 
-        return agentSandboxService.createSandbox(params.agentId, identity.session.userId, query.timeoutMs, body);
+        return agentSandboxService.createSandbox(params.agentId, identity.session.userId, query?.timeoutMs ?? 300_000, body);
     }, {
         params: agentSandboxParamsSchema,
         query: z.object({
