@@ -263,6 +263,25 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('adds custom tag label to SandboxClaim when provided', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startInstance(AGENT_ID, USER_ID, {
+                customTag: 'feature-branch',
+            });
+
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        labels: expect.objectContaining({
+                            'qs-custom-tag': 'feature-branch',
+                        }),
+                    }),
+                }),
+            );
+        });
+
         it('waits for sandbox readiness', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');

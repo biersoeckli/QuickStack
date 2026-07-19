@@ -17,6 +17,7 @@ export type StartAgentInstanceOptions = {
     timeoutMs?: number;
     env?: Record<string, string>;
     idleTimeoutMinutes?: number;
+    customTag?: string;
 };
 
 class AgentRuntimeService {
@@ -219,6 +220,7 @@ class AgentRuntimeService {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,
+                ...(startOptions.customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: startOptions.customTag } : {}),
             }, {
                 env: startOptions.env,
                 idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
@@ -283,6 +285,7 @@ class AgentRuntimeService {
         status: DeploymentStatus;
         namespace: string;
         createdAt: string | null;
+        customTag?: string;
     } {
         const status = this.resolveClaimStatus(claim);
         return {
@@ -290,6 +293,7 @@ class AgentRuntimeService {
             status,
             namespace,
             createdAt: claim.metadata?.creationTimestamp || null,
+            customTag: claim.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG] || undefined,
         };
     }
 
@@ -297,12 +301,7 @@ class AgentRuntimeService {
      * Lists all SandboxClaim instances for a given agent.
      * Returns instance info including name, status, and creation timestamp.
      */
-    async listInstances(agentId: string, userId?: string): Promise<Array<{
-        name: string;
-        status: DeploymentStatus;
-        namespace: string;
-        createdAt: string | null;
-    }>> {
+    async listInstances(agentId: string, userId?: string) {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 

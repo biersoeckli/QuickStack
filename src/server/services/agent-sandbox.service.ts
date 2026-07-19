@@ -26,6 +26,7 @@ type ResolvedSandboxTarget = {
     containerName: string;
     status: DeploymentStatus;
     createdAt: string | null;
+    customTag?: string | null;
 };
 
 class AgentSandboxService {
@@ -143,6 +144,7 @@ class AgentSandboxService {
             containerName,
             status: this.resolveClaimStatus(claim),
             createdAt: claim.metadata?.creationTimestamp ?? null,
+            customTag: claim.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
         };
     }
 
@@ -155,6 +157,7 @@ class AgentSandboxService {
             namespace: target.namespace,
             status: target.status,
             createdAt: target.createdAt,
+            customTag: target.customTag ?? null,
         };
     }
 
@@ -212,8 +215,7 @@ class AgentSandboxService {
     async createSandbox(agentId: string, userId: string, timeoutMs: number, input: CreateSandboxRequestModel = {}): Promise<AgentSandboxModel> {
         const { claimName } = await agentRuntimeService.startInstance(agentId, userId, {
             timeoutMs,
-            env: input.env,
-            idleTimeoutMinutes: input.idleTimeoutMinutes,
+            ...input,
         });
         return this.getSandbox(agentId, claimName);
     }
@@ -240,6 +242,7 @@ class AgentSandboxService {
                     namespace: claim.namespace,
                     status: claim.status,
                     createdAt: claim.createdAt,
+                    customTag: claim.customTag ?? null,
                 });
             }
         }

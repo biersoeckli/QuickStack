@@ -5,6 +5,7 @@ export class Constants {
     static readonly QS_ANNOTATION_WORKLOAD_TYPE = 'qs-workload-type';
     static readonly QS_ANNOTATION_AGENT_VOLUME_ID = 'qs-agent-volume-id';
     static readonly QS_ANNOTATION_USER_ID = 'qs-user-id';
+    static readonly QS_ANNOTATION_CUSTOM_TAG = 'qs-custom-tag';
     static readonly QS_ANNOTATION_BUILD_NAME = 'qs-build-name';
     static readonly QS_ANNOTATION_PROJECT_ID = 'qs-project-id';
     static readonly QS_ANNOTATION_CONTAINER_TYPE = 'qs-containter-type';

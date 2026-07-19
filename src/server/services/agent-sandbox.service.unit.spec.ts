@@ -149,7 +149,32 @@ describe('agent-sandbox.service', () => {
             namespace: NAMESPACE,
             status: 'DEPLOYED',
             createdAt: '2026-01-01T00:00:00.000Z',
+            customTag: null,
         });
+    });
+
+    it('forwards customTag on create and maps it from claim labels', async () => {
+        vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim({
+            metadata: {
+                name: CLAIM_NAME,
+                namespace: NAMESPACE,
+                creationTimestamp: '2026-01-01T00:00:00.000Z',
+                labels: {
+                    'qs-agent-id': AGENT_ID,
+                    'qs-custom-tag': 'feature-branch',
+                },
+            },
+        }) as any);
+
+        const result = await agentSandboxService.createSandbox(AGENT_ID, 'user-1', 123_000, {
+            customTag: 'feature-branch',
+        });
+
+        expect(agentRuntimeService.startInstance).toHaveBeenCalledWith(AGENT_ID, 'user-1', {
+            timeoutMs: 123_000,
+            customTag: 'feature-branch',
+        });
+        expect(result.customTag).toBe('feature-branch');
     });
 
     it('rejects a claim owned by another agent', async () => {

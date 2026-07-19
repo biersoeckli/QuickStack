@@ -12,7 +12,7 @@ const routeMocks = vi.hoisted(() => ({
 vi.mock('@/server/utils/api-response.utils', () => ({
     ApiUtils: {
         deriveFunc: () => ({ identity: routeMocks.identity }),
-        mapReponseModel: (schema: unknown) => ({ 200: schema }),
+        mapResponseModel: (schema: unknown) => ({ 200: schema }),
         mapError: (error: any) => new Response(JSON.stringify({ title: error.title ?? 'Error' }), {
             status: error.statusCode ?? 500,
         }),
@@ -73,6 +73,7 @@ describe('agent sandbox routes', () => {
             podName: 'pod-1',
             namespace: 'proj-1',
             status: 'DEPLOYED',
+            customTag: null,
             createdAt: '2026-01-01T00:00:00.000Z',
         });
         routeMocks.runCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
@@ -87,6 +88,7 @@ describe('agent sandbox routes', () => {
             body: JSON.stringify({
                 env: { FOO: 'bar' },
                 idleTimeoutMinutes: 5,
+                customTag: 'feature-branch',
             }),
         }));
 
@@ -94,6 +96,7 @@ describe('agent sandbox routes', () => {
         expect(routeMocks.createSandbox).toHaveBeenCalledWith('agent-1', 'user-1', 120_000, {
             env: { FOO: 'bar' },
             idleTimeoutMinutes: 5,
+            customTag: 'feature-branch',
         });
     });
 

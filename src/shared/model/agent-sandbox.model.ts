@@ -8,6 +8,7 @@ export const agentSandboxZodModel = z.object({
     podName: z.string(),
     namespace: z.string(),
     status: deploymentStatusEnumZod,
+    customTag: z.string().nullable(),
     createdAt: z.string().datetime().nullable(),
 });
 
@@ -42,6 +43,7 @@ const envNameZodModel = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 export const createSandboxRequestZodModel = z.object({
     env: z.record(envNameZodModel, z.string()).optional(),
     idleTimeoutMinutes: z.number().int().positive().max(1440).optional(),
+    customTag: z.string().min(1).optional(),
 }).optional().default({});
 
 export const commandRequestZodModel = z.object({
