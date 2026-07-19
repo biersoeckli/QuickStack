@@ -11,6 +11,7 @@ import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { v1Api } from '@/server/api/v1/api-index';
 import dataAccess from '@/server/adapter/db.client';
+import agentAccessService from '@/server/services/agent-access.service';
 import agentService from '@/server/services/agent.service';
 import restApiKeyService from '@/server/services/rest-api-key.service';
 import userGroupService from '@/server/services/user-group.service';
@@ -234,6 +235,92 @@ describe('REST API v1 integration', () => {
         }
     }, 420_000);
 
+    it('returns sandbox access URL for existing agent domain', async () => {
+        const apiKey = await createAdminApiKey();
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Access URL Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: {
+                    ...createAgentPayload(undefined, createdProject.id, gateway.id, 'API Access URL Agent'),
+                    agentDomains: [{ hostname: 'sandbox.agent.example.com', port: 8080, useSsl: true, redirectHttps: true }],
+                } satisfies AgentExtendedWriteModel,
+            }),
+        ) as AgentExtendedModel;
+
+        expect(createdAgent.agentDomains).toHaveLength(1);
+
+        const expectedAccess = {
+            url: 'https://sandbox.agent.example.com/?token=test-token',
+            expiresAt: Math.floor(Date.now() / 1000) + 30,
+        };
+
+        const createAccessUrlSpy = vi.spyOn(agentAccessService, 'createAccessUrl').mockResolvedValue(expectedAccess);
+        try {
+            const accessUrl = await expectApiJson(
+                await apiFetch(
+                    `/api/v1/agents/${createdAgent.id}/sandboxes/test-claim/accessUrl/${createdAgent.agentDomains[0].id}`,
+                    apiKey,
+                ),
+            );
+
+            expect(accessUrl).toEqual(expectedAccess);
+            expect(createAccessUrlSpy).toHaveBeenCalledWith(expect.objectContaining({
+                agentId: createdAgent.id,
+                claimName: 'test-claim',
+                domainId: createdAgent.agentDomains[0].id,
+                view: 'agent',
+            }));
+        } finally {
+            createAccessUrlSpy.mockRestore();
+        }
+    });
+
+    it('returns 400 when sandbox access URL is requested with unknown domain for agent', async () => {
+        const apiKey = await createAdminApiKey();
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Missing Domain Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: {
+                    ...createAgentPayload(undefined, createdProject.id, gateway.id, 'API Missing Domain Agent'),
+                    agentDomains: [{ hostname: 'known.agent.example.com', port: 8080, useSsl: true, redirectHttps: true }],
+                } satisfies AgentExtendedWriteModel,
+            }),
+        ) as AgentExtendedModel;
+
+        const createAccessUrlSpy = vi.spyOn(agentAccessService, 'createAccessUrl');
+        try {
+            const response = await apiFetch(
+                `/api/v1/agents/${createdAgent.id}/sandboxes/test-claim/accessUrl/domain-not-for-agent`,
+                apiKey,
+            );
+
+            const problem = await expectApiProblem(response, 400);
+            expect(problem.title).toBe('Bad Request');
+            expect(problem.detail).toBe('Agent access domain is not configured.');
+            expect(createAccessUrlSpy).not.toHaveBeenCalled();
+        } finally {
+            createAccessUrlSpy.mockRestore();
+        }
+    });
+
     it('deploys an app and retrieves deployment details and logs through the api', async () => {
         const apiKey = await createAdminApiKey();
         await deployRegistry();
@@ -401,4 +488,18 @@ async function expectApiJson(response: Response) {
     expect(response.status, JSON.stringify(json)).toBeLessThan(300);
 
     return json;
+}
+
+async function expectApiProblem(response: Response, status: number) {
+    const text = await response.text();
+    const json = text ? JSON.parse(text) : undefined;
+
+    expect(response.status, JSON.stringify(json)).toBe(status);
+
+    return json as {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+    };
 }

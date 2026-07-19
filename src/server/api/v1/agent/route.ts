@@ -50,7 +50,7 @@ export const agentRoutes = new Elysia()
         query: z.object({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapReponseModel(z.array(AgentExtendedZodModel)),
+        response: ApiUtils.mapResponseModel(z.array(AgentExtendedZodModel)),
         detail: { summary: 'List agents', operationId: 'listAgents', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     })
     .get('/agents/:agentId', async ({ params, identity }) => {
@@ -66,7 +66,7 @@ export const agentRoutes = new Elysia()
         params: z.object({
             agentId: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(AgentExtendedZodModel),
+        response: ApiUtils.mapResponseModel(AgentExtendedZodModel),
         detail: { summary: 'Get agent', operationId: 'getAgent', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     })
     .post('/agents', async ({ body, identity }) => {
@@ -90,7 +90,7 @@ export const agentRoutes = new Elysia()
         return await agentService.saveAgentExtendedModel(saveBody);
     }, {
         body: AgentExtendedWriteZodModel,
-        response: ApiUtils.mapReponseModel(AgentExtendedZodModel),
+        response: ApiUtils.mapResponseModel(AgentExtendedZodModel),
         detail: {
             summary: 'Create or update agent.',
             description: 'When an ID is set, the agent will be updated. Otherwise a new one will be created.',
@@ -113,6 +113,6 @@ export const agentRoutes = new Elysia()
         params: z.object({
             agentId: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: { summary: 'Delete agent', operationId: 'deleteAgent', tags: ['Agents'], security: [{ bearerAuth: [] }] }
     });

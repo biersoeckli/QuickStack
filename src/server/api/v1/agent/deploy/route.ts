@@ -26,7 +26,7 @@ export const agentDeployRoutes = new Elysia()
         query: z.object({
             forceRebuild: z.coerce.boolean().optional().default(false),
         }),
-        response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() })),
+        response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() })),
         detail: {
             summary: 'Deploy agent',
             description: 'Deploys the agent with the given ID. This does not start any agent, it just applies the configuration to the SandboxTemplate.',

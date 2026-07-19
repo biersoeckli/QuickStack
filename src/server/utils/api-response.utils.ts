@@ -144,7 +144,7 @@ export class ApiUtils {
         return ApiUtils.problem(500, 'Internal Server Error', 'An unknown error occurred.');
     }
 
-    static mapReponseModel<T>(schema: z.ZodType<T>) {
+    static mapResponseModel<T>(schema: z.ZodType<T>) {
         return {
             200: ApiUtils.mapDateSchemaToStringDate(schema) as z.ZodType<T>,
             401: problemResponseSchema,

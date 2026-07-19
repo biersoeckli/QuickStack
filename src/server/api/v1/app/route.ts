@@ -44,7 +44,7 @@ export const appRoutes = new Elysia()
         query: z.object({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapReponseModel(z.array(AppExtendedZodModel)),
+        response: ApiUtils.mapResponseModel(z.array(AppExtendedZodModel)),
         detail: { summary: 'List apps', operationId: 'listApps', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId', async ({ params, identity }) => {
@@ -60,7 +60,7 @@ export const appRoutes = new Elysia()
         params: z.object({
             appId: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(AppExtendedZodModel),
+        response: ApiUtils.mapResponseModel(AppExtendedZodModel),
         detail: { summary: 'Get app', operationId: 'getApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/logs', async ({ params, query, identity }) => {
@@ -84,7 +84,7 @@ export const appRoutes = new Elysia()
         query: z.object({
             lines: z.coerce.number().int().positive().max(5000).optional().default(200)
         }),
-        response: ApiUtils.mapReponseModel(appLogsResponseZodModel),
+        response: ApiUtils.mapResponseModel(appLogsResponseZodModel),
         detail: { summary: 'Get current app logs', operationId: 'getAppLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .post('/apps', async ({ body, identity }) => {
@@ -107,7 +107,7 @@ export const appRoutes = new Elysia()
         return await appService.saveAppExtendedModel(saveBody);
     }, {
         body: AppExtendedWriteZodModel,
-        response: ApiUtils.mapReponseModel(AppExtendedZodModel),
+        response: ApiUtils.mapResponseModel(AppExtendedZodModel),
         detail: {
             summary: 'Create or update app.',
             description: 'When an ID is set, the app will be updated. Otherwise a new one will be created.',
@@ -130,6 +130,6 @@ export const appRoutes = new Elysia()
         params: z.object({
             id: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: { summary: 'Delete app', operationId: 'deleteApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     });

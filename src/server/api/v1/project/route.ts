@@ -31,7 +31,7 @@ export const projectRoutes = new Elysia()
             UserGroupUtils.sessionHasReadAccessToProject(identity.session, project.id)
         );
     }, {
-        response: ApiUtils.mapReponseModel(z.array(ProjectModel)),
+        response: ApiUtils.mapResponseModel(z.array(ProjectModel)),
         detail: { summary: 'List projects', operationId: 'listProjects', tags: ['Projects'], security: [{ bearerAuth: [] }] }
 
     })
@@ -48,7 +48,7 @@ export const projectRoutes = new Elysia()
         params: z.object({
             id: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(ProjectModel),
+        response: ApiUtils.mapResponseModel(ProjectModel),
         detail: { summary: 'Get project', operationId: 'getProject', tags: ['Projects'], security: [{ bearerAuth: [] }] }
     })
     .post('/projects', async ({ body, identity }) => {
@@ -68,7 +68,7 @@ export const projectRoutes = new Elysia()
         });
     }, {
         body: projectWriteSchema,
-        response: ApiUtils.mapReponseModel(ProjectModel),
+        response: ApiUtils.mapResponseModel(ProjectModel),
         detail: { summary: 'Create or update project', operationId: 'saveProject', tags: ['Projects'], security: [{ bearerAuth: [] }] }
     })
     .delete('/projects/:id', async ({ params, identity }) => {
@@ -84,6 +84,6 @@ export const projectRoutes = new Elysia()
         params: z.object({
             id: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: { summary: 'Delete project', operationId: 'deleteProject', tags: ['Projects'], security: [{ bearerAuth: [] }] }
     });

@@ -61,6 +61,11 @@ export const fileTextWriteRequestZodModel = z.object({
     text: z.string(),
 });
 
+export const agentSandboxAccessUrlZodModel = z.object({
+    url: z.string(),
+    expiresAt: z.number().int().positive(),
+});
+
 export type AgentSandboxModel = z.infer<typeof agentSandboxZodModel>;
 export type CommandResultModel = z.infer<typeof commandResultZodModel>;
 export type FileEntryModel = z.infer<typeof fileEntryZodModel>;

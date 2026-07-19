@@ -6,7 +6,10 @@ import {
     ensureReadAgent,
     ensureWriteAgent,
 } from '@/server/utils/shared-authorization.utils';
+import agentDomainService from '@/server/services/agent-domain.service';
+
 import {
+    agentSandboxAccessUrlZodModel,
     agentSandboxZodModel,
     commandRequestZodModel,
     commandResultZodModel,
@@ -20,6 +23,7 @@ import {
 } from '@/shared/model/agent-sandbox.model';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
+import agentAccessService from '@/server/services/agent-access.service';
 
 const agentSandboxParamsSchema = z.object({
     agentId: z.string(),
@@ -28,6 +32,12 @@ const agentSandboxParamsSchema = z.object({
 const agentSandboxClaimParamsSchema = z.object({
     agentId: z.string(),
     claimName: z.string(),
+});
+
+const agentSandboxAccessUrlParamsSchema = z.object({
+    agentId: z.string(),
+    claimName: z.string(),
+    domainId: z.string(),
 });
 
 const filePathQuerySchema = z.object({
@@ -51,7 +61,7 @@ export const agentSandboxRoutes = new Elysia()
         return agentSandboxService.listSandboxes(params.agentId);
     }, {
         params: agentSandboxParamsSchema,
-        response: ApiUtils.mapReponseModel(z.array(agentSandboxZodModel)),
+        response: ApiUtils.mapResponseModel(z.array(agentSandboxZodModel)),
         detail: {
             summary: 'List agent sandboxes',
             operationId: 'listAgentSandboxes',
@@ -72,7 +82,7 @@ export const agentSandboxRoutes = new Elysia()
             timeoutMs: z.coerce.number().int().positive().max(900_000).optional().default(300_000),
         }),
         body: createSandboxRequestZodModel,
-        response: ApiUtils.mapReponseModel(agentSandboxZodModel),
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
         detail: {
             summary: 'Create agent sandbox',
             operationId: 'createAgentSandbox',
@@ -89,10 +99,39 @@ export const agentSandboxRoutes = new Elysia()
         return agentSandboxService.getSandbox(params.agentId, params.claimName);
     }, {
         params: agentSandboxClaimParamsSchema,
-        response: ApiUtils.mapReponseModel(agentSandboxZodModel),
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
         detail: {
             summary: 'Get agent sandbox',
             operationId: 'getAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .get('/agents/:agentId/sandboxes/:claimName/accessUrl/:domainId', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureReadAgent(identity, params.agentId);
+
+        const domain = await agentDomainService.getDomainForAgent(params.agentId, params.domainId);
+        if (!domain) {
+            throw new ApiNotFoundException('Domain not found for agent.');
+        }
+
+        return await agentAccessService.createAccessUrl({
+            agentId: params.agentId,
+            claimName: params.claimName,
+            domainId: params.domainId,
+            view: 'agent',
+            session: identity.session,
+        });
+    }, {
+        params: agentSandboxAccessUrlParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxAccessUrlZodModel),
+        detail: {
+            summary: 'Get agent sandbox access URL',
+            description: 'Get a temporary access URL to access the agent sandbox via the browser. This is only possible if a domain is configured for the agent and the agent serves an API or Web interface.',
+            operationId: 'getAgentSandboxAccessUrl',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
@@ -107,7 +146,7 @@ export const agentSandboxRoutes = new Elysia()
         return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: {
             summary: 'Delete agent sandbox',
             operationId: 'deleteAgentSandbox',
@@ -125,7 +164,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         body: commandRequestZodModel,
-        response: ApiUtils.mapReponseModel(commandResultZodModel),
+        response: ApiUtils.mapResponseModel(commandResultZodModel),
         detail: {
             summary: 'Run command in agent sandbox',
             operationId: 'runAgentSandboxCommand',
@@ -143,7 +182,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapReponseModel(fileTextReadResultZodModel),
+        response: ApiUtils.mapResponseModel(fileTextReadResultZodModel),
         detail: {
             summary: 'Read text file from agent sandbox',
             operationId: 'readAgentSandboxTextFile',
@@ -161,7 +200,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapReponseModel(fileReadResultZodModel),
+        response: ApiUtils.mapResponseModel(fileReadResultZodModel),
         detail: {
             summary: 'Read file from agent sandbox',
             operationId: 'readAgentSandboxFile',
@@ -180,7 +219,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         body: fileTextWriteRequestZodModel,
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: {
             summary: 'Write text file to agent sandbox',
             operationId: 'writeAgentSandboxTextFile',
@@ -199,7 +238,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         body: fileWriteRequestZodModel,
-        response: ApiUtils.mapReponseModel(z.undefined()),
+        response: ApiUtils.mapResponseModel(z.undefined()),
         detail: {
             summary: 'Write file to agent sandbox',
             operationId: 'writeAgentSandboxFile',
@@ -217,7 +256,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapReponseModel(z.array(fileEntryZodModel)),
+        response: ApiUtils.mapResponseModel(z.array(fileEntryZodModel)),
         detail: {
             summary: 'List files in agent sandbox',
             operationId: 'listAgentSandboxFiles',
@@ -235,7 +274,7 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapReponseModel(fileExistsResultZodModel),
+        response: ApiUtils.mapResponseModel(fileExistsResultZodModel),
         detail: {
             summary: 'Check file exists in agent sandbox',
             operationId: 'checkAgentSandboxFileExists',
