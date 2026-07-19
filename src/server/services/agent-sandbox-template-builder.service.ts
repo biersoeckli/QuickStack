@@ -198,6 +198,7 @@ class AgentSandboxTemplateBuilder {
         namespace: string,
         warmPoolName: string,
         labels?: Record<string, string>,
+        annotations?: Record<string, string>,
         options?: {
             env?: Record<string, string>;
             idleTimeoutMinutes?: number;
@@ -210,6 +211,7 @@ class AgentSandboxTemplateBuilder {
                 name: claimName,
                 namespace,
                 ...(labels ? { labels } : {}),
+                ...(annotations ? { annotations } : {}),
             },
             spec: {
                 warmPoolRef: {

@@ -144,7 +144,7 @@ class AgentSandboxService {
             containerName,
             status: this.resolveClaimStatus(claim),
             createdAt: claim.metadata?.creationTimestamp ?? null,
-            customTag: claim.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
+            customTag: claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
         };
     }
 

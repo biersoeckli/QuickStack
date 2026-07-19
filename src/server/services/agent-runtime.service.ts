@@ -12,6 +12,7 @@ import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
 
 export type StartAgentInstanceOptions = {
     timeoutMs?: number;
@@ -201,7 +202,7 @@ class AgentRuntimeService {
      * Starts a new SandboxClaim instance for the given agent.
      * - Ensures the runtime secret exists (creates if missing)
      * - Generates a unique claim name via addRandomSuffix
-     * - Creates claim with agent instance label
+        * - Creates claim with agent instance labels
      * - Waits for sandbox readiness
      */
     async startInstance(agentId: string, userId: string, options?: StartAgentInstanceOptions | number): Promise<{ claimName: string }> {
@@ -220,6 +221,7 @@ class AgentRuntimeService {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,
+            }, {
                 ...(startOptions.customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: startOptions.customTag } : {}),
             }, {
                 env: startOptions.env,
@@ -280,7 +282,7 @@ class AgentRuntimeService {
      * Maps a raw k8s SandboxClaim object to an AgentInstanceInfo DTO.
      * Reusable by both listInstances and SSE watch delta events.
      */
-    mapClaimToInstance(claim: any, namespace: string): {
+    mapClaimToInstance(claim: SandboxClaim, namespace: string): {
         name: string;
         status: DeploymentStatus;
         namespace: string;
@@ -293,7 +295,7 @@ class AgentRuntimeService {
             status,
             namespace,
             createdAt: claim.metadata?.creationTimestamp || null,
-            customTag: claim.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG] || undefined,
+            customTag: claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] || undefined,
         };
     }
 
@@ -314,7 +316,7 @@ class AgentRuntimeService {
             selector,
         );
 
-        return claims.map((claim: any) => this.mapClaimToInstance(claim, namespace));
+        return claims.map((claim: SandboxClaim) => this.mapClaimToInstance(claim, namespace));
     }
 }
 

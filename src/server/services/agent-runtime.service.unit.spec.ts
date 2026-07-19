@@ -263,7 +263,7 @@ describe('agent-runtime.service', () => {
             );
         });
 
-        it('adds custom tag label to SandboxClaim when provided', async () => {
+        it('adds custom tag annotation to SandboxClaim when provided', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
@@ -274,7 +274,7 @@ describe('agent-runtime.service', () => {
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
                 expect.objectContaining({
                     metadata: expect.objectContaining({
-                        labels: expect.objectContaining({
+                        annotations: expect.objectContaining({
                             'qs-custom-tag': 'feature-branch',
                         }),
                     }),

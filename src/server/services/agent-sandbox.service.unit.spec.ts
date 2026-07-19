@@ -153,7 +153,7 @@ describe('agent-sandbox.service', () => {
         });
     });
 
-    it('forwards customTag on create and maps it from claim labels', async () => {
+    it('forwards customTag on create and maps it from claim annotations', async () => {
         vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim({
             metadata: {
                 name: CLAIM_NAME,
@@ -161,6 +161,8 @@ describe('agent-sandbox.service', () => {
                 creationTimestamp: '2026-01-01T00:00:00.000Z',
                 labels: {
                     'qs-agent-id': AGENT_ID,
+                },
+                annotations: {
                     'qs-custom-tag': 'feature-branch',
                 },
             },
