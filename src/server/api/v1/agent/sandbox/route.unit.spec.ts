@@ -51,6 +51,8 @@ import { Elysia } from 'elysia';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 import { agentSandboxRoutes } from './route';
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 describe('agent sandbox routes', () => {
     const app = new Elysia()
         .onError(({ error }) => ApiUtils.mapError(error))
