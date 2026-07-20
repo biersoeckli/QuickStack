@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -40,5 +42,17 @@ func TestVerifyAccessTokenAcceptsOriginalIssuer(t *testing.T) {
 func TestCookieNameMatchesOriginalImplementation(t *testing.T) {
 	if CookieName != "qs-auth-proxy-session" {
 		t.Fatalf("CookieName = %q", CookieName)
+	}
+}
+
+func TestSessionCookieSupportsCrossSiteIframes(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "http://auth-proxy.test", nil)
+	cookie := SessionCookie("session-token", req)
+
+	if !cookie.Secure {
+		t.Fatal("SessionCookie().Secure = false, want true")
+	}
+	if cookie.SameSite != http.SameSiteNoneMode {
+		t.Fatalf("SessionCookie().SameSite = %v, want %v", cookie.SameSite, http.SameSiteNoneMode)
 	}
 }

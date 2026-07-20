@@ -110,14 +110,13 @@ func CreateSessionToken(c *AgentClaims) (string, error) {
 
 // SessionCookie builds the Set-Cookie header value, mirroring sessionCookie().
 func SessionCookie(token string, r *http.Request) *http.Cookie {
-	secure := r.Header.Get("X-Forwarded-Proto") == "https"
 	return &http.Cookie{
 		Name:     CookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
 	}
 }
 
