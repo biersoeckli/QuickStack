@@ -172,24 +172,6 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/files/read-text', async ({ params, query, identity }) => {
-        if (!identity) throw new ApiUnauthorizedException();
-
-        await ensureAgentExists(params.agentId);
-        ensureReadAgent(identity, params.agentId);
-
-        return agentSandboxService.readTextFile(params.agentId, params.claimName, query.path);
-    }, {
-        params: agentSandboxClaimParamsSchema,
-        query: filePathQuerySchema,
-        response: ApiUtils.mapResponseModel(fileTextReadResultZodModel),
-        detail: {
-            summary: 'Read text file from agent sandbox',
-            operationId: 'readAgentSandboxTextFile',
-            tags: ['Agent Sandboxes'],
-            security: [{ bearerAuth: [] }],
-        },
-    })
     .get('/agents/:agentId/sandboxes/:claimName/files/read', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
@@ -208,21 +190,20 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .put('/agents/:agentId/sandboxes/:claimName/files/write-text', async ({ params, body, identity }) => {
+    .get('/agents/:agentId/sandboxes/:claimName/files/read-text', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
-        ensureWriteAgent(identity, params.agentId);
+        ensureReadAgent(identity, params.agentId);
 
-        await agentSandboxService.writeTextFile(params.agentId, params.claimName, body.path, body.text);
-        return undefined;
+        return agentSandboxService.readTextFile(params.agentId, params.claimName, query.path);
     }, {
         params: agentSandboxClaimParamsSchema,
-        body: fileTextWriteRequestZodModel,
-        response: ApiUtils.mapResponseModel(z.undefined()),
+        query: filePathQuerySchema,
+        response: ApiUtils.mapResponseModel(fileTextReadResultZodModel),
         detail: {
-            summary: 'Write text file to agent sandbox',
-            operationId: 'writeAgentSandboxTextFile',
+            summary: 'Read text file from agent sandbox',
+            operationId: 'readAgentSandboxTextFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
@@ -242,6 +223,25 @@ export const agentSandboxRoutes = new Elysia()
         detail: {
             summary: 'Write file to agent sandbox',
             operationId: 'writeAgentSandboxFile',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .put('/agents/:agentId/sandboxes/:claimName/files/write-text', async ({ params, body, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        await agentSandboxService.writeTextFile(params.agentId, params.claimName, body.path, body.text);
+        return undefined;
+    }, {
+        params: agentSandboxClaimParamsSchema,
+        body: fileTextWriteRequestZodModel,
+        response: ApiUtils.mapResponseModel(z.undefined()),
+        detail: {
+            summary: 'Write text file to agent sandbox',
+            operationId: 'writeAgentSandboxTextFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },

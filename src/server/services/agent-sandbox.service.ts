@@ -206,9 +206,11 @@ class AgentSandboxService {
         }
     }
 
-    private assertPlainFilename(path: string): void {
-        if (!path || path.includes('/') || path.includes('\\') || path === '.' || path === '..' || path.includes('..')) {
-            throw new ServiceException('Write path must be a plain filename without directory separators.');
+    private assertWritablePath(path: string): void {
+        const isAbsolutePath = path.startsWith('/');
+
+        if (!path || path.includes('\\') || path === '.' || path === '..' || path.includes('..') || (!isAbsolutePath && path.includes('/'))) {
+            throw new ServiceException('Write path must be a plain filename or absolute path without traversal segments.');
         }
     }
 
@@ -278,7 +280,7 @@ class AgentSandboxService {
     }
 
     async writeFile(agentId: string, claimName: string, path: string, dataBase64: string): Promise<void> {
-        this.assertPlainFilename(path);
+        this.assertWritablePath(path);
         const target = await this.resolveTarget(agentId, claimName);
         const result = await this.execShell(
             target,
@@ -288,6 +290,7 @@ class AgentSandboxService {
     }
 
     async writeTextFile(agentId: string, claimName: string, path: string, text: string): Promise<void> {
+        this.assertWritablePath(path);
         const target = await this.resolveTarget(agentId, claimName);
         const dataBase64 = Buffer.from(text).toString('base64');
         const result = await this.execShell(
@@ -313,7 +316,7 @@ class AgentSandboxService {
             '  size=$(wc -c < "$p" 2>/dev/null || printf "0")',
             '  printf "%s\\t%s\\t%s\\t%s\\n" "$name" "$full" "$type" "$size"',
             'done',
-        ].join('; ');
+        ].join('\n');
         const result = await this.execShell(target, script);
         this.assertSuccessful(result, 'List files');
 
