@@ -55,6 +55,13 @@ class BuildWatchService {
         console.log('[BuildWatch] Scanning existing build jobs...');
         try {
             const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
+
+            // Group successful jobs by appId so we only deploy the newest per app.
+            // Without this, multiple successful jobs for the same app trigger
+            // sequential deployments in alphabetical order, causing the last-processed
+            // (often older) job to "win" and roll back the deployment.
+            const succeededByApp = new Map<string, V1Job[]>();
+
             for (const job of jobs.body.items) {
                 const jobName = job.metadata?.name;
                 if (!jobName) continue;
@@ -62,42 +69,69 @@ class BuildWatchService {
                 const status = buildService.getJobStatusString(job.status);
 
                 if (status === 'FAILED') {
-                    // Mark as processed so watch won't re-handle it
                     this.processedJobs.add(jobName);
                     continue;
                 }
 
                 if (status === 'SUCCEEDED') {
-                    // Check if deployment already reflects this build via git commit comparison
                     const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
                     const projectId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
-                    const jobGitCommit = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
 
                     if (!appId || !projectId) {
                         this.processedJobs.add(jobName);
                         continue;
                     }
 
-                    try {
-                        const deployment = await deploymentService.getDeployment(projectId, appId);
-                        const deployedGitCommit = deployment?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-
-                        if (jobGitCommit && deployedGitCommit && jobGitCommit === deployedGitCommit) {
-                            // Already deployed with this commit
-                            this.processedJobs.add(jobName);
-                            console.log(`[BuildWatch] Job ${jobName} already deployed (commit=${jobGitCommit}), skipping.`);
-                        } else {
-                            // Not yet deployed — trigger deployment
-                            this.processedJobs.add(jobName);
-                            console.log(`[BuildWatch] Job ${jobName} not yet deployed, triggering deployment.`);
-                            await this.handleSucceeded(job);
-                        }
-                    } catch (e) {
-                        console.error(`[BuildWatch] Error checking deployment for app ${appId}:`, e);
-                        this.processedJobs.add(jobName);
+                    const existing = succeededByApp.get(appId);
+                    if (existing) {
+                        existing.push(job);
+                    } else {
+                        succeededByApp.set(appId, [job]);
                     }
                 }
             }
+
+            // For each app, pick the newest successful job (by creationTimestamp)
+            // and only trigger deployment for that one.
+            succeededByApp.forEach(async (appJobs, appId) => {
+                // Sort descending by creationTime: newest first
+                appJobs.sort((a, b) => {
+                    const timeA = a.metadata?.creationTimestamp
+                        ? new Date(a.metadata.creationTimestamp).getTime()
+                        : 0;
+                    const timeB = b.metadata?.creationTimestamp
+                        ? new Date(b.metadata.creationTimestamp).getTime()
+                        : 0;
+                    return timeB - timeA;
+                });
+
+                const newestJob = appJobs[0];
+                const jobName = newestJob.metadata?.name;
+                if (!jobName) return;
+
+                const projectId = newestJob.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
+                const jobGitCommit = newestJob.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
+
+                try {
+                    const deployment = await deploymentService.getDeployment(projectId!, appId);
+                    const deployedGitCommit = deployment?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
+
+                    if (jobGitCommit && deployedGitCommit && jobGitCommit === deployedGitCommit) {
+                        console.log(`[BuildWatch] Job ${jobName} already deployed (commit=${jobGitCommit}), skipping.`);
+                    } else {
+                        console.log(`[BuildWatch] Job ${jobName} not yet deployed (newest of ${appJobs.length} job(s) for this app), triggering deployment.`);
+                        await this.handleSucceeded(newestJob);
+                    }
+                } catch (e) {
+                    console.error(`[BuildWatch] Error checking deployment for app ${appId}:`, e);
+                }
+
+                // Mark all jobs for this app as processed so the watch won't re-handle them
+                for (const job of appJobs) {
+                    const name = job.metadata?.name;
+                    if (name) this.processedJobs.add(name);
+                }
+            });
         } catch (e) {
             console.error('[BuildWatch] Error during startup scan:', e);
         }
