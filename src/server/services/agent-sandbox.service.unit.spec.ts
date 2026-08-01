@@ -270,9 +270,9 @@ describe('agent-sandbox.service', () => {
         })).rejects.toThrow('Invalid environment variable name "BAD-NAME".');
     });
 
-    it('rejects write paths with directory separators', async () => {
+    it('rejects relative write paths with directory separators', async () => {
         await expect(agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, 'dir/file.txt', 'SGVsbG8='))
-            .rejects.toThrow('Write path must be a plain filename without directory separators.');
+            .rejects.toThrow('Write path must be a plain filename or absolute path without traversal segments.');
 
         expect(agentSandboxAdapter.getSandboxClaim).not.toHaveBeenCalled();
     });
