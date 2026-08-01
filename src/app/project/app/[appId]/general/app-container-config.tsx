@@ -27,8 +27,9 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
     app: AppExtendedModel;
     readonly: boolean;
 }) {
+    const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
     // Parse containerArgs from JSON string to array
-    const form = useForm<AppContainerConfigInputModel>({
+    const form = useForm<z.input<typeof appContainerConfigZodModel>, unknown, z.output<typeof appContainerConfigZodModel>>({
         resolver: zodResolver(appContainerConfigZodModel),
         defaultValues: {
             containerCommand: ContainerCommangArgsUtils.parseStoredContainerCommandItems(app.containerCommand),
@@ -109,7 +110,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                                         type="number"
                                                         placeholder="e.g., 1001"
                                                         {...field}
-                                                        value={field.value ?? ''}
+                                                        value={inputValue(field.value)}
                                                         onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
                                                     />
                                                 </FormControl>
@@ -130,7 +131,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                                         type="number"
                                                         placeholder="e.g., 1001"
                                                         {...field}
-                                                        value={field.value ?? ''}
+                                                        value={inputValue(field.value)}
                                                         onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
                                                     />
                                                 </FormControl>
@@ -151,7 +152,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                                                         type="number"
                                                         placeholder="e.g., 1001"
                                                         {...field}
-                                                        value={field.value ?? ''}
+                                                        value={inputValue(field.value)}
                                                         onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
                                                     />
                                                 </FormControl>

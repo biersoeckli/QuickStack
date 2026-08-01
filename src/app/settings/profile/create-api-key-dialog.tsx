@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -18,7 +19,7 @@ import { createRestApiKey } from "./actions";
 
 export function CreateApiKeyDialog({ onCreated }: { onCreated: (rawApiKey: string) => void }) {
     const { closeDialog } = useDialogContext();
-    const form = useForm<RestApiKeyCreateModel>({
+    const form = useForm<z.input<typeof restApiKeyCreateZodModel>, unknown, z.output<typeof restApiKeyCreateZodModel>>({
         resolver: zodResolver(restApiKeyCreateZodModel),
         defaultValues: { name: '', expiresAt: null },
     });
@@ -66,7 +67,7 @@ export function CreateApiKeyDialog({ onCreated }: { onCreated: (rawApiKey: strin
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
-                                                {field.value ? format(field.value, "PPP") : "Pick a date"}
+                                                {field.value instanceof Date ? format(field.value, "PPP") : "Pick a date"}
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -74,7 +75,7 @@ export function CreateApiKeyDialog({ onCreated }: { onCreated: (rawApiKey: strin
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
                                             mode="single"
-                                            selected={field.value ?? undefined}
+                                            selected={field.value instanceof Date ? field.value : undefined}
                                             onSelect={(date) => field.onChange(date ?? null)}
                                             disabled={(date) => date < new Date()}
                                             initialFocus

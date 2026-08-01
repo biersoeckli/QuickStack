@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import {
     Form,
     FormControl,
@@ -15,14 +16,14 @@ import { useForm } from "react-hook-form"
 import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { RegisterFormInputSchema, registgerFormInputSchemaZod } from "@/shared/model/auth-form"
+import { registgerFormInputSchemaZod } from "@/shared/model/auth-form"
 import { registerUser } from "./actions"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import FormLabelWithQuestion from "@/components/custom/form-label-with-question"
 import { toast } from "sonner"
 
 export default function UserRegistrationForm() {
-    const form = useForm<RegisterFormInputSchema>({
+    const form = useForm<z.input<typeof registgerFormInputSchemaZod>, unknown, z.output<typeof registgerFormInputSchemaZod>>({
         resolver: zodResolver(registgerFormInputSchemaZod)
     });
 

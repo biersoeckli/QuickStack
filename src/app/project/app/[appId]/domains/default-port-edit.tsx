@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -28,7 +29,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
 
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
-    const form = useForm<AppPortModel>({
+    const form = useForm<z.input<typeof appPortZodModel>, unknown, z.output<typeof appPortZodModel>>({
         resolver: zodResolver(appPortZodModel),
         defaultValues: appPort
     });

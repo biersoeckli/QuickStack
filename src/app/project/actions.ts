@@ -62,7 +62,7 @@ export const deleteDomain = async (domainId: string, type: WorkloadType) =>
             app: async () => {
                 const domain = await appService.getDomainById(domainId);
                 await isAuthorizedWriteForWorkload(domain.appId);
-                appService.deleteDomainById(domainId)
+                await appService.deleteDomainById(domainId)
             },
             agent: async () => {
                 const domain = await agentDomainService.getDomainById(domainId);

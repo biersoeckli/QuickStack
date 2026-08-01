@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -25,7 +26,7 @@ export default function QsBuildSettings({
     buildSettings: BuildSettingsModel;
     nodes: NodeInfoModel[];
 }) {
-    const form = useForm<BuildSettingsModel>({
+    const form = useForm<z.input<typeof buildSettingsZodModel>, unknown, z.output<typeof buildSettingsZodModel>>({
         resolver: zodResolver(buildSettingsZodModel),
         defaultValues: {
             ...buildSettings,

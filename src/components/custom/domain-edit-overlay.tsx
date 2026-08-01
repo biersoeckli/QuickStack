@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,7 +44,7 @@ export default function DomainEditOverlay({
         }
     }, [existingDomain, domainSuffix]);
 
-    const form = useForm<DomainEditModel>({
+    const form = useForm<z.input<typeof domainEditZodModel>, unknown, z.output<typeof domainEditZodModel>>({
         resolver: zodResolver(domainEditZodModel),
         defaultValues: {
             ...existingDomain,

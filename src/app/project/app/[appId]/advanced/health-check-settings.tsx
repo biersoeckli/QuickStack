@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,7 +44,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
         tcpPort: app.healthCheckTcpPort || undefined,
     };
 
-    const form = useForm<HealthCheckModel>({
+    const form = useForm<z.input<typeof healthCheckZodModel>, unknown, z.output<typeof healthCheckZodModel>>({
         resolver: zodResolver(healthCheckZodModel),
         defaultValues,
         disabled: readonly,

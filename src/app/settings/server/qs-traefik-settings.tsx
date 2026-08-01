@@ -28,7 +28,7 @@ export default function QuickStackTraefikSettings({
 }) {
     const currentEnabled = (initialStatus.externalTrafficPolicy ?? 'Cluster') === 'Local';
 
-    const form = useForm<TraefikSettingsModel>({
+    const form = useForm<z.input<typeof traefikSettingsZodModel>, unknown, z.output<typeof traefikSettingsZodModel>>({
         resolver: zodResolver(traefikSettingsZodModel),
         defaultValues: {
             enableIpPreservation: currentEnabled,

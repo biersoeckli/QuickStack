@@ -23,7 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
     "@elysiajs/openapi": "^1.4.15",
-    "@hookform/resolvers": "3.10.0",
+    "@hookform/resolvers": "5.5.7",
     "@kubernetes/client-node": "^1.4.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/adapter-better-sqlite3": "^7.1.0",

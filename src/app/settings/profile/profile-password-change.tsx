@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,7 +15,7 @@ import { ProfilePasswordChangeModel, profilePasswordChangeZodModel } from "@/sha
 import { changePassword } from "./actions";
 
 export default function ProfilePasswordChange() {
-    const form = useForm<ProfilePasswordChangeModel>({
+    const form = useForm<z.input<typeof profilePasswordChangeZodModel>, unknown, z.output<typeof profilePasswordChangeZodModel>>({
         resolver: zodResolver(profilePasswordChangeZodModel)
     });
 

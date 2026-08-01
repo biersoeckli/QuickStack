@@ -50,7 +50,7 @@ Use helpers from `action-wrapper.utils.ts`:
 Every form follows this pattern:
 
 1. Define or import a Zod schema.
-2. `useForm<T>({ resolver: zodResolver(schema) })`
+2. Import `z` from `"zod"` and use the schema input/output types: `useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({ resolver: zodResolver(schema) })`.
 3. Wrap in shadcn `<Form>` provider.
 4. Use `<FormField>` with `control`, `name`, and `render`.
 5. Submit through `Toast.fromAction()` or `Actions.run()`.
@@ -58,7 +58,7 @@ Every form follows this pattern:
 ```tsx
 'use client'
 
-const form = useForm<CreateAppSchema>({
+const form = useForm<z.input<typeof createAppSchema>, unknown, z.output<typeof createAppSchema>>({
     resolver: zodResolver(createAppSchema),
 });
 
@@ -214,7 +214,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 function MyFormDialog({ someProp }: { someProp: string }) {
     const { closeDialog } = useDialogContext();
 
-    const form = useForm<MySchema>({
+    const form = useForm<z.input<typeof mySchema>, unknown, z.output<typeof mySchema>>({
         resolver: zodResolver(mySchema),
         defaultValues: { name: someProp ?? '' },
     });

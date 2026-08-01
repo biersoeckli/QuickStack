@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Fragment, useActionState, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -37,7 +38,7 @@ export default function CreateTemplateAgentSetupDialog({
     const [loadingAliases, setLoadingAliases] = useState<Record<number, boolean>>({});
     const [modelAliases, setModelAliases] = useState<Record<number, string[]>>({});
 
-    const form = useForm<AgentTemplateModel>({
+    const form = useForm<z.input<typeof agentTemplateZodModel>, unknown, z.output<typeof agentTemplateZodModel>>({
         resolver: zodResolver(agentTemplateZodModel),
         defaultValues: agentTemplate
     });

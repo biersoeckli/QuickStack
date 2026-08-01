@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -23,7 +24,7 @@ export default function QuickStackRegistrySettings({
     registryStorageLocation: string;
     s3Targets: S3Target[];
 }) {
-    const form = useForm<RegistryStorageLocationSettingsModel>({
+    const form = useForm<z.input<typeof registryStorageLocationSettingsZodModel>, unknown, z.output<typeof registryStorageLocationSettingsZodModel>>({
         resolver: zodResolver(registryStorageLocationSettingsZodModel),
         defaultValues: {
             registryStorageLocation: registryStorageLocation || Constants.INTERNAL_REGISTRY_LOCATION,

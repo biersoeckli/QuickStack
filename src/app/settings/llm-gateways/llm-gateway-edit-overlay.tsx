@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +40,7 @@ import { deploy } from "@/app/project/app/[appId]/actions";
 function LlmGatewayForm({ gateway }: { gateway?: LlmGatewayModel }) {
     const { closeDialog } = useDialogContext();
 
-    const form = useForm<LlmGatewayEditModel>({
+    const form = useForm<z.input<typeof llmGatewayEditZodModel>, unknown, z.output<typeof llmGatewayEditZodModel>>({
         resolver: zodResolver(llmGatewayEditZodModel),
         defaultValues: {
             id: gateway?.id,
@@ -81,6 +82,7 @@ function LlmGatewayForm({ gateway }: { gateway?: LlmGatewayModel }) {
             () => testLlmGatewayConnection({
                 ...values,
                 id: gateway?.id,
+                adminKey: values.adminKey ?? '',
             }),
             'Connection successful.',
             'Testing connection...',

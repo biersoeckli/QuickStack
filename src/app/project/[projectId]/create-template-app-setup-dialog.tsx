@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -33,7 +34,7 @@ export default function CreateTemplateAppSetupDialog({
 }) {
     const { closeDialog } = useDialogContext();
 
-    const form = useForm<AppTemplateModel>({
+    const form = useForm<z.input<typeof appTemplateZodModel>, unknown, z.output<typeof appTemplateZodModel>>({
         resolver: zodResolver(appTemplateZodModel),
         defaultValues: appTemplate
     });

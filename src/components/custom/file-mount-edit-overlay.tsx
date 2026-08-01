@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     Form,
@@ -33,7 +34,7 @@ export default function FileMountEditOverlay({
     workloadType: WorkloadType;
 }) {
     const { closeDialog } = useDialogContext();
-    const form = useForm<FileMountEditModel>({
+    const form = useForm<z.input<typeof fileMountEditZodModel>, unknown, z.output<typeof fileMountEditZodModel>>({
         resolver: zodResolver(fileMountEditZodModel),
         defaultValues: {
             ...existingFileMount,

@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -36,7 +37,7 @@ export default function UserEditOverlay({ children, user, userGroups }: {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
 
-  const form = useForm<UserEditModel>({
+  const form = useForm<z.input<typeof userEditZodModel>, unknown, z.output<typeof userEditZodModel>>({
     resolver: zodResolver(userEditZodModel),
     defaultValues: user
   });

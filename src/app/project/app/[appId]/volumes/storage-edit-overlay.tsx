@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -57,7 +58,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const defaultStorageClassName = volume?.storageClassName ?? storageClasses[0] ?? "";
 
-  const form = useForm<AppVolumeEditModel>({
+  const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
       containerMountPath: volume?.containerMountPath ?? '',

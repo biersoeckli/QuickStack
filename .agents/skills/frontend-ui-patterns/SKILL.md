@@ -35,6 +35,7 @@ When creating or updating frontend UI:
 ## Forms And Actions
 
 - Add route-safe validation with shared or local Zod schemas.
+- With Zod 4 and `zodResolver`, type every form with the schema's input and output types. Import `z` from `"zod"` and use `useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({ resolver: zodResolver(schema), ... })`. Do not use `z.infer` as the `useForm` field-values type when the schema has coercion, transforms, preprocessors, or defaults.
 - Map server validation errors back with `FormUtils.mapValidationErrorsToForm(...)`.
 - Use `SubmitButton` for form submits when possible.
 

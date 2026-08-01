@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,7 +19,7 @@ export default function QuickStackLetsEncryptSettings({
 }: {
     letsEncryptMail: string;
 }) {
-    const form = useForm<QsLetsEncryptSettingsModel>({
+    const form = useForm<z.input<typeof qsLetsEncryptSettingsZodModel>, unknown, z.output<typeof qsLetsEncryptSettingsZodModel>>({
         resolver: zodResolver(qsLetsEncryptSettingsZodModel),
         defaultValues: {
             letsEncryptMail,

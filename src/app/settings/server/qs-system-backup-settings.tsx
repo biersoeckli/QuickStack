@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -43,7 +44,7 @@ export default function QuickStackSystemBackupSettings({
     const [downloadingBackup, setDownloadingBackup] = useState<string | null>(null);
     const confirmDialog = useConfirmDialog();
 
-    const form = useForm<SystemBackupLocationSettingsModel>({
+    const form = useForm<z.input<typeof systemBackupLocationSettingsZodModel>, unknown, z.output<typeof systemBackupLocationSettingsZodModel>>({
         resolver: zodResolver(systemBackupLocationSettingsZodModel),
         defaultValues: {
             systemBackupLocation: systemBackupLocation || DEACTIVATED_VALUE,

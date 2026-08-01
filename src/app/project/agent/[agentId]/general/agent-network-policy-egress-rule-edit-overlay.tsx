@@ -18,6 +18,7 @@ import {
 } from "@/shared/model/agent-network-policy-edit.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { getAppsForAgentNetworkPolicy, saveAgentNetworkPolicyEgressRule } from "./actions";
+import { z } from "zod";
 
 type AgentNetworkPolicyRule = NonNullable<AgentExtendedModel['agentNetworkPolicy']>['rules'][number];
 
@@ -26,6 +27,10 @@ type ProjectWithApps = {
     name: string;
     apps: { id: string; name: string }[];
 };
+
+const agentNetworkPolicyEgressRuleFormZodModel = agentNetworkPolicyEgressRuleEditZodModel.extend({
+    projectId: z.string().optional(),
+});
 
 export default function AgentNetworkPolicyEgressRuleEditOverlay({
     existingRule,
@@ -51,14 +56,14 @@ export default function AgentNetworkPolicyEgressRuleEditOverlay({
 
     const existingProjectId = existingRule?.targetApp.projectId;
 
-    const form = useForm<AgentNetworkPolicyEgressRuleEditModel & { projectId?: string }>({
-        resolver: zodResolver(agentNetworkPolicyEgressRuleEditZodModel as any),
+    const form = useForm<z.input<typeof agentNetworkPolicyEgressRuleFormZodModel>, unknown, z.output<typeof agentNetworkPolicyEgressRuleFormZodModel>>({
+        resolver: zodResolver(agentNetworkPolicyEgressRuleFormZodModel),
         defaultValues: {
             projectId: existingProjectId ?? '',
             targetAppId: existingRule?.targetAppId ?? '',
             port: existingRule?.port ?? undefined,
             protocol: (existingRule?.protocol as 'TCP' | 'UDP') ?? 'TCP',
-        } as any,
+        },
     });
 
     const [state, formAction] = useActionState(
@@ -73,10 +78,10 @@ export default function AgentNetworkPolicyEgressRuleEditOverlay({
             toast.success('Egress rule saved successfully', { description: 'Click "Deploy" to apply the changes.' });
             closeDialog();
         }
-        FormUtils.mapValidationErrorsToForm<typeof agentNetworkPolicyEgressRuleEditZodModel>(state, form);
+        FormUtils.mapValidationErrorsToForm<typeof agentNetworkPolicyEgressRuleFormZodModel>(state, form);
     }, [closeDialog, form, state]);
 
-    const selectedProjectId = form.watch('projectId' as any) as string;
+    const selectedProjectId = form.watch('projectId') ?? '';
     const appsForSelectedProject = projects.find(p => p.id === selectedProjectId)?.apps ?? [];
 
     return (

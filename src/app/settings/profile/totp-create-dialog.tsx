@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -25,7 +26,7 @@ export default function TotpCreateDialog({
     const [isOpen, setIsOpen] = React.useState(false);
     const [totpQrCode, setTotpQrCode] = React.useState<string | null>(null);
 
-    const form = useForm<TotpModel>({
+    const form = useForm<z.input<typeof totpZodModel>, unknown, z.output<typeof totpZodModel>>({
         resolver: zodResolver(totpZodModel)
     });
 

@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,7 +25,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
     app: AppExtendedModel;
     readonly: boolean;
 }) {
-    const form = useForm<AppRateLimitsModel>({
+    const form = useForm<z.input<typeof appRateLimitsZodModel>, unknown, z.output<typeof appRateLimitsZodModel>>({
         resolver: zodResolver(appRateLimitsZodModel),
         defaultValues: app,
         disabled: readonly

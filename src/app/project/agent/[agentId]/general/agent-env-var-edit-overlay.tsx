@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { toast } from "sonner";
 
 export default function AgentEnvVarEditOverlay({ agentId, existingName }: { agentId: string; existingName?: string }) {
     const { closeDialog } = useDialogContext();
-    const form = useForm<AgentEnvVarEditModel>({
+    const form = useForm<z.input<typeof agentEnvVarEditZodModel>, unknown, z.output<typeof agentEnvVarEditZodModel>>({
         resolver: zodResolver(agentEnvVarEditZodModel),
         defaultValues: { name: existingName ?? '', value: '', originalName: existingName },
     });

@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -18,7 +19,7 @@ export default function AgentSystemPromptCard({ agent, readonly }: {
     agent: AgentExtendedModel;
     readonly: boolean;
 }) {
-    const form = useForm<AgentSystemPromptModel>({
+    const form = useForm<z.input<typeof agentSystemPromptZodModel>, unknown, z.output<typeof agentSystemPromptZodModel>>({
         resolver: zodResolver(agentSystemPromptZodModel),
         defaultValues: {
             systemPrompt: agent.systemPrompt || '',

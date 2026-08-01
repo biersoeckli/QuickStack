@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -53,7 +54,7 @@ export default function RoleEditOverlay({ children, userGroup, projects }: {
 
   const [projectPermissions, setProjectPermissions] = useState<UiProjectPermission[]>([]);
 
-  const form = useForm<RoleEditModel>({
+  const form = useForm<z.input<typeof roleEditZodModel>, unknown, z.output<typeof roleEditZodModel>>({
     resolver: zodResolver(roleEditZodModel),
     defaultValues: userGroup
   });

@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -29,7 +30,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
 
-  const form = useForm<S3TargetEditModel>({
+  const form = useForm<z.input<typeof s3TargetEditZodModel>, unknown, z.output<typeof s3TargetEditZodModel>>({
     resolver: zodResolver(s3TargetEditZodModel),
     defaultValues: target
   });

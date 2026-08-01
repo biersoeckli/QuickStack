@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +28,7 @@ export default function AgentVolumeEditOverlay({
     const { closeDialog } = useDialogContext();
     const defaultStorageClassName = existingVolume?.storageClassName || storageClasses[0] || '';
 
-    const form = useForm<AgentVolumeEditModel>({
+    const form = useForm<z.input<typeof agentVolumeEditZodModel>, unknown, z.output<typeof agentVolumeEditZodModel>>({
         resolver: zodResolver(agentVolumeEditZodModel),
         defaultValues: {
             containerMountPath: existingVolume?.containerMountPath || '',

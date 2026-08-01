@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { useActionState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -24,7 +25,8 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
     agent: AgentExtendedModel;
     readonly: boolean;
 }) {
-    const form = useForm<AgentContainerConfigModel>({
+    const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
+    const form = useForm<z.input<typeof agentContainerConfigZodModel>, unknown, z.output<typeof agentContainerConfigZodModel>>({
         resolver: zodResolver(agentContainerConfigZodModel),
         defaultValues: {
             containerCommand: ContainerCommangArgsUtils.parseStoredContainerCommandItems(agent.containerCommand),
@@ -87,7 +89,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                             <Input
                                                 placeholder="/workspace"
                                                 {...field}
-                                                value={field.value ?? ''}
+                                                value={inputValue(field.value)}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -107,7 +109,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                                 min={0}
                                                 max={10}
                                                 {...field}
-                                                value={field.value ?? 0}
+                                                value={inputValue(field.value)}
                                                 onChange={(event) => field.onChange(event.target.value === '' ? 0 : Number(event.target.value))}
                                             />
                                         </FormControl>

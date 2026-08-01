@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { useActionState, useEffect, useState } from "react";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
         });
     }, []);
 
-    const form = useForm<AgentModelConfigurationModel>({
+    const form = useForm<z.input<typeof agentModelConfigurationZodModel>, unknown, z.output<typeof agentModelConfigurationZodModel>>({
         resolver: zodResolver(agentModelConfigurationZodModel),
         defaultValues: {
             llmGatewayId: agent.llmGatewayId || '',

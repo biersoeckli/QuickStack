@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -19,7 +20,7 @@ export default function EnvEdit({ app, readonly }: {
     app: AppExtendedModel;
     readonly: boolean;
 }) {
-    const form = useForm<AppEnvVariablesModel>({
+    const form = useForm<z.input<typeof appEnvVariablesZodModel>, unknown, z.output<typeof appEnvVariablesZodModel>>({
         resolver: zodResolver(appEnvVariablesZodModel),
         defaultValues: app,
         disabled: readonly,

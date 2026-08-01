@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -51,7 +52,7 @@ export default function VolumeBackupEditDialog({
     'POSTGRES'
   ].includes(app.appType);
 
-  const form = useForm<VolumeBackupEditModel>({
+  const form = useForm<z.input<typeof volumeBackupEditZodModel>, unknown, z.output<typeof volumeBackupEditZodModel>>({
     resolver: zodResolver(volumeBackupEditZodModel),
     defaultValues: {
       ...volumeBackup,

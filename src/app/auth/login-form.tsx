@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import {
     Form,
     FormControl,
@@ -21,7 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import TwoFaAuthForm from "./two-fa-auth"
 
 export default function UserLoginForm() {
-    const form = useForm<AuthFormInputSchema>({
+    const form = useForm<z.input<typeof authFormInputSchemaZod>, unknown, z.output<typeof authFormInputSchemaZod>>({
         resolver: zodResolver(authFormInputSchemaZod)
     });
 

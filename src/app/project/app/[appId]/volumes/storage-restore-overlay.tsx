@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -21,14 +22,14 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { restoreVolumeFromZip } from "./actions"
 import { toast } from "sonner"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
-import { VolumeUploadModel, volumeUploadZodModel } from "@/shared/model/volume-upload.model"
+import { volumeUploadZodModel } from "@/shared/model/volume-upload.model"
 
 export default function StorageRestoreDialog({ children, volume, app }: { children: React.ReactNode; volume: AppVolume; app: AppExtendedModel; }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
 
-  const form = useForm<VolumeUploadModel>({
+  const form = useForm<z.input<typeof volumeUploadZodModel>, unknown, z.output<typeof volumeUploadZodModel>>({
     resolver: zodResolver(volumeUploadZodModel)
   });
 

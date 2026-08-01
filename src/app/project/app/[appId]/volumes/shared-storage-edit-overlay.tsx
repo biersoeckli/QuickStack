@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -43,7 +44,7 @@ export default function SharedStorageEditDialog({ children, app }: {
     const [shareableVolumes, setShareableVolumes] = useState<ShareableVolume[]>([]);
     const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
 
-    const form = useForm<AppVolumeEditModel>({
+    const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
         resolver: zodResolver(appVolumeEditZodModel),
         defaultValues: {
             containerMountPath: '',

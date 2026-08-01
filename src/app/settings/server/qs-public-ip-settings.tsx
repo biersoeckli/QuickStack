@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -20,7 +21,7 @@ export default function QuickStackPublicIpSettings({
 }: {
     publicIpv4?: string;
 }) {
-    const form = useForm<QsPublicIpv4SettingsModel>({
+    const form = useForm<z.input<typeof qsPublicIpv4SettingsZodModel>, unknown, z.output<typeof qsPublicIpv4SettingsZodModel>>({
         resolver: zodResolver(qsPublicIpv4SettingsZodModel),
         defaultValues: {
             publicIpv4,
