@@ -3,7 +3,6 @@ import { deploymentStatusEnumZod } from "./deployment-info.model";
 
 export const agentSandboxZodModel = z.object({
     agentId: z.string(),
-    claimName: z.string(),
     sandboxName: z.string(),
     podName: z.string(),
     namespace: z.string(),

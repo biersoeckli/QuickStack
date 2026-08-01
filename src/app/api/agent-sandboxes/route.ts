@@ -1,7 +1,7 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
-import { isAuthorizedReadForAgent, simpleRoute } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForWorkload, simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { Constants } from "@/shared/utils/constants";
 import * as k8s from '@kubernetes/client-node';
 import z from "zod";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
             agentId: z.string(),
         }).parse(await request.json());
 
-        await isAuthorizedReadForAgent(inputParam.agentId);
+        await isAuthorizedReadForWorkload(inputParam.agentId);
         const agent = await agentService.getById(inputParam.agentId);
         const namespace = agent.project.id;
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         let shouldStopStreaming = false;
         let watchRequest: { abort: () => void } | null = null;
 
-        let agentInstances = await agentRuntimeService.listInstances(agent.id);
+        let agentSandboxes = await agentRuntimeService.listSandboxes(agent.id);
 
         const customReadable = new ReadableStream({
             async start(controller) {
@@ -34,20 +34,20 @@ export async function POST(request: Request) {
                     try {
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
                     } catch (e) {
-                        console.error(`[ENQUEUE ERROR] Error while enqueueing Agent Claim Status data: `, e);
+                        console.error(`[ENQUEUE ERROR] Error while enqueueing Agent Sandbox Status data: `, e);
                         shouldStopStreaming = true;
                         controller.close();
                     }
                 };
 
                 // 1. Send full initial snapshot
-                send({ type: 'FULL', data: agentInstances });
+                send({ type: 'FULL', data: agentSandboxes });
 
 
                 // 2. Watch for changes — only for labeled claims of this agent
                 const kc = k3s.getKubeConfig();
                 const watch = new k8s.Watch(kc);
-                console.log("[START] Starting watch for agent instances in namespace", namespace);
+                console.log("[START] Starting watch for agent sandboxes in namespace", namespace);
                 watchRequest = await watch.watch(
                     `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`,
                     { labelSelector: `${Constants.QS_ANNOTATION_AGENT_ID}=${inputParam.agentId}` },
@@ -58,18 +58,18 @@ export async function POST(request: Request) {
                         if (type === 'DELETED') {
                             const name = apiObj?.metadata?.name;
                             if (name) {
-                                send({ type: 'DELETED', instance: { name } });
+                                send({ type: 'DELETED', sandbox: { name } });
                             }
                             return;
                         }
 
-                        // ADDED / MODIFIED: map full claim to instance DTO
-                        const instance = agentRuntimeService.mapClaimToInstance(apiObj, namespace);
-                        send({ type, instance });
+                        // ADDED / MODIFIED: map full claim to sandbox DTO
+                        const sandbox = agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
+                        send({ type, sandbox });
                     },
                     (err) => {
-                        if (err) console.error('agent instances watch error', err);
-                        console.log('agent instances watch ended');
+                        if (err) console.error('agent sandboxes watch error', err);
+                        console.log('agent sandboxes watch ended');
                         if (!shouldStopStreaming) {
                             controller.close();
                         }
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
                 );
             },
             cancel() {
-                console.log("[LEAVE] Cancelling informer for agent instances");
+                console.log("[LEAVE] Cancelling informer for agent sandboxes");
                 shouldStopStreaming = true;
                 if (watchRequest && typeof watchRequest.abort === 'function') {
                     watchRequest.abort();

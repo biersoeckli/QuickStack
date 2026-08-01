@@ -53,8 +53,8 @@ const namespaceServiceMocks = vi.hoisted(() => ({
 }));
 
 const agentRuntimeServiceMocks = vi.hoisted(() => ({
-    listInstances: vi.fn(),
-    stopAllInstances: vi.fn(),
+    listSandboxes: vi.fn(),
+    stopAllSandboxes: vi.fn(),
     refreshRuntimeSecret: vi.fn(),
 }));
 
@@ -238,8 +238,8 @@ describe('agent.service', () => {
         vi.mocked(agentSandboxAdapter.hasActiveClaim).mockResolvedValue(false);
         vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
         vi.mocked(namespaceService.createNamespaceIfNotExists).mockResolvedValue(undefined);
-        vi.mocked(agentRuntimeService.listInstances).mockResolvedValue([]);
-        vi.mocked(agentRuntimeService.stopAllInstances).mockResolvedValue(undefined);
+        vi.mocked(agentRuntimeService.listSandboxes).mockResolvedValue([]);
+        vi.mocked(agentRuntimeService.stopAllSandboxes).mockResolvedValue(undefined);
         vi.mocked(liteLlmApiAdapter.listModelInfo).mockResolvedValue([]);
         vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({ volume: {} as any, volumeMount: {} as any });
         vi.mocked(pvcService.deleteUnusedPvcForAgent).mockResolvedValue(undefined);
@@ -598,9 +598,9 @@ describe('agent.service', () => {
             expect(agentSandboxAdapter.reconcileSandboxTemplate).not.toHaveBeenCalled();
         });
 
-        it('rejects deploy when agent has running instances', async () => {
+        it('rejects deploy when agent has running sandboxes', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One') as any);
-            vi.mocked(agentRuntimeService.listInstances).mockResolvedValue([{ name: 'ac-test', status: 'DEPLOYED', namespace: 'proj-test-agent', createdAt: '2025-01-01' }]);
+            vi.mocked(agentRuntimeService.listSandboxes).mockResolvedValue([{ name: 'ac-test', status: 'DEPLOYED', namespace: 'proj-test-agent', createdAt: '2025-01-01' }]);
 
             await expect(agentService.deploy('agent-1')).rejects.toThrow(
                 'Cannot deploy runtime configuration changes while the Agent is running.',
@@ -685,7 +685,7 @@ describe('agent.service', () => {
                 expect.stringContaining('secret-'),
                 'proj-test-agent',
             );
-            expect(agentRuntimeService.stopAllInstances).toHaveBeenCalledWith('agent-1');
+            expect(agentRuntimeService.stopAllSandboxes).toHaveBeenCalledWith('agent-1');
             expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',

@@ -20,8 +20,8 @@ import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 
 type ResolvedSandboxTarget = {
     namespace: string;
-    claimName: string;
     sandboxName: string;
+    sandboxObjectName: string;
     podName: string;
     containerName: string;
     status: DeploymentStatus;
@@ -96,8 +96,8 @@ class AgentSandboxService {
         return agent.projectId;
     }
 
-    private async getClaimForAgent(agentId: string, claimName: string, namespace: string) {
-        const claim = await agentSandboxAdapter.getSandboxClaim(claimName, namespace);
+    private async getClaimForAgent(agentId: string, sandboxName: string, namespace: string) {
+        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, namespace);
         if (!claim) {
             throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
         }
@@ -110,15 +110,15 @@ class AgentSandboxService {
         return claim;
     }
 
-    private async resolveTarget(agentId: string, claimName: string): Promise<ResolvedSandboxTarget> {
+    private async resolveTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
         const namespace = await this.getAgentNamespace(agentId);
-        const claim = await this.getClaimForAgent(agentId, claimName, namespace);
-        const sandboxName = claim.status?.sandbox?.name;
-        if (!sandboxName) {
+        const claim = await this.getClaimForAgent(agentId, sandboxName, namespace);
+        const sandboxObjectName = claim.status?.sandbox?.name;
+        if (!sandboxObjectName) {
             throw new ServiceException('Agent sandbox is not ready.');
         }
 
-        const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, namespace);
+        const sandbox = await agentSandboxAdapter.getSandbox(sandboxObjectName, namespace);
         if (!sandbox) {
             throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
         }
@@ -138,8 +138,8 @@ class AgentSandboxService {
 
         return {
             namespace,
-            claimName,
             sandboxName,
+            sandboxObjectName,
             podName,
             containerName,
             status: this.resolveClaimStatus(claim),
@@ -151,7 +151,6 @@ class AgentSandboxService {
     private toSandboxModel(agentId: string, target: ResolvedSandboxTarget): AgentSandboxModel {
         return {
             agentId,
-            claimName: target.claimName,
             sandboxName: target.sandboxName,
             podName: target.podName,
             namespace: target.namespace,
@@ -215,16 +214,16 @@ class AgentSandboxService {
     }
 
     async createSandbox(agentId: string, userId: string, timeoutMs: number, input: CreateSandboxRequestModel = {}): Promise<AgentSandboxModel> {
-        const { claimName } = await agentRuntimeService.startInstance(agentId, userId, {
+        const { sandboxName } = await agentRuntimeService.startSandbox(agentId, userId, {
             timeoutMs,
             ...input,
         });
-        return this.getSandbox(agentId, claimName);
+        return this.getSandbox(agentId, sandboxName);
     }
 
     async listSandboxes(agentId: string): Promise<AgentSandboxModel[]> {
         const namespace = await this.getAgentNamespace(agentId);
-        const claims = await agentRuntimeService.listInstances(agentId);
+        const claims = await agentRuntimeService.listSandboxes(agentId);
         const sandboxes: AgentSandboxModel[] = [];
 
         for (const claim of claims) {
@@ -238,8 +237,7 @@ class AgentSandboxService {
                 }
                 sandboxes.push({
                     agentId,
-                    claimName: claim.name,
-                    sandboxName: '',
+                    sandboxName: claim.name,
                     podName: '',
                     namespace: claim.namespace,
                     status: claim.status,
@@ -252,36 +250,36 @@ class AgentSandboxService {
         return sandboxes;
     }
 
-    async getSandbox(agentId: string, claimName: string): Promise<AgentSandboxModel> {
-        const target = await this.resolveTarget(agentId, claimName);
+    async getSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {
+        const target = await this.resolveTarget(agentId, sandboxName);
         return this.toSandboxModel(agentId, target);
     }
 
-    async deleteSandbox(agentId: string, claimName: string): Promise<void> {
-        await this.getSandbox(agentId, claimName);
-        await agentRuntimeService.stopInstance(agentId, claimName);
+    async deleteSandbox(agentId: string, sandboxName: string): Promise<void> {
+        await this.getSandbox(agentId, sandboxName);
+        await agentRuntimeService.stopSandbox(agentId, sandboxName);
     }
 
-    async runCommand(agentId: string, claimName: string, input: CommandRequestModel): Promise<CommandResultModel> {
-        const target = await this.resolveTarget(agentId, claimName);
+    async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
+        const target = await this.resolveTarget(agentId, sandboxName);
         return this.execShell(target, this.buildShellScript(input.command, input));
     }
 
-    async readFile(agentId: string, claimName: string, path: string): Promise<FileReadResultModel> {
-        const target = await this.resolveTarget(agentId, claimName);
+    async readFile(agentId: string, sandboxName: string, path: string): Promise<FileReadResultModel> {
+        const target = await this.resolveTarget(agentId, sandboxName);
         const result = await this.execShell(target, `base64 < ${this.shellQuote(path)}`);
         this.assertSuccessful(result, 'Read file');
         return { dataBase64: result.stdout.replace(/\s/g, '') };
     }
 
-    async readTextFile(agentId: string, claimName: string, path: string): Promise<FileTextReadResultModel> {
-        const result = await this.readFile(agentId, claimName, path);
+    async readTextFile(agentId: string, sandboxName: string, path: string): Promise<FileTextReadResultModel> {
+        const result = await this.readFile(agentId, sandboxName, path);
         return { text: Buffer.from(result.dataBase64, 'base64').toString() };
     }
 
-    async writeFile(agentId: string, claimName: string, path: string, dataBase64: string): Promise<void> {
+    async writeFile(agentId: string, sandboxName: string, path: string, dataBase64: string): Promise<void> {
         this.assertWritablePath(path);
-        const target = await this.resolveTarget(agentId, claimName);
+        const target = await this.resolveTarget(agentId, sandboxName);
         const result = await this.execShell(
             target,
             `printf %s ${this.shellQuote(dataBase64)} | base64 -d > ${this.shellQuote(path)}`,
@@ -289,9 +287,9 @@ class AgentSandboxService {
         this.assertSuccessful(result, 'Write file');
     }
 
-    async writeTextFile(agentId: string, claimName: string, path: string, text: string): Promise<void> {
+    async writeTextFile(agentId: string, sandboxName: string, path: string, text: string): Promise<void> {
         this.assertWritablePath(path);
-        const target = await this.resolveTarget(agentId, claimName);
+        const target = await this.resolveTarget(agentId, sandboxName);
         const dataBase64 = Buffer.from(text).toString('base64');
         const result = await this.execShell(
             target,
@@ -300,8 +298,8 @@ class AgentSandboxService {
         this.assertSuccessful(result, 'Write text file');
     }
 
-    async listFiles(agentId: string, claimName: string, path: string): Promise<FileEntryModel[]> {
-        const target = await this.resolveTarget(agentId, claimName);
+    async listFiles(agentId: string, sandboxName: string, path: string): Promise<FileEntryModel[]> {
+        const target = await this.resolveTarget(agentId, sandboxName);
         const quotedPath = this.shellQuote(path);
         const script = [
             `target=${quotedPath}`,
@@ -334,8 +332,8 @@ class AgentSandboxService {
             });
     }
 
-    async fileExists(agentId: string, claimName: string, path: string): Promise<FileExistsResultModel> {
-        const target = await this.resolveTarget(agentId, claimName);
+    async fileExists(agentId: string, sandboxName: string, path: string): Promise<FileExistsResultModel> {
+        const target = await this.resolveTarget(agentId, sandboxName);
         const result = await this.execShell(target, `test -e ${this.shellQuote(path)}`);
         return { exists: result.exitCode === 0 };
     }

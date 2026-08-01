@@ -14,7 +14,7 @@ import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.servic
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
 
-export type StartAgentInstanceOptions = {
+export type StartAgentSandboxOptions = {
     timeoutMs?: number;
     env?: Record<string, string>;
     idleTimeoutMinutes?: number;
@@ -199,25 +199,25 @@ class AgentRuntimeService {
     }
 
     /**
-     * Starts a new SandboxClaim instance for the given agent.
+     * Starts a new SandboxClaim for the given agent.
      * - Ensures the runtime secret exists (creates if missing)
      * - Generates a unique claim name via addRandomSuffix
-        * - Creates claim with agent instance labels
+        * - Creates claim with agent sandbox labels
      * - Waits for sandbox readiness
      */
-    async startInstance(agentId: string, userId: string, options?: StartAgentInstanceOptions | number): Promise<{ claimName: string }> {
+    async startSandbox(agentId: string, userId: string, options?: StartAgentSandboxOptions | number): Promise<{ sandboxName: string }> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
-        const startOptions: StartAgentInstanceOptions = typeof options === 'number'
+        const startOptions: StartAgentSandboxOptions = typeof options === 'number'
             ? { timeoutMs: options }
             : options ?? {};
 
         await this.ensureRuntimeSecret(agent);
 
-        const claimName = KubeObjectNameUtils.toAgentClaimName(agentId);
+        const sandboxName = KubeObjectNameUtils.toAgentClaimName(agentId);
 
         await agentSandboxAdapter.createSandboxClaim(
-            agentSandboxTemplateBuilder.buildSandboxClaimResource(claimName, namespace, agentId, {
+            agentSandboxTemplateBuilder.buildSandboxClaimResource(sandboxName, namespace, agentId, {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,
@@ -231,9 +231,9 @@ class AgentRuntimeService {
 
         try {
             if (startOptions.timeoutMs !== undefined) {
-                await agentSandboxAdapter.waitForSandboxReady(claimName, namespace, startOptions.timeoutMs);
+                await agentSandboxAdapter.waitForSandboxReady(sandboxName, namespace, startOptions.timeoutMs);
             } else {
-                await agentSandboxAdapter.waitForSandboxReady(claimName, namespace);
+                await agentSandboxAdapter.waitForSandboxReady(sandboxName, namespace);
             }
         } catch (error) {
             revalidateTag(Tags.agent(agentId));
@@ -244,23 +244,23 @@ class AgentRuntimeService {
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.agents(agent.projectId));
 
-        return { claimName };
+        return { sandboxName };
     }
 
     /**
-     * Stops a specific SandboxClaim instance.
+     * Stops a specific SandboxClaim.
      */
-    async stopInstance(agentId: string, claimName: string): Promise<void> {
+    async stopSandbox(agentId: string, sandboxName: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
-        await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
+        await agentSandboxAdapter.deleteSandboxClaim(sandboxName, namespace);
 
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.agents(agent.projectId));
     }
 
-    async stopAllInstances(agentId: string): Promise<void> {
+    async stopAllSandboxes(agentId: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
@@ -268,9 +268,9 @@ class AgentRuntimeService {
         const claims = await agentSandboxAdapter.listSandboxClaims(namespace, selector);
 
         for (const claim of claims) {
-            const claimName = claim.metadata?.name;
-            if (claimName) {
-                await agentSandboxAdapter.deleteSandboxClaim(claimName, namespace);
+            const sandboxName = claim.metadata?.name;
+            if (sandboxName) {
+                await agentSandboxAdapter.deleteSandboxClaim(sandboxName, namespace);
             }
         }
 
@@ -279,10 +279,10 @@ class AgentRuntimeService {
     }
 
     /**
-     * Maps a raw k8s SandboxClaim object to an AgentInstanceInfo DTO.
-     * Reusable by both listInstances and SSE watch delta events.
+     * Maps a raw k8s SandboxClaim object to an AgentSandboxInfo DTO.
+     * Reusable by both listSandboxes and SSE watch delta events.
      */
-    mapClaimToInstance(claim: SandboxClaim, namespace: string): {
+    mapClaimToSandbox(claim: SandboxClaim, namespace: string): {
         name: string;
         status: DeploymentStatus;
         namespace: string;
@@ -300,10 +300,10 @@ class AgentRuntimeService {
     }
 
     /**
-     * Lists all SandboxClaim instances for a given agent.
-     * Returns instance info including name, status, and creation timestamp.
+     * Lists all SandboxClaims for a given agent.
+     * Returns sandbox info including name, status, and creation timestamp.
      */
-    async listInstances(agentId: string, userId?: string) {
+    async listSandboxes(agentId: string, userId?: string) {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
 
@@ -316,7 +316,7 @@ class AgentRuntimeService {
             selector,
         );
 
-        return claims.map((claim: SandboxClaim) => this.mapClaimToInstance(claim, namespace));
+        return claims.map((claim: SandboxClaim) => this.mapClaimToSandbox(claim, namespace));
     }
 }
 

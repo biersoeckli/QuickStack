@@ -137,12 +137,12 @@ describe('agent-runtime.service', () => {
         vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
     });
 
-    describe('startInstance', () => {
+    describe('startSandbox', () => {
         it('starts Git source agents after the sandbox template has been deployed', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ sourceType: 'GIT' }) as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalled();
         });
@@ -151,7 +151,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
@@ -164,7 +164,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(secretService.createOrReplaceGenericSecret).toHaveBeenCalledWith(
                 expect.stringContaining('secret-'),
@@ -182,7 +182,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ systemPrompt: null }) as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).not.toContain('QS_SYSTEM_PROMPT');
@@ -192,7 +192,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ encryptedEnvVars: null, systemPrompt: null }) as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
             expect(Object.keys(callArgs)).toHaveLength(2); // QS_GATEWAY_URL + QS_VIRTUAL_KEY
@@ -205,7 +205,7 @@ describe('agent-runtime.service', () => {
                 QS_VIRTUAL_KEY: 'existing-key',
             });
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
             expect(secretService.createOrReplaceGenericSecret).not.toHaveBeenCalled();
@@ -215,7 +215,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -241,7 +241,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID, {
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, {
                 env: { FOO: 'bar' },
                 idleTimeoutMinutes: 10,
                 timeoutMs: 123_000,
@@ -267,7 +267,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID, {
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, {
                 customTag: 'feature-branch',
             });
 
@@ -286,7 +286,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(agentSandboxAdapter.waitForSandboxReady).toHaveBeenCalledWith(
                 expect.stringMatching(/^ac-/),
@@ -297,7 +297,7 @@ describe('agent-runtime.service', () => {
         it('throws when agent not found', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(null);
 
-            await expect(agentRuntimeService.startInstance('nonexistent', USER_ID)).rejects.toThrow('Agent not found.');
+            await expect(agentRuntimeService.startSandbox('nonexistent', USER_ID)).rejects.toThrow('Agent not found.');
         });
 
         it('throws when gateway not found on agent', async () => {
@@ -306,7 +306,7 @@ describe('agent-runtime.service', () => {
                 llmGatewayId: 'missing',
             }) as any);
 
-            await expect(agentRuntimeService.startInstance(AGENT_ID, USER_ID)).rejects.toThrow('LLM Gateway not found for Agent.');
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID)).rejects.toThrow('LLM Gateway not found for Agent.');
         });
 
         it('throws when gateway admin key cannot be decrypted', async () => {
@@ -314,7 +314,7 @@ describe('agent-runtime.service', () => {
                 llmGateway: { ...GATEWAY, encryptedAdminKey: '' },
             }) as any);
 
-            await expect(agentRuntimeService.startInstance(AGENT_ID, USER_ID)).rejects.toThrow('LLM Gateway admin key is missing.');
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID)).rejects.toThrow('LLM Gateway admin key is missing.');
         });
 
         it('throws when virtual key creation fails', async () => {
@@ -323,27 +323,27 @@ describe('agent-runtime.service', () => {
                 new ServiceException('LiteLLM unreachable'),
             );
 
-            await expect(agentRuntimeService.startInstance(AGENT_ID, USER_ID)).rejects.toThrow('LiteLLM unreachable');
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID)).rejects.toThrow('LiteLLM unreachable');
         });
 
         it('always creates a new virtual key on each start when no existing secret', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-fresh-key');
 
-            await agentRuntimeService.startInstance(AGENT_ID, USER_ID);
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalled();
         });
     });
 
-    describe('stopAllInstances', () => {
+    describe('stopAllSandboxes', () => {
         it('deletes all SandboxClaims for the agent', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
                 { metadata: { name: 'ac-agent-test-runner-aaaaaaaa' } },
             ] as any);
 
-            await agentRuntimeService.stopAllInstances(AGENT_ID);
+            await agentRuntimeService.stopAllSandboxes(AGENT_ID);
 
             expect(agentSandboxAdapter.listSandboxClaims).toHaveBeenCalledWith(
                 SANDBOX_NAMESPACE,
@@ -359,7 +359,7 @@ describe('agent-runtime.service', () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([]);
 
-            await agentRuntimeService.stopAllInstances(AGENT_ID);
+            await agentRuntimeService.stopAllSandboxes(AGENT_ID);
 
             expect(agentSandboxAdapter.deleteSandboxClaim).not.toHaveBeenCalled();
         });

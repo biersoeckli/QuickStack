@@ -70,8 +70,7 @@ describe('agent sandbox routes', () => {
         routeMocks.getByIdOrUndefined.mockResolvedValue({ id: 'agent-1', projectId: 'proj-1' });
         routeMocks.createSandbox.mockResolvedValue({
             agentId: 'agent-1',
-            claimName: 'ac-agent-1',
-            sandboxName: 'sandbox-1',
+            sandboxName: 'ac-agent-1',
             podName: 'pod-1',
             namespace: 'proj-1',
             status: 'DEPLOYED',

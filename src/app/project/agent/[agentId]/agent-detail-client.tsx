@@ -13,8 +13,8 @@ import AgentContainerConfigCard from "./general/agent-container-config-card";
 import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
 import AgentStatusBar from "./general/agent-status-bar";
-import AgentInstancesCard from "./instances/agent-instances-card";
-import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
+import AgentSandboxesCard from "./sandboxes/agent-sandboxes-card";
+import { AgentSandboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import DomainsCard from "@/components/custom/domains-card";
 import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volumes-card";
 import FileMountsCard from "@/components/custom/file-mounts-card";
@@ -44,22 +44,22 @@ const isConfigurationSection = (section: string | null): section is Configuratio
 
 export default function AgentDetailClient({ agent, role, templateInfo, storageClasses }: {
     agent: AgentExtendedModel;
-    templateInfo?: AgentSanboxTemplateInfo;
+    templateInfo?: AgentSandboxTemplateInfo;
     role: RolePermissionEnum | null;
     storageClasses: string[];
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const rawTabName = searchParams.get('tabName') || 'instances';
+    const rawTabName = searchParams.get('tabName') || 'sandboxes';
     const tabName = rawTabName === 'general' ? 'configuration' : rawTabName;
     const sectionName = searchParams.get('section');
     const readonly = role !== RolePermissionEnum.READWRITE;
     const hasGitSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH';
     const hasBuildsTab = !readonly && hasGitSource;
-    const requestedTabAllowed = tabName === 'instances'
+    const requestedTabAllowed = tabName === 'sandboxes'
         || (!readonly && tabName === 'configuration')
         || (hasBuildsTab && tabName === 'builds');
-    const activeTab = requestedTabAllowed ? tabName : 'instances';
+    const activeTab = requestedTabAllowed ? tabName : 'sandboxes';
     const activeSection = isConfigurationSection(sectionName) ? sectionName : 'source';
 
     useEffect(() => {
@@ -147,7 +147,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
         <>
             <Tabs value={activeTab} onValueChange={openTab}>
                 <TabsList>
-                    <TabsTrigger value="instances"><Bot className="mr-2 h-4 w-4" /> Instances</TabsTrigger>
+                    <TabsTrigger value="sandboxes"><Bot className="mr-2 h-4 w-4" /> Sandboxes</TabsTrigger>
                     {hasBuildsTab && <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>}
                     {!readonly && <TabsTrigger value="configuration"><Settings className="mr-2 h-4 w-4" />Configuration</TabsTrigger>}
                 </TabsList>
@@ -194,8 +194,8 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                     </TabsContent>
                 )}
 
-                <TabsContent value="instances" className="pt-4">
-                    <AgentInstancesCard
+                <TabsContent value="sandboxes" className="pt-4">
+                    <AgentSandboxesCard
                         agentId={agent.id}
                         readonly={readonly}
                         namespace={agent.projectId}

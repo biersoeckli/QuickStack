@@ -12,7 +12,7 @@ import { CryptoUtils } from "../utils/crypto.utils";
 import namespaceService from "./namespace.service";
 import agentRuntimeService from "./agent-runtime.service";
 import { Constants } from "@/shared/utils/constants";
-import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
+import { AgentSandboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import secretService from "./secret.service";
 import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
@@ -322,7 +322,7 @@ class AgentService {
                 const agentTemplate = await agentSandboxAdapter.getSandboxTemplate(agentId, agent.projectId);
                 return {
                     lastDeployedAt: agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT] ? new Date(agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT]) : null,
-                } as AgentSanboxTemplateInfo;
+                } as AgentSandboxTemplateInfo;
             },
             [Tags.agent(agentId)],
             { tags: [Tags.agent(agentId)] },
@@ -340,8 +340,8 @@ class AgentService {
  Project:      ${agent.projectId}
 -----------------------------------------------`, false);
 
-            const hasRunningInstances = await agentRuntimeService.listInstances(agentId).then(instances => instances.length > 0);
-            if (hasRunningInstances) {
+            const hasRunningSandboxes = await agentRuntimeService.listSandboxes(agentId).then(sandboxes => sandboxes.length > 0);
+            if (hasRunningSandboxes) {
                 throw new ServiceException(
                     'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
                 );
@@ -393,8 +393,8 @@ class AgentService {
 
         await namespaceService.createNamespaceIfNotExists(agent.project.id);
 
-        const hasRunningInstances = await agentRuntimeService.listInstances(agentId).then(instances => instances.length > 0);
-        if (hasRunningInstances) {
+        const hasRunningSandboxes = await agentRuntimeService.listSandboxes(agentId).then(sandboxes => sandboxes.length > 0);
+        if (hasRunningSandboxes) {
             throw new ServiceException(
                 'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
             );
@@ -542,7 +542,7 @@ class AgentService {
         }
 
         // 2. Stop runtime resources
-        await agentRuntimeService.stopAllInstances(agentId);
+        await agentRuntimeService.stopAllSandboxes(agentId);
 
         // Delete All PVCs associated with the agent
         await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);

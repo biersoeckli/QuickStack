@@ -1,3 +1,3 @@
-export interface AgentSanboxTemplateInfo {
+export interface AgentSandboxTemplateInfo {
     lastDeployedAt: Date | null;
 }

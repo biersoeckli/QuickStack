@@ -275,7 +275,7 @@ describe('REST API v1 integration', () => {
             expect(accessUrl).toEqual(expectedAccess);
             expect(createAccessUrlSpy).toHaveBeenCalledWith(expect.objectContaining({
                 agentId: createdAgent.id,
-                claimName: 'test-claim',
+                sandboxName: 'test-claim',
                 domainId: createdAgent.agentDomains[0].id,
                 view: 'agent',
             }));

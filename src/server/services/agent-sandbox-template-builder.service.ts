@@ -194,7 +194,7 @@ class AgentSandboxTemplateBuilder {
     }
 
     buildSandboxClaimResource(
-        claimName: string,
+        sandboxName: string,
         namespace: string,
         warmPoolName: string,
         labels?: Record<string, string>,
@@ -208,7 +208,7 @@ class AgentSandboxTemplateBuilder {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
             kind: 'SandboxClaim',
             metadata: {
-                name: claimName,
+                name: sandboxName,
                 namespace,
                 ...(labels ? { labels } : {}),
                 ...(annotations ? { annotations } : {}),

@@ -7,10 +7,10 @@ import { Hammer, Rocket, Trash2 } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { getInstances } from "../instances/actions";
+import { getSandboxes } from "../sandboxes/actions";
 import { deployAgent, deleteAgent } from "../overview/actions";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { AgentSanboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
+import { AgentSandboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 
 export default function AgentStatusBar({
@@ -19,21 +19,21 @@ export default function AgentStatusBar({
     templateInfo
 }: {
     agent: AgentExtendedModel;
-    templateInfo?: AgentSanboxTemplateInfo;
+    templateInfo?: AgentSandboxTemplateInfo;
     readonly: boolean;
 }) {
     const router = useRouter();
     const { openConfirmDialog } = useConfirmDialog();
 
-    const [instanceCount, setInstanceCount] = useState(0);
+    const [sandboxCount, setSandboxCount] = useState(0);
     const [runningCount, setRunningCount] = useState(0);
     const [loading] = useState(false);
 
     const fetchStatus = useCallback(async () => {
         try {
-            const instances = await Actions.run(() => getInstances(agent.id));
-            setInstanceCount(instances.length);
-            setRunningCount(instances.filter((i: any) => i.status === 'DEPLOYED').length);
+            const sandboxes = await Actions.run(() => getSandboxes(agent.id));
+            setSandboxCount(sandboxes.length);
+            setRunningCount(sandboxes.filter((sandbox: any) => sandbox.status === 'DEPLOYED').length);
         } catch {
             // silently ignore polling errors
         }
@@ -77,17 +77,17 @@ export default function AgentStatusBar({
         return null;
     }
 
-    const hasInstances = instanceCount > 0;
+    const hasSandboxes = sandboxCount > 0;
     const isGitSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH';
 
     return (
         <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg border bg-muted/30">
             <div className="flex items-center gap-3">
                 <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${hasInstances ? "text-green-600 bg-green-50" : "text-gray-500 bg-gray-100"
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${hasSandboxes ? "text-green-600 bg-green-50" : "text-gray-500 bg-gray-100"
                         }`}
                 >
-                    {hasInstances ? `${runningCount}/${instanceCount} running` : "No instances"}
+                    {hasSandboxes ? `${runningCount}/${sandboxCount} running` : "No sandboxes"}
                 </span>
                 <span className="text-sm text-muted-foreground">
                     Last Deployment: {formatDateTime(templateInfo?.lastDeployedAt) || 'not deployed yet'}</span>

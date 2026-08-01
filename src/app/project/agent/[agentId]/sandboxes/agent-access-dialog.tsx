@@ -12,12 +12,12 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 
 export default function AgentAccessDialogContent({
     agentId,
-    claimName,
+    sandboxName,
     view,
     domainId,
 }: {
     agentId: string;
-    claimName: string;
+    sandboxName: string;
     view: 'agent' | 'files';
     domainId: string;
 }) {
@@ -34,7 +34,7 @@ export default function AgentAccessDialogContent({
             setError(undefined);
 
             try {
-                const result = await Actions.run(() => createAgentAccessUrl(agentId, claimName, view, domainId));
+                const result = await Actions.run(() => createAgentAccessUrl(agentId, sandboxName, view, domainId));
                 if (active) {
                     setUrl(result.url);
                 }
@@ -50,7 +50,7 @@ export default function AgentAccessDialogContent({
         return () => {
             active = false;
         };
-    }, [agentId, claimName, domainId, view]);
+    }, [agentId, sandboxName, domainId, view]);
 
     return (
         <>

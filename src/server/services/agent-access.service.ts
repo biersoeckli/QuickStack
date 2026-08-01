@@ -12,7 +12,7 @@ export type AgentAccessView = 'agent' | 'files';
 
 type CreateAgentAccessUrlInput = {
     agentId: string;
-    claimName: string;
+    sandboxName: string;
     domainId: string;
     view: AgentAccessView;
     session: UserSession;
@@ -40,12 +40,12 @@ class AgentAccessService {
 
     async createAccessUrl(input: CreateAgentAccessUrlInput): Promise<{ url: string; expiresAt: number }> {
         const domain = await agentDomainService.getDomainForAgent(input.agentId, input.domainId);
-        const target = await this.validateClaimAccess(input.agentId, input.claimName, input.session);
+        const target = await this.validateSandboxAccess(input.agentId, input.sandboxName, input.session);
 
         const token = await AuthProxyJwtUtils.signAgentAccessToken({
             sub: input.session.email,
             agentId: input.agentId,
-            claimId: input.claimName,
+            claimId: input.sandboxName,
             namespace: target.namespace,
         });
         const protocol = domain.useSsl ? 'https' : 'http';
@@ -56,29 +56,29 @@ class AgentAccessService {
         };
     }
 
-    async validateClaimAccess(agentId: string, claimName: string, session: UserSession): Promise<{
+    async validateSandboxAccess(agentId: string, sandboxName: string, session: UserSession): Promise<{
         agentId: string;
-        claimName: string;
+        sandboxName: string;
         namespace: string;
     }> {
         const identity: RequesterIdentity = { type: 'session', session };
         ensureReadAgent(identity, agentId);
 
         const agent = await agentService.getById(agentId);
-        const claim = await agentSandboxAdapter.getSandboxClaim(claimName, agent.projectId);
+        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, agent.projectId);
         if (!claim) {
-            throw new ServiceException('Agent instance not found.');
+            throw new ServiceException('Agent sandbox not found.');
         }
         const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
         if (claimAgentId !== agentId) {
-            throw new ServiceException('Agent instance does not belong to this Agent.');
+            throw new ServiceException('Agent sandbox does not belong to this Agent.');
         }
         if (this.resolveClaimStatus(claim) !== 'DEPLOYED') {
-            throw new ServiceException('Agent instance is not deployed.');
+            throw new ServiceException('Agent sandbox is not deployed.');
         }
         return {
             agentId,
-            claimName,
+            sandboxName,
             namespace: agent.projectId,
         };
     }

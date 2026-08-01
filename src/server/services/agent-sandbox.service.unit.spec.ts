@@ -26,9 +26,9 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
 
 vi.mock('@/server/services/agent-runtime.service', () => ({
     default: {
-        startInstance: vi.fn(),
-        stopInstance: vi.fn(),
-        listInstances: vi.fn(),
+        startSandbox: vi.fn(),
+        stopSandbox: vi.fn(),
+        listSandboxes: vi.fn(),
     },
 }));
 
@@ -123,8 +123,8 @@ describe('agent-sandbox.service', () => {
         vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim() as any);
         vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue(mockSandbox() as any);
         vi.mocked(k3s.core.listNamespacedPod).mockResolvedValue({ items: [mockPod()] } as any);
-        vi.mocked(agentRuntimeService.startInstance).mockResolvedValue({ claimName: CLAIM_NAME });
-        vi.mocked(agentRuntimeService.listInstances).mockResolvedValue([
+        vi.mocked(agentRuntimeService.startSandbox).mockResolvedValue({ sandboxName: CLAIM_NAME });
+        vi.mocked(agentRuntimeService.listSandboxes).mockResolvedValue([
             { name: CLAIM_NAME, namespace: NAMESPACE, status: 'DEPLOYED', createdAt: '2026-01-01T00:00:00.000Z' },
         ]);
         mockSuccessfulExec();
@@ -136,15 +136,14 @@ describe('agent-sandbox.service', () => {
             idleTimeoutMinutes: 15,
         });
 
-        expect(agentRuntimeService.startInstance).toHaveBeenCalledWith(AGENT_ID, 'user-1', {
+        expect(agentRuntimeService.startSandbox).toHaveBeenCalledWith(AGENT_ID, 'user-1', {
             timeoutMs: 123_000,
             env: { FOO: 'bar' },
             idleTimeoutMinutes: 15,
         });
         expect(result).toEqual({
             agentId: AGENT_ID,
-            claimName: CLAIM_NAME,
-            sandboxName: SANDBOX_NAME,
+            sandboxName: CLAIM_NAME,
             podName: POD_NAME,
             namespace: NAMESPACE,
             status: 'DEPLOYED',
@@ -172,7 +171,7 @@ describe('agent-sandbox.service', () => {
             customTag: 'feature-branch',
         });
 
-        expect(agentRuntimeService.startInstance).toHaveBeenCalledWith(AGENT_ID, 'user-1', {
+        expect(agentRuntimeService.startSandbox).toHaveBeenCalledWith(AGENT_ID, 'user-1', {
             timeoutMs: 123_000,
             customTag: 'feature-branch',
         });
@@ -193,7 +192,7 @@ describe('agent-sandbox.service', () => {
     it('deletes sandbox through runtime service after validating claim ownership', async () => {
         await agentSandboxService.deleteSandbox(AGENT_ID, CLAIM_NAME);
 
-        expect(agentRuntimeService.stopInstance).toHaveBeenCalledWith(AGENT_ID, CLAIM_NAME);
+        expect(agentRuntimeService.stopSandbox).toHaveBeenCalledWith(AGENT_ID, CLAIM_NAME);
     });
 
     it('handles missing claim', async () => {

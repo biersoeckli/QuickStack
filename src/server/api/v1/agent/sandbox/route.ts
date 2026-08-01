@@ -31,12 +31,12 @@ const agentSandboxParamsSchema = z.object({
 
 const agentSandboxClaimParamsSchema = z.object({
     agentId: z.string(),
-    claimName: z.string(),
+    sandboxName: z.string(),
 });
 
 const agentSandboxAccessUrlParamsSchema = z.object({
     agentId: z.string(),
-    claimName: z.string(),
+    sandboxName: z.string(),
     domainId: z.string(),
 });
 
@@ -90,13 +90,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName', async ({ params, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.getSandbox(params.agentId, params.claimName);
+        return agentSandboxService.getSandbox(params.agentId, params.sandboxName);
     }, {
         params: agentSandboxClaimParamsSchema,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
@@ -107,7 +107,7 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/accessUrl/:domainId', async ({ params, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName/accessUrl/:domainId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
@@ -120,7 +120,7 @@ export const agentSandboxRoutes = new Elysia()
 
         return await agentAccessService.createAccessUrl({
             agentId: params.agentId,
-            claimName: params.claimName,
+            sandboxName: params.sandboxName,
             domainId: params.domainId,
             view: 'agent',
             session: identity.session,
@@ -136,13 +136,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .delete('/agents/:agentId/sandboxes/:claimName', async ({ params, identity }) => {
+    .delete('/agents/:agentId/sandboxes/:sandboxName', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
 
-        await agentSandboxService.deleteSandbox(params.agentId, params.claimName);
+        await agentSandboxService.deleteSandbox(params.agentId, params.sandboxName);
         return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
@@ -154,13 +154,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .post('/agents/:agentId/sandboxes/:claimName/commands', async ({ params, body, identity }) => {
+    .post('/agents/:agentId/sandboxes/:sandboxName/commands', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
 
-        return agentSandboxService.runCommand(params.agentId, params.claimName, body);
+        return agentSandboxService.runCommand(params.agentId, params.sandboxName, body);
     }, {
         params: agentSandboxClaimParamsSchema,
         body: commandRequestZodModel,
@@ -172,13 +172,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/files/read', async ({ params, query, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName/files/read', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.readFile(params.agentId, params.claimName, query.path);
+        return agentSandboxService.readFile(params.agentId, params.sandboxName, query.path);
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
@@ -190,13 +190,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/files/read-text', async ({ params, query, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName/files/read-text', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.readTextFile(params.agentId, params.claimName, query.path);
+        return agentSandboxService.readTextFile(params.agentId, params.sandboxName, query.path);
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
@@ -208,13 +208,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .put('/agents/:agentId/sandboxes/:claimName/files/write', async ({ params, body, identity }) => {
+    .put('/agents/:agentId/sandboxes/:sandboxName/files/write', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
 
-        await agentSandboxService.writeFile(params.agentId, params.claimName, body.path, body.dataBase64);
+        await agentSandboxService.writeFile(params.agentId, params.sandboxName, body.path, body.dataBase64);
         return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
@@ -227,13 +227,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .put('/agents/:agentId/sandboxes/:claimName/files/write-text', async ({ params, body, identity }) => {
+    .put('/agents/:agentId/sandboxes/:sandboxName/files/write-text', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
 
-        await agentSandboxService.writeTextFile(params.agentId, params.claimName, body.path, body.text);
+        await agentSandboxService.writeTextFile(params.agentId, params.sandboxName, body.path, body.text);
         return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
@@ -246,13 +246,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/files/list', async ({ params, query, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName/files/list', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.listFiles(params.agentId, params.claimName, query.path);
+        return agentSandboxService.listFiles(params.agentId, params.sandboxName, query.path);
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
@@ -264,13 +264,13 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:claimName/files/exists', async ({ params, query, identity }) => {
+    .get('/agents/:agentId/sandboxes/:sandboxName/files/exists', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.fileExists(params.agentId, params.claimName, query.path);
+        return agentSandboxService.fileExists(params.agentId, params.sandboxName, query.path);
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
