@@ -28,8 +28,8 @@ export const agentDeployRoutes = new Elysia()
         }),
         response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() })),
         detail: {
-            summary: 'Deploy agent',
-            description: 'Deploys the agent with the given ID. This does not start any agent, it just applies the configuration to the SandboxTemplate.',
+            summary: 'Deploy agent configuration',
+            description: 'Deploys the agent with the given ID. This does not start any agent sandbox, it just applies the configuration to kubernetes (SandboxTemplate). Every new agent sandbox created after this deployment will use the newly applied configuration. This can only be done, wehen no sandbox is running.',
             operationId: 'deployAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }]

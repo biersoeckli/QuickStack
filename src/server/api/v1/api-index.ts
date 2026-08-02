@@ -27,7 +27,7 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
                 { name: 'Projects', description: 'CRUD operations for manging projects.' },
                 { name: 'Apps', description: 'CRUD, deploy and monitoring operations for app workloads.' },
                 { name: 'Agents', description: 'CRUD and deploy operations for agent templates. Agent templates are a definition of a structure of an agent. Running agents are called "Agent Sandboxes".' },
-                { name: 'Agent Sandboxes', description: 'Start/Stop operations for agent sandboxes (running instances of an agent template) and APIs to interact with running agent sandbox instances.' },
+                { name: 'Agent Sandboxes', description: 'Start/Stop operations for agent sandboxes (running instances of an agent) and APIs to interact with running agent sandbox instances.' },
             ],
             components: {
                 securitySchemes: {

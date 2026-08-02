@@ -13,7 +13,7 @@ import {
     agentSandboxZodModel,
     commandRequestZodModel,
     commandResultZodModel,
-    createSandboxRequestZodModel,
+    createSandboxRequestZodModel as startSandboxRequestZodModel,
     fileEntryZodModel,
     fileExistsResultZodModel,
     fileReadResultZodModel,
@@ -64,6 +64,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(z.array(agentSandboxZodModel)),
         detail: {
             summary: 'List agent sandboxes',
+            description: 'List all running agent sandboxes for the given agent ID.',
             operationId: 'listAgentSandboxes',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -81,11 +82,11 @@ export const agentSandboxRoutes = new Elysia()
         query: z.object({
             timeoutMs: z.coerce.number().int().positive().max(900_000).optional().default(300_000),
         }),
-        body: createSandboxRequestZodModel,
+        body: startSandboxRequestZodModel,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
         detail: {
-            summary: 'Create agent sandbox',
-            operationId: 'createAgentSandbox',
+            summary: 'Start agent sandbox',
+            operationId: 'startAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
