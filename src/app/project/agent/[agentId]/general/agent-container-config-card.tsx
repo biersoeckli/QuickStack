@@ -60,7 +60,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                         <CardHeader>
                             <CardTitle>Container Configuration</CardTitle>
                             <CardDescription>
-                                Configure agent container startup and pre-warmed sandbox capacity.
+                                Configure agent sandbox startup and pre-warmed sandbox capacity.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -74,8 +74,8 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                 <ContainerCommandArgsFields
                                     form={form}
                                     readonly={readonly}
-                                    commandHint="Overrides the agent container ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
-                                    argsHint="Overrides the agent container CMD. Add one item per argument in the order the process should receive them."
+                                    commandHint="Overrides the agent sandbox ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
+                                    argsHint="Overrides the agent sandbox CMD. Add one item per argument in the order the process should receive them."
                                 />
                             </div>
 

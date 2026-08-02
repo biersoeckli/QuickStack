@@ -90,7 +90,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                     <CardHeader>
                         <CardTitle>Model Configuration</CardTitle>
                         <CardDescription>
-                            Configure the LLM gateway and model for this agent. If set, a Virtual Access Key will be created and mounted as an environment variable <Code>QS_VIRTUAL_KEY</Code> in the agent container.
+                            Configure the LLM gateway and model for this agent. If set, a Virtual Access Key will be created and mounted as an environment variable <Code>QS_VIRTUAL_KEY</Code> in the agent sandbox.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
