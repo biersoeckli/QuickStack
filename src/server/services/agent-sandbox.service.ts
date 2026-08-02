@@ -11,8 +11,6 @@ import {
     CreateSandboxRequestModel,
     FileEntryModel,
     FileExistsResultModel,
-    FileReadResultModel,
-    FileTextReadResultModel,
 } from "@/shared/model/agent-sandbox.model";
 import { ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
 import { Constants } from "@/shared/utils/constants";
@@ -224,10 +222,67 @@ class AgentSandboxService {
         return this.execInTarget(target, ['sh', '-lc', command], timeoutSec, stdinStream);
     }
 
+    private streamShellOutput(target: ResolvedSandboxTarget, command: string, timeoutSec = 120): stream.PassThrough {
+        const stdoutStream = new stream.PassThrough();
+        const stderrStream = new stream.PassThrough();
+        let stderr = '';
+        let settled = false;
+        const finish = (callback: () => void) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            callback();
+        };
+        const timer = setTimeout(() => {
+            finish(() => stdoutStream.destroy(new ServiceException('Command execution timed out or the sandbox connection was lost.')));
+        }, (timeoutSec + 5) * 1000);
+
+        stderrStream.on('data', (chunk) => {
+            stderr += chunk.toString();
+        });
+
+        const exec = new k8s.Exec(k3s.getKubeConfig());
+        exec.exec(
+            target.namespace,
+            target.podName,
+            target.containerName,
+            ['sh', '-lc', command],
+            stdoutStream,
+            stderrStream,
+            null,
+            false,
+            (status: k8s.V1Status) => {
+                finish(() => {
+                    if (this.extractExitCode(status) !== 0) {
+                        stdoutStream.destroy(new ServiceException(`Read file failed: ${stderr || 'command failed'}`));
+                        return;
+                    }
+                    stdoutStream.end();
+                });
+            },
+        ).catch((error) => finish(() => stdoutStream.destroy(error)));
+
+        return stdoutStream;
+    }
+
     private assertSuccessful(result: CommandResultModel, action: string): void {
         if (result.exitCode !== 0) {
             throw new ServiceException(`${action} failed: ${result.stderr || result.stdout || `exit code ${result.exitCode}`}`);
         }
+    }
+
+    private async getFileSize(target: ResolvedSandboxTarget, path: string): Promise<number> {
+        const quotedPath = this.shellQuote(path);
+        const metadata = await this.execShell(target, `if [ -f ${quotedPath} ]; then wc -c < ${quotedPath}; else exit 66; fi`);
+        if (metadata.exitCode === 66) {
+            throw new ApiNotFoundException('Not Found', 'File not found.');
+        }
+        this.assertSuccessful(metadata, 'Read file metadata');
+        const size = Number.parseInt(metadata.stdout.trim(), 10);
+        if (!Number.isSafeInteger(size) || size < 0) {
+            throw new ServiceException('Read file metadata failed: invalid file size.');
+        }
+        return size;
     }
 
     async createSandbox(agentId: string, userId: string, timeoutMs: number, input: CreateSandboxRequestModel = {}): Promise<AgentSandboxModel> {
@@ -283,33 +338,25 @@ class AgentSandboxService {
         return this.execShell(target, this.buildShellScript(input.command, { ...input, timeoutSec }), timeoutSec);
     }
 
-    async readFile(agentId: string, sandboxName: string, path: string): Promise<FileReadResultModel> {
+    async readFile(agentId: string, sandboxName: string, path: string): Promise<{ stream: stream.PassThrough; size: number }> {
         const target = await this.resolveTarget(agentId, sandboxName);
-        const result = await this.execShell(target, `base64 < ${this.shellQuote(path)}`);
-        this.assertSuccessful(result, 'Read file');
-        return { dataBase64: result.stdout.replace(/\s/g, '') };
+        const size = await this.getFileSize(target, path);
+
+        return {
+            stream: this.streamShellOutput(target, `cat ${this.shellQuote(path)}`),
+            size,
+        };
     }
 
-    async readTextFile(agentId: string, sandboxName: string, path: string): Promise<FileTextReadResultModel> {
-        const result = await this.readFile(agentId, sandboxName, path);
-        return { text: Buffer.from(result.dataBase64, 'base64').toString() };
-    }
-
-    async writeFile(agentId: string, sandboxName: string, path: string, dataBase64: string): Promise<void> {
+    async writeFile(agentId: string, sandboxName: string, path: string, input: stream.Readable): Promise<void> {
         const target = await this.resolveTarget(agentId, sandboxName);
-        const stdinStream = stream.Readable.from([dataBase64]);
         const result = await this.execShell(
             target,
-            `base64 -d > ${this.shellQuote(path)}`,
+            `cat > ${this.shellQuote(path)}`,
             120,
-            stdinStream,
+            input,
         );
         this.assertSuccessful(result, 'Write file');
-    }
-
-    async writeTextFile(agentId: string, sandboxName: string, path: string, text: string): Promise<void> {
-        const dataBase64 = Buffer.from(text).toString('base64');
-        await this.writeFile(agentId, sandboxName, path, dataBase64);
     }
 
     async listFiles(agentId: string, sandboxName: string, path: string): Promise<FileEntryModel[]> {

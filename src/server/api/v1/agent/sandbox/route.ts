@@ -1,4 +1,6 @@
 import { Elysia } from 'elysia';
+import stream from 'stream';
+import { posix as path } from 'path';
 import { z } from 'zod';
 import agentSandboxService from '@/server/services/agent-sandbox.service';
 import agentService from '@/server/services/agent.service';
@@ -16,12 +18,8 @@ import {
     createSandboxRequestZodModel as startSandboxRequestZodModel,
     fileEntryZodModel,
     fileExistsResultZodModel,
-    fileReadResultZodModel,
-    fileTextReadResultZodModel,
-    fileTextWriteRequestZodModel,
-    fileWriteRequestZodModel,
 } from '@/shared/model/agent-sandbox.model';
-import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
+import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 import agentAccessService from '@/server/services/agent-access.service';
 
@@ -43,6 +41,15 @@ const agentSandboxAccessUrlParamsSchema = z.object({
 const filePathQuerySchema = z.object({
     path: z.string().min(1),
 });
+
+function fileHeaders(filePath: string, size: number): Headers {
+    const filename = path.basename(filePath) || 'download';
+    return new Headers({
+        'content-type': 'application/octet-stream',
+        'content-length': `${size}`,
+        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+}
 
 async function ensureAgentExists(agentId: string) {
     const agent = await agentService.getByIdOrUndefined(agentId);
@@ -179,70 +186,39 @@ export const agentSandboxRoutes = new Elysia()
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.readFile(params.agentId, params.sandboxName, query.path);
+        const file = await agentSandboxService.readFile(params.agentId, params.sandboxName, query.path);
+        return new Response(stream.Readable.toWeb(file.stream) as ReadableStream, { headers: fileHeaders(query.path, file.size) });
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapResponseModel(fileReadResultZodModel),
         detail: {
-            summary: 'Read file from agent sandbox',
+            summary: 'Stream file from agent sandbox',
             operationId: 'readAgentSandboxFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
     })
-    .get('/agents/:agentId/sandboxes/:sandboxName/files/read-text', async ({ params, query, identity }) => {
+    .put('/agents/:agentId/sandboxes/:sandboxName/files/write', async ({ params, query, request, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
+        if (!request.body) throw new ServiceException('Request body is required.');
 
         await ensureAgentExists(params.agentId);
-        ensureReadAgent(identity, params.agentId);
+        ensureWriteAgent(identity, params.agentId);
 
-        return agentSandboxService.readTextFile(params.agentId, params.sandboxName, query.path);
+        await agentSandboxService.writeFile(
+            params.agentId,
+            params.sandboxName,
+            query.path,
+            stream.Readable.fromWeb(request.body as never),
+        );
+        return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
-        response: ApiUtils.mapResponseModel(fileTextReadResultZodModel),
-        detail: {
-            summary: 'Read text file from agent sandbox',
-            operationId: 'readAgentSandboxTextFile',
-            tags: ['Agent Sandboxes'],
-            security: [{ bearerAuth: [] }],
-        },
-    })
-    .put('/agents/:agentId/sandboxes/:sandboxName/files/write', async ({ params, body, identity }) => {
-        if (!identity) throw new ApiUnauthorizedException();
-
-        await ensureAgentExists(params.agentId);
-        ensureWriteAgent(identity, params.agentId);
-
-        await agentSandboxService.writeFile(params.agentId, params.sandboxName, body.path, body.dataBase64);
-        return undefined;
-    }, {
-        params: agentSandboxClaimParamsSchema,
-        body: fileWriteRequestZodModel,
         response: ApiUtils.mapResponseModel(z.undefined()),
         detail: {
-            summary: 'Write file to agent sandbox',
+            summary: 'Stream file to agent sandbox',
             operationId: 'writeAgentSandboxFile',
-            tags: ['Agent Sandboxes'],
-            security: [{ bearerAuth: [] }],
-        },
-    })
-    .put('/agents/:agentId/sandboxes/:sandboxName/files/write-text', async ({ params, body, identity }) => {
-        if (!identity) throw new ApiUnauthorizedException();
-
-        await ensureAgentExists(params.agentId);
-        ensureWriteAgent(identity, params.agentId);
-
-        await agentSandboxService.writeTextFile(params.agentId, params.sandboxName, body.path, body.text);
-        return undefined;
-    }, {
-        params: agentSandboxClaimParamsSchema,
-        body: fileTextWriteRequestZodModel,
-        response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: {
-            summary: 'Write text file to agent sandbox',
-            operationId: 'writeAgentSandboxTextFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },

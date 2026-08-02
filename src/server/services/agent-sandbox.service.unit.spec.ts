@@ -2,6 +2,8 @@ const execMocks = vi.hoisted(() => ({
     exec: vi.fn(),
 }));
 
+import stream from 'stream';
+
 vi.mock('@kubernetes/client-node', () => ({
     Exec: class {
         exec = execMocks.exec;
@@ -49,6 +51,12 @@ const CLAIM_NAME = 'ac-agent-1-abc';
 const SANDBOX_NAME = 'sandbox-1';
 const NAMESPACE = 'proj-1';
 const POD_NAME = 'sandbox-pod-1';
+
+async function streamToText(input: AsyncIterable<Buffer | string>): Promise<string> {
+    let text = '';
+    for await (const chunk of input) text += chunk.toString();
+    return text;
+}
 
 function mockAgent() {
     return {
@@ -270,7 +278,7 @@ describe('agent-sandbox.service', () => {
     });
 
     it('writes relative paths without path restrictions', async () => {
-        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '../dir/file.txt', 'SGVsbG8=');
+        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '../dir/file.txt', stream.Readable.from(['Hello']));
 
         expect(execMocks.exec).toHaveBeenCalled();
     });
@@ -290,39 +298,48 @@ describe('agent-sandbox.service', () => {
         vi.useRealTimers();
     });
 
-    it('reads files as base64', async () => {
-        mockSuccessfulExec('SGVs\nbG8=\n');
+    it('streams raw file bytes and exposes the file size', async () => {
+        let callCount = 0;
+        execMocks.exec.mockImplementation((
+            _namespace: string,
+            _podName: string,
+            _containerName: string,
+            _command: string[],
+            stdoutStream: NodeJS.WritableStream,
+            _stderrStream: NodeJS.WritableStream,
+            _stdinStream: NodeJS.ReadableStream | null,
+            _tty: boolean,
+            callback: (status: any) => void,
+        ) => {
+            callCount += 1;
+            stdoutStream.write(callCount === 1 ? '5\n' : 'Hello');
+            callback({ status: 'Success' });
+            return Promise.resolve();
+        });
 
         const result = await agentSandboxService.readFile(AGENT_ID, CLAIM_NAME, '/tmp/hello.txt');
 
-        expect(result).toEqual({ dataBase64: 'SGVsbG8=' });
+        expect(result.size).toBe(5);
+        await expect(streamToText(result.stream)).resolves.toBe('Hello');
     });
 
-    it('reads text files', async () => {
-        mockSuccessfulExec('SGVsbG8=\n');
+    it('streams raw file content over stdin instead of placing it in the shell command', async () => {
+        const content = 'A'.repeat(250_000);
 
-        const result = await agentSandboxService.readTextFile(AGENT_ID, CLAIM_NAME, '/tmp/hello.txt');
-
-        expect(result).toEqual({ text: 'Hello' });
-    });
-
-    it('streams file content over stdin instead of placing it in the shell command', async () => {
-        const dataBase64 = 'A'.repeat(250_000);
-
-        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '/workspace/upload.bin', dataBase64);
+        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '/workspace/upload.bin', stream.Readable.from([content]));
 
         expect(execMocks.exec).toHaveBeenCalledWith(
             NAMESPACE,
             POD_NAME,
             'agent',
-            ['sh', '-lc', "base64 -d > '/workspace/upload.bin'"],
+            ['sh', '-lc', "cat > '/workspace/upload.bin'"],
             expect.anything(),
             expect.anything(),
             expect.anything(),
             false,
             expect.any(Function),
         );
-        expect(execMocks.exec.mock.calls[0][3].join('')).not.toContain(dataBase64);
+        expect(execMocks.exec.mock.calls[0][3].join('')).not.toContain(content);
     });
 
     it('checks file existence from command exit code', async () => {

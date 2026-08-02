@@ -2,8 +2,8 @@ const routeMocks = vi.hoisted(() => ({
     identity: null as any,
     getByIdOrUndefined: vi.fn(),
     createSandbox: vi.fn(),
-    readTextFile: vi.fn(),
-    writeTextFile: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
     runCommand: vi.fn(),
     ensureReadAgent: vi.fn(),
     ensureWriteAgent: vi.fn(),
@@ -33,10 +33,8 @@ vi.mock('@/server/services/agent-sandbox.service', () => ({
         getSandbox: vi.fn(),
         deleteSandbox: vi.fn(),
         runCommand: routeMocks.runCommand,
-        readFile: vi.fn(),
-        readTextFile: routeMocks.readTextFile,
-        writeFile: vi.fn(),
-        writeTextFile: routeMocks.writeTextFile,
+        readFile: routeMocks.readFile,
+        writeFile: routeMocks.writeFile,
         listFiles: vi.fn(),
         fileExists: vi.fn(),
     },
@@ -48,6 +46,7 @@ vi.mock('@/server/utils/shared-authorization.utils', () => ({
 }));
 
 import { Elysia } from 'elysia';
+import stream from 'stream';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 import { agentSandboxRoutes } from './route';
 
@@ -78,8 +77,8 @@ describe('agent sandbox routes', () => {
             createdAt: '2026-01-01T00:00:00.000Z',
         });
         routeMocks.runCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
-        routeMocks.readTextFile.mockResolvedValue({ text: 'hello' });
-        routeMocks.writeTextFile.mockResolvedValue(undefined);
+        routeMocks.readFile.mockResolvedValue({ stream: stream.PassThrough.from([Buffer.from('hello')]), size: 5 });
+        routeMocks.writeFile.mockResolvedValue(undefined);
     });
 
     it('passes create env and idle timeout body to service', async () => {
@@ -119,17 +118,19 @@ describe('agent sandbox routes', () => {
         expect(routeMocks.runCommand).toHaveBeenCalledWith('agent-1', 'ac-1', body);
     });
 
-    it('supports read-text and write-text file routes', async () => {
-        const readResponse = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/read-text?path=%2Fworkspace%2FAGENTS.md'));
-        const writeResponse = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/write-text', {
+    it('streams raw file routes', async () => {
+        const readResponse = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/read?path=%2Fworkspace%2FAGENTS.md'));
+        const writeResponse = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/write?path=%2Fworkspace%2FAGENTS.md', {
             method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ path: '/workspace/AGENTS.md', text: 'hello' }),
+            headers: { 'content-type': 'application/octet-stream' },
+            body: 'hello',
         }));
 
         expect(readResponse.status).toBe(200);
+        expect(await readResponse.text()).toBe('hello');
+        expect(readResponse.headers.get('content-length')).toBe('5');
         expect(writeResponse.status).toBe(200);
-        expect(routeMocks.readTextFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md');
-        expect(routeMocks.writeTextFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md', 'hello');
+        expect(routeMocks.readFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md');
+        expect(routeMocks.writeFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md', expect.any(stream.Readable));
     });
 });

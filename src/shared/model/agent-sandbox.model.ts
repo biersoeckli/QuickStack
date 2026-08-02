@@ -25,14 +25,6 @@ export const fileEntryZodModel = z.object({
     modifiedAt: z.string().datetime().optional(),
 });
 
-export const fileReadResultZodModel = z.object({
-    dataBase64: z.string(),
-});
-
-export const fileTextReadResultZodModel = z.object({
-    text: z.string(),
-});
-
 export const fileExistsResultZodModel = z.object({
     exists: z.boolean(),
 });
@@ -52,16 +44,6 @@ export const commandRequestZodModel = z.object({
     env: z.record(envNameZodModel, z.string()).optional(),
 });
 
-export const fileWriteRequestZodModel = z.object({
-    path: z.string().min(1),
-    dataBase64: z.string(),
-});
-
-export const fileTextWriteRequestZodModel = z.object({
-    path: z.string().min(1),
-    text: z.string(),
-});
-
 export const agentSandboxAccessUrlZodModel = z.object({
     url: z.string(),
     expiresAt: z.number().int().positive(),
@@ -70,8 +52,6 @@ export const agentSandboxAccessUrlZodModel = z.object({
 export type AgentSandboxModel = z.infer<typeof agentSandboxZodModel>;
 export type CommandResultModel = z.infer<typeof commandResultZodModel>;
 export type FileEntryModel = z.infer<typeof fileEntryZodModel>;
-export type FileReadResultModel = z.infer<typeof fileReadResultZodModel>;
-export type FileTextReadResultModel = z.infer<typeof fileTextReadResultZodModel>;
 export type FileExistsResultModel = z.infer<typeof fileExistsResultZodModel>;
 export type CreateSandboxRequestModel = z.infer<typeof createSandboxRequestZodModel>;
 export type CommandRequestModel = z.infer<typeof commandRequestZodModel>;
