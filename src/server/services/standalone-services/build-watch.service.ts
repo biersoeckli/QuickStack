@@ -10,7 +10,6 @@ import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
-import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -27,8 +26,6 @@ class BuildWatchService {
         }
         this.isWatchRunning = true;
         console.log('[BuildWatch] Starting build job watch...');
-
-        await this.scanExistingJobs();
 
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
@@ -52,66 +49,6 @@ class BuildWatchService {
             }
         );
     }
-    /**
-     * TODO: Investigate this func for wrong behaviour: https://github.com/biersoeckli/QuickStack/issues/100
-     */
-    private async scanExistingJobs() {
-        console.log('[BuildWatch] Scanning existing build jobs...');
-        try {
-            const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
-            for (const job of jobs.items) {
-                const jobName = job.metadata?.name;
-                if (!jobName) continue;
-
-                const status = buildService.getJobStatusString(job.status);
-
-                if (status === 'FAILED') {
-                    // Mark as processed so watch won't re-handle it
-                    this.processedJobs.add(jobName);
-                    continue;
-                }
-
-                if (status === 'SUCCEEDED') {
-                    // Check if deployment already reflects this build via git commit comparison
-                    const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE]
-                        ?? (job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID] ? 'agent' : 'app');
-                    const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
-                    const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
-                    const projectId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
-                    const jobGitCommit = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-
-                    if (!projectId || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
-                        this.processedJobs.add(jobName);
-                        continue;
-                    }
-
-                    try {
-                        const deployedGitCommit = workloadType === 'agent'
-                            ? (await agentSandboxAdapter.getSandboxTemplate(agentId!, projectId))?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT]
-                            : (await deploymentService.getDeployment(projectId, appId!))?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-
-                        if (jobGitCommit && deployedGitCommit && jobGitCommit === deployedGitCommit) {
-                            // Already deployed with this commit
-                            this.processedJobs.add(jobName);
-                            console.log(`[BuildWatch] Job ${jobName} already deployed (commit=${jobGitCommit}), skipping.`);
-                        } else {
-                            // Not yet deployed — trigger deployment
-                            this.processedJobs.add(jobName);
-                            console.log(`[BuildWatch] Job ${jobName} not yet deployed, triggering deployment.`);
-                            await this.handleSucceeded(job);
-                        }
-                    } catch (e) {
-                        console.error(`[BuildWatch] Error checking deployment for ${workloadType} ${appId ?? agentId}:`, e);
-                        this.processedJobs.add(jobName);
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('[BuildWatch] Error during startup scan:', e);
-        }
-        console.log('[BuildWatch] Startup scan complete.');
-    }
-
     private async handleJobEvent(job: V1Job) {
         const jobName = job.metadata?.name;
         if (!jobName || this.processedJobs.has(jobName)) return;
