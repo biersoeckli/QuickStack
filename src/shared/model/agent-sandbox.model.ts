@@ -48,7 +48,7 @@ export const createSandboxRequestZodModel = z.object({
 export const commandRequestZodModel = z.object({
     command: z.string().min(1),
     cwd: z.string().min(1).optional(),
-    timeoutSec: z.number().int().positive().max(3600).optional(),
+    timeoutSec: z.number().int().positive().max(3600).default(120),
     env: z.record(envNameZodModel, z.string()).optional(),
 });
 

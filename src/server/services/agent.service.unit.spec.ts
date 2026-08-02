@@ -692,6 +692,12 @@ describe('agent.service', () => {
                 'gw-key',
                 'sk-v-key-123',
             );
+            expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
+                .toBeLessThan(agentRuntimeService.stopAllSandboxes.mock.invocationCallOrder[0]);
+            expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
+                .toBeLessThan(pvcService.deleteAllPvcForAgent.mock.invocationCallOrder[0]);
+            expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
+                .toBeLessThan(buildService.deleteAllBuildsOfAgent.mock.invocationCallOrder[0]);
             expect(ingressService.deleteAllAgentIngresses).toHaveBeenCalledWith('agent-1');
             expect(configMapService.deleteAllConfigMapsForAgent).toHaveBeenCalledWith(agentMock);
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('secret-agent-1', 'proj-test-agent');
@@ -707,14 +713,18 @@ describe('agent.service', () => {
             expect(dataAccess.client.agent.delete).not.toHaveBeenCalled();
         });
 
-        it('preserves DB agent when virtual key cleanup fails', async () => {
+        it('continues Agent cleanup when virtual key deletion fails', async () => {
             const agentMock = mockAgentWithRelations('agent-1', 'Agent One');
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(agentMock as any);
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({ id: 'agent-1' } as any);
+            vi.mocked(dataAccess.client.agent.delete).mockResolvedValue({} as any);
             vi.mocked(secretService.getDecodedSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'sk-v-key-123' });
             vi.mocked(liteLlmMocks.deleteVirtualKey).mockRejectedValue(new ServiceException('LiteLLM key deletion failed'));
 
-            await expect(agentService.deleteById('agent-1')).rejects.toThrow('LiteLLM key deletion failed');
-            expect(dataAccess.client.agent.delete).not.toHaveBeenCalled();
+            await expect(agentService.deleteById('agent-1')).resolves.toBeUndefined();
+            expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
+            expect(buildService.deleteAllBuildsOfAgent).toHaveBeenCalledWith('agent-1');
+            expect(dataAccess.client.agent.delete).toHaveBeenCalledWith({ where: { id: 'agent-1' } });
         });
 
         it('deletes agent without virtual key when secret is missing', async () => {

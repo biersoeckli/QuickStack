@@ -30,6 +30,8 @@ type ResolvedSandboxTarget = {
 };
 
 class AgentSandboxService {
+    // Path validation is not a security boundary: runCommand already grants unrestricted
+    // shell read/write access in this sandbox. Container isolation is the real boundary.
     private resolveClaimStatus(claim: any): DeploymentStatus {
         const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
         const ready = conditions.find((c) =>
@@ -71,9 +73,8 @@ class AgentSandboxService {
             return `${name}=${this.shellQuote(value)}`;
         }).join(' ');
 
-        const commandPrefix = options?.timeoutSec
-            ? `timeout ${options.timeoutSec}s sh -lc ${this.shellQuote(command)}`
-            : `sh -lc ${this.shellQuote(command)}`;
+        const timeoutSec = options?.timeoutSec ?? 120;
+        const commandPrefix = `timeout ${timeoutSec}s sh -lc ${this.shellQuote(command)}`;
 
         parts.push(`${envPrefix ? `${envPrefix} ` : ''}${commandPrefix}`);
         return parts.join(' && ');
@@ -160,7 +161,7 @@ class AgentSandboxService {
         };
     }
 
-    private async execInTarget(target: ResolvedSandboxTarget, command: string[]): Promise<CommandResultModel> {
+    private async execInTarget(target: ResolvedSandboxTarget, command: string[], timeoutSec = 120): Promise<CommandResultModel> {
         const stdoutStream = new stream.PassThrough();
         const stderrStream = new stream.PassThrough();
         let stdout = '';
@@ -174,6 +175,20 @@ class AgentSandboxService {
         });
 
         return new Promise<CommandResultModel>((resolve, reject) => {
+            let settled = false;
+            const finish = (callback: () => void) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                callback();
+            };
+            const timer = setTimeout(() => {
+                finish(() => {
+                    stdoutStream.destroy();
+                    stderrStream.destroy();
+                    reject(new ServiceException('Command execution timed out or the sandbox connection was lost.'));
+                });
+            }, (timeoutSec + 5) * 1000);
             const exec = new k8s.Exec(k3s.getKubeConfig());
             exec.exec(
                 target.namespace,
@@ -185,31 +200,23 @@ class AgentSandboxService {
                 null,
                 false,
                 (status: k8s.V1Status) => {
-                    resolve({
+                    finish(() => resolve({
                         stdout,
                         stderr,
                         exitCode: this.extractExitCode(status),
-                    });
+                    }));
                 },
-            ).catch(reject);
+            ).catch((error) => finish(() => reject(error)));
         });
     }
 
-    private async execShell(target: ResolvedSandboxTarget, command: string): Promise<CommandResultModel> {
-        return this.execInTarget(target, ['sh', '-lc', command]);
+    private async execShell(target: ResolvedSandboxTarget, command: string, timeoutSec = 120): Promise<CommandResultModel> {
+        return this.execInTarget(target, ['sh', '-lc', command], timeoutSec);
     }
 
     private assertSuccessful(result: CommandResultModel, action: string): void {
         if (result.exitCode !== 0) {
             throw new ServiceException(`${action} failed: ${result.stderr || result.stdout || `exit code ${result.exitCode}`}`);
-        }
-    }
-
-    private assertWritablePath(path: string): void {
-        const isAbsolutePath = path.startsWith('/');
-
-        if (!path || path.includes('\\') || path === '.' || path === '..' || path.includes('..') || (!isAbsolutePath && path.includes('/'))) {
-            throw new ServiceException('Write path must be a plain filename or absolute path without traversal segments.');
         }
     }
 
@@ -262,7 +269,8 @@ class AgentSandboxService {
 
     async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
         const target = await this.resolveTarget(agentId, sandboxName);
-        return this.execShell(target, this.buildShellScript(input.command, input));
+        const timeoutSec = input.timeoutSec ?? 120;
+        return this.execShell(target, this.buildShellScript(input.command, { ...input, timeoutSec }), timeoutSec);
     }
 
     async readFile(agentId: string, sandboxName: string, path: string): Promise<FileReadResultModel> {
@@ -278,7 +286,6 @@ class AgentSandboxService {
     }
 
     async writeFile(agentId: string, sandboxName: string, path: string, dataBase64: string): Promise<void> {
-        this.assertWritablePath(path);
         const target = await this.resolveTarget(agentId, sandboxName);
         const result = await this.execShell(
             target,
@@ -288,7 +295,6 @@ class AgentSandboxService {
     }
 
     async writeTextFile(agentId: string, sandboxName: string, path: string, text: string): Promise<void> {
-        this.assertWritablePath(path);
         const target = await this.resolveTarget(agentId, sandboxName);
         const dataBase64 = Buffer.from(text).toString('base64');
         const result = await this.execShell(

@@ -21,6 +21,7 @@ func TestVerifyAccessTokenAcceptsOriginalIssuer(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "jan.meier@ost.ch",
 			Issuer:    "quickstack-auth-proxy",
+			ID:        "access-token-1",
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
 		},
@@ -36,6 +37,40 @@ func TestVerifyAccessTokenAcceptsOriginalIssuer(t *testing.T) {
 	}
 	if claims.AgentID != "agent-base-agent-c5bbc" {
 		t.Fatalf("AgentID = %q", claims.AgentID)
+	}
+}
+
+func TestConsumeAccessTokenRejectsReplay(t *testing.T) {
+	t.Setenv("AGENT_JWT_SECRET", "test-secret")
+	consumedAccessTokens.Lock()
+	consumedAccessTokens.jtiExpiry = make(map[string]time.Time)
+	consumedAccessTokens.Unlock()
+
+	claims := &AgentClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        "access-token-1",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL())),
+		},
+	}
+	if err := ConsumeAccessToken(claims); err != nil {
+		t.Fatalf("first consume: %v", err)
+	}
+	if err := ConsumeAccessToken(claims); err == nil {
+		t.Fatal("second consume succeeded, want replay rejection")
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, AgentClaims{
+		AgentID: "agent-1", ClaimID: "claim-1", Namespace: "project-1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer: Issuer, ID: "access-token-1", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+	})
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	if _, err := VerifyAccessToken(tokenString); err == nil {
+		t.Fatal("replayed token verified, want rejection")
 	}
 }
 

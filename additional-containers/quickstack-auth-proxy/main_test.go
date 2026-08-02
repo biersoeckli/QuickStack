@@ -22,6 +22,7 @@ func TestTokenRedirectSetsOriginalSessionCookie(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "jan.meier@ost.ch",
 			Issuer:    auth.Issuer,
+			ID:        "access-token-main-test",
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
 		},
@@ -58,5 +59,11 @@ func TestTokenRedirectSetsOriginalSessionCookie(t *testing.T) {
 	}
 	if !cookie.Secure {
 		t.Fatal("cookie should be secure for https forwarded proto")
+	}
+
+	replayRecorder := httptest.NewRecorder()
+	handleRequest(shouldNotProxy).ServeHTTP(replayRecorder, req)
+	if replayRecorder.Code != http.StatusUnauthorized {
+		t.Fatalf("replay status = %d, want %d", replayRecorder.Code, http.StatusUnauthorized)
 	}
 }

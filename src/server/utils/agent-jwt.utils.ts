@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import paramService from "../services/param.service";
 
@@ -6,6 +7,7 @@ export interface AgentAccessTokenPayload {
     agentId: string;
     claimId: string;
     namespace: string;
+    jti?: string;
 }
 
 export class AuthProxyJwtUtils {
@@ -14,12 +16,12 @@ export class AuthProxyJwtUtils {
 
     private static async getAgentJwtSecret(): Promise<Uint8Array> {
         const secret = await paramService.getOrCreateAgentJwtSecret();
-        return new TextEncoder().encode(secret);
+        return Buffer.from(secret);
     }
 
     private static getTokenTtlSeconds(): number {
-        const ttl = Number(process.env.AGENT_JWT_TTL_SECONDS || '3600');
-        return Number.isFinite(ttl) && ttl > 0 ? ttl : 3600;
+        const ttl = Number(process.env.AGENT_ACCESS_TOKEN_TTL_SECONDS || '60');
+        return Number.isFinite(ttl) && ttl > 0 ? ttl : 60;
     }
 
     static async signAgentAccessToken(payload: AgentAccessTokenPayload): Promise<string> {
@@ -27,6 +29,7 @@ export class AuthProxyJwtUtils {
             .setProtectedHeader({ alg: AuthProxyJwtUtils.algorithm })
             .setSubject(payload.sub)
             .setIssuer(AuthProxyJwtUtils.authProxyIssues)
+            .setJti(randomUUID())
             .setIssuedAt()
             .setExpirationTime(`${AuthProxyJwtUtils.getTokenTtlSeconds()}s`)
             .sign(await AuthProxyJwtUtils.getAgentJwtSecret());
@@ -43,6 +46,7 @@ export class AuthProxyJwtUtils {
             typeof payload.agentId !== 'string' ||
             typeof payload.claimId !== 'string' ||
             typeof payload.namespace !== 'string'
+            || typeof payload.jti !== 'string'
         ) {
             throw new Error('Invalid Agent access token payload.');
         }
@@ -52,6 +56,7 @@ export class AuthProxyJwtUtils {
             agentId: payload.agentId,
             claimId: payload.claimId,
             namespace: payload.namespace,
+            jti: payload.jti,
         };
     }
 }

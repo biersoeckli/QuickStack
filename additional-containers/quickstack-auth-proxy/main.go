@@ -54,6 +54,10 @@ func handleRequest(rp http.Handler) http.HandlerFunc {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
+			if err := auth.ConsumeAccessToken(claims); err != nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
 
 			q := forwardedURL.Query()
 			q.Del("token")

@@ -93,8 +93,8 @@ class QsAuthProxyService {
                                     },
                                 },
                                 {
-                                    name: 'AUTH_DISABLED',
-                                    value: 'false',
+                                    name: 'AGENT_ACCESS_TOKEN_TTL_SECONDS',
+                                    value: process.env.AGENT_ACCESS_TOKEN_TTL_SECONDS || '60',
                                 },
                             ],
                             resources: {

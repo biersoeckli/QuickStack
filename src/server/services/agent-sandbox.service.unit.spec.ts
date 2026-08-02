@@ -230,7 +230,7 @@ describe('agent-sandbox.service', () => {
             NAMESPACE,
             POD_NAME,
             'agent',
-            ['sh', '-lc', "sh -lc 'echo hello'"],
+            ['sh', '-lc', "timeout 120s sh -lc 'echo hello'"],
             expect.anything(),
             expect.anything(),
             null,
@@ -269,11 +269,25 @@ describe('agent-sandbox.service', () => {
         })).rejects.toThrow('Invalid environment variable name "BAD-NAME".');
     });
 
-    it('rejects relative write paths with directory separators', async () => {
-        await expect(agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, 'dir/file.txt', 'SGVsbG8='))
-            .rejects.toThrow('Write path must be a plain filename or absolute path without traversal segments.');
+    it('writes relative paths without path restrictions', async () => {
+        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '../dir/file.txt', 'SGVsbG8=');
 
-        expect(agentSandboxAdapter.getSandboxClaim).not.toHaveBeenCalled();
+        expect(execMocks.exec).toHaveBeenCalled();
+    });
+
+    it('rejects when a hung exec never invokes its status callback', async () => {
+        vi.useFakeTimers();
+        execMocks.exec.mockReturnValue(new Promise(() => {}));
+
+        const result = agentSandboxService.runCommand(AGENT_ID, CLAIM_NAME, {
+            command: 'echo hello',
+            timeoutSec: 1,
+        });
+        const expectation = expect(result).rejects.toThrow('Command execution timed out or the sandbox connection was lost.');
+        await vi.advanceTimersByTimeAsync(6_000);
+
+        await expectation;
+        vi.useRealTimers();
     });
 
     it('reads files as base64', async () => {

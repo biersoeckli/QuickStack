@@ -513,9 +513,9 @@ class AgentService {
      * Deletes an Agent and all associated resources using a safe cleanup order:
      *
      * 1. Extract virtual key from runtime secret if the agent is running.
-     * 2. Stop runtime resources (SandboxClaim) — idempotent.
-     * 3. Delete the LiteLLM virtual key via the Gateway API.
-     *    If this fails the DB Agent is preserved so cleanup can be retried.
+     * 2. Delete the LiteLLM virtual key via the Gateway API, best-effort.
+     *    Failures are logged and do not block Agent cleanup.
+     * 3. Stop runtime resources (SandboxClaim) — idempotent.
      * 4. Delete all Agent-owned Kubernetes resources.
      * 5. Delete the DB Agent record in a transaction.
      */
@@ -541,14 +541,8 @@ class AgentService {
             // Secret not found or inaccessible — key already cleaned up or never existed
         }
 
-        // 2. Stop runtime resources
-        await agentRuntimeService.stopAllSandboxes(agentId);
-
-        // Delete All PVCs associated with the agent
-        await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
-        await buildService.deleteAllBuildsOfAgent(agentId);
-
-        // 3. Delete LiteLLM virtual key if we extracted one
+        // 2. Delete LiteLLM virtual key before destructive resource cleanup.
+        // This is best-effort: an orphaned gateway key is recoverable, user data is not.
         if (virtualKey && existing.llmGateway?.encryptedAdminKey) {
             try {
                 const adminKey = CryptoUtils.decrypt(existing.llmGateway.encryptedAdminKey);
@@ -558,17 +552,19 @@ class AgentService {
                     virtualKey,
                 );
             } catch (error: any) {
-                // Preserve DB Agent when virtual key deletion fails — retryable
-                revalidateTag(Tags.agents(existing.projectId));
-                revalidateTag(Tags.agent(agentId));
-                if (error instanceof ServiceException) {
-                    throw error;
-                }
-                throw new ServiceException(
-                    `Failed to delete Agent virtual key: ${error?.message || error}`,
+                const virtualKeyId = crypto.createHash('sha256').update(virtualKey).digest('hex').slice(0, 12);
+                console.warn(
+                    `Failed to delete LiteLLM virtual key during Agent cleanup; continuing `
+                    + `(agentId=${agentId}, gatewayId=${existing.llmGateway.id}, virtualKeyId=${virtualKeyId}):`,
+                    error,
                 );
             }
         }
+
+        // 3. Stop runtime resources, then delete irreversible Agent-owned data.
+        await agentRuntimeService.stopAllSandboxes(agentId);
+        await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
+        await buildService.deleteAllBuildsOfAgent(agentId);
 
         // 4. Delete K8s sandbox resources (best-effort before DB cleanup)
         await ingressService.deleteAllAgentIngresses(agentId);
