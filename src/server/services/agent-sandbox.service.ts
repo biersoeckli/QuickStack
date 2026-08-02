@@ -161,7 +161,12 @@ class AgentSandboxService {
         };
     }
 
-    private async execInTarget(target: ResolvedSandboxTarget, command: string[], timeoutSec = 120): Promise<CommandResultModel> {
+    private async execInTarget(
+        target: ResolvedSandboxTarget,
+        command: string[],
+        timeoutSec = 120,
+        stdinStream: stream.Readable | null = null,
+    ): Promise<CommandResultModel> {
         const stdoutStream = new stream.PassThrough();
         const stderrStream = new stream.PassThrough();
         let stdout = '';
@@ -197,7 +202,7 @@ class AgentSandboxService {
                 command,
                 stdoutStream,
                 stderrStream,
-                null,
+                stdinStream,
                 false,
                 (status: k8s.V1Status) => {
                     finish(() => resolve({
@@ -210,8 +215,13 @@ class AgentSandboxService {
         });
     }
 
-    private async execShell(target: ResolvedSandboxTarget, command: string, timeoutSec = 120): Promise<CommandResultModel> {
-        return this.execInTarget(target, ['sh', '-lc', command], timeoutSec);
+    private async execShell(
+        target: ResolvedSandboxTarget,
+        command: string,
+        timeoutSec = 120,
+        stdinStream: stream.Readable | null = null,
+    ): Promise<CommandResultModel> {
+        return this.execInTarget(target, ['sh', '-lc', command], timeoutSec, stdinStream);
     }
 
     private assertSuccessful(result: CommandResultModel, action: string): void {
@@ -287,21 +297,19 @@ class AgentSandboxService {
 
     async writeFile(agentId: string, sandboxName: string, path: string, dataBase64: string): Promise<void> {
         const target = await this.resolveTarget(agentId, sandboxName);
+        const stdinStream = stream.Readable.from([dataBase64]);
         const result = await this.execShell(
             target,
-            `printf %s ${this.shellQuote(dataBase64)} | base64 -d > ${this.shellQuote(path)}`,
+            `base64 -d > ${this.shellQuote(path)}`,
+            120,
+            stdinStream,
         );
         this.assertSuccessful(result, 'Write file');
     }
 
     async writeTextFile(agentId: string, sandboxName: string, path: string, text: string): Promise<void> {
-        const target = await this.resolveTarget(agentId, sandboxName);
         const dataBase64 = Buffer.from(text).toString('base64');
-        const result = await this.execShell(
-            target,
-            `printf %s ${this.shellQuote(dataBase64)} | base64 -d > ${this.shellQuote(path)}`,
-        );
-        this.assertSuccessful(result, 'Write text file');
+        await this.writeFile(agentId, sandboxName, path, dataBase64);
     }
 
     async listFiles(agentId: string, sandboxName: string, path: string): Promise<FileEntryModel[]> {

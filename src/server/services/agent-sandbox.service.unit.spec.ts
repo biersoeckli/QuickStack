@@ -306,20 +306,23 @@ describe('agent-sandbox.service', () => {
         expect(result).toEqual({ text: 'Hello' });
     });
 
-    it('writes text files to full paths', async () => {
-        await agentSandboxService.writeTextFile(AGENT_ID, CLAIM_NAME, '/workspace/AGENTS.md', 'Hello');
+    it('streams file content over stdin instead of placing it in the shell command', async () => {
+        const dataBase64 = 'A'.repeat(250_000);
+
+        await agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '/workspace/upload.bin', dataBase64);
 
         expect(execMocks.exec).toHaveBeenCalledWith(
             NAMESPACE,
             POD_NAME,
             'agent',
-            ['sh', '-lc', "printf %s 'SGVsbG8=' | base64 -d > '/workspace/AGENTS.md'"],
+            ['sh', '-lc', "base64 -d > '/workspace/upload.bin'"],
             expect.anything(),
             expect.anything(),
-            null,
+            expect.anything(),
             false,
             expect.any(Function),
         );
+        expect(execMocks.exec.mock.calls[0][3].join('')).not.toContain(dataBase64);
     });
 
     it('checks file existence from command exit code', async () => {
