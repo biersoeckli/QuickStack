@@ -26,6 +26,8 @@ import { UserExtended } from "@/shared/model/user-extended.model"
 import { saveUser } from "./actions"
 import SelectFormField from "@/components/custom/select-form-field"
 import { UserGroupExtended } from "@/shared/model/sim-session.model"
+import { Checkbox } from "@/components/ui/checkbox"
+import { adminRoleName } from "@/shared/model/role-extended.model.ts"
 
 
 export default function UserEditOverlay({ children, user, userGroups }: {
@@ -36,11 +38,13 @@ export default function UserEditOverlay({ children, user, userGroups }: {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-
   const form = useForm<z.input<typeof userEditZodModel>, unknown, z.output<typeof userEditZodModel>>({
     resolver: zodResolver(userEditZodModel),
     defaultValues: user
   });
+  const watchedApiOnlyUser = form.watch('apiOnlyUser');
+  const selectedGroup = userGroups.find(group => group.id === form.watch('userGroupId'));
+  const isAdminGroup = selectedGroup?.name === adminRoleName;
 
   const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: UserEditModel) =>
@@ -108,20 +112,40 @@ export default function UserEditOverlay({ children, user, userGroups }: {
 
                     <FormField
                       control={form.control}
+                      name="apiOnlyUser"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isAdminGroup} />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>API-only User</FormLabel>
+                            <FormDescription>
+                              {isAdminGroup
+                                ? 'Admin-group users cannot be API-only.'
+                                : 'This user cannot sign in to the UI and can only be used through the REST API.'}
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {!watchedApiOnlyUser && <FormField
+                      control={form.control}
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password {user?.id && <>(optional)</>}</FormLabel>
+                          <FormLabel>{user?.apiOnlyUser ? 'New Password (required)' : <>New Password {user?.id && <>(optional)</>}</>}</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
                           </FormControl>
                           <FormDescription>
-                            {user?.id && <>Leave empty to keep the old password.</>}
+                            {user?.apiOnlyUser ? 'This user is becoming a regular UI user — please set a password.' : user?.id && <>Leave empty to keep the old password.</>}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    />}
 
                     <p className="text-red-500">{state.message}</p>
                     <SubmitButton>Save</SubmitButton>

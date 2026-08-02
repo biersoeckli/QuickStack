@@ -8,6 +8,10 @@ import { UserEditModel, userEditZodModel } from "@/shared/model/user-edit.model"
 import userGroupService from "@/server/services/user-group.service";
 import { RoleEditModel, roleEditZodModel } from "@/shared/model/role-edit.model";
 import { adminRoleName } from "@/shared/model/role-extended.model.ts";
+import restApiKeyService from "@/server/services/rest-api-key.service";
+import { RestApiKeyCreateModel, restApiKeyCreateZodModel } from "@/shared/model/rest-api-key.model";
+import { CryptoUtils } from "@/server/utils/crypto.utils";
+import { z } from "zod";
 
 export const saveUser = async (prevState: any, inputData: UserEditModel) =>
     saveFormAction(inputData, userEditZodModel, async (validatedData) => {
@@ -16,19 +20,54 @@ export const saveUser = async (prevState: any, inputData: UserEditModel) =>
             throw new ServiceException('Please edit your profile in the profile settings');
         }
         if (validatedData.id) {
-            if (!!validatedData.newPassword) {
+            const existingUser = await userService.getUserById(validatedData.id);
+            const targetGroup = validatedData.userGroupId ? await userGroupService.getById(validatedData.userGroupId) : null;
+            if (validatedData.apiOnlyUser && (existingUser.userGroup?.name === adminRoleName || targetGroup?.name === adminRoleName)) {
+                throw new ServiceException('You cannot set users with the group "admin" to API-only');
+            }
+            if (existingUser.apiOnlyUser && !validatedData.apiOnlyUser && !validatedData.newPassword?.trim()) {
+                throw new ServiceException('Password is required when converting an API-only user to a regular user');
+            }
+            if (!existingUser.apiOnlyUser && validatedData.apiOnlyUser) {
+                await userService.changePasswordImediately(validatedData.email, CryptoUtils.generateStrongPasswort());
+            } else if (!!validatedData.newPassword && !validatedData.apiOnlyUser) {
                 await userService.changePasswordImediately(validatedData.email, validatedData.newPassword);
             }
             await userService.updateUser({
                 userGroupId: validatedData.userGroupId,
-                email: validatedData.email
+                email: validatedData.email,
+                apiOnlyUser: validatedData.apiOnlyUser,
             });
         } else {
-            if (!validatedData.newPassword || validatedData.newPassword.split(' ').join('').length === 0) {
+            const group = validatedData.userGroupId ? await userGroupService.getById(validatedData.userGroupId) : null;
+            if (validatedData.apiOnlyUser && group?.name === adminRoleName) {
+                throw new ServiceException('You cannot set users with the group "admin" to API-only');
+            }
+            if (!validatedData.apiOnlyUser && (!validatedData.newPassword || validatedData.newPassword.split(' ').join('').length === 0)) {
                 throw new ServiceException('The password is required');
             }
-            await userService.registerUser(validatedData.email, validatedData.newPassword, validatedData.userGroupId);
+            await userService.registerUser(validatedData.email, validatedData.apiOnlyUser ? CryptoUtils.generateStrongPasswort() : validatedData.newPassword!, validatedData.userGroupId, validatedData.apiOnlyUser);
         }
+        return new SuccessActionResult();
+    });
+
+export const adminListApiKeys = async (userId: string) =>
+    simpleAction(async () => {
+        await getAdminUserSession();
+        return restApiKeyService.listByUserId(userId);
+    });
+
+export const adminCreateApiKey = async (prevState: any, inputData: RestApiKeyCreateModel & { userId: string }) =>
+    saveFormAction(inputData, restApiKeyCreateZodModel.extend({ userId: z.string().min(1) }), async (validatedData) => {
+        await getAdminUserSession();
+        const rawApiKey = await restApiKeyService.create(validatedData.userId, validatedData.name, validatedData.expiresAt ?? null);
+        return new SuccessActionResult({ rawApiKey }, 'REST API key created successfully.');
+    });
+
+export const adminDeleteApiKey = async (userId: string, apiKeyId: string) =>
+    simpleAction(async () => {
+        await getAdminUserSession();
+        await restApiKeyService.deleteByIdForUser(userId, apiKeyId);
         return new SuccessActionResult();
     });
 

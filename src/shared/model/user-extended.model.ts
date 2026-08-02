@@ -7,4 +7,6 @@ export type UserExtended = {
     email: string;
     createdAt: Date;
     updatedAt: Date;
+    apiOnlyUser: boolean;
+    apiKeyCount: number;
 };

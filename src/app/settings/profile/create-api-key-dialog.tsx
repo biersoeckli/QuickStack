@@ -16,8 +16,9 @@ import { Toast } from "@/frontend/utils/toast.utils";
 import { cn } from "@/frontend/utils/utils";
 import { restApiKeyCreateZodModel, RestApiKeyCreateModel } from "@/shared/model/rest-api-key.model";
 import { createRestApiKey } from "./actions";
+import { adminCreateApiKey } from "../users/actions";
 
-export function CreateApiKeyDialog({ onCreated }: { onCreated: (rawApiKey: string) => void }) {
+export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKey: string) => void; userId?: string }) {
     const { closeDialog } = useDialogContext();
     const form = useForm<z.input<typeof restApiKeyCreateZodModel>, unknown, z.output<typeof restApiKeyCreateZodModel>>({
         resolver: zodResolver(restApiKeyCreateZodModel),
@@ -25,7 +26,9 @@ export function CreateApiKeyDialog({ onCreated }: { onCreated: (rawApiKey: strin
     });
 
     const onSubmit = async (data: RestApiKeyCreateModel) => {
-        const result = await Toast.fromAction(() => createRestApiKey(undefined, data));
+        const result = await Toast.fromAction(() => userId
+            ? adminCreateApiKey(undefined, { ...data, userId })
+            : createRestApiKey(undefined, data));
         const rawApiKey = (result.data as any)?.rawApiKey;
         if (rawApiKey) {
             closeDialog(true);

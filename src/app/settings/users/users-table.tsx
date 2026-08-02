@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { ChevronDown, EditIcon, Plus, Trash2, TrashIcon, UserPlus } from "lucide-react";
+import { ChevronDown, EditIcon, KeyRound, Plus, Trash2, TrashIcon, UserPlus } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import React from "react";
@@ -20,6 +20,8 @@ import {
 import { toast } from "sonner";
 import UsersBulkRoleAssignment from "./users-table-bulk-role-assignment";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
+import { useDialog } from "@/frontend/states/zustand.states";
+import { UserApiKeysDialog } from "./user-api-keys-dialog";
 
 export default function UsersTable({ users, userGroups, session }: {
     users: UserExtended[];
@@ -28,6 +30,7 @@ export default function UsersTable({ users, userGroups, session }: {
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openDialog: openGenericDialog } = useDialog();
     const [selectedUsers, setSelectedUsers] = React.useState<UserExtended[]>([]);
     const [isRoleDialogOpen, setIsRoleDialogOpen] = React.useState(false);
 
@@ -74,7 +77,7 @@ export default function UsersTable({ users, userGroups, session }: {
     return <>
         <SimpleDataTable columns={[
             ['id', 'ID', false],
-            ['email', 'Mail', true],
+            ['email', 'Mail', true, (item) => <span className="flex items-center gap-2">{item.email}{item.apiOnlyUser && <span className="rounded bg-muted px-1.5 py-0.5 text-xs">API only</span>}</span>],
             ['userGroup.name', 'Group', true],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
@@ -82,15 +85,23 @@ export default function UsersTable({ users, userGroups, session }: {
             data={users}
             showSelectCheckbox={true}
             onRowSelectionUpdate={setSelectedUsers}
-            columnFilters={userGroups.map((userGroup) => ({
-                accessorKey: 'role.name',
+            columnFilters={[...userGroups.map((userGroup) => ({
+                accessorKey: 'userGroup.name',
                 filterLabel: userGroup.name,
                 filterFunction: (item: UserExtended) => item.userGroupId === userGroup.id,
-            }))}
+            })), {
+                accessorKey: 'email',
+                filterLabel: 'API only',
+                filterFunction: (item: UserExtended) => item.apiOnlyUser,
+            }]}
             actionCol={(item) =>
                 <>
                     <div className="flex">
                         <div className="flex-1"></div>
+                        <Button variant="ghost" className="relative" title="Manage API keys" onClick={() => openGenericDialog(<UserApiKeysDialog userId={item.id} userEmail={item.email} />, { maxWidth: '720px' })}>
+                            <KeyRound />
+                            {item.apiKeyCount > 0 && <span className="absolute right-0 top-0 min-w-4 rounded-full bg-primary px-1 text-xs text-primary-foreground">{item.apiKeyCount}</span>}
+                        </Button>
                         {session.email !== item.email && <><UserEditOverlay user={item} userGroups={userGroups}>
                             <Button variant="ghost"><EditIcon /></Button>
                         </UserEditOverlay>

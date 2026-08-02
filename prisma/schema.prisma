@@ -75,6 +75,7 @@ model User {
   password      String
   twoFaSecret   String?
   twoFaEnabled  Boolean   @default(false)
+  apiOnlyUser   Boolean   @default(false)
   image         String?
 
   userGroupId String?
