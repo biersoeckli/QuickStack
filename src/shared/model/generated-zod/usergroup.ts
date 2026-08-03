@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteUser, RelatedUserModel, CompleteRoleProjectPermission, RelatedRoleProjectPermissionModel } from "./index"
+import { CompleteUser, RelatedUserModel, CompleteRoleProjectPermission, RelatedRoleProjectPermissionModel, CompleteSsoProvider, RelatedSsoProviderModel } from "./index"
 
 export const UserGroupModel = z.object({
   id: z.string(),
@@ -14,6 +14,7 @@ export const UserGroupModel = z.object({
 export interface CompleteUserGroup extends z.infer<typeof UserGroupModel> {
   users: CompleteUser[]
   roleProjectPermissions: CompleteRoleProjectPermission[]
+  ssoProviders: CompleteSsoProvider[]
 }
 
 /**
@@ -24,4 +25,5 @@ export interface CompleteUserGroup extends z.infer<typeof UserGroupModel> {
 export const RelatedUserGroupModel: z.ZodSchema<CompleteUserGroup> = z.lazy(() => UserGroupModel.extend({
   users: RelatedUserModel.array(),
   roleProjectPermissions: RelatedRoleProjectPermissionModel.array(),
+  ssoProviders: RelatedSsoProviderModel.array(),
 }))

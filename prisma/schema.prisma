@@ -72,7 +72,7 @@ model User {
   name          String?
   email         String    @unique
   emailVerified DateTime?
-  password      String
+  password      String    @default("")
   twoFaSecret   String?
   twoFaEnabled  Boolean   @default(false)
   apiOnlyUser   Boolean   @default(false)
@@ -140,9 +140,35 @@ model UserGroup {
 
   users                  User[]
   roleProjectPermissions RoleProjectPermission[]
+  ssoProviders           SsoProvider[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum SsoProviderType {
+  OIDC
+  GOOGLE
+  AZURE_AD
+  GITHUB
+}
+
+model SsoProvider {
+  id                 String          @id @default(uuid())
+  type               SsoProviderType
+  name               String
+  enabled            Boolean         @default(false)
+  clientId           String
+  clientSecretEnc    String
+  issuer             String?
+  tenantId           String?
+  defaultUserGroupId String
+  defaultUserGroup   UserGroup       @relation(fields: [defaultUserGroupId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, name])
 }
 
 model RoleProjectPermission {

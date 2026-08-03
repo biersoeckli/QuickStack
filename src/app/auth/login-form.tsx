@@ -12,10 +12,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthFormInputSchema, authFormInputSchemaZod } from "@/shared/model/auth-form"
 import { authUser } from "./actions"
-import { signIn } from "next-auth/react";
+import { getProviders, signIn } from "next-auth/react";
+import type { ClientSafeProvider } from "next-auth/react";
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +30,12 @@ export default function UserLoginForm() {
     const [errorMessages, setErrorMessages] = useState<string | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(false);
     const [authInput, setAuthInput] = useState<AuthFormInputSchema | undefined>(undefined);
+    const [providers, setProviders] = useState<Record<string, ClientSafeProvider>>({});
+    const ssoProviders = Object.values(providers).filter((provider) => provider.id !== "credentials");
+
+    useEffect(() => {
+        getProviders().then((value) => setProviders(value ?? {}));
+    }, []);
 
     function redirectToProjects() {
         const currentUrl = window.location.href
@@ -121,6 +128,20 @@ export default function UserLoginForm() {
                     </CardFooter>
                 </form>
             </Form>
+            {ssoProviders.length > 0 && (
+                <CardFooter className="flex flex-col gap-2 pt-0">
+                    {ssoProviders.map((provider) => (
+                        <Button
+                            key={provider.id}
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => signIn(provider.id, { callbackUrl: "/" })}
+                        >
+                            Continue with {provider.name}
+                        </Button>
+                    ))}
+                </CardFooter>
+            )}
         </Card>
     )
 }

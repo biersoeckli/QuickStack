@@ -164,6 +164,30 @@ export class UserService {
         });
     }
 
+    async findUserByEmail(email: string) {
+        return dataAccess.client.user.findUnique({
+            where: {
+                email
+            }
+        });
+    }
+
+    async setUserGroup(userId: string, userGroupId: string) {
+        try {
+            await dataAccess.client.user.update({
+                where: {
+                    id: userId
+                },
+                data: {
+                    userGroupId
+                }
+            });
+        } finally {
+            revalidateTag(Tags.users());
+            revalidateTag(Tags.userGroups());
+        }
+    }
+
     async createNewTotpToken(userMail: string) {
         try {
             await this.getUserByEmail(userMail);
