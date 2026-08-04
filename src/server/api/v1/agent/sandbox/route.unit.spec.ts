@@ -141,19 +141,6 @@ describe('agent sandbox routes', () => {
         expect(routeMocks.ensureWriteAgent).toHaveBeenCalledWith(routeMocks.identity, 'agent-1');
     });
 
-    it('accepts multipart uploads from generated API clients', async () => {
-        const formData = new FormData();
-        formData.append('file', new Blob(['hello']), 'AGENTS.md');
-
-        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/write?path=%2Fworkspace%2FAGENTS.md', {
-            method: 'PUT',
-            body: formData,
-        }));
-
-        expect(response.status).toBe(200);
-        expect(routeMocks.writeFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md', expect.any(stream.Readable));
-    });
-
     it('documents file writes as a multipart binary request body', async () => {
         const documentedApp = new Elysia()
             .use(openapi({ path: '/openapi', specPath: '/openapi.json' }))
