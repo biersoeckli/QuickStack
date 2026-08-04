@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
@@ -43,19 +44,25 @@ func handleRequest(rp http.Handler) http.HandlerFunc {
 			return
 		}
 
-		if token := forwardedURL.Query().Get("token"); token != "" {
+		token := forwardedURL.Query().Get("token")
+		debugMode := os.Getenv("AUTH_PROXY_DEBUG_ENABLED") == "true" && token != ""
+		if token != "" {
 			claims, err := auth.VerifyAccessToken(token)
 			if err != nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				unauthorized(w, r, forwardedURL, auth.StageForAccessTokenError(err), err, debugMode)
 				return
 			}
 			sessionToken, err := auth.CreateSessionToken(claims)
 			if err != nil {
+				if debugMode {
+					unauthorized(w, r, forwardedURL, "session_creation_failed", err, true)
+					return
+				}
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
 			if err := auth.ConsumeAccessToken(claims); err != nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				unauthorized(w, r, forwardedURL, "access_token_replayed", err, debugMode)
 				return
 			}
 
@@ -90,6 +97,26 @@ func handleRequest(rp http.Handler) http.HandlerFunc {
 
 		serve(w, r, rp, claims, forwardedURL)
 	}
+}
+
+func unauthorized(w http.ResponseWriter, r *http.Request, forwardedURL *url.URL, stage string, err error, debugMode bool) {
+	if !debugMode {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	report := auth.BuildDebugReport(r, forwardedURL, stage, err)
+	encoded, marshalErr := json.Marshal(report)
+	if marshalErr != nil {
+		log.Printf("auth proxy debug report serialization failed: %v", marshalErr)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	log.Printf("%s", encoded)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, _ = w.Write([]byte(`{"error":"unauthorized","debug":`))
+	_, _ = w.Write(encoded)
+	_, _ = w.Write([]byte("}"))
 }
 
 func serve(w http.ResponseWriter, r *http.Request, rp http.Handler, claims *auth.AgentClaims, forwardedURL *url.URL) {

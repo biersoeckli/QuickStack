@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,112 @@ import (
 
 	"github.com/yourorg/agent-auth-proxy/internal/auth"
 )
+
+type debugResponse struct {
+	Error string `json:"error"`
+	Debug struct {
+		Stage           string `json:"stage"`
+		RequestWasHTTPS bool   `json:"requestWasHttps"`
+	} `json:"debug"`
+}
+
+func signedAccessToken(t *testing.T, secret, id string, expiresAt time.Time) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.AgentClaims{
+		AgentID: "agent-1", ClaimID: "claim-1", Namespace: "project-1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer: auth.Issuer, ID: id, IssuedAt: jwt.NewNumericDate(time.Now()), ExpiresAt: jwt.NewNumericDate(expiresAt),
+		},
+	})
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	return tokenString
+}
+
+func TestUnauthorizedWithoutTokenHasNoDebugResponse(t *testing.T) {
+	t.Setenv("AUTH_PROXY_DEBUG_ENABLED", "true")
+	rec := httptest.NewRecorder()
+	handleRequest(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if rec.Header().Get("Content-Type") == "application/json" {
+		t.Fatal("response unexpectedly contains debug JSON")
+	}
+}
+
+func TestInvalidTokenWithoutDebugFlagHasNoDebugResponse(t *testing.T) {
+	t.Setenv("AUTH_PROXY_DEBUG_ENABLED", "false")
+	rec := httptest.NewRecorder()
+	handleRequest(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?token=invalid", nil))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if rec.Header().Get("Content-Type") == "application/json" {
+		t.Fatal("response unexpectedly contains debug JSON")
+	}
+}
+
+func TestDebugResponseForInvalidToken(t *testing.T) {
+	t.Setenv("AUTH_PROXY_DEBUG_ENABLED", "true")
+	rec := httptest.NewRecorder()
+	handleRequest(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?token=invalid", nil))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	var response debugResponse
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("decode debug response: %v", err)
+	}
+	if response.Debug.Stage != "access_token_parse_error" {
+		t.Fatalf("stage = %q, want access_token_parse_error", response.Debug.Stage)
+	}
+}
+
+func TestDebugResponseForExpiredTokenIncludesHTTPHint(t *testing.T) {
+	t.Setenv("AUTH_PROXY_DEBUG_ENABLED", "true")
+	t.Setenv("AGENT_JWT_SECRET", "test-secret")
+	token := signedAccessToken(t, "test-secret", "expired-debug-token", time.Now().Add(-time.Minute))
+	req := httptest.NewRequest(http.MethodGet, "/?token="+token, nil)
+	req.Header.Set("X-Forwarded-Proto", "http")
+	rec := httptest.NewRecorder()
+	handleRequest(http.NotFoundHandler()).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	var response debugResponse
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("decode debug response: %v", err)
+	}
+	if response.Error != "unauthorized" || response.Debug.Stage != "access_token_expired" {
+		t.Fatalf("response = %+v, want expired debug response", response)
+	}
+	if response.Debug.RequestWasHTTPS {
+		t.Fatal("requestWasHttps = true, want false")
+	}
+}
+
+func TestDebugResponseForReplayedToken(t *testing.T) {
+	t.Setenv("AUTH_PROXY_DEBUG_ENABLED", "true")
+	t.Setenv("AGENT_JWT_SECRET", "test-secret")
+	token := signedAccessToken(t, "test-secret", "replayed-debug-token", time.Now().Add(time.Hour))
+	req := httptest.NewRequest(http.MethodGet, "/?token="+token, nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
+
+	handleRequest(http.NotFoundHandler()).ServeHTTP(httptest.NewRecorder(), req)
+	rec := httptest.NewRecorder()
+	handleRequest(http.NotFoundHandler()).ServeHTTP(rec, req)
+	var response debugResponse
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("decode debug response: %v", err)
+	}
+	if response.Debug.Stage != "access_token_replayed" {
+		t.Fatalf("stage = %q, want access_token_replayed", response.Debug.Stage)
+	}
+}
 
 func TestTokenRedirectSetsOriginalSessionCookie(t *testing.T) {
 	t.Setenv("AGENT_JWT_SECRET", "test-secret")

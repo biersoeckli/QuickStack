@@ -96,6 +96,10 @@ class QsAuthProxyService {
                                     name: 'AGENT_ACCESS_TOKEN_TTL_SECONDS',
                                     value: process.env.AGENT_ACCESS_TOKEN_TTL_SECONDS || '60',
                                 },
+                                ...(process.env.AUTH_PROXY_DEBUG_ENABLED === 'true' ? [{
+                                    name: 'AUTH_PROXY_DEBUG_ENABLED',
+                                    value: 'true',
+                                }] : []),
                             ],
                             resources: {
                                 requests: {
