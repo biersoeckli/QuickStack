@@ -1,5 +1,7 @@
 import agentSandboxService from './agent-sandbox.service';
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 describe('agent-sandbox.service listFiles', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
