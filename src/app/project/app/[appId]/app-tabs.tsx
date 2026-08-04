@@ -28,6 +28,7 @@ import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import { saveHealthCheck } from "./advanced/actions";
 
 export default function AppTabs({
     app,
@@ -108,7 +109,7 @@ export default function AppTabs({
             <TabsContent value="advanced" className="space-y-4">
                 <BasicAuth readonly={readonly} app={app} />
                 <NetworkPolicy readonly={readonly} app={app} />
-                <HealthCheckSettings readonly={readonly} app={app} />
+                <HealthCheckSettings readonly={readonly} workload={app} saveHealthCheck={saveHealthCheck} />
             </TabsContent>
         </Tabs>
     )

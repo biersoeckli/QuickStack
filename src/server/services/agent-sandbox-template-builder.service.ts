@@ -13,9 +13,12 @@ import networkPolicyService from "./network-policy.service";
 import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.service";
 import type { LiteLlmModelMetadata } from "../adapter/litellm-api.adapter";
 import { AgentDomain } from "@prisma/client";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 const FILEBROWSER_PORT = 80;
 const FILEBROWSER_BASE_URL = '/files';
+type SandboxContainer = SandboxTemplate['spec']['podTemplate']['spec']['containers'][number];
+type SandboxProbe = NonNullable<SandboxContainer['readinessProbe']>;
 
 export type AgentSandboxTemplateConfig = {
     id: string;
@@ -31,6 +34,14 @@ export type AgentSandboxTemplateConfig = {
     containerCommand?: string | null;
     containerArgs?: string | null;
     workingDir?: string | null;
+    healthChechHttpGetPath?: string | null;
+    healthCheckHttpScheme?: string | null;
+    healthCheckHttpHeadersJson?: string | null;
+    healthCheckHttpPort?: number | null;
+    healthCheckPeriodSeconds: number;
+    healthCheckTimeoutSeconds: number;
+    healthCheckFailureThreshold: number;
+    healthCheckTcpPort?: number | null;
     volumePvcData: {
         volume: V1Volume;
         volumeMount: V1VolumeMount;
@@ -50,6 +61,36 @@ export type SandboxTemplateDeploymentInfo = {
 };
 
 class AgentSandboxTemplateBuilder {
+
+    private buildHealthCheckProbe(agent: AgentSandboxTemplateConfig): SandboxProbe | undefined {
+        if (!agent.healthChechHttpGetPath && !agent.healthCheckTcpPort) {
+            return undefined;
+        }
+        if (agent.healthChechHttpGetPath && agent.healthCheckTcpPort) {
+            throw new ServiceException('Both HTTP and TCP health checks are configured. Please configure only one type of health check.');
+        }
+
+        const probeSettings = {
+            periodSeconds: agent.healthCheckPeriodSeconds,
+            timeoutSeconds: agent.healthCheckTimeoutSeconds,
+            failureThreshold: agent.healthCheckFailureThreshold,
+        };
+        if (agent.healthChechHttpGetPath) {
+            return {
+                httpGet: {
+                    path: agent.healthChechHttpGetPath,
+                    port: agent.healthCheckHttpPort ?? 80,
+                    scheme: agent.healthCheckHttpScheme ?? undefined,
+                    ...(agent.healthCheckHttpHeadersJson ? { httpHeaders: JSON.parse(agent.healthCheckHttpHeadersJson) } : {}),
+                },
+                ...probeSettings,
+            };
+        }
+        return {
+            tcpSocket: { port: agent.healthCheckTcpPort! },
+            ...probeSettings,
+        };
+    }
 
     buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
         const effectiveImage = agent.containerImageSource;
@@ -88,6 +129,7 @@ class AgentSandboxTemplateBuilder {
                 mountPath: '/srv',
             }];
         const networkPolicy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy(agent.agentNetworkPolicy);
+        const healthCheckProbe = this.buildHealthCheckProbe(agent);
 
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
@@ -132,6 +174,18 @@ class AgentSandboxTemplateBuilder {
                             })),
                             volumeMounts: agentVolumeMounts,
                             envFrom: [{ secretRef: { name: secretName } }],
+                            ...(healthCheckProbe ? {
+                                // Agent sandboxes intentionally use startup and readiness probes only.
+                                // A liveness probe is not needed: startup gates initialization and
+                                // readiness controls when sandbox traffic may be routed.
+                                startupProbe: {
+                                    ...healthCheckProbe,
+                                    periodSeconds: 10,
+                                    failureThreshold: 30,
+                                    timeoutSeconds: 3,
+                                },
+                                readinessProbe: healthCheckProbe,
+                            } : {}),
                             resources: {
                                 requests: {
                                     ...(agent.cpuRequest ? {

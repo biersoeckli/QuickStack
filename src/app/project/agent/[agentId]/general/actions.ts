@@ -40,6 +40,7 @@ import agentGitSshKeyService from "@/server/services/agent-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { z } from "zod";
+import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
 
 
 export const saveAgentModelConfiguration = async (prevState: any, inputData: AgentModelConfigurationModel, agentId: string) =>
@@ -180,6 +181,55 @@ export const saveAgentContainerConfig = async (prevState: any, inputData: AgentC
             containerCommand: ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerCommand),
             containerArgs: ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerArgs),
             id: agentId,
+        });
+    });
+
+export const saveAgentHealthCheck = async (prevState: any, inputData: HealthCheckModel) =>
+    saveFormAction(inputData, healthCheckZodModel, async (validatedData) => {
+        await isAuthorizedWriteForWorkload(validatedData.workloadId);
+
+        let updateData = {
+            healthCheckPeriodSeconds: validatedData.periodSeconds,
+            healthCheckTimeoutSeconds: validatedData.timeoutSeconds,
+            healthCheckFailureThreshold: validatedData.failureThreshold,
+        };
+
+        if (validatedData.enabled && validatedData.probeType === 'HTTP') {
+            await agentService.saveAgent({
+                ...updateData,
+                healthChechHttpGetPath: validatedData.path || null,
+                healthCheckHttpPort: validatedData.httpPort || null,
+                healthCheckHttpScheme: validatedData.scheme || null,
+                healthCheckHttpHeadersJson: validatedData.headers && validatedData.headers.length > 0
+                    ? JSON.stringify(validatedData.headers)
+                    : null,
+                healthCheckTcpPort: null,
+                id: validatedData.workloadId,
+            });
+            return;
+        }
+
+        if (validatedData.enabled && validatedData.probeType === 'TCP') {
+            await agentService.saveAgent({
+                ...updateData,
+                healthCheckTcpPort: validatedData.tcpPort || null,
+                healthChechHttpGetPath: null,
+                healthCheckHttpPort: null,
+                healthCheckHttpScheme: null,
+                healthCheckHttpHeadersJson: null,
+                id: validatedData.workloadId,
+            });
+            return;
+        }
+
+        await agentService.saveAgent({
+            ...updateData,
+            healthChechHttpGetPath: null,
+            healthCheckHttpPort: null,
+            healthCheckHttpScheme: null,
+            healthCheckHttpHeadersJson: null,
+            healthCheckTcpPort: null,
+            id: validatedData.workloadId,
         });
     });
 

@@ -19,6 +19,8 @@ import DomainsCard from "@/components/custom/domains-card";
 import AgentVolumesCard from "@/app/project/agent/[agentId]/general/agent-volumes-card";
 import FileMountsCard from "@/components/custom/file-mounts-card";
 import AgentNetworkPolicyCard from "./general/agent-network-policy-card";
+import HealthCheckSettings from "@/app/project/app/[appId]/advanced/health-check-settings";
+import { saveAgentHealthCheck } from "./general/actions";
 import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -107,6 +109,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                     <div className="space-y-4">
                         <AgentContainerConfigCard agent={agent} readonly={readonly} />
                         <AgentRateLimitsCard agent={agent} readonly={readonly} />
+                        <HealthCheckSettings workload={agent} readonly={readonly} saveHealthCheck={saveAgentHealthCheck} />
                     </div>
                 );
             case 'storage':

@@ -206,6 +206,14 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         containerArgs: null,
         workingDir: null,
         warmPoolReplicas: 0,
+        healthChechHttpGetPath: null,
+        healthCheckHttpScheme: null,
+        healthCheckHttpHeadersJson: null,
+        healthCheckHttpPort: null,
+        healthCheckPeriodSeconds: 15,
+        healthCheckTimeoutSeconds: 5,
+        healthCheckFailureThreshold: 3,
+        healthCheckTcpPort: null,
         agentDomains: [],
         agentVolumes: [],
         agentFileMounts: [],
@@ -416,6 +424,61 @@ describe('agent.service', () => {
                 args: ['--noauth', '--root', '/srv', '--baseurl', '/files', '--port', '80'],
                 ports: [{ name: 'filebrowser-web', containerPort: 80, protocol: 'TCP' }],
             }));
+        });
+
+        it('adds HTTP startup and readiness probes to the agent container', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                healthChechHttpGetPath: '/healthz',
+                healthCheckHttpPort: 8080,
+                healthCheckHttpScheme: 'HTTPS',
+                healthCheckHttpHeadersJson: JSON.stringify([{ name: 'Authorization', value: 'Bearer token' }]),
+                healthCheckPeriodSeconds: 20,
+                healthCheckTimeoutSeconds: 7,
+                healthCheckFailureThreshold: 4,
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const container = getSandboxTemplateResourceFromTemplateCall().resource.spec.podTemplate.spec.containers[0];
+            expect(container.readinessProbe).toEqual({
+                httpGet: {
+                    path: '/healthz',
+                    port: 8080,
+                    scheme: 'HTTPS',
+                    httpHeaders: [{ name: 'Authorization', value: 'Bearer token' }],
+                },
+                periodSeconds: 20,
+                timeoutSeconds: 7,
+                failureThreshold: 4,
+            });
+            expect(container.startupProbe).toEqual({
+                ...container.readinessProbe,
+                periodSeconds: 10,
+                timeoutSeconds: 3,
+                failureThreshold: 30,
+            });
+        });
+
+        it('adds TCP startup and readiness probes to the agent container', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                healthCheckTcpPort: 3000,
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const container = getSandboxTemplateResourceFromTemplateCall().resource.spec.podTemplate.spec.containers[0];
+            expect(container.readinessProbe).toEqual({
+                tcpSocket: { port: 3000 },
+                periodSeconds: 15,
+                timeoutSeconds: 5,
+                failureThreshold: 3,
+            });
+            expect(container.startupProbe).toEqual({
+                ...container.readinessProbe,
+                periodSeconds: 10,
+                timeoutSeconds: 3,
+                failureThreshold: 30,
+            });
         });
 
         it('omits SandboxTemplate networkPolicy when agent has no policy', async () => {
@@ -693,11 +756,11 @@ describe('agent.service', () => {
                 'sk-v-key-123',
             );
             expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
-                .toBeLessThan(agentRuntimeService.stopAllSandboxes.mock.invocationCallOrder[0]);
+                .toBeLessThan(vi.mocked(agentRuntimeService.stopAllSandboxes).mock.invocationCallOrder[0]);
             expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
-                .toBeLessThan(pvcService.deleteAllPvcForAgent.mock.invocationCallOrder[0]);
+                .toBeLessThan(vi.mocked(pvcService.deleteAllPvcForAgent).mock.invocationCallOrder[0]);
             expect(liteLlmMocks.deleteVirtualKey.mock.invocationCallOrder[0])
-                .toBeLessThan(buildService.deleteAllBuildsOfAgent.mock.invocationCallOrder[0]);
+                .toBeLessThan(vi.mocked(buildService.deleteAllBuildsOfAgent).mock.invocationCallOrder[0]);
             expect(ingressService.deleteAllAgentIngresses).toHaveBeenCalledWith('agent-1');
             expect(configMapService.deleteAllConfigMapsForAgent).toHaveBeenCalledWith(agentMock);
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('secret-agent-1', 'proj-test-agent');

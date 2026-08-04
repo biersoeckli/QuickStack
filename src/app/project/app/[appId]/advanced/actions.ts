@@ -5,7 +5,7 @@ import appService from "@/server/services/app.service";
 import { isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model";
 import { appNetworkPolicy } from "@/shared/model/network-policy.model";
-import { HealthCheckModel, healthCheckZodModel } from "./health-check.model";
+import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
 
 
 export const saveBasicAuth = async (prevState: any, inputData: BasicAuthEditModel) =>
@@ -47,9 +47,9 @@ export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, eg
 
 export const saveHealthCheck = async (prevState: any, inputData: HealthCheckModel) =>
     saveFormAction(inputData, healthCheckZodModel, async (validatedData) => {
-        await isAuthorizedWriteForApp(validatedData.appId);
+        await isAuthorizedWriteForApp(validatedData.workloadId);
 
-        const app = await appService.getById(validatedData.appId);
+        const app = await appService.getById(validatedData.workloadId);
 
         // Prepare update data
         let updateData: Partial<typeof app> = {
