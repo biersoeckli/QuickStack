@@ -342,6 +342,74 @@ describe('agent-sandbox.service', () => {
         expect(execMocks.exec.mock.calls[0][3].join('')).not.toContain(content);
     });
 
+    it('keeps the exec WebSocket open after a successful file input stream ends', async () => {
+        const ws = { close: vi.fn() };
+        const input = new stream.PassThrough();
+        execMocks.exec.mockImplementation((
+            _namespace: string,
+            _podName: string,
+            _containerName: string,
+            _command: string[],
+            _stdoutStream: NodeJS.WritableStream,
+            _stderrStream: NodeJS.WritableStream,
+            stdinStream: NodeJS.ReadableStream | null,
+            _tty: boolean,
+            callback: (status: any) => void,
+        ) => {
+            stdinStream?.once('end', () => setTimeout(() => callback({ status: 'Success' }), 0));
+            stdinStream?.resume();
+            return Promise.resolve(ws);
+        });
+
+        const write = agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '/tmp/hello.txt', input);
+        await vi.waitFor(() => expect(execMocks.exec).toHaveBeenCalled());
+        input.end('Hello');
+
+        await expect(write).resolves.toBeUndefined();
+        expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('closes the exec WebSocket when a file read stream is destroyed', async () => {
+        const ws = { close: vi.fn() };
+        let callCount = 0;
+        execMocks.exec.mockImplementation((
+            _namespace: string,
+            _podName: string,
+            _containerName: string,
+            _command: string[],
+            stdoutStream: NodeJS.WritableStream,
+            _stderrStream: NodeJS.WritableStream,
+            _stdinStream: NodeJS.ReadableStream | null,
+            _tty: boolean,
+            callback: (status: any) => void,
+        ) => {
+            callCount += 1;
+            if (callCount === 1) {
+                stdoutStream.write('5\n');
+                callback({ status: 'Success' });
+                return Promise.resolve(ws);
+            }
+            return Promise.resolve(ws);
+        });
+
+        const { stream: fileStream } = await agentSandboxService.readFile(AGENT_ID, CLAIM_NAME, '/tmp/hello.txt');
+        fileStream.destroy();
+        await new Promise<void>((resolve) => fileStream.once('close', resolve));
+        await vi.waitFor(() => expect(ws.close).toHaveBeenCalled());
+    });
+
+    it('closes the exec WebSocket when a file write input stream is destroyed', async () => {
+        const ws = { close: vi.fn() };
+        execMocks.exec.mockReturnValue(Promise.resolve(ws));
+        const input = new stream.PassThrough();
+
+        void agentSandboxService.writeFile(AGENT_ID, CLAIM_NAME, '/tmp/hello.txt', input);
+        await vi.waitFor(() => expect(execMocks.exec).toHaveBeenCalled());
+        input.destroy();
+        await new Promise<void>((resolve) => input.once('close', resolve));
+        await vi.waitFor(() => expect(ws.close).toHaveBeenCalled());
+    });
+
     it('checks file existence from command exit code', async () => {
         execMocks.exec.mockImplementation((
             _namespace: string,

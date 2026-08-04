@@ -28,8 +28,9 @@ type ResolvedSandboxTarget = {
 };
 
 class AgentSandboxService {
-    // Path validation is not a security boundary: runCommand already grants unrestricted
-    // shell read/write access in this sandbox. Container isolation is the real boundary.
+    // Path validation is not a security boundary: all file/command endpoints require
+    // write access to the agent, which already grants unrestricted shell read/write
+    // access in this sandbox. Container isolation is the real boundary.
     private resolveClaimStatus(claim: any): DeploymentStatus {
         const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
         const ready = conditions.find((c) =>
@@ -159,39 +160,46 @@ class AgentSandboxService {
         };
     }
 
-    private async execInTarget(
+    private async runExec(
         target: ResolvedSandboxTarget,
         command: string[],
-        timeoutSec = 120,
-        stdinStream: stream.Readable | null = null,
-    ): Promise<CommandResultModel> {
-        const stdoutStream = new stream.PassThrough();
-        const stderrStream = new stream.PassThrough();
-        let stdout = '';
-        let stderr = '';
-
-        stdoutStream.on('data', (chunk) => {
-            stdout += chunk.toString();
-        });
-        stderrStream.on('data', (chunk) => {
-            stderr += chunk.toString();
-        });
-
-        return new Promise<CommandResultModel>((resolve, reject) => {
+        stdoutStream: stream.PassThrough,
+        stderrStream: stream.PassThrough,
+        stdinStream: stream.Readable | null,
+        timeoutSec: number,
+        onStatus: (status: k8s.V1Status) => void,
+        onError: (error: Error) => void,
+    ): Promise<void> {
+        return new Promise((resolve) => {
             let settled = false;
+            let streamsClosed = false;
+            let ws: { close: () => void; once?: (event: string, listener: () => void) => void } | undefined;
             const finish = (callback: () => void) => {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
                 callback();
+                resolve();
             };
             const timer = setTimeout(() => {
                 finish(() => {
                     stdoutStream.destroy();
                     stderrStream.destroy();
-                    reject(new ServiceException('Command execution timed out or the sandbox connection was lost.'));
+                    onError(new ServiceException('Command execution timed out or the sandbox connection was lost.'));
                 });
             }, (timeoutSec + 5) * 1000);
+            const closeConnection = () => {
+                streamsClosed = true;
+                ws?.close();
+            };
+            stdoutStream.once('close', closeConnection);
+            stdinStream?.once('close', () => {
+                // A normal stdin end closes only the Kubernetes exec stdin channel.
+                // Keep the WebSocket open until the status callback arrives; otherwise
+                // successful uploads wait for the command timeout before returning.
+                if (!stdinStream.readableEnded) closeConnection();
+            });
+
             const exec = new k8s.Exec(k3s.getKubeConfig());
             exec.exec(
                 target.namespace,
@@ -203,14 +211,37 @@ class AgentSandboxService {
                 stdinStream,
                 false,
                 (status: k8s.V1Status) => {
-                    finish(() => resolve({
-                        stdout,
-                        stderr,
-                        exitCode: this.extractExitCode(status),
-                    }));
+                    finish(() => onStatus(status));
                 },
-            ).catch((error) => finish(() => reject(error)));
+            ).then((connection) => {
+                ws = connection;
+                if (streamsClosed) ws.close();
+                ws.once?.('close', () => {
+                    if (!settled && !streamsClosed) {
+                        finish(() => {
+                            const error = new ServiceException('Command execution connection was closed.');
+                            stdoutStream.destroy(error);
+                            stderrStream.destroy(error);
+                            onError(error);
+                        });
+                    }
+                });
+            }).catch((error: unknown) => finish(() => onError(error instanceof Error ? error : new Error(String(error)))));
         });
+    }
+
+    private async execInTarget(
+        target: ResolvedSandboxTarget,
+        command: string[],
+        timeoutSec = 120,
+        stdinStream: stream.Readable | null = null,
+    ): Promise<CommandResultModel> {
+        const stdoutStream = new stream.PassThrough(); const stderrStream = new stream.PassThrough();
+        let stdout = ''; let stderr = '';
+        stdoutStream.on('data', (chunk) => { stdout += chunk.toString(); });
+        stderrStream.on('data', (chunk) => { stderr += chunk.toString(); });
+        return new Promise((resolve, reject) => void this.runExec(target, command, stdoutStream, stderrStream, stdinStream, timeoutSec,
+            (status) => resolve({ stdout, stderr, exitCode: this.extractExitCode(status) }), reject));
     }
 
     private async execShell(
@@ -226,42 +257,12 @@ class AgentSandboxService {
         const stdoutStream = new stream.PassThrough();
         const stderrStream = new stream.PassThrough();
         let stderr = '';
-        let settled = false;
-        const finish = (callback: () => void) => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            callback();
-        };
-        const timer = setTimeout(() => {
-            finish(() => stdoutStream.destroy(new ServiceException('Command execution timed out or the sandbox connection was lost.')));
-        }, (timeoutSec + 5) * 1000);
-
-        stderrStream.on('data', (chunk) => {
-            stderr += chunk.toString();
-        });
-
-        const exec = new k8s.Exec(k3s.getKubeConfig());
-        exec.exec(
-            target.namespace,
-            target.podName,
-            target.containerName,
-            ['sh', '-lc', command],
-            stdoutStream,
-            stderrStream,
-            null,
-            false,
-            (status: k8s.V1Status) => {
-                finish(() => {
-                    if (this.extractExitCode(status) !== 0) {
-                        stdoutStream.destroy(new ServiceException(`Read file failed: ${stderr || 'command failed'}`));
-                        return;
-                    }
-                    stdoutStream.end();
-                });
-            },
-        ).catch((error) => finish(() => stdoutStream.destroy(error)));
-
+        stderrStream.on('data', (chunk) => { stderr += chunk.toString(); });
+        void this.runExec(target, ['sh', '-lc', command], stdoutStream, stderrStream, null, timeoutSec,
+            (status) => this.extractExitCode(status) !== 0
+                ? stdoutStream.destroy(new ServiceException(`Read file failed: ${stderr || 'command failed'}`))
+                : stdoutStream.end(),
+            (error) => stdoutStream.destroy(error));
         return stdoutStream;
     }
 

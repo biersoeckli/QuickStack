@@ -19,9 +19,10 @@ import {
     fileEntryZodModel,
     fileExistsResultZodModel,
 } from '@/shared/model/agent-sandbox.model';
-import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
+import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 import agentAccessService from '@/server/services/agent-access.service';
+import { FileUploadUtils } from '@/server/utils/file-upload.utils';
 
 const agentSandboxParamsSchema = z.object({
     agentId: z.string(),
@@ -184,7 +185,7 @@ export const agentSandboxRoutes = new Elysia()
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
-        ensureReadAgent(identity, params.agentId);
+        ensureWriteAgent(identity, params.agentId);
 
         const file = await agentSandboxService.readFile(params.agentId, params.sandboxName, query.path);
         return new Response(stream.Readable.toWeb(file.stream) as ReadableStream, { headers: fileHeaders(query.path, file.size) });
@@ -193,6 +194,7 @@ export const agentSandboxRoutes = new Elysia()
         query: filePathQuerySchema,
         detail: {
             summary: 'Stream file from agent sandbox',
+            description: 'Stream a file from an agent sandbox. Requires write access to the agent.',
             operationId: 'readAgentSandboxFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -200,7 +202,6 @@ export const agentSandboxRoutes = new Elysia()
     })
     .put('/agents/:agentId/sandboxes/:sandboxName/files/write', async ({ params, query, request, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
-        if (!request.body) throw new ServiceException('Request body is required.');
 
         await ensureAgentExists(params.agentId);
         ensureWriteAgent(identity, params.agentId);
@@ -209,25 +210,71 @@ export const agentSandboxRoutes = new Elysia()
             params.agentId,
             params.sandboxName,
             query.path,
-            stream.Readable.fromWeb(request.body as never),
+            await FileUploadUtils.getWriteFileStream(request),
         );
         return undefined;
     }, {
         params: agentSandboxClaimParamsSchema,
         query: filePathQuerySchema,
+        // Parse manually so legacy octet-stream callers can still stream bytes.
+        // swagger-typescript-api has no octet-stream ContentType and otherwise
+        // serializes ArrayBuffer payloads as JSON.
+        parse: 'none',
         response: ApiUtils.mapResponseModel(z.undefined()),
         detail: {
             summary: 'Stream file to agent sandbox',
+            description: `Writes one file into the running sandbox. Existing content at \`path\` is replaced.
+
+Use \`multipart/form-data\` and provide the upload in the required \`file\` field. This is the supported contract for generated OpenAPI clients.
+
+\`swagger-typescript-api\` example:
+
+\`\`\`ts
+await client.writeAgentSandboxFile(
+  { agentId, sandboxName, path: '/workspace/document.pdf' },
+  { file }, // Browser File or Blob
+);
+\`\`\`
+
+Do not JSON-serialize the file and do not wrap it in a \`body\` field. JSON serialization of an \`ArrayBuffer\` produces \`{}\` and writes that text to the sandbox file.
+
+Two request formats are supported:
+
+- \`multipart/form-data\`: required \`file\` field; preferred for generated OpenAPI clients.
+- \`application/octet-stream\`: request body contains raw file bytes; preferred for direct or streaming HTTP clients.`,
             operationId: 'writeAgentSandboxFile',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    'multipart/form-data': {
+                        schema: {
+                            type: 'object',
+                            required: ['file'],
+                            properties: {
+                                file: {
+                                    type: 'string',
+                                    format: 'binary',
+                                },
+                            },
+                        },
+                    },
+                    'application/octet-stream': {
+                        schema: {
+                            type: 'string',
+                            format: 'binary',
+                        },
+                    },
+                },
+            },
         },
     })
     .get('/agents/:agentId/sandboxes/:sandboxName/files/list', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
-        ensureReadAgent(identity, params.agentId);
+        ensureWriteAgent(identity, params.agentId);
 
         return agentSandboxService.listFiles(params.agentId, params.sandboxName, query.path);
     }, {
@@ -236,6 +283,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(z.array(fileEntryZodModel)),
         detail: {
             summary: 'List files in agent sandbox',
+            description: 'List files in an agent sandbox. Requires write access to the agent.',
             operationId: 'listAgentSandboxFiles',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -245,7 +293,7 @@ export const agentSandboxRoutes = new Elysia()
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
-        ensureReadAgent(identity, params.agentId);
+        ensureWriteAgent(identity, params.agentId);
 
         return agentSandboxService.fileExists(params.agentId, params.sandboxName, query.path);
     }, {
@@ -254,6 +302,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(fileExistsResultZodModel),
         detail: {
             summary: 'Check file exists in agent sandbox',
+            description: 'Check a file in an agent sandbox. Requires write access to the agent.',
             operationId: 'checkAgentSandboxFileExists',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],

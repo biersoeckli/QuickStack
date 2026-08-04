@@ -5,6 +5,8 @@ const routeMocks = vi.hoisted(() => ({
     readFile: vi.fn(),
     writeFile: vi.fn(),
     runCommand: vi.fn(),
+    listFiles: vi.fn(),
+    fileExists: vi.fn(),
     ensureReadAgent: vi.fn(),
     ensureWriteAgent: vi.fn(),
 }));
@@ -35,8 +37,8 @@ vi.mock('@/server/services/agent-sandbox.service', () => ({
         runCommand: routeMocks.runCommand,
         readFile: routeMocks.readFile,
         writeFile: routeMocks.writeFile,
-        listFiles: vi.fn(),
-        fileExists: vi.fn(),
+        listFiles: routeMocks.listFiles,
+        fileExists: routeMocks.fileExists,
     },
 }));
 
@@ -46,8 +48,10 @@ vi.mock('@/server/utils/shared-authorization.utils', () => ({
 }));
 
 import { Elysia } from 'elysia';
+import { openapi } from '@elysiajs/openapi';
 import stream from 'stream';
 import { ApiUtils } from '@/server/utils/api-response.utils';
+import { ServiceException } from '@/shared/model/service.exception.model';
 import { agentSandboxRoutes } from './route';
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
@@ -79,6 +83,8 @@ describe('agent sandbox routes', () => {
         routeMocks.runCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
         routeMocks.readFile.mockResolvedValue({ stream: stream.PassThrough.from([Buffer.from('hello')]), size: 5 });
         routeMocks.writeFile.mockResolvedValue(undefined);
+        routeMocks.listFiles.mockResolvedValue([]);
+        routeMocks.fileExists.mockResolvedValue({ exists: true });
     });
 
     it('passes create env and idle timeout body to service', async () => {
@@ -132,5 +138,76 @@ describe('agent sandbox routes', () => {
         expect(writeResponse.status).toBe(200);
         expect(routeMocks.readFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md');
         expect(routeMocks.writeFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md', expect.any(stream.Readable));
+        expect(routeMocks.ensureWriteAgent).toHaveBeenCalledWith(routeMocks.identity, 'agent-1');
+    });
+
+    it('accepts multipart uploads from generated API clients', async () => {
+        const formData = new FormData();
+        formData.append('file', new Blob(['hello']), 'AGENTS.md');
+
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/write?path=%2Fworkspace%2FAGENTS.md', {
+            method: 'PUT',
+            body: formData,
+        }));
+
+        expect(response.status).toBe(200);
+        expect(routeMocks.writeFile).toHaveBeenCalledWith('agent-1', 'ac-1', '/workspace/AGENTS.md', expect.any(stream.Readable));
+    });
+
+    it('documents file writes as a multipart binary request body', async () => {
+        const documentedApp = new Elysia()
+            .use(openapi({ path: '/openapi', specPath: '/openapi.json' }))
+            .use(agentSandboxRoutes);
+
+        const response = await documentedApp.handle(new Request('http://localhost/openapi.json'));
+        const document = await response.json() as any;
+        const requestBody = document.paths['/agents/{agentId}/sandboxes/{sandboxName}/files/write'].put.requestBody;
+
+        expect(requestBody).toEqual({
+            required: true,
+            content: {
+                'multipart/form-data': {
+                    schema: {
+                        type: 'object',
+                        required: ['file'],
+                        properties: {
+                            file: {
+                                type: 'string',
+                                format: 'binary',
+                            },
+                        },
+                    },
+                },
+                'application/octet-stream': {
+                    schema: {
+                        type: 'string',
+                        format: 'binary',
+                    },
+                },
+            },
+        });
+    });
+
+    it('rejects file reads for an identity without write access', async () => {
+        routeMocks.ensureWriteAgent.mockImplementation(() => {
+            throw new ServiceException('User is not authorized for this action.');
+        });
+
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/files/read?path=%2Fworkspace%2FAGENTS.md'));
+
+        expect(response.status).not.toBe(200);
+        expect(routeMocks.readFile).not.toHaveBeenCalled();
+    });
+
+    it('requires write access for every file inspection endpoint', async () => {
+        const urls = ['files/read', 'files/list', 'files/exists'];
+
+        for (const endpoint of urls) {
+            const response = await app.handle(new Request(`http://localhost/agents/agent-1/sandboxes/ac-1/${endpoint}?path=%2Fworkspace%2FAGENTS.md`));
+            expect(response.status).toBe(200);
+        }
+
+        expect(routeMocks.ensureWriteAgent).toHaveBeenCalledTimes(3);
+        expect(routeMocks.ensureReadAgent).not.toHaveBeenCalled();
     });
 });
