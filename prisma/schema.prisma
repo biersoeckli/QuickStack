@@ -249,6 +249,7 @@ model Agent {
   containerArgs    String?
   workingDir       String?
   warmPoolReplicas Int     @default(0)
+  deployFileBrowser Boolean @default(false)
 
   // healthCheck startupProbe, readinessProbe, livenessProbe
   healthChechHttpGetPath      String?

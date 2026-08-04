@@ -446,6 +446,7 @@ class AgentService {
                 containerCommand: agent.containerCommand ?? null,
                 containerArgs: agent.containerArgs ?? null,
                 workingDir: agent.workingDir ?? null,
+                deployFileBrowser: agent.deployFileBrowser,
                 healthChechHttpGetPath: agent.healthChechHttpGetPath ?? null,
                 healthCheckHttpScheme: agent.healthCheckHttpScheme ?? null,
                 healthCheckHttpHeadersJson: agent.healthCheckHttpHeadersJson ?? null,

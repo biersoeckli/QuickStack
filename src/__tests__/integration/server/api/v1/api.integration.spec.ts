@@ -458,6 +458,7 @@ function createAgentPayload(id: string | undefined, projectId: string, llmGatewa
         containerImageSource: 'custom/opencode:latest',
         dockerfilePath: './Dockerfile',
         warmPoolReplicas: 0,
+        deployFileBrowser: false,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,

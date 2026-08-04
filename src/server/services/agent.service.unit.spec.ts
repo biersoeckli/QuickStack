@@ -206,6 +206,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         containerArgs: null,
         workingDir: null,
         warmPoolReplicas: 0,
+        deployFileBrowser: false,
         healthChechHttpGetPath: null,
         healthCheckHttpScheme: null,
         healthCheckHttpHeadersJson: null,
@@ -379,6 +380,7 @@ describe('agent.service', () => {
                 cpuLimit: 1000,
                 memoryRequest: 512,
                 memoryLimit: 1024,
+                deployFileBrowser: true,
             } as any);
             vi.mocked(liteLlmApiAdapter.listModelInfo).mockResolvedValue([{
                 modelName: 'moonshotai/Kimi-K2.6',
@@ -424,6 +426,18 @@ describe('agent.service', () => {
                 args: ['--noauth', '--root', '/srv', '--baseurl', '/files', '--port', '80'],
                 ports: [{ name: 'filebrowser-web', containerPort: 80, protocol: 'TCP' }],
             }));
+        });
+
+        it('does not deploy the File Browser sidecar by default', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(
+                mockAgentWithRelations('agent-1', 'Agent One') as any,
+            );
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.podTemplate.spec.containers).toHaveLength(1);
+            expect(resource.spec.podTemplate.spec.containers[0].name).toBe('agent');
         });
 
         it('adds HTTP startup and readiness probes to the agent container', async () => {
@@ -700,6 +714,7 @@ describe('agent.service', () => {
 
         it('mounts agent file mounts from config maps into the agent container', async () => {
             const agent = mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                deployFileBrowser: true,
                 agentFileMounts: [{
                     id: 'file-mount-1',
                     agentId: 'agent-1',

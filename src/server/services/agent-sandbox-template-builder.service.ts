@@ -34,6 +34,7 @@ export type AgentSandboxTemplateConfig = {
     containerCommand?: string | null;
     containerArgs?: string | null;
     workingDir?: string | null;
+    deployFileBrowser: boolean;
     healthChechHttpGetPath?: string | null;
     healthCheckHttpScheme?: string | null;
     healthCheckHttpHeadersJson?: string | null;
@@ -204,7 +205,7 @@ class AgentSandboxTemplateBuilder {
                                     } : {}),
                                 },
                             },
-                        }, {
+                        }, ...(agent.deployFileBrowser ? [{
                             name: 'filebrowser',
                             image: 'filebrowser/filebrowser:v2.31.2',
                             imagePullPolicy: 'Always',
@@ -220,7 +221,7 @@ class AgentSandboxTemplateBuilder {
                                 protocol: 'TCP',
                             }],
                             volumeMounts: filebrowserVolumeMounts,
-                        }]
+                        }] : [])]
                     }
                 }
             }

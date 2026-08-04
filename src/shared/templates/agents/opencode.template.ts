@@ -44,6 +44,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
         ]),
         workingDir: '/workspace',
         warmPoolReplicas: 0,
+        deployFileBrowser: false,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,

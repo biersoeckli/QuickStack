@@ -159,6 +159,7 @@ export const agentContainerConfigZodModel = agentConfigZodModel.pick({
     containerArgs: true,
     workingDir: true,
     warmPoolReplicas: true,
+    deployFileBrowser: true,
 });
 export type AgentContainerConfigModel = z.infer<typeof agentContainerConfigZodModel>;
 

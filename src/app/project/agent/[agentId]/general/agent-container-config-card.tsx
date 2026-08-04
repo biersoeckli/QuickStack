@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
@@ -35,6 +36,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                 : [],
             workingDir: agent.workingDir ?? '',
             warmPoolReplicas: agent.warmPoolReplicas ?? 0,
+            deployFileBrowser: agent.deployFileBrowser,
         },
         disabled: readonly,
     });
@@ -114,6 +116,28 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                             />
                                         </FormControl>
                                         <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="deployFileBrowser"
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Deploy File Browser</FormLabel>
+                                            <p className="text-sm text-muted-foreground">
+                                                Adds a File Browser sidecar pod to each agent sandbox.
+                                            </p>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                disabled={readonly}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
                                     </FormItem>
                                 )}
                             />
