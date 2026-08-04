@@ -371,27 +371,33 @@ class AgentSandboxService {
             '  type=other',
             '  [ -d "$p" ] && type=directory',
             '  [ -f "$p" ] && type=file',
-            '  name=$(basename "$p" | base64 | tr -d "\\n")',
-            '  full=$(printf "%s" "$p" | base64 | tr -d "\\n")',
-            '  size=$(wc -c < "$p" 2>/dev/null || printf "0")',
-            '  printf "%s\\t%s\\t%s\\t%s\\n" "$name" "$full" "$type" "$size"',
+            '  size=0',
+            '  [ "$type" = file ] && size=$(wc -c < "$p" 2>/dev/null || printf "0")',
+            '  printf "%s\\0%s\\0%s\\0%s\\0" "$(basename "$p")" "$p" "$type" "$size"',
             'done',
         ].join('\n');
         const result = await this.execShell(target, script);
         this.assertSuccessful(result, 'List files');
 
-        return result.stdout
-            .split('\n')
-            .filter(Boolean)
-            .map((line) => {
-                const [nameBase64, pathBase64, type, size] = line.split('\t');
-                return {
-                    name: Buffer.from(nameBase64, 'base64').toString(),
-                    path: Buffer.from(pathBase64, 'base64').toString(),
-                    type: type === 'directory' || type === 'file' ? type : 'other',
-                    size: Number.parseInt(size, 10) || 0,
-                };
+        const fields = result.stdout.split('\0');
+        if (fields.at(-1) === '') fields.pop();
+
+        if (fields.length % 4 !== 0) {
+            throw new ServiceException('List files failed: invalid output from sandbox.');
+        }
+
+        const files: FileEntryModel[] = [];
+        for (let index = 0; index < fields.length; index += 4) {
+            const [name, filePath, type, size] = fields.slice(index, index + 4);
+            files.push({
+                name,
+                path: filePath,
+                type: type === 'directory' || type === 'file' ? type : 'other',
+                size: Number.parseInt(size, 10) || 0,
             });
+        }
+
+        return files;
     }
 
     async fileExists(agentId: string, sandboxName: string, path: string): Promise<FileExistsResultModel> {
