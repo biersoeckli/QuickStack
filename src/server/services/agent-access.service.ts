@@ -47,6 +47,7 @@ class AgentAccessService {
             agentId: input.agentId,
             claimId: input.sandboxName,
             namespace: target.namespace,
+            port: domain.port,
         });
         const protocol = domain.useSsl ? 'https' : 'http';
         const path = input.view === 'files' ? '/files' : '/';

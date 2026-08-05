@@ -16,6 +16,7 @@ describe('AuthProxyJwtUtils', () => {
             agentId: 'agent-1',
             claimId: 'claim-1',
             namespace: 'project-1',
+            port: 8080,
         };
 
         const [first, second] = await Promise.all([
@@ -28,5 +29,6 @@ describe('AuthProxyJwtUtils', () => {
         expect(firstClaims.jti).toEqual(expect.any(String));
         expect(secondClaims.jti).toEqual(expect.any(String));
         expect(firstClaims.jti).not.toBe(secondClaims.jti);
+        expect(firstClaims.port).toBe(8080);
     });
 });

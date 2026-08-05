@@ -7,6 +7,7 @@ export interface AgentAccessTokenPayload {
     agentId: string;
     claimId: string;
     namespace: string;
+    port: number;
     jti?: string;
 }
 
@@ -25,7 +26,7 @@ export class AuthProxyJwtUtils {
     }
 
     static async signAgentAccessToken(payload: AgentAccessTokenPayload): Promise<string> {
-        return new SignJWT({ agentId: payload.agentId, claimId: payload.claimId, namespace: payload.namespace })
+        return new SignJWT({ agentId: payload.agentId, claimId: payload.claimId, namespace: payload.namespace, port: payload.port })
             .setProtectedHeader({ alg: AuthProxyJwtUtils.algorithm })
             .setSubject(payload.sub)
             .setIssuer(AuthProxyJwtUtils.authProxyIssues)
@@ -45,7 +46,11 @@ export class AuthProxyJwtUtils {
             typeof payload.sub !== 'string' ||
             typeof payload.agentId !== 'string' ||
             typeof payload.claimId !== 'string' ||
-            typeof payload.namespace !== 'string'
+            typeof payload.namespace !== 'string' ||
+            typeof payload.port !== 'number' ||
+            !Number.isInteger(payload.port) ||
+            payload.port < 1 ||
+            payload.port > 65535
             || typeof payload.jti !== 'string'
         ) {
             throw new Error('Invalid Agent access token payload.');
@@ -56,6 +61,7 @@ export class AuthProxyJwtUtils {
             agentId: payload.agentId,
             claimId: payload.claimId,
             namespace: payload.namespace,
+            port: payload.port,
             jti: payload.jti,
         };
     }
