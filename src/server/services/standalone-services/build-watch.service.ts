@@ -49,6 +49,7 @@ class BuildWatchService {
             }
         );
     }
+
     private async handleJobEvent(job: V1Job) {
         const jobName = job.metadata?.name;
         if (!jobName || this.processedJobs.has(jobName)) return;
