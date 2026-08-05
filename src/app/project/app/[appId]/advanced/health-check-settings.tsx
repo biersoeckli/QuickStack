@@ -1,6 +1,7 @@
 'use client'
 
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import type { z } from "zod";
+import { HealthCheckModel, HealthCheckWorkload, healthCheckZodModel } from "@/shared/model/health-check.model";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,39 +13,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash, Plus } from "lucide-react";
 import FormLabelWithQuestion from "@/components/custom/form-label-with-question";
-import { useFormState } from "react-dom";
-import { saveHealthCheck } from "./actions";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { FormUtils } from "@/frontend/utils/form.utilts";
-import { HealthCheckModel, healthCheckZodModel } from "./health-check.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 
-export default function HealthCheckSettings({ app, readonly }: { app: AppExtendedModel, readonly: boolean }) {
+export default function HealthCheckSettings({ workload, readonly, saveHealthCheck }: {
+    workload: HealthCheckWorkload;
+    readonly: boolean;
+    saveHealthCheck: (state: ServerActionResult<any, any>, payload: HealthCheckModel) => Promise<ServerActionResult<any, any>>;
+}) {
 
-    const defaultHeaders = app.healthCheckHttpHeadersJson
-        ? JSON.parse(app.healthCheckHttpHeadersJson)
+    const defaultHeaders = workload.healthCheckHttpHeadersJson
+        ? JSON.parse(workload.healthCheckHttpHeadersJson)
         : [];
 
-    const isEnabled = !!(app.healthChechHttpGetPath || app.healthCheckTcpPort);
-    const probeType = app.healthChechHttpGetPath ? "HTTP" : app.healthCheckTcpPort ? "TCP" : "HTTP";
+    const isEnabled = !!(workload.healthChechHttpGetPath || workload.healthCheckTcpPort);
+    const probeType = workload.healthChechHttpGetPath ? "HTTP" : workload.healthCheckTcpPort ? "TCP" : "HTTP";
 
     const defaultValues: HealthCheckModel = {
-        appId: app.id,
+        workloadId: workload.id,
         enabled: isEnabled,
         probeType: probeType as "HTTP" | "TCP",
-        path: app.healthChechHttpGetPath || undefined,
-        httpPort: app.healthCheckHttpPort || undefined,
-        scheme: (app.healthCheckHttpScheme as "HTTP" | "HTTPS") || "HTTP",
-        periodSeconds: app.healthCheckPeriodSeconds ?? 15,
-        timeoutSeconds: app.healthCheckTimeoutSeconds ?? 5,
-        failureThreshold: app.healthCheckFailureThreshold ?? 3,
+        path: workload.healthChechHttpGetPath || undefined,
+        httpPort: workload.healthCheckHttpPort || undefined,
+        scheme: (workload.healthCheckHttpScheme as "HTTP" | "HTTPS") || "HTTP",
+        periodSeconds: workload.healthCheckPeriodSeconds ?? 15,
+        timeoutSeconds: workload.healthCheckTimeoutSeconds ?? 5,
+        failureThreshold: workload.healthCheckFailureThreshold ?? 3,
         headers: defaultHeaders,
-        tcpPort: app.healthCheckTcpPort || undefined,
+        tcpPort: workload.healthCheckTcpPort || undefined,
     };
 
-    const form = useForm<HealthCheckModel>({
+    const form = useForm<z.input<typeof healthCheckZodModel>, unknown, z.output<typeof healthCheckZodModel>>({
         resolver: zodResolver(healthCheckZodModel),
         defaultValues,
         disabled: readonly,
@@ -58,8 +60,8 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
     const enabled = form.watch("enabled");
     const probeTypeWatch = form.watch("probeType");
 
-    const [state, formAction] = useFormState(
-        (state: ServerActionResult<any, any>, payload: HealthCheckModel) => saveHealthCheck(state, payload),
+    const [state, formAction] = useActionState(
+        saveHealthCheck,
         FormUtils.getInitialFormState<typeof healthCheckZodModel>()
     );
 
@@ -68,7 +70,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
             toast.success('Health Check Settings Saved');
         }
         FormUtils.mapValidationErrorsToForm<typeof healthCheckZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <Card>
@@ -79,7 +81,7 @@ export default function HealthCheckSettings({ app, readonly }: { app: AppExtende
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     formAction(data);
                 })()}>
                     <CardContent className="space-y-6">

@@ -2,6 +2,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import crypto from "crypto";
+import { AppFileMount } from "@prisma/client";
 
 export function getChiselAppTemplate(config?: {
     appName?: string,
@@ -76,7 +77,7 @@ export const postCreateChiselAppTemplate = async (createdApps: AppExtendedModel[
     app.appFileMounts.push({
         containerMountPath: '/etc/chisel/chisel.key',
         content: privateKey,
-    } as any);
+    } as AppFileMount);
 
     return [app];
 };

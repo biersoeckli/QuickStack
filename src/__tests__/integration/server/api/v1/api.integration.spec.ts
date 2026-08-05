@@ -10,15 +10,19 @@ import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import { v1Api } from '@/server/api/v1/api-index';
+import dataAccess from '@/server/adapter/db.client';
+import agentAccessService from '@/server/services/agent-access.service';
+import agentService from '@/server/services/agent.service';
 import restApiKeyService from '@/server/services/rest-api-key.service';
 import userGroupService from '@/server/services/user-group.service';
 import userService from '@/server/services/user.service';
 import { PathUtils } from '@/server/utils/path.utils';
+import { AgentExtendedModel, AgentExtendedWriteModel } from '@/shared/model/agent-extended.model';
 import { AppExtendedModel, AppExtendedWriteModel } from '@/shared/model/app-extended.model';
 import { Project } from '@prisma/client';
 
 describe('REST API v1 integration', () => {
-    const ctx = createPrismaTestContext('rest-api-v1');
+    createPrismaTestContext('rest-api-v1');
     const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
     const { deployRegistry } = createK3sTestContext(undefined);
 
@@ -47,7 +51,7 @@ describe('REST API v1 integration', () => {
         const updatedProject = await expectApiJson(
             await apiFetch('/api/v1/projects', apiKey, {
                 method: 'POST',
-                body: { id: createdProject.id, name: `${projectName} Updated` },
+                body: { id: createdProject.id, name: `${projectName} Updated`, projectType: 'APP' },
             }),
         );
         expect(updatedProject).toMatchObject({
@@ -137,6 +141,186 @@ describe('REST API v1 integration', () => {
 
     }, 420_000);
 
+    it('create, read, update and delete agent through the api', async () => {
+        const apiKey = await createAdminApiKey();
+
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Test Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const agent = createAgentPayload(undefined, createdProject.id, gateway.id, 'API Test Agent');
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: agent,
+            }),
+        ) as AgentExtendedModel;
+        expect(createdAgent).toMatchObject({
+            id: expect.stringContaining('api-test-agent'),
+            name: 'API Test Agent',
+            projectId: createdProject.id,
+            llmGatewayId: gateway.id,
+            modelAlias: ['gpt-4o'],
+            sourceType: 'CONTAINER',
+            buildMethod: 'DOCKERFILE',
+        });
+
+        createdAgent.name = 'API Test Agent Updated';
+        createdAgent.warmPoolReplicas = 2;
+        const updatedAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: createdAgent,
+            }),
+        );
+        expect(updatedAgent).toMatchObject({
+            id: createdAgent.id,
+            name: 'API Test Agent Updated',
+            warmPoolReplicas: 2,
+        });
+
+        const fetchedAgent = await expectApiJson(
+            await apiFetch(`/api/v1/agents/${createdAgent.id}`, apiKey),
+        );
+        expect(fetchedAgent).toMatchObject({
+            id: createdAgent.id,
+            name: 'API Test Agent Updated',
+            projectId: createdProject.id,
+            modelAlias: ['gpt-4o'],
+            project: {
+                id: createdProject.id,
+                projectType: 'AGENT',
+            },
+            llmGateway: {
+                id: gateway.id,
+                name: 'API Test Gateway',
+            },
+        });
+
+        const allAgents = await expectApiJson(
+            await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
+        );
+        expect(allAgents).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                id: createdAgent.id,
+            }),
+        ]));
+
+        const deleteSpy = vi.spyOn(agentService, 'deleteById').mockImplementation(async (agentId: string) => {
+            await dataAccess.client.agent.delete({ where: { id: agentId } });
+        });
+        try {
+            await expectApiJson(
+                await apiFetch(`/api/v1/agents/${createdAgent.id}`, apiKey, {
+                    method: 'DELETE',
+                }),
+            );
+            expect(deleteSpy).toHaveBeenCalledWith(createdAgent.id);
+
+            const agentsAfterDelete = await expectApiJson(
+                await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
+            );
+            expect(agentsAfterDelete).toEqual(expect.not.arrayContaining([
+                expect.objectContaining({
+                    id: createdAgent.id,
+                }),
+            ]));
+        } finally {
+            deleteSpy.mockRestore();
+        }
+    }, 420_000);
+
+    it('returns sandbox access URL for existing agent domain', async () => {
+        const apiKey = await createAdminApiKey();
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Access URL Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: {
+                    ...createAgentPayload(undefined, createdProject.id, gateway.id, 'API Access URL Agent'),
+                    agentDomains: [{ hostname: 'sandbox.agent.example.com', port: 8080, useSsl: true, redirectHttps: true }],
+                } satisfies AgentExtendedWriteModel,
+            }),
+        ) as AgentExtendedModel;
+
+        expect(createdAgent.agentDomains).toHaveLength(1);
+
+        const expectedAccess = {
+            url: 'https://sandbox.agent.example.com/?token=test-token',
+            expiresAt: Math.floor(Date.now() / 1000) + 30,
+        };
+
+        const createAccessUrlSpy = vi.spyOn(agentAccessService, 'createAccessUrl').mockResolvedValue(expectedAccess);
+        try {
+            const accessUrl = await expectApiJson(
+                await apiFetch(
+                    `/api/v1/agents/${createdAgent.id}/sandboxes/test-claim/accessUrl/${createdAgent.agentDomains[0].id}`,
+                    apiKey,
+                ),
+            );
+
+            expect(accessUrl).toEqual(expectedAccess);
+            expect(createAccessUrlSpy).toHaveBeenCalledWith(expect.objectContaining({
+                agentId: createdAgent.id,
+                sandboxName: 'test-claim',
+                domainId: createdAgent.agentDomains[0].id,
+                view: 'agent',
+            }));
+        } finally {
+            createAccessUrlSpy.mockRestore();
+        }
+    });
+
+    it('returns 400 when sandbox access URL is requested with unknown domain for agent', async () => {
+        const apiKey = await createAdminApiKey();
+        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: {
+                name: 'API Missing Domain Gateway',
+                baseUrl: 'https://litellm.example.com',
+                encryptedAdminKey: 'encrypted:test-key',
+            },
+        });
+
+        const createdAgent = await expectApiJson(
+            await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: {
+                    ...createAgentPayload(undefined, createdProject.id, gateway.id, 'API Missing Domain Agent'),
+                    agentDomains: [{ hostname: 'known.agent.example.com', port: 8080, useSsl: true, redirectHttps: true }],
+                } satisfies AgentExtendedWriteModel,
+            }),
+        ) as AgentExtendedModel;
+
+        const createAccessUrlSpy = vi.spyOn(agentAccessService, 'createAccessUrl');
+        try {
+            const response = await apiFetch(
+                `/api/v1/agents/${createdAgent.id}/sandboxes/test-claim/accessUrl/domain-not-for-agent`,
+                apiKey,
+            );
+
+            const problem = await expectApiProblem(response, 400);
+            expect(problem.title).toBe('Bad Request');
+            expect(problem.detail).toBe('Agent access domain is not configured.');
+            expect(createAccessUrlSpy).not.toHaveBeenCalled();
+        } finally {
+            createAccessUrlSpy.mockRestore();
+        }
+    });
+
     it('deploys an app and retrieves deployment details and logs through the api', async () => {
         const apiKey = await createAdminApiKey();
         await deployRegistry();
@@ -193,7 +377,7 @@ async function createProjectAndGitApp(apiKey: string) {
     return { project: createdProject, app: createdApp };
 }
 
-async function createGitAppForProject(projectId: string, apiKey: string, appId?: string) {
+async function createGitAppForProject(projectId: string, apiKey: string) {
     const app = createGitAppPayload(undefined, projectId, 'API Dummy Node');
     const createdApp = await expectApiJson(
         await apiFetch('/api/v1/apps', apiKey, {
@@ -212,14 +396,14 @@ async function createGitAppForProject(projectId: string, apiKey: string, appId?:
     return createdApp as AppExtendedModel;
 }
 
-async function createApiProject(apiKey: string) {
+async function createApiProject(apiKey: string, projectType: 'APP' | 'AGENT' = 'APP') {
     const suffix = Date.now();
-    const projectName = `API Project ${suffix}`;
+    const projectName = `API ${projectType} Project ${suffix}`;
 
     const createdProject = await expectApiJson(
         await apiFetch('/api/v1/projects', apiKey, {
             method: 'POST',
-            body: { name: projectName },
+            body: { name: projectName, projectType },
         })
     ) as Project;
     expect(createdProject.name).toBe(projectName);
@@ -263,6 +447,32 @@ function createGitAppPayload(id: string | undefined, projectId: string, name: st
     return retVal;
 }
 
+function createAgentPayload(id: string | undefined, projectId: string, llmGatewayId: string, name: string): AgentExtendedWriteModel {
+    const retVal = {
+        name,
+        projectId,
+        llmGatewayId,
+        modelAlias: ['gpt-4o'],
+        sourceType: 'CONTAINER',
+        buildMethod: 'DOCKERFILE',
+        containerImageSource: 'custom/opencode:latest',
+        dockerfilePath: './Dockerfile',
+        warmPoolReplicas: 0,
+        deployFileBrowser: false,
+        healthCheckPeriodSeconds: 15,
+        healthCheckTimeoutSeconds: 5,
+        healthCheckFailureThreshold: 3,
+        agentDomains: [],
+        agentVolumes: [],
+        agentFileMounts: [],
+        agentNetworkPolicy: null,
+    };
+    if (id) {
+        return { ...retVal, id };
+    }
+    return retVal;
+}
+
 async function apiFetch(path: string, apiKey: string, init: { method?: string, body?: unknown } = {}) {
     return v1Api.fetch(new Request(`http://quickstack.test${path}`, {
         method: init.method ?? 'GET',
@@ -282,4 +492,18 @@ async function expectApiJson(response: Response) {
     expect(response.status, JSON.stringify(json)).toBeLessThan(300);
 
     return json;
+}
+
+async function expectApiProblem(response: Response, status: number) {
+    const text = await response.text();
+    const json = text ? JSON.parse(text) : undefined;
+
+    expect(response.status, JSON.stringify(json)).toBe(status);
+
+    return json as {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+    };
 }

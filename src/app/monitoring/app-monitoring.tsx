@@ -77,7 +77,7 @@ export default function AppRessourceMonitoring({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {updatedAppUsage.map((item, index) => (
+                        {updatedAppUsage.map((item) => (
                             <TableRow key={item.appId}>
                                 <TableCell>
                                     <PodStatusIndicator appId={item.appId} showLabel={true} />

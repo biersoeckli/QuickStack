@@ -1,6 +1,6 @@
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
-import k3s from "../adapter/kubernetes-api.adapter";
+import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 
 class TraefikService {
     private readonly TRAEFIK_NAMESPACE = 'kube-system';
@@ -8,15 +8,15 @@ class TraefikService {
 
     async getStatus(): Promise<TraefikIpPropagationStatus> {
         const [serviceRes, deploymentRes] = await Promise.all([
-            k3s.core.readNamespacedService(this.TRAEFIK_NAME, this.TRAEFIK_NAMESPACE),
-            k3s.apps.readNamespacedDeployment(this.TRAEFIK_NAME, this.TRAEFIK_NAMESPACE),
+            k3s.core.readNamespacedService({ name: this.TRAEFIK_NAME, namespace: this.TRAEFIK_NAMESPACE }),
+            k3s.apps.readNamespacedDeployment({ name: this.TRAEFIK_NAME, namespace: this.TRAEFIK_NAMESPACE }),
         ]);
 
-        const deployment = deploymentRes.body;
+        const deployment = deploymentRes;
         const restartedAt = deployment.spec?.template?.metadata?.annotations?.['kubectl.kubernetes.io/restartedAt'];
 
         return {
-            externalTrafficPolicy: serviceRes.body.spec?.externalTrafficPolicy as TraefikIpPropagationStatus['externalTrafficPolicy'],
+            externalTrafficPolicy: serviceRes.spec?.externalTrafficPolicy as TraefikIpPropagationStatus['externalTrafficPolicy'],
             readyReplicas: deployment.status?.readyReplicas ?? 0,
             replicas: deployment.status?.replicas ?? deployment.spec?.replicas ?? 0,
             restartedAt,
@@ -32,40 +32,30 @@ class TraefikService {
 
     private async patchServicePolicy(policy: 'Local' | 'Cluster') {
         await k3s.core.patchNamespacedService(
-            this.TRAEFIK_NAME,
-            this.TRAEFIK_NAMESPACE,
-            { spec: { externalTrafficPolicy: policy } },
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            { headers: { 'Content-Type': 'application/merge-patch+json' } },
+            { name: this.TRAEFIK_NAME, namespace: this.TRAEFIK_NAMESPACE, body: { spec: { externalTrafficPolicy: policy } } },
+            kubernetesPatchOptions('application/merge-patch+json'),
         );
     }
 
     private async restartDeployment() {
         const now = new Date().toISOString();
         await k3s.apps.patchNamespacedDeployment(
-            this.TRAEFIK_NAME,
-            this.TRAEFIK_NAMESPACE,
             {
-                spec: {
-                    template: {
-                        metadata: {
-                            annotations: {
-                                'kubectl.kubernetes.io/restartedAt': now,
+                name: this.TRAEFIK_NAME,
+                namespace: this.TRAEFIK_NAMESPACE,
+                body: {
+                    spec: {
+                        template: {
+                            metadata: {
+                                annotations: {
+                                    'kubectl.kubernetes.io/restartedAt': now,
+                                },
                             },
                         },
                     },
-                },
+                }
             },
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            { headers: { 'Content-Type': 'application/merge-patch+json' } },
+            kubernetesPatchOptions('application/merge-patch+json'),
         );
     }
 
@@ -74,9 +64,9 @@ class TraefikService {
         const deadline = Date.now() + timeoutMs;
 
         while (Date.now() < deadline) {
-            const deployment = await k3s.apps.readNamespacedDeployment(this.TRAEFIK_NAME, this.TRAEFIK_NAMESPACE);
-            const desiredReplicas = deployment.body.status?.replicas ?? deployment.body.spec?.replicas ?? 0;
-            const readyReplicas = deployment.body.status?.readyReplicas ?? 0;
+            const deployment = await k3s.apps.readNamespacedDeployment({ name: this.TRAEFIK_NAME, namespace: this.TRAEFIK_NAMESPACE });
+            const desiredReplicas = deployment.status?.replicas ?? deployment.spec?.replicas ?? 0;
+            const readyReplicas = deployment.status?.readyReplicas ?? 0;
 
             if (desiredReplicas === 0 || readyReplicas >= desiredReplicas) {
                 return;

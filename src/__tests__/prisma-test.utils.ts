@@ -53,14 +53,22 @@ export function createPrismaTestContext(label: string) {
         await dataAccess.client.volumeBackup.deleteMany();
         await dataAccess.client.appBasicAuth.deleteMany();
         await dataAccess.client.appFileMount.deleteMany();
+        await dataAccess.client.agentFileMount.deleteMany();
         await dataAccess.client.appDomain.deleteMany();
+        await dataAccess.client.agentDomain.deleteMany();
         await dataAccess.client.appPort.deleteMany();
         await dataAccess.client.appNodePort.deleteMany();
         await dataAccess.client.roleAppPermission.deleteMany();
+        await dataAccess.client.roleAgentPermission.deleteMany();
         await dataAccess.client.roleProjectPermission.deleteMany();
+        await dataAccess.client.agentGitSshKey.deleteMany();
+        await dataAccess.client.appGitSshKey.deleteMany();
         // AppVolume has a self-referential relation; clear the FK first
         await dataAccess.client.appVolume.updateMany({ data: { sharedVolumeId: null } });
         await dataAccess.client.appVolume.deleteMany();
+        await dataAccess.client.agentVolume.deleteMany();
+        await dataAccess.client.agent.deleteMany();
+        await dataAccess.client.llmGateway.deleteMany();
         await dataAccess.client.app.deleteMany();
         await dataAccess.client.project.deleteMany();
         await dataAccess.client.s3Target.deleteMany();

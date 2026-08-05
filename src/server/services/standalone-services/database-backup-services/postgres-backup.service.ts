@@ -114,7 +114,7 @@ class PostgresBackupService {
             }
         };
 
-        await k3s.batch.createNamespacedJob(backupNamespace, jobDefinition);
+        await k3s.batch.createNamespacedJob({ namespace: backupNamespace, body: jobDefinition });
         console.log(`PostgreSQL backup job ${jobName} started successfully`);
 
         // Wait for pod to be created

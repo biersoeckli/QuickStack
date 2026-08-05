@@ -5,6 +5,7 @@ import k3s from '../../adapter/kubernetes-api.adapter';
 import buildService from '../build.service';
 import deploymentService from '../deployment.service';
 import appService from '../app.service';
+import agentService from '../agent.service';
 import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
@@ -25,8 +26,6 @@ class BuildWatchService {
         }
         this.isWatchRunning = true;
         console.log('[BuildWatch] Starting build job watch...');
-
-        await this.scanExistingJobs();
 
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
@@ -51,93 +50,6 @@ class BuildWatchService {
         );
     }
 
-    private async scanExistingJobs() {
-        console.log('[BuildWatch] Scanning existing build jobs...');
-        try {
-            const jobs = await k3s.batch.listNamespacedJob(BUILD_NAMESPACE);
-
-            // Group successful jobs by appId so we only deploy the newest per app.
-            // Without this, multiple successful jobs for the same app trigger
-            // sequential deployments in alphabetical order, causing the last-processed
-            // (often older) job to "win" and roll back the deployment.
-            const succeededByApp = new Map<string, V1Job[]>();
-
-            for (const job of jobs.body.items) {
-                const jobName = job.metadata?.name;
-                if (!jobName) continue;
-
-                const status = buildService.getJobStatusString(job.status);
-
-                if (status === 'FAILED') {
-                    this.processedJobs.add(jobName);
-                    continue;
-                }
-
-                if (status === 'SUCCEEDED') {
-                    const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
-                    const projectId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
-
-                    if (!appId || !projectId) {
-                        this.processedJobs.add(jobName);
-                        continue;
-                    }
-
-                    const existing = succeededByApp.get(appId);
-                    if (existing) {
-                        existing.push(job);
-                    } else {
-                        succeededByApp.set(appId, [job]);
-                    }
-                }
-            }
-
-            // For each app, pick the newest successful job (by creationTimestamp)
-            // and only trigger deployment for that one.
-            succeededByApp.forEach(async (appJobs, appId) => {
-                // Sort descending by creationTime: newest first
-                appJobs.sort((a, b) => {
-                    const timeA = a.metadata?.creationTimestamp
-                        ? new Date(a.metadata.creationTimestamp).getTime()
-                        : 0;
-                    const timeB = b.metadata?.creationTimestamp
-                        ? new Date(b.metadata.creationTimestamp).getTime()
-                        : 0;
-                    return timeB - timeA;
-                });
-
-                const newestJob = appJobs[0];
-                const jobName = newestJob.metadata?.name;
-                if (!jobName) return;
-
-                const projectId = newestJob.metadata?.annotations?.[Constants.QS_ANNOTATION_PROJECT_ID];
-                const jobGitCommit = newestJob.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-
-                try {
-                    const deployment = await deploymentService.getDeployment(projectId!, appId);
-                    const deployedGitCommit = deployment?.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-
-                    if (jobGitCommit && deployedGitCommit && jobGitCommit === deployedGitCommit) {
-                        console.log(`[BuildWatch] Job ${jobName} already deployed (commit=${jobGitCommit}), skipping.`);
-                    } else {
-                        console.log(`[BuildWatch] Job ${jobName} not yet deployed (newest of ${appJobs.length} job(s) for this app), triggering deployment.`);
-                        await this.handleSucceeded(newestJob);
-                    }
-                } catch (e) {
-                    console.error(`[BuildWatch] Error checking deployment for app ${appId}:`, e);
-                }
-
-                // Mark all jobs for this app as processed so the watch won't re-handle them
-                for (const job of appJobs) {
-                    const name = job.metadata?.name;
-                    if (name) this.processedJobs.add(name);
-                }
-            });
-        } catch (e) {
-            console.error('[BuildWatch] Error during startup scan:', e);
-        }
-        console.log('[BuildWatch] Startup scan complete.');
-    }
-
     private async handleJobEvent(job: V1Job) {
         const jobName = job.metadata?.name;
         if (!jobName || this.processedJobs.has(jobName)) return;
@@ -156,34 +68,41 @@ class BuildWatchService {
     private async handleSucceeded(job: V1Job) {
         const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
         const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+        const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
+        const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE]
+            ?? (agentId ? 'agent' : 'app');
         const gitCommitHash = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
         const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
         const buildJobName = job.metadata?.name;
         const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
         const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
 
-        if (!deploymentId || !appId || !buildJobName) {
+        if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
             return;
         }
 
         try {
-            console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for app ${appId}`);
+            console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for ${workloadType} ${appId ?? agentId}`);
             await dlog(deploymentId, `*************************************`);
             await dlog(deploymentId, ` ✓ Build job completed successfully. `);
             await dlog(deploymentId, `*************************************`);
             await dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-            const app = await appService.getExtendedById(appId, false);
-            await deploymentService.createDeployment(
-                deploymentId,
-                app,
-                buildJobName,
-                gitCommitHash,
-                gitCommitMessage,
-                buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
-            );
+            if (workloadType === 'agent') {
+                await agentService.deployBuiltAgent(agentId!, deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
+            } else {
+                const app = await appService.getExtendedById(appId!, false);
+                await deploymentService.createDeployment(
+                    deploymentId,
+                    app,
+                    buildJobName,
+                    gitCommitHash,
+                    gitCommitMessage,
+                    buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+                );
+            }
         } catch (e) {
-            console.error(`[BuildWatch] Error triggering deployment for app ${appId}:`, e);
+            console.error(`[BuildWatch] Error triggering deployment for ${workloadType} ${appId ?? agentId}:`, e);
             if (deploymentId) {
                 await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
             }

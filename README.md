@@ -72,6 +72,12 @@ Contributions are very welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detai
 
 QuickStack was originally developed as a student project by [glueh-wyy-huet](https://github.com/glueh-wyy-huet) and [biersoeckli](https://github.com/biersoeckli) at the [Eastern Switzerland University of Applied Sciences](https://ost.ch/). Since then, new features have been added to make QuickStack a powerful and user-friendly platform for self-hosting.
 
+## Related Repositories
+
+- [biersoeckli/QuickStack-Docs](https://github.com/biersoeckli/QuickStack-Docs): The official documentation for QuickStack, including tutorials, guides and API references.
+- [biersoeckli/QuickStack-sdk](https://github.com/biersoeckli/QuickStack-sdk): The official JS/TS SDK for the QuickStack API, allowing developers to interact with QuickStack programmatically.
+- [biersoeckli/QuickStack-auth-proxy](https://github.com/biersoeckli/QuickStack-auth-proxy): A reverse proxy for QuickStack that handles authentication and authorization for certain services.
+
 ## License
 
 QuickStack is licensed under the GPL-3.0 license.

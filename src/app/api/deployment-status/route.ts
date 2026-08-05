@@ -10,7 +10,7 @@ import * as k8s from '@kubernetes/client-node';
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST() {
     return simpleRoute(async () => {
 
         const session = await getAuthUserSession();
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
                 watchRequest = await watch.watch(
                     '/apis/apps/v1/deployments',
                     {},
-                    async (type, apiObj, watchObj) => {
+                    async (type, apiObj) => {
                         if (shouldStopStreaming) { return; }
 
                         const deployment = apiObj as V1Deployment;

@@ -1,5 +1,4 @@
-import { User, UserGroup } from "@prisma/client";
-import { UserGroupExtended } from "./sim-session.model";
+import { UserGroup } from "@prisma/client";
 
 export type UserExtended = {
     id: string;
@@ -8,4 +7,6 @@ export type UserExtended = {
     email: string;
     createdAt: Date;
     updatedAt: Date;
+    apiOnlyUser: boolean;
+    apiKeyCount: number;
 };

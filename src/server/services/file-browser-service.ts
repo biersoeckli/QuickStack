@@ -87,7 +87,7 @@ class FileBrowserService {
         const projectId = volume.app.projectId;
 
         const existingDeployment = await deploymentService.getDeployment(projectId, kubeAppName);
-        if (existingDeployment) { await k3s.apps.deleteNamespacedDeployment(kubeAppName, projectId); }
+        if (existingDeployment) { await k3s.apps.deleteNamespacedDeployment({ name: kubeAppName, namespace: projectId }); }
 
         const existingService = await svcService.getService(projectId, kubeAppName);
         if (existingService) { await svcService.deleteService(projectId, kubeAppName); }
@@ -95,7 +95,7 @@ class FileBrowserService {
 
         const existingIngress = await ingressService.getIngressByName(projectId, kubeAppName);
         if (existingIngress) {
-            await k3s.network.deleteNamespacedIngress(KubeObjectNameUtils.getIngressName(kubeAppName), projectId);
+            await k3s.network.deleteNamespacedIngress({ name: KubeObjectNameUtils.getIngressName(kubeAppName), namespace: projectId });
         }
 
         await networkPolicyService.deleteFileBrowserNetworkPolicy(kubeAppName, projectId);
@@ -145,9 +145,9 @@ class FileBrowserService {
 
         const existingIngress = await ingressService.getIngressByName(projectId, kubeAppName);
         if (existingIngress) {
-            await k3s.network.replaceNamespacedIngress(KubeObjectNameUtils.getIngressName(kubeAppName), projectId, ingressDefinition);
+            await k3s.network.replaceNamespacedIngress({ name: KubeObjectNameUtils.getIngressName(kubeAppName), namespace: projectId, body: ingressDefinition });
         } else {
-            await k3s.network.createNamespacedIngress(projectId, ingressDefinition);
+            await k3s.network.createNamespacedIngress({ namespace: projectId, body: ingressDefinition });
         }
     }
 
@@ -225,9 +225,9 @@ class FileBrowserService {
 
         const existingDeployment = await deploymentService.getDeployment(projectId, kubeAppName);
         if (existingDeployment) {
-            await k3s.apps.replaceNamespacedDeployment(kubeAppName, projectId, body);
+            await k3s.apps.replaceNamespacedDeployment({ name: kubeAppName, namespace: projectId, body: body });
         } else {
-            await k3s.apps.createNamespacedDeployment(projectId, body);
+            await k3s.apps.createNamespacedDeployment({ namespace: projectId, body: body });
         }
     }
 }

@@ -35,6 +35,11 @@ export class KubeObjectNameUtils {
         return `app-${KubeObjectNameUtils.toObjectId(str)}`;
     }
 
+    static toAgentId(str: string): `agent-${string}` {
+        str = str.substring(0, KubeObjectNameUtils.MAX_OBJECT_NAME_LENGTH).trim();
+        return `agent-${KubeObjectNameUtils.toObjectId(str)}`;
+    }
+
     static toJobName(appId: string): `build-${string}` {
         return `build-${appId}`;
     }
@@ -57,6 +62,16 @@ export class KubeObjectNameUtils {
         return `pvc-${volumeId}`;
     }
 
+    static toAgentWorkspacePvcName(agentId: string, agentVolumeId: string): string {
+        const raw = `aw-${agentId}-${agentVolumeId}`;
+        const hash = crypto.createHash('sha256').update(raw).digest('hex');
+        return `aw-${hash.substring(0, 60)}`;
+    }
+
+    static toAgentClaimName(agentId: string): string {
+        return `ac-${this.addRandomSuffix(agentId.substring(0, 52))}`;
+    }
+
     static toRestorePodName(volumeId: string): `restore-${string}` {
         return `restore-${volumeId}`;
     }
@@ -71,6 +86,10 @@ export class KubeObjectNameUtils {
 
     static toSecretId(id: string): `secret-${string}` {
         return `secret-${id}`;
+    }
+
+    static toPullSecretId(id: string): `pullsec-${string}` {
+        return `pullsec-${id.substring(0, 55)}`;
     }
 
     static toDbGateId(appId: string): `dbgate-${string}` {

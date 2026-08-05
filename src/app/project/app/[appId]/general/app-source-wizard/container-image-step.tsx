@@ -1,10 +1,9 @@
-import { AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { LockKeyhole, Package, User } from "lucide-react";
 import { IconInput, SecretInput } from "./source-wizard-fields";
-import { SourceFormPatch } from "./types";
+import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function ContainerImageStep({ formData, showCredentials, showPassword, setShowPassword, onChange }: {
-    formData: AppSourceInfoInputModel;
+    formData: SourceWizardInput;
     showCredentials: boolean;
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;

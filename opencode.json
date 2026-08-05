@@ -1,0 +1,47 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "litellm": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "LiteLLM",
+            "options": {
+                "baseURL": "https://litellm.8e84f36c.quickstack.me/v1",
+                "apiKey": "{env:LITELLM_API_KEY}"
+            },
+            "models": {
+                "gemini/gemini-flash-lite-latest": {
+                    "name": "Gemini 3 Flash Lite"
+                },
+                "moonshotai/Kimi-K2.6": {
+                    "name": "Kimi K2.6"
+                },
+                "deepseek-v4-pro": {
+                    "name": "DeepSeek V4 Pro"
+                }
+            }
+        },
+        "ollama": {
+            "options": {
+                "baseURL": "http://host.docker.internal:11434/v1"
+            },
+            "models": {
+                "qwen3.6:35b-a3b-coding-nvfp4": {
+                    "name": "Qwen 3.6 35B A3B Coding",
+                    "limit": {
+                        "context": 64000,
+                        "output": 65536
+                    }
+                }
+            }
+        }
+    },
+    "permission": {
+        "bash": "allow",
+        "read": "allow",
+        "edit": "allow",
+        "write": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+    },
+    "model": "litellm/deepseek-v4-pro"
+}

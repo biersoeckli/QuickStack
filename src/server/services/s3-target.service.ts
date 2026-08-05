@@ -2,7 +2,6 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Prisma, S3Target } from "@prisma/client";
-import namespaceService from "./namespace.service";
 
 class S3TargetService {
 

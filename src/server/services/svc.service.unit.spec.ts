@@ -32,7 +32,7 @@ import { AppExtendedModel } from '@/shared/model/app-extended.model';
 describe('svc.service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        k3sMocks.listNamespacedService.mockResolvedValue({ body: { items: [] } });
+        k3sMocks.listNamespacedService.mockResolvedValue({ items: [] });
     });
 
     it('creates a NodePort service for an App with only an App Node Port', async () => {
@@ -53,7 +53,7 @@ describe('svc.service', () => {
         await svcService.createOrUpdateServiceForApp('deployment-1', app);
 
         expect(k3sMocks.createNamespacedService).toHaveBeenCalledTimes(1);
-        const [, service] = k3sMocks.createNamespacedService.mock.calls[0];
+        const service = k3sMocks.createNamespacedService.mock.calls[0][0].body;
         expect(service.spec).toMatchObject({
             type: 'NodePort',
             ports: [
@@ -94,7 +94,7 @@ describe('svc.service', () => {
 
         await svcService.createOrUpdateServiceForApp('deployment-1', app);
 
-        const [, service] = k3sMocks.createNamespacedService.mock.calls[0];
+        const service = k3sMocks.createNamespacedService.mock.calls[0][0].body;
         expect(service.spec).toMatchObject({
             type: 'NodePort',
             ports: [
@@ -119,6 +119,7 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         project: {
             id: 'demo-project',
             name: 'Demo Project',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

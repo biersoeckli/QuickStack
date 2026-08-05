@@ -1,6 +1,5 @@
 'use client'
 
-import { ReactElement } from "react";
 import { toast } from "sonner";
 
 export function Code({ children, copieable = true, copieableValue, className }: { children: string | null | undefined, copieable?: boolean, copieableValue?: string, className?: string }) {

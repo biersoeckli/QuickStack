@@ -37,7 +37,7 @@ class BuildGitInitContainerService {
                 },
                 {
                     name: 'GIT_BRANCH',
-                    value: ctx.app.gitBranch ?? 'main',
+                    value: ctx.workload.gitBranch ?? 'main',
                 },
                 {
                     name: 'GIT_COMMIT',
@@ -68,10 +68,10 @@ class BuildGitInitContainerService {
     }
 
     private getAuthenticatedGitUrl(ctx: BuildJobBuilderContext) {
-        if (ctx.app.sourceType !== 'GIT_SSH' && ctx.app.gitUsername && ctx.app.gitToken) {
-            return ctx.app.gitUrl!.replace('https://', `https://${ctx.app.gitUsername}:${ctx.app.gitToken}@`);
+        if (ctx.workload.sourceType !== 'GIT_SSH' && ctx.workload.gitUsername && ctx.workload.gitToken) {
+            return ctx.workload.gitUrl!.replace('https://', `https://${ctx.workload.gitUsername}:${ctx.workload.gitToken}@`);
         }
-        return ctx.app.gitUrl!;
+        return ctx.workload.gitUrl!;
     }
 }
 

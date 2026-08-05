@@ -1,10 +1,7 @@
-import k3s from "@/server/adapter/kubernetes-api.adapter";
 import appService from "@/server/services/app.service";
-import deploymentService from "@/server/services/deployment.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
 import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
-import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
-import { Informer, V1Pod } from "@kubernetes/client-node";
+import { simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 

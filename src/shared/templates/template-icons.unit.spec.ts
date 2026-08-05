@@ -135,7 +135,7 @@ describe('Template Icons', () => {
 
         test('All template configurations should have required fields', () => {
             allTemplates.forEach(template => {
-                template.templates.forEach((config, index) => {
+                template.templates.forEach((config) => {
                     expect(config.inputSettings).toBeDefined();
                     expect(config.appModel).toBeDefined();
                     expect(config.appDomains).toBeDefined();

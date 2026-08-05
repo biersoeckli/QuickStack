@@ -1,16 +1,11 @@
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import React, { useEffect } from "react";
+import React from "react";
 import { TerminalSetupInfoModel } from "@/shared/model/terminal-setup-info.model";
 import TerminalStreamed from "./terminal-streamed";
 

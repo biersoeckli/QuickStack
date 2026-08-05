@@ -3,7 +3,10 @@ import { Elysia } from 'elysia';
 import { ApiUtils } from '../../utils/api-response.utils';
 import { projectRoutes } from './project/route';
 import { appRoutes } from './app/route';
-import { deployRoutes } from './app/deploy/route';
+import { appDeployRoutes } from './app/deploy/route';
+import { agentRoutes } from './agent/route';
+import { agentDeployRoutes } from './agent/deploy/route';
+import { agentSandboxRoutes } from './agent/sandbox/route';
 
 export const v1Api = new Elysia({ prefix: '/api/v1' })
     .derive(ApiUtils.deriveFunc)
@@ -17,8 +20,15 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
         documentation: {
             info: {
                 title: 'QuickStack REST API',
-                version: '1.0.0'
+                version: '1.0.0',
+                description: 'This is the REST API for QuickStack. Furhter details about QuickStack can be found in the [documentation](https://quickstack.dev).',
             },
+            tags: [
+                { name: 'Projects', description: 'CRUD operations for manging projects.' },
+                { name: 'Apps', description: 'CRUD, deploy and monitoring operations for app workloads.' },
+                { name: 'Agents', description: 'CRUD and deploy operations for agent templates. Agent templates are a definition of a structure of an agent. Running agents are called "Agent Sandboxes".' },
+                { name: 'Agent Sandboxes', description: 'Start/Stop operations for agent sandboxes (running instances of an agent) and APIs to interact with running agent sandbox instances.' },
+            ],
             components: {
                 securitySchemes: {
                     bearerAuth: {
@@ -37,4 +47,7 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
     })
     .use(projectRoutes)
     .use(appRoutes)
-    .use(deployRoutes);
+    .use(agentRoutes)
+    .use(agentDeployRoutes)
+    .use(agentSandboxRoutes)
+    .use(appDeployRoutes);

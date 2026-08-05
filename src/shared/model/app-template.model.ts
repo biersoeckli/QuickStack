@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel, RelatedAppDomainModel, RelatedAppPortModel, RelatedAppVolumeModel } from "./generated-zod";
+import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
-import { appVolumeTypeZodModel, storageClassNameZodModel } from "./volume-edit.model";
+import { appStorageClassNameZodModel, appVolumeTypeZodModel } from "./volume-edit.model";
 
 const appModelWithRelations = z.lazy(() => AppModel.extend({
     projectId: z.undefined().optional(),
@@ -26,10 +26,15 @@ export type AppTemplateInputSettingsModel = z.infer<typeof appTemplateInputSetti
 export const appTemplateContentZodModel = z.object({
     inputSettings: appTemplateInputSettingsZodModel.array(),
     appModel: appModelWithRelations,
-    appDomains: AppDomainModel.array(),
+    appDomains: AppDomainModel.extend({
+        id: z.undefined().optional(),
+        appId: z.undefined().optional(),
+        createdAt: z.undefined().optional(),
+        updatedAt: z.undefined().optional(),
+    }).array(),
     appVolumes: AppVolumeModel.extend({
         accessMode: appVolumeTypeZodModel,
-        storageClassName: storageClassNameZodModel.default('longhorn'),
+        storageClassName: appStorageClassNameZodModel.default('longhorn'),
         id: z.undefined().optional(),
         appId: z.undefined().optional(),
         createdAt: z.undefined().optional(),

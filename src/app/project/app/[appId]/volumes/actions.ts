@@ -3,7 +3,7 @@
 import { appVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
-import { getAuthUserSession, isAuthorizedReadForApp, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import pvcService from "@/server/services/pvc.service";
@@ -157,12 +157,11 @@ export const saveBackupVolume = async (prevState: any, inputData: VolumeBackupEd
         if (validatedData.retention < 1) {
             throw new ServiceException('Retention must be at least 1');
         }
-        const savedVolumeBackup = await volumeBackupService.save({
+        await volumeBackupService.save({
             ...validatedData,
             id: validatedData.id ?? undefined,
         });
         await backupService.registerAllBackups();
-        return new SuccessActionResult();
     });
 
 export const deleteBackupVolume = async (backupVolumeId: string) =>

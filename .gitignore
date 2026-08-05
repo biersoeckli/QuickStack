@@ -42,5 +42,7 @@ kube-config.config_clusteradmin
 kube-config.config_old
 kube-config.config_restricted
 internal
+!additional-containers/quickstack-auth-proxy/internal/
+!additional-containers/quickstack-auth-proxy/internal/**
 dist
 storage/

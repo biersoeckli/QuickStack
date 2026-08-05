@@ -1,14 +1,14 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { listSystemBackups, runSystemBackupNow, setSystemBackupLocation, uploadAndRestoreSystemBackup, downloadSystemBackup } from "./actions";
 import { S3Target } from "@prisma/client";
@@ -18,8 +18,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileArchive, Loader2, Play, Upload, Download, AlertTriangle } from "lucide-react";
-import { formatBytes, formatDate, formatDateTime } from "@/frontend/utils/format.utils";
+import { FileArchive, Loader2, Play, Download, AlertTriangle } from "lucide-react";
+import { formatBytes, formatDateTime } from "@/frontend/utils/format.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Constants } from "@/shared/utils/constants";
 import { Input } from "@/components/ui/input";
@@ -44,14 +44,14 @@ export default function QuickStackSystemBackupSettings({
     const [downloadingBackup, setDownloadingBackup] = useState<string | null>(null);
     const confirmDialog = useConfirmDialog();
 
-    const form = useForm<SystemBackupLocationSettingsModel>({
+    const form = useForm<z.input<typeof systemBackupLocationSettingsZodModel>, unknown, z.output<typeof systemBackupLocationSettingsZodModel>>({
         resolver: zodResolver(systemBackupLocationSettingsZodModel),
         defaultValues: {
             systemBackupLocation: systemBackupLocation || DEACTIVATED_VALUE,
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: SystemBackupLocationSettingsModel) =>
         setSystemBackupLocation(state, payload),
         FormUtils.getInitialFormState<typeof systemBackupLocationSettingsZodModel>());
@@ -61,7 +61,7 @@ export default function QuickStackSystemBackupSettings({
             toast.success('System backup settings updated successfully.');
         }
         FormUtils.mapValidationErrorsToForm<typeof systemBackupLocationSettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     const handleViewBackups = async () => {
         setShowBackupsDialog(true);
@@ -73,7 +73,7 @@ export default function QuickStackSystemBackupSettings({
             } else {
                 toast.error(result.message || 'Failed to load backups');
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to load backups');
         } finally {
             setLoadingBackups(false);
@@ -118,7 +118,7 @@ export default function QuickStackSystemBackupSettings({
             } else {
                 toast.error(result.message || 'Failed to restore backup');
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to restore backup');
         } finally {
             setUploadingBackup(false);
@@ -150,7 +150,7 @@ export default function QuickStackSystemBackupSettings({
             </CardHeader>
             <CardContent className="space-y-6">
                 <Form {...form}>
-                    <form action={(e) => form.handleSubmit((data) => {
+                    <form action={() => form.handleSubmit((data) => {
                         return formAction(data);
                     })()}>
                         <div className="space-y-4">

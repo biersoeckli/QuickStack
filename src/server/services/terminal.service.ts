@@ -1,4 +1,4 @@
-import { TerminalSetupInfoModel, terminalSetupInfoZodModel } from "../../shared/model/terminal-setup-info.model";
+import { terminalSetupInfoZodModel } from "../../shared/model/terminal-setup-info.model";
 import { DefaultEventsMap, Socket } from "socket.io";
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
@@ -54,11 +54,15 @@ export class TerminalService {
                 } as TerminalStrean;
                 streamsOfSocket.push(socketStreamInfo);
 
+                const cmd = terminalInfo.terminalType === 'sh' ? '/bin/sh'
+                    : terminalInfo.terminalType === 'opencode' ? 'opencode'
+                    : '/bin/bash';
+
                 const websocket = await exec.exec(
                     terminalInfo.namespace,
                     terminalInfo.podName,
                     terminalInfo.containerName,
-                    [terminalInfo.terminalType === 'sh' ? '/bin/sh' : '/bin/bash'],
+                    [cmd],
                     stdoutStream,
                     stderrStream,
                     stdinStream,

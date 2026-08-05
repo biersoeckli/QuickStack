@@ -12,7 +12,7 @@ interface ZustandConfirmDialogProps {
 
 export interface DialogProps {
     title: string;
-    description: string | JSX.Element;
+    description: ReactNode;
     okButton?: string;
     cancelButton?: string;
 }

@@ -3,7 +3,7 @@ import buildGitInitContainerService from "./build-git-init-container.service";
 describe('BuildGitInitContainerService', () => {
     it('builds a git init container that clones into the shared workspace and pins the commit', () => {
         const container = buildGitInitContainerService.getInitContainer({
-            app: {
+            workload: {
                 id: 'app-1',
                 projectId: 'project-1',
                 gitUrl: 'https://github.com/example/repo.git',
@@ -11,6 +11,7 @@ describe('BuildGitInitContainerService', () => {
                 gitUsername: 'user',
                 gitToken: 'token',
             } as any,
+            workloadType: 'app',
             buildName: 'build-1',
             deploymentId: 'deployment-1',
             latestRemoteGitHash: 'abc123',
@@ -39,7 +40,7 @@ describe('BuildGitInitContainerService', () => {
 
     it('mounts an SSH key secret and configures GIT_SSH_COMMAND for SSH auth', () => {
         const container = buildGitInitContainerService.getInitContainer({
-            app: {
+            workload: {
                 id: 'app-1',
                 projectId: 'project-1',
                 sourceType: 'GIT_SSH',
@@ -48,6 +49,7 @@ describe('BuildGitInitContainerService', () => {
                 gitUsername: 'user',
                 gitToken: 'token',
             } as any,
+            workloadType: 'app',
             buildName: 'build-1',
             deploymentId: 'deployment-1',
             latestRemoteGitHash: 'abc123',

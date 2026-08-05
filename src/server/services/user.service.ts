@@ -90,6 +90,9 @@ export class UserService {
             if (!dbUser) {
                 return null;
             }
+            if (dbUser.apiOnlyUser) {
+                return null;
+            }
             const isPasswordValid = await bcrypt.compare(credentials.password, dbUser.password);
             if (!isPasswordValid) {
                 return null;
@@ -100,14 +103,15 @@ export class UserService {
         }
     }
 
-    async registerUser(email: string, password: string, userGroupId: string | null) {
+    async registerUser(email: string, password: string, userGroupId: string | null, apiOnlyUser = false) {
         try {
             const hashedPassword = await bcrypt.hash(password, saltRounds);
             const user = await dataAccess.client.user.create({
                 data: {
                     email,
                     password: hashedPassword,
-                    userGroupId
+                    userGroupId,
+                    apiOnlyUser
                 }
             });
             return user;
@@ -124,12 +128,14 @@ export class UserService {
                 userGroupId: true,
                 createdAt: true,
                 updatedAt: true,
-                userGroup: true
+                userGroup: true,
+                apiOnlyUser: true,
+                _count: { select: { restApiKeys: true } }
             }
         }),
             [Tags.users()], {
             tags: [Tags.users()]
-        })();
+        })().then(users => users.map(({ _count, ...user }) => ({ ...user, apiKeyCount: _count.restApiKeys })));
     }
 
     async getUserById(id: string): Promise<UserExtended> {
@@ -143,9 +149,11 @@ export class UserService {
                 userGroupId: true,
                 createdAt: true,
                 updatedAt: true,
-                userGroup: true
+                userGroup: true,
+                apiOnlyUser: true,
+                _count: { select: { restApiKeys: true } }
             }
-        });
+        }).then(({ _count, ...user }) => ({ ...user, apiKeyCount: _count.restApiKeys }));
     }
 
     async getUserByEmail(email: string) {

@@ -1,4 +1,3 @@
-import { stringToNumber } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const userEditZodModel = z.object({
@@ -6,6 +5,7 @@ export const userEditZodModel = z.object({
   email: z.string().trim().min(1),
   newPassword: z.string().optional(),
   userGroupId: z.string().trim().nullable(),
+  apiOnlyUser: z.boolean().optional().default(false),
 })
 
 export type UserEditModel = z.infer<typeof userEditZodModel>;

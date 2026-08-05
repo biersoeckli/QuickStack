@@ -1,0 +1,1 @@
+ALTER TABLE "Project" ADD COLUMN "projectType" TEXT NOT NULL DEFAULT 'APP';

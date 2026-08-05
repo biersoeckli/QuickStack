@@ -26,14 +26,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input";
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+
 import { DataTablePagination } from "@/components/ui/pagignation"
 import { DataTableViewOptions } from "@/components/ui/column-toggle"
 
@@ -77,15 +72,6 @@ export function DefaultDataTable<TData, TValue>({
     }, {} as VisibilityState);
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(initialVisabilityState);
 
-    React.useEffect(() => {
-        if (onRowSelectionUpdate) {
-            const indexes = Object.keys(rowSelection).filter(key => Boolean(rowSelection[key] as boolean)).map(key => parseInt(key));
-            // the core row model contains all unfilteres rows, the indexes wich are given by the rowSelection are the indexes of the core row model
-            const values = table.getCoreRowModel().rows.map(row => row.original);
-            onRowSelectionUpdate(values.filter((_, index) => indexes.includes(index)));
-        }
-    }, [rowSelection]);
-
     const table = useReactTable({
         data,
         columns,
@@ -112,6 +98,15 @@ export function DefaultDataTable<TData, TValue>({
     });
 
     React.useEffect(() => {
+        if (onRowSelectionUpdate) {
+            const indexes = Object.keys(rowSelection).filter(key => Boolean(rowSelection[key] as boolean)).map(key => parseInt(key));
+            // the core row model contains all unfilteres rows, the indexes wich are given by the rowSelection are the indexes of the core row model
+            const values = table.getCoreRowModel().rows.map(row => row.original);
+            onRowSelectionUpdate(values.filter((_, index) => indexes.includes(index)));
+        }
+    }, [onRowSelectionUpdate, rowSelection, table]);
+
+    React.useEffect(() => {
         if (onTableStateChanged) {
             onTableStateChanged({
                 sorting,
@@ -120,7 +115,7 @@ export function DefaultDataTable<TData, TValue>({
                 columnVisibility
             })
         }
-    }, [sorting, columnVisibility, globalFilter, pagination]);
+    }, [sorting, columnVisibility, globalFilter, pagination, onTableStateChanged]);
 
     return (
         <div>

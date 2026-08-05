@@ -10,6 +10,7 @@ export const UserModel = z.object({
   password: z.string(),
   twoFaSecret: z.string().nullish(),
   twoFaEnabled: z.boolean(),
+  apiOnlyUser: z.boolean(),
   image: z.string().nullish(),
   userGroupId: z.string().nullish(),
   createdAt: z.date(),

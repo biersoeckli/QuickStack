@@ -2,13 +2,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { ClipboardCopy, KeyRound, Link as LinkIcon, RefreshCw } from "lucide-react";
 import { BranchLoadingState, IconInput } from "./source-wizard-fields";
-import { SourceFormPatch } from "./types";
+import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function GitSshUrlStep({ formData, publicKey, isEnsuringKey, isLoadingBranches, branchError, onChange, onCopy, onRegenerate, onRetry }: {
-    formData: AppSourceInfoInputModel;
+    formData: SourceWizardInput;
     publicKey?: string;
     isEnsuringKey: boolean;
     isLoadingBranches: boolean;

@@ -14,7 +14,7 @@ export class FsUtils {
         try {
             await fs.promises.access(pathName, fs.constants.F_OK);
             return true;
-        } catch (ex) {
+        } catch {
             return false;
         }
     }
@@ -22,7 +22,7 @@ export class FsUtils {
     static async deleteFileIfExists(pathName: string) {
         try {
             await fs.promises.unlink(pathName);
-        } catch (ex) {
+        } catch {
 
         }
     }
@@ -30,7 +30,7 @@ export class FsUtils {
     static directoryExists(pathName: string) {
         try {
             return fs.existsSync(pathName);
-        } catch (ex) {
+        } catch {
             return false;
         }
     }
@@ -39,7 +39,7 @@ export class FsUtils {
         try {
             const files = await fs.promises.readdir(pathName);
             return files.length === 0;
-        } catch (ex) {
+        } catch {
             return true;
         }
     }
@@ -56,7 +56,7 @@ export class FsUtils {
         let exists = false;
         try {
             exists = fs.existsSync(pathName);
-        } catch (ex) {
+        } catch {
 
         }
         if (!exists) {
@@ -70,7 +70,7 @@ export class FsUtils {
         let exists = false;
         try {
             exists = fs.existsSync(pathName);
-        } catch (ex) {
+        } catch {
 
         }
         if (!exists) {
@@ -84,7 +84,7 @@ export class FsUtils {
     static async getAllFilesInDir(pathName: string) {
         try {
             return await fs.promises.readdir(pathName);
-        } catch (ex) {
+        } catch {
             return [];
         }
     }

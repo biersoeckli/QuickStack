@@ -1,13 +1,28 @@
 import { ServiceException } from '@/shared/model/service.exception.model';
 import * as k8s from '@kubernetes/client-node';
+import { ConfigurationOptions, PatchStrategy } from '@kubernetes/client-node';
 
-class K3sApiAdapter {
+export function kubernetesPatchOptions(contentType: PatchStrategy): ConfigurationOptions {
+    return {
+        middleware: [{
+            pre: (context) => {
+                context.setHeaderParam('Content-Type', contentType);
+                return new k8s.Observable(Promise.resolve(context));
+            },
+            post: (context) => new k8s.Observable(Promise.resolve(context)),
+        }],
+
+    };
+}
+
+export class K3sApiAdapter {
 
     core: k8s.CoreV1Api;
     apps: k8s.AppsV1Api;
     batch: k8s.BatchV1Api;
     log: k8s.Log;
     network: k8s.NetworkingV1Api;
+    storage: k8s.StorageV1Api;
     customObjects: k8s.CustomObjectsApi;
     metrics: k8s.Metrics;
 
@@ -17,8 +32,16 @@ class K3sApiAdapter {
         this.batch = this.getK8sBatchApiClient();
         this.log = this.getK8sLogApiClient();
         this.network = this.getK8sNetworkApiClient();
+        this.storage = this.getK8sStorageApiClient();
         this.customObjects = this.getK8sCustomObjectsApiClient();
         this.metrics = this.getMetricsApiClient();
+    }
+
+    /**
+     * Checks if the provided error is a k8s "Not Found" error (HTTP 404).
+     */
+    static isNotFoundError(error: any): boolean {
+        return error?.code === 404;
     }
 
     getKubeConfig = () => {
@@ -67,6 +90,12 @@ class K3sApiAdapter {
         return networkClient;
     }
 
+    getK8sStorageApiClient = () => {
+        const kc = this.getKubeConfig()
+        const storageClient = kc.makeApiClient(k8s.StorageV1Api);
+        return storageClient;
+    }
+
     getMetricsApiClient = () => {
         return new k8s.Metrics(this.getKubeConfig());
     }
@@ -100,7 +129,7 @@ class K3sApiAdapter {
                 // If it exists, patch it
                 await client.patch(spec);
                 console.log(`Updated ${spec.kind}/${name}`);
-            } catch (error) {
+            } catch {
                 await client.create(spec);
                 console.log(`Created ${spec.kind}/${name}`);
             }

@@ -1,16 +1,16 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveBuildSettings } from "./actions";
 import { NodeInfoModel } from "@/shared/model/node-info.model";
@@ -26,7 +26,7 @@ export default function QsBuildSettings({
     buildSettings: BuildSettingsModel;
     nodes: NodeInfoModel[];
 }) {
-    const form = useForm<BuildSettingsModel>({
+    const form = useForm<z.input<typeof buildSettingsZodModel>, unknown, z.output<typeof buildSettingsZodModel>>({
         resolver: zodResolver(buildSettingsZodModel),
         defaultValues: {
             ...buildSettings,
@@ -34,7 +34,7 @@ export default function QsBuildSettings({
         },
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
         FormUtils.getInitialFormState<typeof buildSettingsZodModel>()
     );
@@ -44,7 +44,7 @@ export default function QsBuildSettings({
             toast.success('Build settings saved.');
         }
         FormUtils.mapValidationErrorsToForm<typeof buildSettingsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     const watchedBuildNode = form.watch('buildNode');
     const isK3sNative = watchedBuildNode === Constants.BUILD_NODE_K3S_NATIVE_VALUE;
@@ -59,7 +59,7 @@ export default function QsBuildSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     const payload = {
                         ...data,
                         buildNode: data.buildNode === Constants.BUILD_AUTO_NODE_VALUE || data.buildNode === '' ? null : data.buildNode,

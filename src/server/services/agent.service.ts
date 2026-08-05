@@ -1,0 +1,606 @@
+import { revalidateTag, unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
+import dataAccess from "../adapter/db.client";
+import { Tags } from "../utils/cache-tag-generator.utils";
+import { Agent } from "@prisma/client";
+import { AgentExtendedWriteModel, AgentExtendedModel, AgentExtendedWriteZodModel } from "@/shared/model/agent-extended.model";
+import { ServiceException } from "@/shared/model/service.exception.model";
+import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
+import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
+import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
+import { CryptoUtils } from "../utils/crypto.utils";
+import namespaceService from "./namespace.service";
+import agentRuntimeService from "./agent-runtime.service";
+import { Constants } from "@/shared/utils/constants";
+import { AgentSandboxTemplateInfo } from "@/shared/model/agent-sandbox-template-info.model";
+import secretService from "./secret.service";
+import ingressService from "./ingress.service";
+import pvcService from "./pvc.service";
+import configMapService from "./config-map.service";
+import agentDomainService from "./agent-domain.service";
+import agentVolumeService from "./agent-volume.service";
+import agentFileMountService from "./agent-file-mount.service";
+import agentNetworkPolicyService from "./agent-network-policy.service";
+import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
+import crypto from "crypto";
+import buildService from "./build.service";
+import registryService from "./registry.service";
+import deploymentLogService, { dlog } from "./deployment-logs.service";
+import { CatchUtils } from "@/shared/utils/catch.utils";
+import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
+import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+
+type AgentSaveInput =
+    | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
+    | (Omit<Prisma.AgentUncheckedUpdateInput, 'modelAlias'> & { modelAlias?: unknown });
+
+class AgentService {
+
+    async agentCrdAreInstalled() {
+        const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.sandboxClaimApiIsInstalled());
+        return !!(result ?? false);
+    }
+
+    private get agentInclude() {
+        return {
+            project: true,
+            llmGateway: true,
+            agentDomains: true,
+            agentVolumes: true,
+            agentFileMounts: true,
+            agentGitSshKey: true,
+            agentNetworkPolicy: {
+                include: {
+                    rules: {
+                        include: { targetApp: true },
+                    },
+                },
+            },
+        };
+    }
+
+    private normalizeAgentModelAliases<T extends { modelAlias: unknown }>(agent: T): Omit<T, 'modelAlias'> & { modelAlias: string[] } {
+        return {
+            ...agent,
+            modelAlias: AgentModelAliasUtils.normalize(agent.modelAlias),
+        };
+    }
+
+    async getAll(): Promise<AgentExtendedModel[]> {
+        const agents = (await dataAccess.client.agent.findMany({
+            include: this.agentInclude,
+            orderBy: { name: 'asc' },
+        })).map((agent) => this.normalizeAgentModelAliases(agent));
+
+        agents.sort((a, b) => {
+            const projectComparison = a.project.name.localeCompare(b.project.name, undefined, { sensitivity: 'base' });
+            if (projectComparison !== 0) {
+                return projectComparison;
+            }
+            return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+
+        return agents;
+    }
+
+    async getAllByProjectId(projectId: string): Promise<AgentExtendedModel[]> {
+        return await unstable_cache(
+            async (pid: string) => (await dataAccess.client.agent.findMany({
+                where: { projectId: pid },
+                include: this.agentInclude,
+                orderBy: { name: 'asc' },
+            })).map((agent) => this.normalizeAgentModelAliases(agent)),
+            [Tags.agents(projectId)],
+            { tags: [Tags.agents(projectId)] },
+        )(projectId);
+    }
+
+    async getById(agentId: string, tx?: Prisma.TransactionClient): Promise<AgentExtendedModel> {
+        if (tx) {
+            const agent = await tx.agent.findFirstOrThrow({
+                where: { id: agentId },
+                include: this.agentInclude,
+            });
+            return this.normalizeAgentModelAliases(agent);
+        }
+        return await unstable_cache(
+            async (id: string) => this.normalizeAgentModelAliases(await dataAccess.client.agent.findFirstOrThrow({
+                where: { id },
+                include: this.agentInclude,
+            })),
+            [Tags.agent(agentId)],
+            { tags: [Tags.agent(agentId)] },
+        )(agentId);
+    }
+
+    async getByIdOrUndefined(agentId: string): Promise<AgentExtendedModel | null> {
+        return await unstable_cache(
+            async (id: string) => {
+                const agent = await dataAccess.client.agent.findFirst({
+                    where: { id },
+                    include: this.agentInclude,
+                });
+                return agent ? this.normalizeAgentModelAliases(agent) : null;
+            },
+            [Tags.agent(agentId)],
+            { tags: [Tags.agent(agentId)] },
+        )(agentId);
+    }
+
+    /**
+     * Upserts an Agent along with its sub-resources (domains, volumes, file mounts, network policy)
+     * in a single transaction. Delegates per-item save logic to the respective
+     * sub-services ({@link agentDomainService}, {@link agentVolumeService}, {@link agentFileMountService}, {@link agentNetworkPolicyService}).
+     *
+     * - If {@link AgentExtendedWriteModel.id} is provided and the agent exists → update.
+     * - If the id is provided but no agent exists → create with that id.
+     * - If the id is absent → create with a generated id.
+     *
+     * When called inside an existing transaction pass the `tx`; cache revalidation
+     * is deferred to the caller.  When called standalone (no `tx`) the method wraps
+     * everything in a new `$transaction` and revalidates caches itself.
+     */
+    async saveAgentExtendedModel(
+        agentExtendedInput: AgentExtendedWriteModel,
+        inputTx?: Prisma.TransactionClient,
+    ): Promise<AgentExtendedModel> {
+        const run = async (tx: Prisma.TransactionClient) => {
+            const {
+                agentDomains: agentDomainsInput,
+                agentVolumes: agentVolumesInput,
+                agentFileMounts: agentFileMountsInput,
+                agentNetworkPolicy: agentNetworkPolicyInput,
+                ...agentInputData
+            } = AgentExtendedWriteZodModel.parse(agentExtendedInput);
+            const savedAgent = await this.saveAgent(agentInputData, tx);
+            const savedAgentId = savedAgent.id;
+
+
+            // Sub-resources via dedicated sub-services
+            // Delete stale domains before upserts so newly created domains without id are not removed immediately.
+            {
+                const existingDomains = await tx.agentDomain.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agentDomainsInput.map((d) => d.id).filter(Boolean) as string[]);
+                for (const existing of existingDomains) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentDomainService.deleteDomain(existing.id, tx);
+                    }
+                }
+            }
+            for (const domain of agentDomainsInput) {
+                await agentDomainService.saveDomain({
+                    id: domain.id,
+                    hostname: domain.hostname,
+                    port: domain.port,
+                    useSsl: domain.useSsl,
+                    redirectHttps: domain.redirectHttps,
+                    agentId: savedAgentId,
+                }, tx);
+            }
+
+            // Delete stale volumes before upserts so newly created volumes without id are not removed immediately.
+            {
+                const existingVolumes = await tx.agentVolume.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agentVolumesInput.map((v) => v.id).filter(Boolean) as string[]);
+                for (const existing of existingVolumes) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentVolumeService.deleteVolume(existing.id, tx);
+                    }
+                }
+            }
+            for (const volume of agentVolumesInput) {
+                await agentVolumeService.saveVolume({
+                    id: volume.id,
+                    containerMountPath: volume.containerMountPath,
+                    size: volume.size,
+                    storageClassName: volume.storageClassName,
+                    agentId: savedAgentId,
+                }, tx);
+            }
+
+            // Delete stale file mounts before upserts so newly created mounts without id are not removed immediately.
+            {
+                const existingFileMounts = await tx.agentFileMount.findMany({ where: { agentId: savedAgentId } });
+                const keepIds = new Set(agentFileMountsInput.map((f) => f.id).filter(Boolean) as string[]);
+                for (const existing of existingFileMounts) {
+                    if (!keepIds.has(existing.id)) {
+                        await agentFileMountService.deleteFileMount(existing.id, tx);
+                    }
+                }
+            }
+            for (const fileMount of agentFileMountsInput) {
+                await agentFileMountService.saveFileMount({
+                    id: fileMount.id,
+                    containerMountPath: fileMount.containerMountPath,
+                    content: fileMount.content,
+                    agentId: savedAgentId,
+                }, tx);
+            }
+
+            if (agentNetworkPolicyInput) {
+                await agentNetworkPolicyService.saveSettings({
+                    allowInternetAccess: agentNetworkPolicyInput.allowInternetAccess ?? true,
+                    agentId: savedAgentId,
+                }, tx);
+
+                // Delete stale egress rules before upserts so newly created rules without id are not removed immediately.
+                {
+                    const existingPolicy = await tx.agentNetworkPolicy.findUnique({ where: { agentId: savedAgentId } });
+                    if (existingPolicy) {
+                        const existingRules = await tx.agentNetworkPolicyRule.findMany({ where: { agentNetworkPolicyId: existingPolicy.id } });
+                        const keepIds = new Set(agentNetworkPolicyInput.rules.map((r) => r.id).filter(Boolean) as string[]);
+                        for (const existing of existingRules) {
+                            if (!keepIds.has(existing.id)) {
+                                await agentNetworkPolicyService.deleteEgressRule(existing.id, tx);
+                            }
+                        }
+                    }
+                }
+
+                for (const rule of agentNetworkPolicyInput.rules) {
+                    await agentNetworkPolicyService.saveEgressRule({
+                        id: rule.id,
+                        type: 'EGRESS',
+                        targetAppId: rule.targetAppId,
+                        port: rule.port ?? 443,
+                        protocol: (rule.protocol as 'TCP' | 'UDP') ?? 'TCP',
+                        agentId: savedAgentId,
+                    }, tx);
+                }
+            }
+
+            return await this.getById(savedAgentId, tx);
+        };
+
+        if (inputTx) {
+            return await run(inputTx);
+        }
+
+        const result = await dataAccess.client.$transaction(async (innerTx) => {
+            return await run(innerTx);
+        });
+
+        revalidateTag(Tags.agent(result.id));
+        revalidateTag(Tags.agents(result.projectId));
+        return result;
+    }
+
+    async saveAgent(data: AgentSaveInput, inputTx?: Prisma.TransactionClient): Promise<Agent> {
+        const tx = inputTx ?? dataAccess.client;
+        const isCreate = !('id' in data) || !data.id;
+
+        let savedItem: Agent | null = null;
+        try {
+            // if env vars exists, encrypt them
+            if (data.encryptedEnvVars) {
+                const parsed = JSON.parse(data.encryptedEnvVars as string) as { name: string; value: string }[];
+                const encrypted = parsed.map(ev => ({
+                    name: ev.name,
+                    value: CryptoUtils.encrypt(ev.value),
+                }));
+                data.encryptedEnvVars = JSON.stringify(encrypted);
+            }
+
+            if ('modelAlias' in data && data.modelAlias !== undefined) {
+                data.modelAlias = JSON.stringify(AgentModelAliasUtils.normalize(data.modelAlias));
+            }
+
+            if (isCreate) {
+                const project = await tx.project.findUnique({
+                    where: { id: data.projectId as string },
+                    select: { projectType: true },
+                });
+                if (!project || project.projectType !== 'AGENT') {
+                    throw new ServiceException("Agents can only be created in Agent Projects.");
+                }
+
+                savedItem = await tx.agent.create({
+                    data: {
+                        id: KubeObjectNameUtils.toAgentId(data.name as string),
+                        ...data,
+                    } as Prisma.AgentUncheckedCreateInput,
+                });
+            } else {
+                savedItem = await tx.agent.update({
+                    where: { id: data.id as string },
+                    data: data as Prisma.AgentUncheckedUpdateInput,
+                });
+            }
+            return savedItem;
+        } finally {
+            if (!inputTx) {
+                if (savedItem) { revalidateTag(Tags.agent(savedItem.id)); }
+                if (savedItem) { revalidateTag(Tags.agents(savedItem?.projectId)); }
+            }
+        }
+    }
+
+    async getSandboxTemplateDeployInfo(agentId: string) {
+        return await unstable_cache(
+            async (agentId: string) => {
+                const agent = await this.getById(agentId);
+                const agentTemplate = await agentSandboxAdapter.getSandboxTemplate(agentId, agent.projectId);
+                return {
+                    lastDeployedAt: agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT] ? new Date(agentTemplate?.metadata?.annotations?.[Constants.QS_ANNOTATION_UPDATED_AT]) : null,
+                } as AgentSandboxTemplateInfo;
+            },
+            [Tags.agent(agentId)],
+            { tags: [Tags.agent(agentId)] },
+        )(agentId);
+    }
+
+    async deploy(agentId: string, forceBuild = false): Promise<string> {
+        const deploymentId = crypto.randomUUID();
+        await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
+            const agent = await this.getById(agentId);
+            await dlog(deploymentId, `
+-----------------------------------------------
+ Deployment:   ${deploymentId}
+ Agent:        ${agent.id}
+ Project:      ${agent.projectId}
+-----------------------------------------------`, false);
+
+            const hasRunningSandboxes = await agentRuntimeService.listSandboxes(agentId).then(sandboxes => sandboxes.length > 0);
+            if (hasRunningSandboxes) {
+                throw new ServiceException(
+                    'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
+                );
+            }
+
+            if (agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH') {
+                const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildAgent(deploymentId, agent, forceBuild);
+                if (shouldDeployImmediately) {
+                    await dlog(deploymentId, `Starting agent deployment with output from build "${buildJobName}"`);
+                    await this.reconcileSandboxTemplateDeployment(agent.id, registryService.createContainerRegistryUrlForAppId(agent.id), deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
+                }
+                return;
+            }
+
+            await this.reconcileSandboxTemplateDeployment(agentId, undefined, deploymentId);
+        });
+        return deploymentId;
+    }
+
+    async deployBuiltAgent(
+        agentId: string,
+        deploymentId: string,
+        buildJobName: string,
+        gitCommitHash?: string,
+        gitCommitMessage?: string,
+    ): Promise<Agent> {
+        return this.reconcileSandboxTemplateDeployment(
+            agentId,
+            registryService.createContainerRegistryUrlForAppId(agentId),
+            deploymentId,
+            buildJobName,
+            gitCommitHash,
+            gitCommitMessage,
+        );
+    }
+
+    private async reconcileSandboxTemplateDeployment(
+        agentId: string,
+        containerImageOverride?: string,
+        deploymentId?: string,
+        buildJobName?: string,
+        gitCommitHash?: string,
+        gitCommitMessage?: string,
+    ): Promise<Agent> {
+        const agent = await this.getById(agentId);
+        if (!agent) {
+            throw new ServiceException('Agent not found.');
+        }
+
+        await namespaceService.createNamespaceIfNotExists(agent.project.id);
+
+        const hasRunningSandboxes = await agentRuntimeService.listSandboxes(agentId).then(sandboxes => sandboxes.length > 0);
+        if (hasRunningSandboxes) {
+            throw new ServiceException(
+                'Cannot deploy runtime configuration changes while the Agent is running. Stop the Agent first.',
+            );
+        }
+
+        const volumePvcData: {
+            volume: V1Volume;
+            volumeMount: V1VolumeMount;
+        }[] = [];
+        for (const volume of agent.agentVolumes) {
+            const volumePvcDataItem = await pvcService.ensurePvcForUserAgent(
+                agent.project.id,
+                volume,
+            );
+            volumePvcData.push(volumePvcDataItem);
+        }
+
+        await pvcService.deleteUnusedPvcForAgent(
+            agent.project.id,
+            agent.id,
+            agent.agentVolumes,
+        );
+
+        const { fileVolumeMounts, fileVolumes } = await configMapService.createOrUpdateConfigMapForAgent(agent);
+
+        try {
+            const dockerPullSecretName = containerImageOverride
+                ? undefined
+                : await secretService.createOrUpdateAgentDockerPullSecret(agent);
+
+            const containerImageSource = containerImageOverride ?? agent.containerImageSource;
+            if (!containerImageSource) {
+                throw new ServiceException('Container image source is missing. Cannot deploy for Agent.');
+            }
+            await agentRuntimeService.refreshRuntimeSecret(agent.id);
+            const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
+            const modelMetadata = await this.loadLiteLlmModelMetadata(agent, modelAliases);
+            await agentSandboxAdapter.reconcileSandboxTemplate(agentSandboxTemplateBuilder.buildSandboxTemplateResource({
+                id: agent.id,
+                projectId: agent.project.id,
+                containerImageSource,
+                modelAlias: modelAliases,
+                modelMetadata,
+                llmGateway: agent.llmGateway,
+                cpuRequest: agent.cpuRequest ?? null,
+                cpuLimit: agent.cpuLimit ?? null,
+                memoryRequest: agent.memoryRequest ?? null,
+                memoryLimit: agent.memoryLimit ?? null,
+                containerCommand: agent.containerCommand ?? null,
+                containerArgs: agent.containerArgs ?? null,
+                workingDir: agent.workingDir ?? null,
+                deployFileBrowser: agent.deployFileBrowser,
+                healthChechHttpGetPath: agent.healthChechHttpGetPath ?? null,
+                healthCheckHttpScheme: agent.healthCheckHttpScheme ?? null,
+                healthCheckHttpHeadersJson: agent.healthCheckHttpHeadersJson ?? null,
+                healthCheckHttpPort: agent.healthCheckHttpPort ?? null,
+                healthCheckPeriodSeconds: agent.healthCheckPeriodSeconds,
+                healthCheckTimeoutSeconds: agent.healthCheckTimeoutSeconds,
+                healthCheckFailureThreshold: agent.healthCheckFailureThreshold,
+                healthCheckTcpPort: agent.healthCheckTcpPort ?? null,
+                volumePvcData,
+                fileVolumes,
+                fileVolumeMounts,
+                agentDomains: agent.agentDomains,
+                agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
+            }, {
+                dockerPullSecretName,
+                deploymentId,
+                buildJobName,
+                gitCommitHash,
+                gitCommitMessage,
+            }));
+
+            await agentSandboxAdapter.reconcileSandboxWarmPool(
+                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
+            );
+
+            // Reconcile agent domain ingresses — clean up orphaned, then ensure current
+            const currentHostnames = new Set(agent.agentDomains.map(d => d.hostname));
+            const existingRoutes = await ingressService.listAgentIngress(agent.id);
+            for (const route of existingRoutes) {
+                if (!currentHostnames.has(route.hostname)) {
+                    await ingressService.deleteAgentIngress(route.hostname);
+                }
+            }
+            for (const domain of agent.agentDomains) {
+                await ingressService.createOrUpdateAgentIngress(agent, domain);
+            }
+            await configMapService.deleteUnusedConfigMapsForAgent(agent);
+            await secretService.deleteUnusedAgentDockerPullSecret(agent);
+        } catch (error: any) {
+            console.error(`Failed to deploy sandbox resources for agent ${agentId}:`, error);
+            throw new ServiceException(
+                `Failed to deploy sandbox resources: ${error?.message || error}`,
+            );
+        } finally {
+            revalidateTag(Tags.agent(agentId));
+            revalidateTag(Tags.agents(agent.projectId));
+        }
+
+        return await dataAccess.client.agent.findUniqueOrThrow({
+            where: { id: agentId },
+        });
+    }
+
+    private async loadLiteLlmModelMetadata(agent: AgentExtendedModel, modelAliases: string[]) {
+        if (!agent.llmGateway?.encryptedAdminKey) {
+            return {};
+        }
+
+        try {
+            const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+            const modelInfo = await liteLlmApiAdapter.listModelInfo(agent.llmGateway.baseUrl, adminKey);
+            const selectedAliases = new Set(modelAliases);
+            return Object.fromEntries(modelInfo
+                .filter((item) => selectedAliases.has(item.modelName))
+                .map((item) => [item.modelName, item]));
+        } catch (error) {
+            console.warn(`Could not load LiteLLM model metadata for agent ${agent.id}:`, error);
+            return {};
+        }
+    }
+
+    /**
+     * Deletes an Agent and all associated resources using a safe cleanup order:
+     *
+     * 1. Extract virtual key from runtime secret if the agent is running.
+     * 2. Delete the LiteLLM virtual key via the Gateway API, best-effort.
+     *    Failures are logged and do not block Agent cleanup.
+     * 3. Stop runtime resources (SandboxClaim) — idempotent.
+     * 4. Delete all Agent-owned Kubernetes resources.
+     * 5. Delete the DB Agent record in a transaction.
+     */
+    async deleteById(agentId: string): Promise<void> {
+        const existing = await this.getById(agentId).catch(() => null);
+        if (!existing) {
+            return;
+        }
+
+        const namespace = existing.project.id;
+
+        // 1. Extract virtual key from runtime secret before stopping
+        let virtualKey: string | null = null;
+        try {
+            const secretData = await secretService.getDecodedSecret(
+                KubeObjectNameUtils.toSecretId(agentId),
+                namespace,
+            );
+            if (secretData?.QS_VIRTUAL_KEY) {
+                virtualKey = secretData.QS_VIRTUAL_KEY;
+            }
+        } catch {
+            // Secret not found or inaccessible — key already cleaned up or never existed
+        }
+
+        // 2. Delete LiteLLM virtual key before destructive resource cleanup.
+        // This is best-effort: an orphaned gateway key is recoverable, user data is not.
+        if (virtualKey && existing.llmGateway?.encryptedAdminKey) {
+            try {
+                const adminKey = CryptoUtils.decrypt(existing.llmGateway.encryptedAdminKey);
+                await liteLlmApiAdapter.deleteVirtualKey(
+                    existing.llmGateway.baseUrl,
+                    adminKey,
+                    virtualKey,
+                );
+            } catch (error: any) {
+                const virtualKeyId = crypto.createHash('sha256').update(virtualKey).digest('hex').slice(0, 12);
+                console.warn(
+                    `Failed to delete LiteLLM virtual key during Agent cleanup; continuing `
+                    + `(agentId=${agentId}, gatewayId=${existing.llmGateway.id}, virtualKeyId=${virtualKeyId}):`,
+                    error,
+                );
+            }
+        }
+
+        // 3. Stop runtime resources, then delete irreversible Agent-owned data.
+        await agentRuntimeService.stopAllSandboxes(agentId);
+        await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
+        await buildService.deleteAllBuildsOfAgent(agentId);
+
+        // 4. Delete K8s sandbox resources (best-effort before DB cleanup)
+        await ingressService.deleteAllAgentIngresses(agentId);
+        await configMapService.deleteAllConfigMapsForAgent(existing);
+        await secretService.deleteSecretSafe(KubeObjectNameUtils.toSecretId(agentId), namespace);
+        await secretService.deleteSecretSafe(KubeObjectNameUtils.toPullSecretId(agentId), namespace);
+        await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
+        await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
+
+        // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
+        await dataAccess.client.$transaction(async (tx) => {
+            const current = await tx.agent.findUnique({
+                where: { id: agentId },
+            });
+            if (current) {
+                await tx.agent.delete({
+                    where: { id: agentId },
+                });
+            }
+        });
+
+        revalidateTag(Tags.agents(existing.projectId));
+        revalidateTag(Tags.agent(agentId));
+        revalidateTag(Tags.projects());
+    }
+
+}
+
+const agentService = new AgentService();
+export default agentService;

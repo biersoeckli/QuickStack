@@ -1,5 +1,5 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -24,10 +24,10 @@ export default function DbToolSwitch({
     const [isDbToolActive, setIsDbToolActive] = useState<boolean | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
-    const loadIdDbToolActive = async (appId: string) => {
+    const loadIdDbToolActive = useCallback(async (appId: string) => {
         const response = await Actions.run(() => getIsDbToolActive(appId, toolId));
         setIsDbToolActive(response);
-    }
+    }, [toolId])
 
     const openDbTool = async () => {
         try {
@@ -64,7 +64,7 @@ export default function DbToolSwitch({
         return () => {
             setIsDbToolActive(undefined);
         }
-    }, [app]);
+    }, [app, loadIdDbToolActive]);
 
     return <>
         <div className="flex gap-4 items-center">

@@ -18,7 +18,7 @@ export default function CheckboxFormField<TFormType extends FieldValues>(
         label,
         name
     }: {
-        form: UseFormReturn<TFormType, any, undefined>,
+        form: UseFormReturn<TFormType, any, TFormType>,
         label: string
         name: keyof TFormType
     }

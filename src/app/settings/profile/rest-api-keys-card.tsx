@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { useDialogContext } from "@/frontend/states/dialog-context";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { createRestApiKey, deleteRestApiKey } from "./actions";
+import { deleteRestApiKey } from "./actions";
 import { CreateApiKeyDialog } from "./create-api-key-dialog";
 import { useRouter } from "next/navigation";
 

@@ -16,6 +16,10 @@ export class Tags {
         return `targets`;
     }
 
+    static llmGateways() {
+        return `llm-gateways`;
+    }
+
     static volumeBackups() {
         return `volume-backups`;
     }
@@ -32,6 +36,14 @@ export class Tags {
         return `app-${appId}`;
     }
 
+    static agents(projectId: string) {
+        return `agents-${projectId}`;
+    }
+
+    static agent(agentId: string) {
+        return `agent-${agentId}`;
+    }
+
     static apiKey(userId: string) {
         return `api-key-${userId}`;
     }
@@ -42,6 +54,10 @@ export class Tags {
 
     static nodeInfos() {
         return `node-infos`;
+    }
+
+    static storageClasses() {
+        return `storage-classes`;
     }
 
     static quickStackVersionInfo() {

@@ -1,6 +1,6 @@
 'use server'
 
-import { getAuthUserSession, isAuthorizedForBackups } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedForBackups } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import backupService from "@/server/services/standalone-services/backup.service";
 import BackupsTable from "./backups-table";
@@ -11,6 +11,7 @@ import {
     AlertDescription,
     AlertTitle,
 } from "@/components/ui/alert"
+import BreadcrumbSetter from "@/components/breadcrumbs-setter";
 
 
 export default async function BackupsPage() {
@@ -30,6 +31,9 @@ export default async function BackupsPage() {
                 title={'Backups'}
                 subtitle={`View all backups wich are stored in all S3 Target destinations. If a backup exists from an app wich doesnt exist anymore, it will be shown as orphaned.`}>
             </PageTitle>
+            <BreadcrumbSetter items={[
+                { name: "Backups", url: "/backups" },
+            ]} />
             <div className="space-y-4">
                 {!backupData && <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -64,7 +68,7 @@ export default async function BackupsPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>No Backups configured</AlertTitle>
                     <AlertDescription>
-                        No backups are currently stored in the S3 targets. To configure backups for your apps, navigate to the settings of each app and configure a backup schedule in the "Storage" tab.
+                        No backups are currently stored in the S3 targets. To configure backups for your apps, navigate to the settings of each app and configure a backup schedule in the &quot;Storage&quot; tab.
                     </AlertDescription>
                 </Alert>}
                 <BackupsTable data={backupInfoModels} />

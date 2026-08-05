@@ -22,6 +22,7 @@ export async function getIdentityFromApiKeyHeader(authorizationHeader: string | 
     return {
         type: 'apiKey',
         session: {
+            userId: apiKeyRecord.user.id,
             email: apiKeyRecord.user.email,
             userGroup: userGroup ?? undefined,
         }

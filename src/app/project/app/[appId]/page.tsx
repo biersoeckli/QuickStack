@@ -1,4 +1,4 @@
-import { getAuthUserSession, isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp } from "@/server/utils/action-wrapper.utils";
 import appService from "@/server/services/app.service";
 import AppTabs from "./app-tabs";
 import AppBreadcrumbs from "./app-breadcrumbs";
@@ -12,20 +12,22 @@ export default async function AppPage({
     searchParams,
     params
 }: {
-    searchParams?: { [key: string]: string | undefined };
-    params: { appId: string }
+    searchParams?: Promise<{ [key: string]: string | undefined }>;
+    params: Promise<{ appId: string }>
 }) {
-    const appId = params?.appId;
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    const appId = resolvedParams?.appId;
     if (!appId) {
         return <p>Could not find app with id {appId}</p>
     }
     const session = await isAuthorizedReadForApp(appId);
     const role = UserGroupUtils.getRolePermissionForApp(session, appId);
     const app = await appService.getExtendedById(appId);
-    const [s3Targets, volumeBackups, nodesInfo, apps, gitSshPublicKey] = await Promise.all([
+    const [s3Targets, volumeBackups, storageClasses, apps, gitSshPublicKey] = await Promise.all([
         s3TargetService.getAll(),
         volumeBackupService.getForApp(appId),
-        clusterService.getNodeInfo(),
+        clusterService.getStorageClasses(),
         appService.getAllAppsByProjectID(app.projectId),
         appGitSshKeyService.getPublicKey(appId),
     ]);
@@ -37,9 +39,9 @@ export default async function AppPage({
             s3Targets={s3Targets}
             gitSshPublicKey={gitSshPublicKey}
             app={app}
-            nodesInfo={nodesInfo}
-            tabName={searchParams?.tabName ?? 'overview'} />
-        <AppBreadcrumbs app={app} apps={apps} tabName={searchParams?.tabName} />
+            storageClasses={storageClasses}
+            tabName={resolvedSearchParams?.tabName ?? 'overview'} />
+        <AppBreadcrumbs app={app} apps={apps} tabName={resolvedSearchParams?.tabName} />
     </>
     )
 }

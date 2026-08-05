@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -12,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppPort } from "@prisma/client"
@@ -28,12 +29,12 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
 
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
-    const form = useForm<AppPortModel>({
+    const form = useForm<z.input<typeof appPortZodModel>, unknown, z.output<typeof appPortZodModel>>({
         resolver: zodResolver(appPortZodModel),
         defaultValues: appPort
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppPortModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppPortModel) =>
         savePort(state, payload, appId, appPort?.id), FormUtils.getInitialFormState<typeof appPortZodModel>());
 
     useEffect(() => {
@@ -45,13 +46,11 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof appPortZodModel>(state, form);
-    }, [state]);
-
-    const values = form.watch();
+    }, [form, state]);
 
     useEffect(() => {
         form.reset(appPort);
-    }, [appPort]);
+    }, [appPort, form]);
 
 
     return (
@@ -59,7 +58,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
             <div onClick={() => setIsOpen(true)}>
                 {children}
             </div>
-            <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Edit Internal Port</DialogTitle>
@@ -68,7 +67,7 @@ export default function DefaultPortEditDialog({ children, appPort, appId }: { ch
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

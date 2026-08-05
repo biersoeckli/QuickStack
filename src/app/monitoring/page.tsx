@@ -4,12 +4,9 @@ import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import clusterService from "@/server/services/cluster.service";
 import ResourceNodes from "./monitoring-nodes";
-import { NodeResourceModel } from "@/shared/model/node-resource.model";
-import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
 import monitoringService from "@/server/services/monitoring.service";
 import AppRessourceMonitoring from "./app-monitoring";
 import AppVolumeMonitoring from "./app-volumes-monitoring";
-import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 

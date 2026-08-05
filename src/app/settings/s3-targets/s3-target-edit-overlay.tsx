@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -12,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { S3Target } from "@prisma/client"
@@ -29,12 +30,12 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
 
-  const form = useForm<S3TargetEditModel>({
+  const form = useForm<z.input<typeof s3TargetEditZodModel>, unknown, z.output<typeof s3TargetEditZodModel>>({
     resolver: zodResolver(s3TargetEditZodModel),
     defaultValues: target
   });
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: S3TargetEditModel) =>
     saveS3Target(state, {
       ...payload,
@@ -48,18 +49,18 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof s3TargetEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset(target);
-  }, [target]);
+  }, [form, target]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit S3 Target</DialogTitle>
@@ -67,7 +68,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
           <ScrollArea className="max-h-[70vh]">
             <div className="px-2">
               <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                   return formAction(data);
                 })()}>
                   <div className="space-y-4">

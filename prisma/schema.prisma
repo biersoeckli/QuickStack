@@ -75,6 +75,7 @@ model User {
   password      String
   twoFaSecret   String?
   twoFaEnabled  Boolean   @default(false)
+  apiOnlyUser   Boolean   @default(false)
   image         String?
 
   userGroupId String?
@@ -91,12 +92,12 @@ model User {
 }
 
 model RestApiKey {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  keyHash     String    @unique
-  expiresAt   DateTime?
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  keyHash   String    @unique
+  expiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,7 +156,8 @@ model RoleProjectPermission {
   writeApps   Boolean   @default(false)
   readApps    Boolean   @default(false)
 
-  roleAppPermissions RoleAppPermission[]
+  roleAppPermissions   RoleAppPermission[]
+  roleAgentPermissions RoleAgentPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,24 +179,189 @@ model RoleAppPermission {
   @@unique([roleProjectPermissionId, appId])
 }
 
+model RoleAgentPermission {
+  id                      String                 @id @default(uuid())
+  agent                   Agent                  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentId                 String
+  permission              String // READ, READWRITE
+  roleProjectPermission   RoleProjectPermission? @relation(fields: [roleProjectPermissionId], references: [id])
+  roleProjectPermissionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleProjectPermissionId, agentId])
+}
+
 model Project {
   id                     String                  @id @default(uuid())
   name                   String
+  projectType            String                  @default("APP") // APP, AGENT
   apps                   App[]
+  agents                 Agent[]
   roleProjectPermissions RoleProjectPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model LlmGateway {
+  id                String @id @default(uuid())
+  name              String
+  baseUrl           String
+  encryptedAdminKey String
+
+  agents Agent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Agent {
+  id           String     @id @default(uuid())
+  name         String
+  projectId    String
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  llmGatewayId String
+  llmGateway   LlmGateway @relation(fields: [llmGatewayId], references: [id], onDelete: Restrict)
+  modelAlias   String
+
+  sourceType       String @default("CONTAINER") // GIT, GIT_SSH, CONTAINER
+  buildMethod      String @default("DOCKERFILE") // DOCKERFILE
+
+  containerImageSource      String?
+  containerRegistryUsername String?
+  containerRegistryPassword String?
+
+  gitUrl         String?
+  gitBranch      String?
+  gitUsername    String?
+  gitToken       String?
+  dockerfilePath String  @default("./Dockerfile")
+
+  cpuRequest       Int?
+  cpuLimit         Int?
+  memoryRequest    Int?
+  memoryLimit      Int?
+  systemPrompt     String?
+  encryptedEnvVars String?
+  containerCommand String?
+  containerArgs    String?
+  workingDir       String?
+  warmPoolReplicas Int     @default(0)
+  deployFileBrowser Boolean @default(false)
+
+  // healthCheck startupProbe, readinessProbe, livenessProbe
+  healthChechHttpGetPath      String?
+  healthCheckHttpScheme       String? // HTTP, HTTPS
+  healthCheckHttpHeadersJson  String? // JSON stringified key-value pairs
+  healthCheckHttpPort         Int?
+  healthCheckPeriodSeconds    Int     @default(15)
+  healthCheckTimeoutSeconds   Int     @default(5)
+  healthCheckFailureThreshold Int     @default(3)
+
+  healthCheckTcpPort Int?
+
+  roleAgentPermissions RoleAgentPermission[]
+  agentDomains         AgentDomain[]
+  agentVolumes         AgentVolume[]
+  agentFileMounts      AgentFileMount[]
+  agentGitSshKey       AgentGitSshKey?
+  agentNetworkPolicy   AgentNetworkPolicy?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentNetworkPolicy {
+  id                  String  @id @default(uuid())
+  agentId             String  @unique
+  agent               Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  allowInternetAccess Boolean @default(true)
+
+  rules AgentNetworkPolicyRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentNetworkPolicyRule {
+  id                   String             @id @default(uuid())
+  agentNetworkPolicyId String
+  agentNetworkPolicy   AgentNetworkPolicy @relation(fields: [agentNetworkPolicyId], references: [id], onDelete: Cascade)
+  type                 String             @default("EGRESS") // EGRESS (always EGRESS for agents)
+  targetAppId          String
+  targetApp            App                @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
+  port                 Int
+  protocol             String             @default("TCP") // TCP, UDP
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentNetworkPolicyId, targetAppId, port, protocol, type])
+}
+
+model AgentGitSshKey {
+  id                  String @id @default(uuid())
+  agentId             String @unique
+  agent               Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  publicKey           String
+  encryptedPrivateKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentDomain {
+  id            String  @id @default(uuid())
+  hostname      String
+  useSsl        Boolean @default(true)
+  redirectHttps Boolean @default(true)
+  port          Int
+  agentId       String
+  agent         Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, hostname])
+}
+
+model AgentVolume {
+  id                 String @id @default(uuid())
+  containerMountPath String
+  size               Int
+  storageClassName   String @default("longhorn")
+  agentId            String
+  agent              Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, containerMountPath])
+}
+
+model AgentFileMount {
+  id                 String @id @default(uuid())
+  containerMountPath String
+  content            String
+  agentId            String
+  agent              Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, containerMountPath])
+}
+
 model App {
-  id         String  @id @default(uuid())
-  name       String
-  appType    String  @default("APP") // APP, POSTGRES, MYSQL, MONGO
-  projectId  String
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceType String  @default("GIT") // GIT, GIT_SSH, CONTAINER
-  buildMethod String @default("RAILPACK") // RAILPACK, DOCKERFILE
+  id          String  @id @default(uuid())
+  name        String
+  appType     String  @default("APP") // APP, POSTGRES, MYSQL, MONGO
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceType  String  @default("GIT") // GIT, GIT_SSH, CONTAINER
+  buildMethod String  @default("RAILPACK") // RAILPACK, DOCKERFILE
 
   containerImageSource      String?
   containerRegistryUsername String?
@@ -245,6 +412,8 @@ model App {
   appBasicAuths      AppBasicAuth[]
   appGitSshKey       AppGitSshKey?
   roleAppPermissions RoleAppPermission[]
+
+  agentNetworkPolicyRules AgentNetworkPolicyRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

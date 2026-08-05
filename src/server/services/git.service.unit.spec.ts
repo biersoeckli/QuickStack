@@ -16,6 +16,8 @@ vi.mock('@/server/services/app-git-ssh-key.service', () => ({
     },
 }));
 
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import gitService from './git.service';
 import appGitSshKeyService from './app-git-ssh-key.service';
 import { PathUtils } from '../utils/path.utils';
@@ -23,10 +25,12 @@ import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import fs from 'fs';
 import path from 'path';
+import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 
 const { originalInternalDataRoot, originalTempDataRoot } = mockPathUtilsForTests();
 
 describe('GitService', () => {
+    createK3sTestContext();
     beforeEach(() => {
         vi.clearAllMocks();
         gitMock.env.mockReturnValue(gitMock);

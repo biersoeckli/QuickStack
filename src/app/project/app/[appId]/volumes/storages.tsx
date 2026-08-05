@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink2, Unlink } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink } from "lucide-react";
 import DialogEditDialog from "./storage-edit-overlay";
 import SharedStorageEditDialog from "./shared-storage-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -23,7 +23,6 @@ import { Code } from "@/components/custom/code";
 import { Label } from "@/components/ui/label";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { Progress } from "@/components/ui/progress";
-import { NodeInfoModel } from "@/shared/model/node-info.model";
 
 type AppVolumeWithCapacity = (AppVolume & {
     usedBytes?: number;
@@ -31,16 +30,16 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedPercentage?: number;
 });
 
-export default function StorageList({ app, readonly, nodesInfo }: {
+export default function StorageList({ app, readonly, storageClasses }: {
     app: AppExtendedModel;
-    nodesInfo: NodeInfoModel[];
+    storageClasses: string[];
     readonly: boolean;
 }) {
 
     const [volumesWithStorage, setVolumesWithStorage] = React.useState<AppVolumeWithCapacity[]>(app.appVolumes as AppVolumeWithCapacity[]);
     const [isLoading, setIsLoading] = React.useState(false);
 
-    const loadAndMapStorageData = async () => {
+    const loadAndMapStorageData = React.useCallback(async () => {
 
         const response = (await getPvcUsage(app.id, app.projectId));
 
@@ -58,11 +57,11 @@ export default function StorageList({ app, readonly, nodesInfo }: {
         } else {
             console.error(response);
         }
-    }
+    }, [app.appVolumes, app.id, app.projectId])
 
     React.useEffect(() => {
         loadAndMapStorageData();
-    }, [app.appVolumes, app]);
+    }, [loadAndMapStorageData]);
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
 
@@ -206,7 +205,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>This volume is mounted from another app's volume</p>
+                                                    <p>This volume is mounted from another app&apos;s volume</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
@@ -266,7 +265,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                                                 </Tooltip>
                                             </TooltipProvider>
                                         ) : (
-                                            <DialogEditDialog app={app} volume={volume} nodesInfo={nodesInfo}>
+                                            <DialogEditDialog app={app} volume={volume} storageClasses={storageClasses}>
                                                 <TooltipProvider>
                                                     <Tooltip delayDuration={200}>
                                                         <TooltipTrigger>
@@ -299,7 +298,7 @@ export default function StorageList({ app, readonly, nodesInfo }: {
                 </Table>
             </CardContent>
             {!readonly && <CardFooter className="flex gap-2">
-                <DialogEditDialog app={app} nodesInfo={nodesInfo}>
+                <DialogEditDialog app={app} storageClasses={storageClasses}>
                     <Button>Add Volume</Button>
                 </DialogEditDialog>
                 <SharedStorageEditDialog app={app}>

@@ -1,4 +1,4 @@
-import { z, ZodObject, ZodRawShape } from "zod";
+import { z } from "zod";
 
 export const stringToNumber = z.union([z.string(), z.number()])
     .transform((val) => {
@@ -12,7 +12,7 @@ export const stringToNumber = z.union([z.string(), z.number()])
         return val;
     })
     .refine((val) => typeof val === 'number', {
-        message: 'Der Eingegebene Wert muss eine Zahl sein.',
+        message: 'The provided value must be a number.',
     });
 
 export const stringToOptionalNumber = z.preprocess((val) => {
@@ -55,7 +55,7 @@ export const stringToDate = z.union([z.string(), z.date()])
         return val;
     })
     .refine((val) => val instanceof Date, {
-        message: 'Der Eingegebene Wert muss ein Datum sein.',
+        message: 'The provided value must be a valid date.',
     });
 
 export const stringToOptionalBoolean = z.preprocess((val) => {

@@ -1,7 +1,7 @@
 'use server'
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
-import { getAdminUserSession, getAuthUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { getAdminUserSession, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { S3TargetEditModel, s3TargetEditZodModel } from "@/shared/model/s3-target-edit.model";
 import s3TargetService from "@/server/services/s3-target.service";
 import s3Service from "@/server/services/aws-s3.service";

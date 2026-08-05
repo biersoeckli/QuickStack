@@ -4,7 +4,7 @@ import { ApiUtils } from "./api-response.utils";
 describe("api-response.utils", () => {
     describe("mapReponseModel", () => {
         it("maps nested date response fields to schemas that accept serialized strings", () => {
-            const responseSchema = ApiUtils.mapReponseModel(z.object({
+            const responseSchema = ApiUtils.mapResponseModel(z.object({
                 createdAt: z.date(),
                 nested: z.object({
                     updatedAt: z.date().nullable().optional(),
@@ -34,7 +34,7 @@ describe("api-response.utils", () => {
         });
 
         it("keeps nullable and optional date fields valid", () => {
-            const responseSchema = ApiUtils.mapReponseModel(z.object({
+            const responseSchema = ApiUtils.mapResponseModel(z.object({
                 deletedAt: z.date().nullable().optional(),
             }));
 

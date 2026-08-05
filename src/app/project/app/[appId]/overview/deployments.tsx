@@ -2,7 +2,7 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { deleteBuild, getDeploymentsAndBuildsForApp } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,10 @@ export default function BuildsTab({
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
     const [appBuilds, setAppBuilds] = useState<DeploymentInfoModel[] | undefined>(undefined);
-    const [error, setError] = useState<string | undefined>(undefined);
+    const [, setError] = useState<string | undefined>(undefined);
     const [selectedDeploymentForLogs, setSelectedDeploymentForLogs] = useState<DeploymentInfoModel | undefined>(undefined);
 
-    const updateBuilds = async () => {
+    const updateBuilds = useCallback(async () => {
         setError(undefined);
         try {
             const response = await getDeploymentsAndBuildsForApp(app.id);
@@ -41,7 +41,7 @@ export default function BuildsTab({
             console.error(ex);
             setError('An unknown error occurred.');
         }
-    }
+    }, [app.id])
 
     const deleteBuildClick = async (buildName: string) => {
         const confirm = await openDialog({
@@ -62,7 +62,7 @@ export default function BuildsTab({
         updateBuilds();
         const intervalId = setInterval(updateBuilds, 10000);
         return () => clearInterval(intervalId);
-    }, [app]);
+    }, [app, updateBuilds]);
 
 
     if (app.sourceType === 'container') {

@@ -1,9 +1,9 @@
-import { AppBuildMethod, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
+import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { SecretSummaryRow, SummaryRow } from "./source-wizard-fields";
-import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from "./types";
+import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels, SourceWizardInput } from "./types";
 
 export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGitToken, showRegistryPassword, setShowRegistryPassword }: {
-    formData: AppSourceInfoInputModel;
+    formData: SourceWizardInput;
     publicKey?: string;
     showGitToken: boolean;
     setShowGitToken: (show: boolean) => void;

@@ -1,5 +1,5 @@
-import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
-import { UseFormReturn } from "react-hook-form";
+import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
+import { FieldPath, UseFormReturn } from "react-hook-form";
 import { z, ZodType } from "zod";
 
 export type FormZodErrorValidationCallback<T> = {
@@ -10,7 +10,7 @@ export class FormUtils {
 
     static mapValidationErrorsToForm<T extends ZodType<any, any, any>, TReturnData = any>(
         state: ServerActionResult<z.infer<T>, TReturnData>,
-        form: UseFormReturn<z.infer<T>, any, undefined>) {
+        form: UseFormReturn<z.input<T>, unknown, z.output<T>>) {
 
         form.clearErrors();
         if (state && state.errors) {
@@ -18,7 +18,7 @@ export class FormUtils {
                 if (!value || value.length === 0) {
                     continue;
                 }
-                form.setError(key as keyof z.infer<T> as any, { type: 'manual', message: value.join(', ') });
+                form.setError(key as FieldPath<z.input<T>>, { type: 'manual', message: value.join(', ') });
             }
         }
     }

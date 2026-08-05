@@ -6,13 +6,12 @@ import "./globals.css";
 import { Suspense } from "react";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { ConfirmDialog } from "@/components/custom/confirm-dialog";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "./sidebar";
 import { cookies } from "next/headers";
 import { BreadcrumbsGenerator } from "../components/custom/breadcrumbs-generator";
 import { getUserSession } from "@/server/utils/action-wrapper.utils";
 import { InputDialog } from "@/components/custom/input-dialog";
-import userGroupService from "@/server/services/user-group.service";
 import PodsStatusPollingProvider from "@/components/custom/pods-status-polling-provider";
 import { GenericDialog } from "@/components/custom/generic-dialog";
 
@@ -41,9 +40,6 @@ export default async function RootLayout({
   const defaultOpen = cookieSidebarState === "true";
   const session = await getUserSession();
   const userIsLoggedIn = !!session;
-
-  // todo remove in future versions and handle migrations in an other way
-  await userGroupService.createDefaultRolesIfNotExists();
 
   return (
     <html lang="en">

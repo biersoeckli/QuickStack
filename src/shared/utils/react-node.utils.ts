@@ -6,7 +6,8 @@ export class ReactNodeUtils {
             return element.toString();
         }
         if (isValidElement(element)) {
-            return this.getTextFromReactElement(element.props.children);
+            const props = element.props as { children?: React.ReactNode };
+            return this.getTextFromReactElement(props.children);
         }
         if (Array.isArray(element)) {
             return element.map(child => this.getTextFromReactElement(child)).join("");

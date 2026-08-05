@@ -3,6 +3,7 @@ import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Parameter, Prisma } from "@prisma/client";
 import { Constants } from "../../shared/utils/constants";
+import { CryptoUtils } from "../utils/crypto.utils";
 
 export class ParamService {
 
@@ -21,6 +22,7 @@ export class ParamService {
     static readonly BUILD_NODE = 'buildNode';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
+    static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({
@@ -63,6 +65,14 @@ export class ParamService {
             revalidateTag(Tags.parameter());
         }
         return param;
+    }
+
+    async getOrCreateAgentJwtSecret() {
+        const param = await this.getOrCreate(
+            ParamService.AGENT_JWT_SECRET,
+            CryptoUtils.encrypt(CryptoUtils.generateStrongPasswort(64)),
+        );
+        return CryptoUtils.decrypt(param.value);
     }
 
     async getOrUndefined(name: string) {

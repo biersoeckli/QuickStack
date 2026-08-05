@@ -104,7 +104,6 @@ export const postCreateOpenwebuiAppTemplate = async (createdApps: AppExtendedMod
     }
 
     const ollamaAppInternalHostname = KubeObjectNameUtils.toServiceName(createdOllamaApp.id);
-    const webUiInternalHostname = KubeObjectNameUtils.toServiceName(createdWebuiApp.id);
 
     createdWebuiApp.envVars += `OLLAMA_BASE_URLS=http://${ollamaAppInternalHostname}:11434`;
 

@@ -1,0 +1,159 @@
+# Implement Agent Projects And Agent Sandbox Workloads
+
+## Problem Statement
+
+QuickStack users can deploy application workloads, but they cannot yet manage long-lived AI workspaces as first-class **Project Workloads**. Teams need **Agents** that are configured once, isolated per **Agent Project**, started on demand through Kubernetes Agent Sandbox resources, connected to an **LLM Gateway**, and accessed through the existing QuickStack terminal and log experience.
+
+Without this feature, users must operate Agent sandboxes manually outside QuickStack, duplicate authentication and Kubernetes patterns, and cannot reuse QuickStack's project structure, permissions, encrypted configuration, and diagnostics.
+
+## Solution
+
+Add **Agents** as a first-class workload type while keeping them separate from **Apps** through immutable **Project Type**. Existing Projects become **App Projects**. New Projects can be created as **App Projects** or **Agent Projects**, and each Project can only contain its matching **Project Workloads**.
+
+Agents are stored separately from Apps. Each Agent owns a Kubernetes Agent Sandbox definition made from a `SandboxTemplate` and a zero-replica `SandboxWarmPool`. Starting an Agent creates an encrypted runtime Secret and a `SandboxClaim`; the Agent Sandbox controller creates the running Sandbox and Pod. Stopping an Agent deletes the Claim and runtime Secret while preserving the Agent definition resources.
+
+Add global **LLM Gateway** settings for LiteLLM-compatible gateways. Agents select one Gateway and one live-loaded **LiteLLM Model Alias**. QuickStack creates an Agent virtual key on first start, restricts it to the selected model alias, and injects it into the running Agent through the runtime Secret. QuickStack does not manage token budgets in Phase 1.
+
+Users manage Agents through a UI that mirrors the existing App structure but shows only Agent-specific views: overview, general configuration, logs, events, and a fullscreen terminal that starts OpenCode through the existing Kubernetes exec terminal path.
+
+## User Stories
+
+1. As an admin, I want to create an **App Project**, so that I can continue managing application workloads as before.
+2. As an admin, I want to create an **Agent Project**, so that Agents are organized separately from Apps.
+3. As an admin, I want existing Projects to become App Projects after migration, so that existing App behavior remains intact.
+4. As an admin, I want Project Type to be immutable, so that a Project cannot accidentally mix Apps and Agents later.
+5. As a user, I want the Project overview to show Apps for App Projects and Agents for Agent Projects, so that each Project presents the correct workload type.
+6. As a user, I want the sidebar to list Agents under Agent Projects, so that navigation matches existing App navigation.
+7. As an admin, I want workload-neutral Project permissions, so that App and Agent permissions share one consistent authorization model.
+8. As an admin, I want object-level Workload Permissions for Agents, so that I can grant access to specific Agents when needed.
+9. As a user with create permission, I want to create an Agent with a name, so that I can identify it in QuickStack.
+10. As a user, I want Agent names to be labels rather than unique identifiers, so that I can rename Agents without changing their runtime identity.
+11. As a user, I want Agent IDs generated once with Kubernetes-safe names, so that runtime resources remain stable after renames.
+12. As a user with write permission, I want to choose the default Agent image, so that I can quickly start an OpenCode Agent.
+13. As a user with write permission, I want to provide a custom Agent image, so that I can run a compatible custom OpenCode environment.
+14. As a user, I want invalid custom images to surface actionable runtime errors, so that I can diagnose image contract failures.
+15. As a user, I want to configure CPU and memory requests and limits, so that Agent scheduling and resource use are controlled.
+16. As a user, I want to enter an optional system prompt, so that OpenCode starts with project-specific context.
+17. As a user, I want the system prompt mounted as a file, so that large prompts do not leak through plain environment values.
+18. As a user, I want to define Agent Environment Variables, so that Agent tools can receive runtime configuration.
+19. As a user, I want Agent Environment Variable values encrypted, so that sensitive values are not stored in plaintext.
+20. As a user, I want invalid environment variable names blocked, so that runtime startup is predictable.
+21. As a user, I want QuickStack-reserved environment names blocked, so that Agent runtime credentials cannot be overwritten accidentally.
+22. As an admin, I want to create an LLM Gateway, so that Agents can use a LiteLLM-compatible service.
+23. As an admin, I want LLM Gateway admin keys encrypted, so that management credentials are protected.
+24. As an admin, I want to replace an LLM Gateway admin key without revealing the old key, so that credential rotation is safe.
+25. As an admin, I want to test an LLM Gateway connection, so that I can confirm the base URL and admin key work.
+26. As a user configuring an Agent, I want to select an LLM Gateway, so that the Agent knows which model broker to use.
+27. As a user configuring an Agent, I want model aliases loaded live from the selected Gateway, so that I choose from available LiteLLM aliases.
+28. As a user, I want only the selected model alias stored on the Agent, so that model lists do not become stale in QuickStack.
+29. As a user, I want Agent creation to require Gateway and model selection, so that Agents are startable after save.
+30. As a user, I want QuickStack to create an Agent virtual key on first start, so that Agent runtime credentials are scoped to that Agent.
+31. As an admin, I want Agent virtual keys restricted to the selected model alias, so that Agent usage is constrained by configuration.
+32. As an admin, I want token budgets managed by LiteLLM rather than QuickStack, so that budget policy stays in the Gateway.
+33. As a user, I want changing Gateway or model to invalidate the old virtual key while stopped, so that stale credentials are not reused.
+34. As a user, I want runtime-relevant Agent configuration locked while running, so that Kubernetes and Gateway state cannot drift.
+35. As a user, I want saving Agent configuration to persist to the database, and deploying to reconcile SandboxTemplate and SandboxWarmPool, so that configuration can be reviewed before Kubernetes changes are applied.
+36. As a user, I want Agent creation to roll back if Kubernetes definition creation fails, so that half-created Agents do not remain in the UI.
+37. As a user, I want starting an Agent to create a runtime Secret, so that runtime credentials and prompt context are injected safely.
+38. As a user, I want starting an Agent to create a SandboxClaim, so that Kubernetes Agent Sandbox creates the running Sandbox.
+39. As a user, I want QuickStack to wait for readiness after start, so that I know whether the Agent is actually usable.
+40. As a user, I want start failures to show Sandbox and Pod diagnostics, so that I can fix image, scheduling, or Gateway problems.
+41. As a user, I want stopping an Agent to delete the SandboxClaim and runtime Secret, so that the running runtime is removed cleanly.
+42. As a user, I want stopping an Agent to keep the SandboxTemplate and SandboxWarmPool, so that the Agent definition remains ready for later starts.
+43. As a user, I want deleting a running Agent to clean up runtime resources first, so that no Kubernetes resources are orphaned.
+44. As an admin, I want Agent deletion to fail if virtual key cleanup fails, so that LiteLLM credentials are not orphaned silently.
+45. As a user, I want Agent status derived from Kubernetes resources, so that the UI reflects actual cluster state.
+46. As a user, I want the running status label to say Running, so that status language matches user expectations.
+47. As a user, I want Agent logs streamed from the Agent container, so that I can inspect runtime output.
+48. As a user, I want Agent events to include Claim, Sandbox, and Pod diagnostics, so that I can investigate runtime failures.
+49. As a user, I want a fullscreen Agent terminal, so that I can interact with OpenCode directly.
+50. As a user, I want the terminal to start OpenCode rather than a shell, so that the primary Agent interaction opens immediately.
+51. As a user, I want no shell fallback when OpenCode is missing, so that custom image contract errors are visible.
+52. As an admin, I want default Agent image configuration centralized, so that releases can provide one standard OpenCode image.
+53. As a user, I want LLM Gateway deletion blocked while Agents reference it, so that existing Agents are not broken silently.
+54. As a developer, I want Agent Sandbox naming handled through shared Kubernetes name utilities, so that resource names are consistent and testable.
+55. As a developer, I want LLM Gateway API interactions isolated behind a service or adapter, so that model listing and virtual key management can be tested without real LiteLLM.
+56. As a developer, I want Agent Sandbox Kubernetes operations isolated behind a service or adapter, so that create/start/stop/delete behavior can be tested without a real cluster.
+57. As a developer, I want workload-neutral authorization helpers, so that UI actions and future REST APIs reuse the same permission checks.
+58. As a developer, I want no external Agent REST API in Phase 1, so that the first release stays focused on UI and Server Actions.
+
+## Implementation Decisions
+
+- Add immutable **Project Type** with App and Agent values. Existing Projects migrate to App.
+- Keep **Agents** in their own persistence model rather than extending App.
+- Add **LLM Gateway** persistence for global QuickStack settings, including name, base URL, encrypted admin key, and timestamps.
+- Store LLM Gateway admin keys with `CryptoUtils`.
+- Add Agent Environment Variables as Agent-owned encrypted values stored with `CryptoUtils`.
+- Treat Project workload permissions generically so the same permission concepts apply to Apps and Agents.
+- Preserve existing App behavior while introducing Agent-specific workload permissions.
+- Add a deep Agent service that owns Agent create, save, start, stop, delete, current status, and cleanup orchestration.
+- Add a deep Agent Sandbox service or adapter that hides Kubernetes custom resource details behind create template, create warm pool, create claim, delete claim, delete runtime secret, read status, and read diagnostics operations.
+- Add a deep LLM Gateway service or adapter that hides LiteLLM Admin API details behind list model aliases, create virtual key, and delete virtual key operations.
+- Add runtime Secret assembly as a focused module that combines system prompt file content, Gateway base URL, Agent virtual key, and encrypted Agent Environment Variables.
+- Use Agent Sandbox API versions from current Agent Sandbox documentation, including the v1beta1 resources.
+- Use all Agent Sandbox components in Phase 1: SandboxTemplate, SandboxWarmPool, SandboxClaim, and generated Sandbox.
+- Create one SandboxTemplate and one SandboxWarmPool per Agent.
+- Use SandboxWarmPool replicas set to zero in Phase 1, as recorded in the accepted ADR.
+- Start Agents by creating a runtime Secret and SandboxClaim.
+- Stop Agents by deleting SandboxClaim and runtime Secret.
+- Keep SandboxTemplate and SandboxWarmPool after stop.
+- Delete SandboxClaim, runtime Secret, LiteLLM virtual key, SandboxWarmPool, SandboxTemplate, and DB Agent during Agent deletion.
+- Keep the DB Agent if virtual key cleanup fails, so cleanup can be retried.
+- Use Agent Project namespace for all Agent runtime Kubernetes resources.
+- Use stable naming prefixes for Agent Sandbox resources: Agent id, SandboxTemplate, SandboxWarmPool, SandboxClaim, and runtime Secret each receive their agreed short prefix.
+- Do not persist Agent status. Derive it live from SandboxClaim, Sandbox, Pod readiness, and events.
+- Map Agent status into the existing DeploymentStatus vocabulary.
+- Change user-facing deployed label to Running while keeping the existing enum value.
+- Keep BUILDING App-only in Phase 1.
+- Use the existing Kubernetes exec terminal mechanism for Agent terminal access.
+- Start OpenCode directly in the fullscreen Agent terminal.
+- Use the default Agent image configured in the Constants class.
+- Support custom images without registry credential handling or validation in Phase 1.
+- Use Kubernetes Quantity strings for Agent CPU and memory requests and limits. Store CPU values as integers in millicores and memory as integers in MB, converting to Kubernetes quantity strings only at the K8s adapter boundary.
+- Do not add Agent persistent storage in Phase 1.
+- Do not synthesize gateway-specific NetworkPolicy rules in Phase 1; rely on Agent Sandbox defaults.
+- Add Server Actions and UI flows for Agent Projects, Agents, Agent terminal, Agent logs, Agent events, and LLM Gateway settings. Agent configuration is split into independent per-card forms (Source, Rate Limits, System Prompt, Environment Variables) each with its own save action. A separate "Deploy" button reconciles the saved configuration to Kubernetes.
+- Do not add external Agent REST endpoints in Phase 1.
+
+## Testing Decisions
+
+- Good tests should assert external behavior: saved records, blocked actions, created Kubernetes resources, runtime Secret contents, status mapping, cleanup behavior, and user-visible validation. Tests should not assert private helper call order unless the helper boundary is the public contract of a mocked adapter.
+- Test Project Type behavior, including migration defaults, immutable type updates, and prevention of mixed App and Agent workloads.
+- Test workload-neutral authorization helpers, following the style of existing role and shared authorization tests.
+- Test Agent naming and Agent resource naming through Kubernetes object name utility tests.
+- Test Agent service create behavior with mocked DB, Kubernetes adapter, and rollback on Kubernetes failure.
+- Test Agent save behavior, including running-state restrictions, per-card persistence to DB, and separate deploy-time SandboxTemplate/SandboxWarmPool reconciliation.
+- Test Agent start behavior with mocked LLM Gateway and Kubernetes adapter, including virtual key creation, runtime Secret content, SandboxClaim creation, readiness success, and readiness timeout/error.
+- Test Agent stop behavior, including SandboxClaim and runtime Secret deletion.
+- Test Agent delete behavior, including cleanup order at the service boundary and failure when virtual key deletion fails.
+- Test LLM Gateway service behavior, including encrypted admin key storage, base URL normalization, model alias loading, and delete blocking when Agents reference the Gateway.
+- Test Agent Environment Variable validation, reserved names, encryption, and runtime Secret projection.
+- Test DeploymentStatus mapping from Agent Sandbox and Pod states.
+- Test terminal command selection at the service boundary so Agent terminal starts OpenCode.
+- Use existing backend unit test patterns with Vitest and mocked services as prior art.
+- Use existing Prisma-backed integration test patterns only where behavior needs DB constraints or cascade validation.
+- Do not require k3s integration tests until the test cluster includes Agent Sandbox CRDs.
+- Avoid tests that require real LiteLLM; use the LLM Gateway adapter boundary.
+
+## Out of Scope
+
+- Persistent Agent storage or PVCs.
+- Agent Dockerfile builds.
+- Automated Agent workflow runs.
+- External Agent REST API endpoints.
+- Multi-user collaboration inside one running Agent.
+- QuickStack-managed token budgets.
+- Gateway-specific NetworkPolicy generation.
+- Registry credentials for custom Agent images.
+- Automatic custom image contract validation.
+- OpenCode transcript or chat history storage.
+- Model alias caching in QuickStack.
+- WarmPool replicas above zero.
+
+## Further Notes
+
+- The existing domain glossary defines **Agent**, **Agent Project**, **Project Type**, **Project Workload**, **Workload Permission**, **LLM Gateway**, **Agent Runtime Secret**, and **Agent Environment Variable**. Implementation should use this vocabulary.
+- The accepted ADR records the decision to use SandboxClaim with a per-Agent zero-replica SandboxWarmPool.
+- The initial implementation should prefer deep, testable service and adapter boundaries over spreading Agent Sandbox and LiteLLM details through UI actions.
+- This PRD intentionally describes implementation modules without binding the feature to specific file paths.
+- Information about the new Agent Sandbox resources can be found in the Kubernetes Agent Sandbox documentation: https://agent-sandbox.sigs.k8s.io/docs/

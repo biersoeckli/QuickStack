@@ -12,7 +12,7 @@ import { appDeploymentLogsResponseZodModel } from '@/shared/model/app-tail-log-e
 import { deploymentDetailsResponseZodModel } from '@/shared/model/deployment-info.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
 
-export const deployRoutes = new Elysia()
+export const appDeployRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
     .get('/apps/:appId/deploy', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -31,8 +31,8 @@ export const deployRoutes = new Elysia()
         params: z.object({
             appId: z.string()
         }),
-        response: ApiUtils.mapReponseModel(deploymentDetailsResponseZodModel.array()),
-        detail: { summary: 'List app deployments', security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(deploymentDetailsResponseZodModel.array()),
+        detail: { summary: 'List app deployments', operationId: 'listAppDeployments', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/deploy/:deployemtId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -54,8 +54,8 @@ export const deployRoutes = new Elysia()
             appId: z.string(),
             deployemtId: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(deploymentDetailsResponseZodModel),
-        detail: { summary: 'Get app deployment', security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(deploymentDetailsResponseZodModel),
+        detail: { summary: 'Get app deployment', operationId: 'getAppDeployment', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .get('/apps/:appId/deploy/:deployemtId/logs', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -83,8 +83,8 @@ export const deployRoutes = new Elysia()
         query: z.object({
             tailLines: z.coerce.number().int().positive().max(5000).optional(),
         }),
-        response: ApiUtils.mapReponseModel(appDeploymentLogsResponseZodModel),
-        detail: { summary: 'Get app deployment logs', security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(appDeploymentLogsResponseZodModel),
+        detail: { summary: 'Get app deployment logs', operationId: 'getAppDeploymentLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     })
     .post('/apps/:appId/deploy', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -101,6 +101,6 @@ export const deployRoutes = new Elysia()
             appId: z.string(),
             forceRebuild: z.coerce.boolean().optional().default(false),
         }),
-        response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() })),
-        detail: { summary: 'Deploy app', security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() })),
+        detail: { summary: 'Deploy app', operationId: 'deployApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
     });

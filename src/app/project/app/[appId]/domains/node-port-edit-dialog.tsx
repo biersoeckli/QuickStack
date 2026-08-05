@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -13,8 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppNodePort } from "@prisma/client"
@@ -27,7 +28,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
 
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
-    const form = useForm<NodePortEditModel>({
+    const form = useForm<z.input<typeof nodePortEditZodModel>, unknown, z.output<typeof nodePortEditZodModel>>({
         resolver: zodResolver(nodePortEditZodModel),
         defaultValues: appNodePort ? {
             port: appNodePort.port,
@@ -36,7 +37,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
         } : { protocol: 'TCP' }
     });
 
-    const [state, formAction] = useFormState(
+    const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: NodePortEditModel) =>
             saveNodePort(state, { ...payload, appId, id: appNodePort?.id }),
         FormUtils.getInitialFormState<typeof nodePortEditZodModel>()
@@ -51,7 +52,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof nodePortEditZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     useEffect(() => {
         if (appNodePort) {
@@ -61,7 +62,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                 protocol: appNodePort.protocol as 'TCP' | 'UDP',
             });
         }
-    }, [appNodePort]);
+    }, [appNodePort, form]);
 
     return (
         <>
@@ -77,7 +78,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

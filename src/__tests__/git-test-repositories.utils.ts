@@ -39,6 +39,7 @@ export function createGitApp(input: Pick<AppExtendedModel, 'id' | 'sourceType' |
         project: {
             id: 'proj-git-service-integration',
             name: 'Git Service Integration',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

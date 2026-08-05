@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { formatDate } from "@/frontend/utils/format.utils";
 import { DownloadableAppLogsModel } from "@/shared/model/downloadable-app-logs.model";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ export function LogsDownloadOverlay({
   const [logs, setLogs] = React.useState<DownloadableAppLogsModel[] | undefined>(undefined);
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const getLogsListAsync = async () => {
+  const getLogsListAsync = useCallback(async () => {
     setIsLoading(true);
     try {
       let logs = await Actions.run(() => getDownloadableLogs(appId));
@@ -44,12 +44,12 @@ export function LogsDownloadOverlay({
         date: new Date()
       });
       setLogs(logs);
-    } catch (error) {
+    } catch {
       toast.error('Error while loading log files');
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [appId])
 
   const downloadLogFile = async (item: DownloadableAppLogsModel) => {
     try {
@@ -71,7 +71,7 @@ export function LogsDownloadOverlay({
 
   useEffect(() => {
     getLogsListAsync();
-  }, [appId]);
+  }, [appId, getLogsListAsync]);
 
   return (
     <Dialog onOpenChange={(isO) => {

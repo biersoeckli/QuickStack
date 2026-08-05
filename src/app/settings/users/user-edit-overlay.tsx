@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -13,11 +14,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { S3Target, User } from "@prisma/client"
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -26,6 +26,8 @@ import { UserExtended } from "@/shared/model/user-extended.model"
 import { saveUser } from "./actions"
 import SelectFormField from "@/components/custom/select-form-field"
 import { UserGroupExtended } from "@/shared/model/sim-session.model"
+import { Checkbox } from "@/components/ui/checkbox"
+import { adminRoleName } from "@/shared/model/role-extended.model.ts"
 
 
 export default function UserEditOverlay({ children, user, userGroups }: {
@@ -36,13 +38,15 @@ export default function UserEditOverlay({ children, user, userGroups }: {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-
-  const form = useForm<UserEditModel>({
+  const form = useForm<z.input<typeof userEditZodModel>, unknown, z.output<typeof userEditZodModel>>({
     resolver: zodResolver(userEditZodModel),
     defaultValues: user
   });
+  const watchedApiOnlyUser = form.watch('apiOnlyUser');
+  const selectedGroup = userGroups.find(group => group.id === form.watch('userGroupId'));
+  const isAdminGroup = selectedGroup?.name === adminRoleName;
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: UserEditModel) =>
     saveUser(state, {
       ...payload,
@@ -56,20 +60,20 @@ export default function UserEditOverlay({ children, user, userGroups }: {
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof userEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     if (user) {
       form.reset(user);
     }
-  }, [user]);
+  }, [form, user]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{user?.id ? 'Edit' : 'Create'} User</DialogTitle>
@@ -77,7 +81,7 @@ export default function UserEditOverlay({ children, user, userGroups }: {
           <ScrollArea className="max-h-[70vh]">
             <div className="px-2">
               <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                   return formAction(data);
                 })()}>
                   <div className="space-y-4">
@@ -108,20 +112,40 @@ export default function UserEditOverlay({ children, user, userGroups }: {
 
                     <FormField
                       control={form.control}
+                      name="apiOnlyUser"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isAdminGroup} />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>API-only User</FormLabel>
+                            <FormDescription>
+                              {isAdminGroup
+                                ? 'Admin-group users cannot be API-only.'
+                                : 'This user cannot sign in to the UI and can only be used through the REST API.'}
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {!watchedApiOnlyUser && <FormField
+                      control={form.control}
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password {user?.id && <>(optional)</>}</FormLabel>
+                          <FormLabel>{user?.apiOnlyUser ? 'New Password (required)' : <>New Password {user?.id && <>(optional)</>}</>}</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
                           </FormControl>
                           <FormDescription>
-                            {user?.id && <>Leave empty to keep the old password.</>}
+                            {user?.apiOnlyUser ? 'This user is becoming a regular UI user — please set a password.' : user?.id && <>Leave empty to keep the old password.</>}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    />}
 
                     <p className="text-red-500">{state.message}</p>
                     <SubmitButton>Save</SubmitButton>

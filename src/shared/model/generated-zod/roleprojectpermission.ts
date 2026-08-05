@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteUserGroup, RelatedUserGroupModel, CompleteProject, RelatedProjectModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel } from "./index"
+import { CompleteUserGroup, RelatedUserGroupModel, CompleteProject, RelatedProjectModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel } from "./index"
 
 export const RoleProjectPermissionModel = z.object({
   id: z.string(),
@@ -18,6 +18,7 @@ export interface CompleteRoleProjectPermission extends z.infer<typeof RoleProjec
   userGroup: CompleteUserGroup
   project: CompleteProject
   roleAppPermissions: CompleteRoleAppPermission[]
+  roleAgentPermissions: CompleteRoleAgentPermission[]
 }
 
 /**
@@ -29,4 +30,5 @@ export const RelatedRoleProjectPermissionModel: z.ZodSchema<CompleteRoleProjectP
   userGroup: RelatedUserGroupModel,
   project: RelatedProjectModel,
   roleAppPermissions: RelatedRoleAppPermissionModel.array(),
+  roleAgentPermissions: RelatedRoleAgentPermissionModel.array(),
 }))

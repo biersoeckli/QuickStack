@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/frontend/utils/utils";
-import { Check, Container, GitBranch, Github, KeyRound, type LucideIcon } from "lucide-react";
+import { Check, Container, GitBranch, KeyRound, type LucideIcon } from "lucide-react";
 import { SourceType } from "./types";
 
 export function SourceTypeStep({ value, canUseGitSources, onChange }: {

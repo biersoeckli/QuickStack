@@ -68,39 +68,39 @@ class RestoreService {
         const name = KubeObjectNameUtils.toRestorePodName(volumeId);
         const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId ?? volumeId);
 
-        const existingPods = await k3s.core.listNamespacedPod(namespace);
-        const pod = existingPods.body.items.find((item) => item.metadata?.labels?.app === name);
+        const existingPods = await k3s.core.listNamespacedPod({ namespace: namespace });
+        const pod = existingPods.items.find((item) => item.metadata?.labels?.app === name);
         if (pod) {
             return;
         }
 
-        await k3s.core.createNamespacedPod(namespace, {
-            metadata: {
-                name: name,
-                labels: {
-                    app: name
-                }
-            },
-            spec: {
-                containers: [{
-                    name: name,
-                    image: 'alpine:3',
-                    command: ['sleep', '3600'],
-                    tty: true,
-                    stdin: true,
-                    volumeMounts: [{
-                        name: pvcName,
-                        mountPath: '/restore'
-                    }]
-                }],
-                volumes: [{
-                    name: pvcName,
-                    persistentVolumeClaim: {
-                        claimName: pvcName
+        await k3s.core.createNamespacedPod({ namespace: namespace, body: {
+                    metadata: {
+                        name: name,
+                        labels: {
+                            app: name
+                        }
+                    },
+                    spec: {
+                        containers: [{
+                            name: name,
+                            image: 'alpine:3',
+                            command: ['sleep', '3600'],
+                            tty: true,
+                            stdin: true,
+                            volumeMounts: [{
+                                name: pvcName,
+                                mountPath: '/restore'
+                            }]
+                        }],
+                        volumes: [{
+                            name: pvcName,
+                            persistentVolumeClaim: {
+                                claimName: pvcName
+                            }
+                        }]
                     }
-                }]
-            }
-        });
+                } });
     }
 
 }

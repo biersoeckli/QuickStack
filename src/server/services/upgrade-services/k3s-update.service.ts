@@ -20,12 +20,9 @@ class K3sUpdateService {
      */
     async isSystemUpgradeControllerPresent(): Promise<boolean> {
         try {
-            await k3s.apps.readNamespacedDeployment(
-                this.SYSTEM_UPGRADE_CONTROLLER_NAME,
-                this.SYSTEM_UPGRADE_NAMESPACE
-            );
+            await k3s.apps.readNamespacedDeployment({ name: this.SYSTEM_UPGRADE_CONTROLLER_NAME, namespace: this.SYSTEM_UPGRADE_NAMESPACE });
             return true;
-        } catch (error) {
+        } catch {
             // Deployment not found
             return false;
         }
@@ -153,10 +150,10 @@ class K3sUpdateService {
                 ]);
 
                 return {
-                    serverPlan: serverPlan.body,
-                    agentPlan: agentPlan.body
+                    serverPlan,
+                    agentPlan
                 };
-            } catch (error) {
+            } catch {
                 // Plans don't exist
                 return undefined;
             }

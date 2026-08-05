@@ -2,7 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppPort, AppVolume, Prisma } from "@prisma/client";
-import { AppExtendedModel, AppExtendedWriteModel, AppWithProjectModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppExtendedWriteModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
@@ -175,6 +175,13 @@ class AppService {
                     data: item
                 });
             } else {
+                const project = await client.project.findUnique({
+                    where: { id: item.projectId as string },
+                    select: { projectType: true },
+                });
+                if (!project || project.projectType !== 'APP') {
+                    throw new ServiceException("Apps can only be created in App Projects.");
+                }
                 item.id = KubeObjectNameUtils.toAppId(item.name as string);
                 savedItem = await client.app.create({
                     data: item as Prisma.AppUncheckedCreateInput
@@ -190,82 +197,100 @@ class AppService {
                 }
             }
         } finally {
-            revalidateTag(Tags.apps(item.projectId as string));
-            revalidateTag(Tags.app(item.id as string));
-            revalidateTag(Tags.projects());
-            revalidateTag(Tags.userGroups());
-            revalidateTag(Tags.users());
+            if (!tx) {
+                revalidateTag(Tags.apps(item.projectId as string));
+                revalidateTag(Tags.app(item.id as string));
+                revalidateTag(Tags.projects());
+                revalidateTag(Tags.userGroups());
+                revalidateTag(Tags.users());
+            }
         }
         return savedItem;
     }
 
-    async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient) {
+    async saveAppExtendedModel(app: AppExtendedWriteModel, tx?: Prisma.TransactionClient): Promise<AppExtendedModel> {
+        const run = async (innerTx: Prisma.TransactionClient) => {
+            // for new objects, make sure some params are optional, wich will be created by prisma
+            const optionalParam = z.object({
+                id: z.string().optional(),
+                appId: z.string().optional(),
+                createdAt: z.date().optional(),
+                updatedAt: z.date().optional(),
+            });
 
-        // for new objects, make sure some params are optional, wich will be created by prisma
-        const optionalParam = z.object({
-            id: z.string().optional(),
-            appId: z.string().optional(),
-            createdAt: z.date().optional(),
-            updatedAt: z.date().optional(),
+            const parsedAppModel = AppModel.extend(optionalParam.shape).parse(app);
+            const savedApp = await this.save({
+                ...parsedAppModel,
+                id: app.id
+            }, false, innerTx);
+
+            const savedAppId = savedApp.id;
+
+            const parsedDomains = AppDomainModel.extend(optionalParam.shape).array().parse(app.appDomains);
+            for (const domain of parsedDomains) {
+                await this.saveDomain({
+                    ...domain,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedVolumes = AppVolumeModel.extend(optionalParam.shape).array().parse(app.appVolumes);
+            for (const volume of parsedVolumes) {
+                await this.saveVolume({
+                    ...volume,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedFileMounts = AppFileMountModel.extend(optionalParam.shape).array().parse(app.appFileMounts);
+            for (const fileMount of parsedFileMounts) {
+                await this.saveFileMount({
+                    ...fileMount,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedPorts = AppPortModel.extend(optionalParam.shape).array().parse(app.appPorts);
+            for (const port of parsedPorts) {
+                await this.savePort({
+                    ...port,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedNodePorts = AppNodePortModel.extend(optionalParam.shape).array().parse(app.appNodePorts);
+            for (const nodePort of parsedNodePorts) {
+                await this.saveNodePort({
+                    ...nodePort,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            const parsedBasicAuths = AppBasicAuthModel.extend(optionalParam.shape).array().parse(app.appBasicAuths);
+            for (const basicAuth of parsedBasicAuths) {
+                await this.saveBasicAuth({
+                    ...basicAuth,
+                    appId: savedAppId
+                }, innerTx);
+            }
+
+            return await this.getExtendedById(savedAppId, false, innerTx);
+        };
+
+        if (tx) {
+            return await run(tx);
+        }
+
+        const result = await dataAccess.client.$transaction(async (innerTx) => {
+            return await run(innerTx);
         });
 
-        const parsedAppModel = AppModel.merge(optionalParam).parse(app);
-        const savedApp = await this.save({
-            ...parsedAppModel,
-            id: app.id
-        }, false, tx);
-
-        const savedAppId = savedApp.id;
-
-        const parsedDomains = AppDomainModel.merge(optionalParam).array().parse(app.appDomains);
-        for (const domain of parsedDomains) {
-            await this.saveDomain({
-                ...domain,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedVolumes = AppVolumeModel.merge(optionalParam).array().parse(app.appVolumes);
-        for (const volume of parsedVolumes) {
-            await this.saveVolume({
-                ...volume,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedFileMounts = AppFileMountModel.merge(optionalParam).array().parse(app.appFileMounts);
-        for (const fileMount of parsedFileMounts) {
-            await this.saveFileMount({
-                ...fileMount,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedPorts = AppPortModel.merge(optionalParam).array().parse(app.appPorts);
-        for (const port of parsedPorts) {
-            await this.savePort({
-                ...port,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedNodePorts = AppNodePortModel.merge(optionalParam).array().parse(app.appNodePorts);
-        for (const nodePort of parsedNodePorts) {
-            await this.saveNodePort({
-                ...nodePort,
-                appId: savedAppId
-            }, tx);
-        }
-
-        const parsedBasicAuths = AppBasicAuthModel.merge(optionalParam).array().parse(app.appBasicAuths);
-        for (const basicAuth of parsedBasicAuths) {
-            await this.saveBasicAuth({
-                ...basicAuth,
-                appId: savedAppId
-            }, tx);
-        }
-
-        return await this.getExtendedById(savedAppId, false, tx);
+        revalidateTag(Tags.apps(result.projectId));
+        revalidateTag(Tags.app(result.id));
+        revalidateTag(Tags.projects());
+        revalidateTag(Tags.userGroups());
+        revalidateTag(Tags.users());
+        return result;
     }
 
     async regenerateWebhookId(appId: string) {
@@ -281,7 +306,7 @@ class AppService {
     async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppDomain;
         const client = tx || dataAccess.client;
-        const existingApp = await this.getExtendedById(domainToBeSaved.appId as string);
+        const existingApp = await this.getExtendedById(domainToBeSaved.appId as string, false, client);
         const existingDomainWithSameHostname = await client.appDomain.findFirst({
             where: {
                 hostname: domainToBeSaved.hostname as string,
@@ -293,6 +318,15 @@ class AppService {
                     domainToBeSaved.id &&
                     domainToBeSaved.id !== existingDomainWithSameHostname?.id) {
                     throw new ServiceException("Hostname is already in use by this or another app.");
+                }
+                const existingDomainForApp = await client.appDomain.findFirst({
+                    where: {
+                        id: domainToBeSaved.id as string,
+                        appId: domainToBeSaved.appId as string,
+                    }
+                });
+                if (!existingDomainForApp) {
+                    throw new ServiceException("App domain has ID, but existing item for app was not found.");
                 }
                 savedItem = await client.appDomain.update({
                     where: {
@@ -310,8 +344,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -406,6 +442,15 @@ class AppService {
 
         try {
             if (volumeToBeSaved.id) {
+                const existingVolumeForApp = await client.appVolume.findFirst({
+                    where: {
+                        id: volumeToBeSaved.id as string,
+                        appId: volumeToBeSaved.appId as string,
+                    }
+                });
+                if (!existingVolumeForApp) {
+                    throw new ServiceException("App volume has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appVolume.update({
                     where: {
                         id: volumeToBeSaved.id as string
@@ -419,8 +464,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -455,6 +502,14 @@ class AppService {
         }
     }
 
+    async getFileMountById(fileMountId: string) {
+        return await dataAccess.client.appFileMount.findFirstOrThrow({
+            where: {
+                id: fileMountId
+            }
+        });
+    }
+
     async saveFileMount(fileMountToBeSaved: Prisma.AppFileMountUncheckedCreateInput | Prisma.AppFileMountUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppFileMount;
         const client = tx || dataAccess.client;
@@ -472,6 +527,15 @@ class AppService {
 
         try {
             if (fileMountToBeSaved.id) {
+                const existingFileMountForApp = await client.appFileMount.findFirst({
+                    where: {
+                        id: fileMountToBeSaved.id as string,
+                        appId: fileMountToBeSaved.appId as string,
+                    }
+                });
+                if (!existingFileMountForApp) {
+                    throw new ServiceException("App file mount has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appFileMount.update({
                     where: {
                         id: fileMountToBeSaved.id as string
@@ -485,8 +549,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -529,6 +595,15 @@ class AppService {
         }
         try {
             if (portToBeSaved.id) {
+                const existingPortForApp = await client.appPort.findFirst({
+                    where: {
+                        id: portToBeSaved.id as string,
+                        appId: portToBeSaved.appId as string,
+                    }
+                });
+                if (!existingPortForApp) {
+                    throw new ServiceException("App port has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appPort.update({
                     where: {
                         id: portToBeSaved.id as string
@@ -542,8 +617,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -582,9 +659,18 @@ class AppService {
     async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppBasicAuth;
         const client = tx || dataAccess.client;
-        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, tx);
+        const existingApp = await this.getExtendedById(itemToBeSaved.appId as string, false, client);
         try {
             if (itemToBeSaved.id) {
+                const existingBasicAuthForApp = await client.appBasicAuth.findFirst({
+                    where: {
+                        id: itemToBeSaved.id as string,
+                        appId: itemToBeSaved.appId as string,
+                    }
+                });
+                if (!existingBasicAuthForApp) {
+                    throw new ServiceException("App basic auth has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appBasicAuth.update({
                     where: {
                         id: itemToBeSaved.id as string
@@ -598,8 +684,10 @@ class AppService {
             }
 
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }
@@ -687,6 +775,15 @@ class AppService {
         let savedItem: AppNodePort;
         try {
             if (nodePortToBeSaved.id) {
+                const existingNodePortForApp = await client.appNodePort.findFirst({
+                    where: {
+                        id: nodePortToBeSaved.id as string,
+                        appId: nodePortToBeSaved.appId as string,
+                    }
+                });
+                if (!existingNodePortForApp) {
+                    throw new ServiceException("App node port has ID, but existing item for app was not found.");
+                }
                 savedItem = await client.appNodePort.update({
                     where: { id: nodePortToBeSaved.id as string },
                     data: nodePortToBeSaved,
@@ -697,8 +794,10 @@ class AppService {
                 });
             }
         } finally {
-            revalidateTag(Tags.apps(existingApp.projectId as string));
-            revalidateTag(Tags.app(existingApp.id as string));
+            if (!tx) {
+                revalidateTag(Tags.apps(existingApp.projectId as string));
+                revalidateTag(Tags.app(existingApp.id as string));
+            }
         }
         return savedItem;
     }

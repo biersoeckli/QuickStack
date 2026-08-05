@@ -1,5 +1,6 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -7,11 +8,10 @@ import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveGeneralAppRateLimits } from "./actions";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { cn } from "@/frontend/utils/utils";
@@ -25,7 +25,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
     app: AppExtendedModel;
     readonly: boolean;
 }) {
-    const form = useForm<AppRateLimitsModel>({
+    const form = useForm<z.input<typeof appRateLimitsZodModel>, unknown, z.output<typeof appRateLimitsZodModel>>({
         resolver: zodResolver(appRateLimitsZodModel),
         defaultValues: app,
         disabled: readonly
@@ -48,7 +48,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
         ? Math.max(1, Math.round(monitoringData.cpuAbsolutCores * 1000))
         : undefined;
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppRateLimitsModel) => saveGeneralAppRateLimits(state, payload, app.id), FormUtils.getInitialFormState<typeof appRateLimitsZodModel>());
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppRateLimitsModel) => saveGeneralAppRateLimits(state, payload, app.id), FormUtils.getInitialFormState<typeof appRateLimitsZodModel>());
     useEffect(() => {
         if (state.status === 'success') {
             toast.success('Rate Limits Saved', {
@@ -56,7 +56,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
             });
         }
         FormUtils.mapValidationErrorsToForm<typeof appRateLimitsZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return <>
         <Card>
@@ -65,7 +65,7 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                 <CardDescription>Provide optional rate Limits per running container instance.</CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

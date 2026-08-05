@@ -14,7 +14,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
     readonly buildMethod: AppBuildMethod = 'DOCKERFILE';
 
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
-        const contextPaths = PathUtils.splitPath(ctx.app.dockerfilePath || './Dockerfile');
+        const contextPaths = PathUtils.splitPath(ctx.workload.dockerfilePath || './Dockerfile');
         const dockerfileContextPath = this.getDockerfileContextPath(contextPaths.folderPath);
 
         const buildkitArgs = [
@@ -28,7 +28,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `filename=${contextPaths.filePath}`,
             "--output",
-            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.app.id)},push=true,registry.insecure=true`
+            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id)},push=true,registry.insecure=true`
         ];
 
         return {
@@ -38,8 +38,10 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                 name: ctx.buildName,
                 namespace: BUILD_NAMESPACE,
                 annotations: {
-                    [Constants.QS_ANNOTATION_APP_ID]: ctx.app.id,
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.app.projectId,
+                    ...(ctx.workloadType === 'app' ? { [Constants.QS_ANNOTATION_APP_ID]: ctx.workload.id } : {}),
+                    ...(ctx.workloadType === 'agent' ? { [Constants.QS_ANNOTATION_AGENT_ID]: ctx.workload.id } : {}),
+                    [Constants.QS_ANNOTATION_WORKLOAD_TYPE]: ctx.workloadType,
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.workload.projectId,
                     [Constants.QS_ANNOTATION_GIT_COMMIT]: ctx.latestRemoteGitHash,
                     [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
@@ -53,8 +55,10 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                 template: {
                     metadata: {
                         annotations: {
-                            [Constants.QS_ANNOTATION_APP_ID]: ctx.app.id,
-                            [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.app.projectId,
+                            ...(ctx.workloadType === 'app' ? { [Constants.QS_ANNOTATION_APP_ID]: ctx.workload.id } : {}),
+                            ...(ctx.workloadType === 'agent' ? { [Constants.QS_ANNOTATION_AGENT_ID]: ctx.workload.id } : {}),
+                            [Constants.QS_ANNOTATION_WORKLOAD_TYPE]: ctx.workloadType,
+                            [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.workload.projectId,
                             [Constants.QS_ANNOTATION_GIT_COMMIT]: ctx.latestRemoteGitHash,
                             [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,

@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -27,8 +28,8 @@ import { Button } from "@/components/ui/button"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume } from "@prisma/client"
@@ -39,35 +40,31 @@ import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
-import { NodeInfoModel } from "@/shared/model/node-info.model"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
+import StorageClassCombobox from "@/components/custom/storage-class-combobox"
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
   { label: "ReadWriteMany", value: "ReadWriteMany" },
 ] as const
 
-const storageClasses = [
-  { label: "Longhorn (Default)", value: "longhorn", description: "Distributed, replicated storage recommended workloads in a cluster of multiple nodes." },
-  { label: "Local Path", value: "local-path", description: "Node-local volumes, no replication. Data is stored on the master node. Only works in a single node setup." }
-] as const
-
-export default function StorageEditDialog({ children, volume, app, nodesInfo }: {
+export default function StorageEditDialog({ children, volume, app, storageClasses }: {
   children: React.ReactNode;
   volume?: AppVolume;
   app: AppExtendedModel;
-  nodesInfo: NodeInfoModel[];
+  storageClasses: string[];
 }) {
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const defaultStorageClassName = volume?.storageClassName ?? storageClasses[0] ?? "";
 
-  const form = useForm<AppVolumeEditModel>({
+  const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
     resolver: zodResolver(appVolumeEditZodModel),
     defaultValues: {
       containerMountPath: volume?.containerMountPath ?? '',
       size: volume?.size ?? 0,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
-      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      storageClassName: defaultStorageClassName,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
       sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     }
@@ -80,7 +77,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
     watchedStorageClassName !== "local-path" &&
     !volume?.sharedVolumeId;
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
     saveVolume(state, {
       ...payload,
       appId: app.id,
@@ -96,26 +93,27 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset({
       ...volume,
       accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
-      storageClassName: (volume?.storageClassName ?? "longhorn") as 'longhorn' | 'local-path',
+      storageClassName: defaultStorageClassName,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
       sharedVolumeId: volume?.sharedVolumeId ?? undefined,
     });
-  }, [volume]);
+  }, [app.replicas, defaultStorageClassName, form, volume]);
 
   const values = form.watch();
+  const storageClassOptions = Array.from(new Set([...storageClasses, volume?.storageClassName].filter(Boolean) as string[]));
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Volume</DialogTitle>
@@ -124,7 +122,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
+            <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             })()}>
               <div className="space-y-4">
@@ -243,8 +241,7 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                     </FormItem>
                   )}
                 />
-                {nodesInfo.length === 1 &&
-                  <FormField
+                <FormField
                     control={form.control}
                     name="storageClassName"
                     render={({ field }) => (
@@ -266,65 +263,21 @@ export default function StorageEditDialog({ children, volume, app, nodesInfo }: 
                             </TooltipProvider>
                           </div>
                         </FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={!!volume}
-                              >
-                                {field.value
-                                  ? storageClasses.find(
-                                    (storageClass) => storageClass.value === field.value
-                                  )?.label
-                                  : "Select storage class"}
-                                <ChevronsUpDown className="opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="max-w-[280px] p-0">
-                            <Command>
-                              <CommandList>
-                                <CommandGroup>
-                                  {storageClasses.map((storageClass) => (
-                                    <CommandItem
-                                      value={storageClass.label}
-                                      key={storageClass.value}
-                                      onSelect={() => {
-                                        form.setValue("storageClassName", storageClass.value);
-                                      }}
-                                    >
-                                      <div className="flex flex-col gap-1">
-                                        <span>{storageClass.label}</span>
-                                        <span className="text-xs text-muted-foreground">{storageClass.description}</span>
-                                      </div>
-                                      <Check
-                                        className={cn(
-                                          "ml-auto",
-                                          storageClass.value === field.value
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                      />
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <StorageClassCombobox
+                            value={field.value}
+                            storageClasses={storageClassOptions}
+                            disabled={!!volume}
+                            onChange={(value) => form.setValue("storageClassName", value)}
+                          />
+                        </FormControl>
                         <FormDescription>
                           This cannot be changed after creation.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
-                  />}
+                  />
                 {canBeShared && (
                   <CheckboxFormField
                     form={form}

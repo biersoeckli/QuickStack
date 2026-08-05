@@ -1,6 +1,5 @@
 import { AppTemplateUtils } from '@/server/utils/app-template.utils';
 import { AppTemplateInputSettingsModel } from '@/shared/model/app-template.model';
-import crypto from 'crypto';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { DatabaseTemplateInfoModel } from '@/shared/model/database-template-info.model';
 import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';

@@ -1,10 +1,9 @@
-import { AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { Link as LinkIcon, LockKeyhole, User } from "lucide-react";
 import { BranchLoadingState, IconInput, SecretInput } from "./source-wizard-fields";
-import { SourceFormPatch } from "./types";
+import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function GitHttpsUrlStep({ formData, showCredentials, showToken, setShowToken, onChange, isLoadingBranches, branchError, onRetry }: {
-    formData: AppSourceInfoInputModel;
+    formData: SourceWizardInput;
     showCredentials: boolean;
     showToken: boolean;
     setShowToken: (show: boolean) => void;

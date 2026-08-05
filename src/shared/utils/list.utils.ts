@@ -1,5 +1,14 @@
 export class ListUtils {
 
+    static dedupByName<T>(instances: T[], key: keyof T): T[] {
+        const seen = new Set<string>();
+        return instances.filter(i => {
+            if (seen.has(i[key] as string)) return false;
+            seen.add(i[key] as string);
+            return true;
+        });
+    }
+
     static removeDuplicates<T>(array: T[]): T[] {
         return Array.from(new Set(array));
     }

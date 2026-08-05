@@ -17,6 +17,9 @@ All frontend rules are stored in `.agents/skills/frontend-ui-patterns/SKILL.md`,
 ## Testing
 All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, covering Vitest patterns, mocking, integration tests, and naming conventions.
 
+## Other
+When working with constants in application, use `src/shared/utils/constants.ts` for shared constants across frontend and backend.
+
 ## Development Setup
 
 1. Use provided devcontainer (includes Node, Bun, Prisma extension)
@@ -27,12 +30,29 @@ All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, cover
    - `yarn dev-live` - Custom server with WebSocket support (rebuilds TypeScript)
    - `yarn build` - Production build (Next.js + custom server compilation)
    - `yarn start-prod` - Run production build with custom server
+5. Database migrations (use always these commands):
+   - `yarn prisma-generate` - Generate Prisma client (with fix script for issues with generated zod schemas)
+   - `yarn prisma-migrate` - Generate and apply Prisma migrations to database
 
 ## Commit Convention
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`
 
 Example: `feat: add database backup scheduling`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/`; PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the default canonical status vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout. See `docs/agents/domain.md`.
 
 ## Communication Mode: Caveman Ultra
 

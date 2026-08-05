@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Actions } from '@/frontend/utils/nextjs-actions.utils';
 import { getVolumeMonitoringUsage } from './actions';
 import { toast } from 'sonner';
@@ -30,7 +30,7 @@ export default function AppVolumeMonitoring({
     volumesUsage?: AppVolumeMonitoringUsageModel[]
 }) {
 
-    const convertToExtendedModel = (input?: AppVolumeMonitoringUsageModel[]): AppVolumeMonitoringUsageExtendedModel[] | undefined => {
+    const convertToExtendedModel = useCallback((input?: AppVolumeMonitoringUsageModel[]): AppVolumeMonitoringUsageExtendedModel[] | undefined => {
         if (input) {
             return input.map(item => ({
                 ...item,
@@ -38,14 +38,23 @@ export default function AppVolumeMonitoring({
             }));
         }
         return undefined;
-    }
+    }, []);
 
     const [totalUsedBytes, setTotalUsedBytes] = useState<number | undefined>(undefined);
     const [totalCapacityBytes, setTotalCapacityBytes] = useState<number | undefined>(undefined);
 
     const [updatedVolumeUsage, setUpdatedVolumeUsage] = useState<AppVolumeMonitoringUsageExtendedModel[] | undefined>(convertToExtendedModel(volumesUsage));
 
-    const fetchVolumeMonitoringUsage = async () => {
+    const setUsedAndCapacityBytes = useCallback((input?: AppVolumeMonitoringUsageExtendedModel[]) => {
+        if (input) {
+            const totalUsed = input.reduce((acc, item) => acc + item.usedBytes, 0);
+            const totalCapacity = input.reduce((acc, item) => acc + item.capacityBytes, 0);
+            setTotalUsedBytes(totalUsed);
+            setTotalCapacityBytes(totalCapacity);
+        }
+    }, []);
+
+    const fetchVolumeMonitoringUsage = useCallback(async () => {
         try {
             let data = await Actions.run(() => getVolumeMonitoringUsage());
             data  = data?.filter((volume) => !!volume.isBaseVolume);
@@ -55,16 +64,7 @@ export default function AppVolumeMonitoring({
             toast.error('An error occurred while fetching current volume usage');
             console.error('An error occurred while fetching volume nodes', ex);
         }
-    }
-
-    const setUsedAndCapacityBytes = (input?: AppVolumeMonitoringUsageExtendedModel[]) => {
-        if (input) {
-            const totalUsed = input.reduce((acc, item) => acc + item.usedBytes, 0);
-            const totalCapacity = input.reduce((acc, item) => acc + item.capacityBytes, 0);
-            setTotalUsedBytes(totalUsed);
-            setTotalCapacityBytes(totalCapacity);
-        }
-    }
+    }, [convertToExtendedModel, setUsedAndCapacityBytes])
 
     useEffect(() => {
         const volumeUsageId = setInterval(() => fetchVolumeMonitoringUsage(), 10000);
@@ -72,7 +72,7 @@ export default function AppVolumeMonitoring({
         return () => {
             clearInterval(volumeUsageId);
         }
-    }, [volumesUsage]);
+    }, [convertToExtendedModel, fetchVolumeMonitoringUsage, setUsedAndCapacityBytes, volumesUsage]);
 
     if (!updatedVolumeUsage) {
         return <Card>
@@ -106,7 +106,7 @@ export default function AppVolumeMonitoring({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {updatedVolumeUsage.map((item, index) => (
+                        {updatedVolumeUsage.map((item) => (
                             <TableRow key={item.appId}>
                                 <TableCell>{item.projectName}</TableCell>
                                 <TableCell>{item.appName}</TableCell>

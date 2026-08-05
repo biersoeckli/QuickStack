@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,6 @@ import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { deleteDbToolDeploymentForAppIfExists, deployDbTool, downloadDbGateFilesForApp, getIsDbToolActive, getLoginCredentialsForRunningDbTool } from "./actions";
 import { Label } from "@/components/ui/label";
-import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { Switch } from "@/components/ui/switch";
 import { Code } from "@/components/custom/code";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -108,7 +106,7 @@ export default function DbGateDbTool({
                                 variant="ghost"><Download /></Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>Download the "Files" folder from DB Gate.</p>
+                            <p>Download the &quot;Files&quot; folder from DB Gate.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -117,4 +115,3 @@ export default function DbGateDbTool({
         </div>
     </>;
 }
-

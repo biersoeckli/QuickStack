@@ -7,7 +7,20 @@ vi.mock('next/cache', () => ({
     ),
 }));
 
-vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+vi.mock('@/server/adapter/db.client', () => ({
+    default: {
+        client: (() => {
+            const client = {
+            project: { findUnique: vi.fn() },
+            app: { create: vi.fn(), update: vi.fn() },
+            appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+            appPort: { create: vi.fn() },
+                $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(client)),
+            };
+            return client;
+        })(),
+    },
+}));
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 vi.mock('@/server/services/deployment.service', () => ({ default: {} }));
 vi.mock('@/server/services/build.service', () => ({ default: {} }));
@@ -19,6 +32,7 @@ vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
 
 import appService from './app.service';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import dataAccess from '@/server/adapter/db.client';
 
 describe('app.service', () => {
     beforeEach(() => {
@@ -57,8 +71,54 @@ describe('app.service', () => {
                 nodePort: 30080,
                 protocol: 'TCP',
             }),
-            undefined
+            expect.any(Object)
         );
+    });
+
+    it('rejects App creation in an Agent Project', async () => {
+        vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
+            id: 'proj-agents',
+            name: 'Agents',
+            projectType: 'AGENT',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        await expect(appService.save({
+            name: 'Wrong Workload',
+            projectId: 'proj-agents',
+        })).rejects.toThrow('Apps can only be created in App Projects.');
+
+        expect(dataAccess.client.app.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects moving an App Domain from another App by id', async () => {
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({
+            id: 'target-app',
+        }) as never);
+        vi.mocked(dataAccess.client.appDomain.findFirst)
+            .mockResolvedValueOnce({
+                id: 'domain-from-other-app',
+                appId: 'source-app',
+                hostname: 'example.com',
+                port: 80,
+                useSsl: true,
+                redirectHttps: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })
+            .mockResolvedValueOnce(null);
+
+        await expect(appService.saveDomain({
+            id: 'domain-from-other-app',
+            appId: 'target-app',
+            hostname: 'example.com',
+            port: 80,
+            useSsl: true,
+            redirectHttps: true,
+        })).rejects.toThrow('App domain has ID, but existing item for app was not found.');
+
+        expect(dataAccess.client.appDomain.update).not.toHaveBeenCalled();
     });
 });
 
@@ -71,6 +131,7 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         project: {
             id: 'demo-project',
             name: 'Demo Project',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

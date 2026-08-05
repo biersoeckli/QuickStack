@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import {
     Form,
     FormControl,
@@ -19,10 +20,9 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import TwoFaAuthForm from "./two-fa-auth"
-import { redirect } from "next/navigation"
 
 export default function UserLoginForm() {
-    const form = useForm<AuthFormInputSchema>({
+    const form = useForm<z.input<typeof authFormInputSchemaZod>, unknown, z.output<typeof authFormInputSchemaZod>>({
         resolver: zodResolver(authFormInputSchemaZod)
     });
 

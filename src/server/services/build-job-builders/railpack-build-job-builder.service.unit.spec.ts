@@ -5,12 +5,13 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 describe('RailpackBuildJobBuilder', () => {
     it('builds a Railpack job with queue init, prepare init, shared volume, and frontend image', async () => {
         const job = await railpackBuildJobBuilder.buildJobDefinition({
-            app: {
+            workload: {
                 id: 'app-1',
                 projectId: 'project-1',
                 gitUrl: 'https://github.com/example/repo.git',
                 gitBranch: 'main',
             } as any,
+            workloadType: 'app',
             buildName: 'build-1',
             deploymentId: 'deployment-1',
             latestRemoteGitHash: 'abc123',

@@ -6,9 +6,8 @@ import { Form } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { setTraefikIpPropagation } from "./actions";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
@@ -29,14 +28,14 @@ export default function QuickStackTraefikSettings({
 }) {
     const currentEnabled = (initialStatus.externalTrafficPolicy ?? 'Cluster') === 'Local';
 
-    const form = useForm<TraefikSettingsModel>({
+    const form = useForm<z.input<typeof traefikSettingsZodModel>, unknown, z.output<typeof traefikSettingsZodModel>>({
         resolver: zodResolver(traefikSettingsZodModel),
         defaultValues: {
             enableIpPreservation: currentEnabled,
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: TraefikSettingsModel) =>
         setTraefikIpPropagation(state, payload),
         FormUtils.getInitialFormState<typeof traefikSettingsZodModel>());
@@ -46,7 +45,7 @@ export default function QuickStackTraefikSettings({
             toast.success('Traefik settings updated successfully.');
         }
         FormUtils.mapValidationErrorsToForm<typeof traefikSettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     const readinessText = `${initialStatus.readyReplicas ?? 0}/${initialStatus.replicas ?? 0} pods ready`;
     const lastRestart = initialStatus.restartedAt ? new Date(initialStatus.restartedAt).toLocaleString() : 'Not restarted yet';
@@ -60,7 +59,7 @@ export default function QuickStackTraefikSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

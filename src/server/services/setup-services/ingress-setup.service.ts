@@ -5,13 +5,8 @@ const traefikNamespace = 'kube-system';
 class IngressSetupService {
 
     async checkIfTraefikRedirectMiddlewareExists() {
-        const res = await k3s.customObjects.listNamespacedCustomObject(
-            'traefik.io',            // group
-            'v1alpha1',              // version
-            traefikNamespace,        // namespace
-            'middlewares'            // plural name of the custom resource
-        );
-        return (res.body as any) && (res.body as any)?.items && (res.body as any)?.items?.length > 0;
+        const res = await k3s.customObjects.listNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: traefikNamespace, plural: 'middlewares' });
+        return (res as any) && (res as any)?.items && (res as any)?.items?.length > 0;
     }
 
     async createTraefikRedirectMiddlewareIfNotExist() {
@@ -34,13 +29,7 @@ class IngressSetupService {
             },
         };
 
-        await k3s.customObjects.createNamespacedCustomObject(
-            'traefik.io',           // group
-            'v1alpha1',             // version
-            traefikNamespace,       // namespace
-            'middlewares',          // plural name of the custom resource
-            middlewareManifest      // object manifest
-        );
+        await k3s.customObjects.createNamespacedCustomObject({ group: 'traefik.io', version: 'v1alpha1', namespace: traefikNamespace, plural: 'middlewares', body: middlewareManifest });
     }
 }
 

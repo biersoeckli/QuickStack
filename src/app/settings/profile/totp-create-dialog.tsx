@@ -1,14 +1,14 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { createNewTotpToken, verifyTotpToken } from "./actions";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import React from "react";
 import { TotpModel, totpZodModel } from "@/shared/model/totp.model";
 import { Toast } from "@/frontend/utils/toast.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
+import Image from "next/image";
 
 export default function TotpCreateDialog({
     children
@@ -25,11 +26,11 @@ export default function TotpCreateDialog({
     const [isOpen, setIsOpen] = React.useState(false);
     const [totpQrCode, setTotpQrCode] = React.useState<string | null>(null);
 
-    const form = useForm<TotpModel>({
+    const form = useForm<z.input<typeof totpZodModel>, unknown, z.output<typeof totpZodModel>>({
         resolver: zodResolver(totpZodModel)
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: TotpModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: TotpModel) =>
         verifyTotpToken(state, payload), FormUtils.getInitialFormState<typeof totpZodModel>());
 
     useEffect(() => {
@@ -40,7 +41,7 @@ export default function TotpCreateDialog({
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof totpZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     const createTotpToken = async () => {
         setIsOpen(true);
@@ -65,9 +66,9 @@ export default function TotpCreateDialog({
                 </DialogHeader>
                 <div className="space-y-4">
                     {!totpQrCode && <div className="rounded-lg bg-slate-50 py-24"><FullLoadingSpinner /></div>}
-                    {totpQrCode && <><img className="mx-auto my-0" src={totpQrCode} /></>}
+                    {totpQrCode && <><Image className="mx-auto my-0" src={totpQrCode} alt="2FA QR code" width={256} height={256} unoptimized /></>}
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

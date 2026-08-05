@@ -23,8 +23,10 @@ describe('network-policy.service integration', () => {
         const namespace = 'node-port-policy-test';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -47,12 +49,12 @@ describe('network-policy.service integration', () => {
             ],
         } as AppExtendedModel);
 
-        const policy = await network.readNamespacedNetworkPolicy(KubeObjectNameUtils.toNetworkPolicyName('demo-app'), namespace);
+        const policy = await network.readNamespacedNetworkPolicy({ name: KubeObjectNameUtils.toNetworkPolicyName('demo-app'), namespace: namespace });
 
-        expect(policy.body.spec?.ingress).toEqual(
+        expect(policy.spec?.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
+                    _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                     ports: [{ protocol: 'TCP', port: 300 }],
                 }),
             ])
@@ -64,8 +66,10 @@ describe('network-policy.service integration', () => {
         const appId = 'normal-app';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -78,27 +82,27 @@ describe('network-policy.service integration', () => {
             appNodePorts: [],
         }));
 
-        const policy = await network.readNamespacedNetworkPolicy(KubeObjectNameUtils.toNetworkPolicyName(appId), namespace);
+        const policy = await network.readNamespacedNetworkPolicy({ name: KubeObjectNameUtils.toNetworkPolicyName(appId), namespace: namespace });
 
-        expect(policy.body.spec?.podSelector).toEqual({
+        expect(policy.spec?.podSelector).toEqual({
             matchLabels: {
                 app: appId,
             },
         });
-        expect(policy.body.spec?.policyTypes).toEqual(['Ingress', 'Egress']);
-        expect(policy.body.spec?.ingress).toEqual(
+        expect(policy.spec?.policyTypes).toEqual(['Ingress', 'Egress']);
+        expect(policy.spec?.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: expect.arrayContaining([
+                    _from: expect.arrayContaining([
                         { podSelector: {} },
                     ]),
                 }),
             ])
         );
-        expect(policy.body.spec?.ingress).not.toEqual(
+        expect(policy.spec?.ingress).not.toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
+                    _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                 }),
             ])
         );
@@ -109,8 +113,10 @@ describe('network-policy.service integration', () => {
         const appId = 'disabled-policy-app';
         const { core, network } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: namespace,
+            body: {
+                metadata: {
+                    name: namespace,
+                },
             },
         });
 
@@ -124,7 +130,7 @@ describe('network-policy.service integration', () => {
         });
         await networkPolicyService.reconcileNetworkPolicy(enabledApp);
 
-        await expect(network.readNamespacedNetworkPolicy(KubeObjectNameUtils.toNetworkPolicyName(appId), namespace))
+        await expect(network.readNamespacedNetworkPolicy({ name: KubeObjectNameUtils.toNetworkPolicyName(appId), namespace: namespace }))
             .resolves
             .toBeDefined();
 
@@ -133,8 +139,8 @@ describe('network-policy.service integration', () => {
             useNetworkPolicy: false,
         });
 
-        const policies = await network.listNamespacedNetworkPolicy(namespace);
-        expect(policies.body.items.map(policy => policy.metadata?.name))
+        const policies = await network.listNamespacedNetworkPolicy({ namespace: namespace });
+        expect(policies.items.map(policy => policy.metadata?.name))
             .not
             .toContain(KubeObjectNameUtils.toNetworkPolicyName(appId));
     });
@@ -146,8 +152,10 @@ describe('network-policy.service integration', () => {
             const appId = 'matrix-app';
             const { core, network } = ctx.getClients();
             await core.createNamespace({
-                metadata: {
-                    name: namespace,
+                body: {
+                    metadata: {
+                        name: namespace,
+                    },
                 },
             });
 
@@ -160,10 +168,10 @@ describe('network-policy.service integration', () => {
                 appNodePorts: [],
             }));
 
-            const policy = await network.readNamespacedNetworkPolicy(KubeObjectNameUtils.toNetworkPolicyName(appId), namespace);
+            const policy = await network.readNamespacedNetworkPolicy({ name: KubeObjectNameUtils.toNetworkPolicyName(appId), namespace: namespace });
 
-            expectIngressRules(policy.body.spec?.ingress ?? [], ingressPolicy);
-            expectEgressRules(policy.body.spec?.egress ?? [], egressPolicy);
+            expectIngressRules(policy.spec?.ingress ?? [], ingressPolicy);
+            expectEgressRules(policy.spec?.egress ?? [], egressPolicy);
         }
     );
 
@@ -171,45 +179,47 @@ describe('network-policy.service integration', () => {
         const app = createNginxApp();
         const { core, apps } = ctx.getClients();
         await core.createNamespace({
-            metadata: {
-                name: app.projectId,
+            body: {
+                metadata: {
+                    name: app.projectId,
+                },
             },
         });
 
-        await apps.createNamespacedDeployment(app.projectId, {
-            metadata: {
-                name: app.id,
-            },
-            spec: {
-                replicas: 1,
-                selector: {
-                    matchLabels: {
-                        app: app.id,
-                    },
-                },
-                template: {
+        await apps.createNamespacedDeployment({ namespace: app.projectId, body: {
                     metadata: {
-                        labels: {
-                            app: app.id,
-                        },
+                        name: app.id,
                     },
                     spec: {
-                        containers: [
-                            {
-                                name: 'nginx',
-                                image: 'nginx:1.27-alpine',
-                                ports: [
+                        replicas: 1,
+                        selector: {
+                            matchLabels: {
+                                app: app.id,
+                            },
+                        },
+                        template: {
+                            metadata: {
+                                labels: {
+                                    app: app.id,
+                                },
+                            },
+                            spec: {
+                                containers: [
                                     {
-                                        containerPort: 80,
-                                        protocol: 'TCP',
+                                        name: 'nginx',
+                                        image: 'nginx:1.27-alpine',
+                                        ports: [
+                                            {
+                                                containerPort: 80,
+                                                protocol: 'TCP',
+                                            },
+                                        ],
                                     },
                                 ],
                             },
-                        ],
+                        },
                     },
-                },
-            },
-        });
+                } });
 
         await svcService.createOrUpdateServiceForApp('deployment-1', app);
         await networkPolicyService.reconcileNetworkPolicy(app);
@@ -236,6 +246,7 @@ function createNetworkPolicyApp(overrides: Pick<AppExtendedModel,
         project: {
             id: overrides.projectId,
             name: overrides.projectId,
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },
@@ -260,6 +271,7 @@ function createNginxApp(): AppExtendedModel {
         project: {
             id: 'nginx-node-port-test',
             name: 'Nginx Node Port Test',
+            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },
@@ -319,7 +331,7 @@ function createNginxApp(): AppExtendedModel {
 }
 
 function expectIngressRules(rules: k8s.V1NetworkPolicyIngressRule[], policyType: AppNetworkPolicyType) {
-    const peers = rules.flatMap(rule => rule.from ?? []);
+    const peers = rules.flatMap(rule => rule._from ?? []);
     const expectedPeers: Record<AppNetworkPolicyType, {
         traefik: boolean;
         namespace: boolean;
@@ -470,12 +482,12 @@ async function waitForDeploymentAvailable(
     name: string
 ) {
     return await waitFor(async () => {
-        const deployment = await apps.readNamespacedDeployment(name, namespace);
-        const status = deployment.body.status;
+        const deployment = await apps.readNamespacedDeployment({ name: name, namespace: namespace });
+        const status = deployment.status;
         const available = status?.conditions?.some(condition =>
             condition.type === 'Available' && condition.status === 'True');
         if (available && status?.readyReplicas === 1 && status?.availableReplicas === 1) {
-            return deployment.body;
+            return deployment;
         }
         return undefined;
     }, `Deployment ${name} was not deployed in namespace ${namespace}.`);

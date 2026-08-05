@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
@@ -12,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolumeEditModel, appVolumeEditZodModel } from "@/shared/model/volume-edit.model"
@@ -43,7 +44,7 @@ export default function SharedStorageEditDialog({ children, app }: {
     const [shareableVolumes, setShareableVolumes] = useState<ShareableVolume[]>([]);
     const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
 
-    const form = useForm<AppVolumeEditModel>({
+    const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
         resolver: zodResolver(appVolumeEditZodModel),
         defaultValues: {
             containerMountPath: '',
@@ -54,7 +55,7 @@ export default function SharedStorageEditDialog({ children, app }: {
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
         saveVolume(state, {
             ...payload,
             appId: app.id,
@@ -78,7 +79,7 @@ export default function SharedStorageEditDialog({ children, app }: {
                 setIsLoadingVolumes(false);
             });
         }
-    }, [isOpen, app.id]);
+    }, [isOpen, app.id, app.appVolumes]);
 
     // Watch selected volume and auto-fill fields
     const watchedSharedVolumeId = form.watch("sharedVolumeId");
@@ -88,10 +89,10 @@ export default function SharedStorageEditDialog({ children, app }: {
             if (selectedVolume) {
                 form.setValue("size", selectedVolume.size);
                 form.setValue("accessMode", selectedVolume.accessMode);
-                form.setValue("storageClassName", selectedVolume.storageClassName as 'longhorn' | 'local-path');
+                form.setValue("storageClassName", selectedVolume.storageClassName);
             }
         }
-    }, [watchedSharedVolumeId, shareableVolumes]);
+    }, [watchedSharedVolumeId, shareableVolumes, form]);
 
     useEffect(() => {
         if (state.status === 'success') {
@@ -102,14 +103,14 @@ export default function SharedStorageEditDialog({ children, app }: {
             setIsOpen(false);
         }
         FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-    }, [state]);
+    }, [form, state]);
 
     return (
         <>
             <div onClick={() => setIsOpen(true)}>
                 {children}
             </div>
-            <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Mount Shared Volume</DialogTitle>
@@ -118,7 +119,7 @@ export default function SharedStorageEditDialog({ children, app }: {
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form action={(e) => form.handleSubmit((data) => {
+                        <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
                             <div className="space-y-4">

@@ -1,0 +1,1 @@
+ALTER TABLE "Agent" ADD COLUMN "deployFileBrowser" BOOLEAN NOT NULL DEFAULT false;

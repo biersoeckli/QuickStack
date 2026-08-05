@@ -1,14 +1,14 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { setRegistryStorageLocation } from "./actions";
 import { S3Target } from "@prisma/client";
@@ -24,14 +24,14 @@ export default function QuickStackRegistrySettings({
     registryStorageLocation: string;
     s3Targets: S3Target[];
 }) {
-    const form = useForm<RegistryStorageLocationSettingsModel>({
+    const form = useForm<z.input<typeof registryStorageLocationSettingsZodModel>, unknown, z.output<typeof registryStorageLocationSettingsZodModel>>({
         resolver: zodResolver(registryStorageLocationSettingsZodModel),
         defaultValues: {
             registryStorageLocation: registryStorageLocation || Constants.INTERNAL_REGISTRY_LOCATION,
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
         payload: RegistryStorageLocationSettingsModel) =>
         setRegistryStorageLocation(state, payload),
         FormUtils.getInitialFormState<typeof registryStorageLocationSettingsZodModel>());
@@ -41,7 +41,7 @@ export default function QuickStackRegistrySettings({
             toast.success('Registry settings updated successfully. It may take a few seconds for the changes to take effect.');
         }
         FormUtils.mapValidationErrorsToForm<typeof registryStorageLocationSettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     return <>
         <Card>
@@ -53,7 +53,7 @@ export default function QuickStackRegistrySettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

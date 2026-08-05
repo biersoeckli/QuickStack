@@ -1,15 +1,15 @@
 'use client';
 
+import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { updatePublicIpv4Settings, updatePublicIpv4SettingsAutomatically } from "./actions";
 import { QsPublicIpv4SettingsModel, qsPublicIpv4SettingsZodModel } from "@/shared/model/qs-public-ipv4-settings.model";
@@ -21,14 +21,14 @@ export default function QuickStackPublicIpSettings({
 }: {
     publicIpv4?: string;
 }) {
-    const form = useForm<QsPublicIpv4SettingsModel>({
+    const form = useForm<z.input<typeof qsPublicIpv4SettingsZodModel>, unknown, z.output<typeof qsPublicIpv4SettingsZodModel>>({
         resolver: zodResolver(qsPublicIpv4SettingsZodModel),
         defaultValues: {
             publicIpv4,
         }
     });
 
-    const [state, formAction] = useFormState((state: ServerActionResult<any, any>, payload: QsPublicIpv4SettingsModel) =>
+    const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: QsPublicIpv4SettingsModel) =>
         updatePublicIpv4Settings(state, payload), FormUtils.getInitialFormState<typeof qsPublicIpv4SettingsZodModel>());
 
     useEffect(() => {
@@ -36,11 +36,11 @@ export default function QuickStackPublicIpSettings({
             toast.success('Settings updated successfully.');
         }
         FormUtils.mapValidationErrorsToForm<typeof qsPublicIpv4SettingsZodModel>(state, form)
-    }, [state]);
+    }, [form, state]);
 
     useEffect(() => {
         form.reset({ publicIpv4 });
-    }, [publicIpv4]);
+    }, [form, publicIpv4]);
 
     return <>
         <Card>
@@ -52,7 +52,7 @@ export default function QuickStackPublicIpSettings({
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <form action={(e) => form.handleSubmit((data) => {
+                <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className="space-y-4">

@@ -7,7 +7,7 @@ import GeneralAppSource from "./general/app-source";
 import GeneralAppContainerConfig from "./general/app-container-config";
 import EnvEdit from "./environment/env-edit";
 import { S3Target } from "@prisma/client";
-import DomainsList from "./domains/domains";
+import DomainsCard from "../../../../components/custom/domains-card";
 import StorageList from "./volumes/storages";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import BuildsTab from "./overview/deployments";
@@ -15,7 +15,7 @@ import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
 import InternalHostnames from "./domains/ports-and-internal-hostnames";
 import NodePortsCard from "./domains/node-ports";
-import FileMount from "./volumes/file-mount";
+import FileMountsCard from "@/components/custom/file-mounts-card";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
 import DbCredentials from "./credentials/db-crendentials";
 import VolumeBackupList from "./volumes/volume-backup";
@@ -26,9 +26,9 @@ import HealthCheckSettings from "./advanced/health-check-settings";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import { saveHealthCheck } from "./advanced/actions";
 
 export default function AppTabs({
     app,
@@ -36,7 +36,7 @@ export default function AppTabs({
     tabName,
     s3Targets,
     volumeBackups,
-    nodesInfo,
+    storageClasses,
     gitSshPublicKey,
 }: {
     app: AppExtendedModel;
@@ -44,7 +44,7 @@ export default function AppTabs({
     tabName: string;
     s3Targets: S3Target[];
     volumeBackups: VolumeBackupExtendedModel[];
-    nodesInfo: NodeInfoModel[];
+    storageClasses: string[];
     gitSshPublicKey?: string;
 }) {
     const router = useRouter();
@@ -93,13 +93,13 @@ export default function AppTabs({
                 <EnvEdit readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="domains" className="space-y-4">
-                <DomainsList readonly={readonly} app={app} />
+                <DomainsCard readonly={readonly} domains={app.appDomains} workloadId={app.id} workloadType={'app'} />
                 <InternalHostnames readonly={readonly} app={app} />
                 <NodePortsCard readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
-                <StorageList readonly={readonly} app={app} nodesInfo={nodesInfo} />
-                <FileMount readonly={readonly} app={app} />
+                <StorageList readonly={readonly} app={app} storageClasses={storageClasses} />
+                <FileMountsCard readonly={readonly} fileMounts={app.appFileMounts} workloadId={app.id} workloadType={'app'} />
                 <VolumeBackupList
                     readonly={readonly}
                     app={app}
@@ -109,7 +109,7 @@ export default function AppTabs({
             <TabsContent value="advanced" className="space-y-4">
                 <BasicAuth readonly={readonly} app={app} />
                 <NetworkPolicy readonly={readonly} app={app} />
-                <HealthCheckSettings readonly={readonly} app={app} />
+                <HealthCheckSettings readonly={readonly} workload={app} saveHealthCheck={saveHealthCheck} />
             </TabsContent>
         </Tabs>
     )

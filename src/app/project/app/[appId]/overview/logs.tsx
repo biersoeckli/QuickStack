@@ -1,20 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LogsStreamed from "../../../../../components/custom/logs-streamed";
 import { getPodsForApp as getPodsForAppAction } from "./actions";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { toast } from "sonner";
-import { LogsDialog } from "@/components/custom/logs-overlay";
+import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import { Button } from "@/components/ui/button";
 import { Download, Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
 import { LogsDownloadOverlay } from "./logs-download-overlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { usePodsStatus } from "@/frontend/states/zustand.states";
+import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 
 export default function Logs({
     app,
@@ -25,9 +25,10 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
-    const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
+    const { subscribeToStatusChanges } = usePodsStatus();
+    const { openDialog } = useDialog();
 
-    const updateBuilds = async () => {
+    const updateBuilds = useCallback(async () => {
         try {
             const response = await getPodsForAppAction(app.id);
             if (response.status === 'success' && response.data) {
@@ -40,7 +41,7 @@ export default function Logs({
             console.error(ex);
             toast.error('An unknown error occurred while loading pods.');
         }
-    }
+    }, [app.id])
 
     useEffect(() => {
         updateBuilds();
@@ -56,7 +57,7 @@ export default function Logs({
             }
         });
         return () => unsubscribe();
-    }, [app.id]);
+    }, [app.id, subscribeToStatusChanges, updateBuilds]);
 
     useEffect(() => {
         if (appPods && selectedPod && !appPods.find(p => p.podName === selectedPod.podName)) {
@@ -69,7 +70,7 @@ export default function Logs({
             // no pod selected yet, initialize with first pod
             setSelectedPod(appPods[0]);
         }
-    }, [appPods]);
+    }, [appPods, selectedPod]);
 
     return <>
         <Card>
@@ -121,11 +122,9 @@ export default function Logs({
                     <div>
                         <Tooltip delayDuration={300}>
                             <TooltipTrigger>
-                                <LogsDialog namespace={app.projectId} podName={selectedPod.podName}>
-                                    <Button variant="secondary">
-                                        <Expand />
-                                    </Button>
-                                </LogsDialog>
+                                <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
+                                    <Expand />
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p>Fullscreen Logs</p>

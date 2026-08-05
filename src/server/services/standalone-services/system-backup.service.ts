@@ -110,7 +110,7 @@ class SystemBackupService {
                         key: f.Key,
                         isValid: !isNaN(date.getTime())
                     };
-                } catch (e) {
+                } catch {
                     return { date: new Date(0), key: f.Key, isValid: false };
                 }
             })
@@ -156,7 +156,7 @@ class SystemBackupService {
                         sizeBytes: f.Size ?? 0,
                         isValid: !isNaN(date.getTime())
                     };
-                } catch (e) {
+                } catch {
                     return null;
                 }
             })

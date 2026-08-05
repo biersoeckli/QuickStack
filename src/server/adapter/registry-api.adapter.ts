@@ -65,7 +65,7 @@ class RegistryApiAdapter {
                     return [];
                 }
                 console.error(resText);
-            } catch (error) {
+            } catch {
                 // do nothing
             }
             throw new Error(`Error while connecting to container registry.`);
@@ -147,7 +147,7 @@ class RegistryApiAdapter {
             console.log(`Deleting blob ${layer.digest} (size: ${layer.size})`);
             try {
                 await this.deleteBlob(repository, layer.digest);
-            } catch (error) {
+            } catch {
                 console.error(`Error while deleting blob ${layer.digest}`);
             }
         }));
@@ -169,7 +169,7 @@ class RegistryApiAdapter {
             console.error(response);
             try {
                 console.error(await response.text());
-            } catch (error) {
+            } catch {
                 // do nothing
             }
             throw new Error(`Error while connecting to container registry.`);

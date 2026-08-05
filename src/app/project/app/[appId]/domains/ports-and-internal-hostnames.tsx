@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { deletePort, savePort } from "./actions";
+import { deletePort } from "./actions";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

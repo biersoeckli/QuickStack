@@ -1,5 +1,6 @@
 'use client'
 
+import type { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
@@ -13,8 +14,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from 'react-dom'
-import { useEffect, useState } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume, S3Target, VolumeBackup } from "@prisma/client"
@@ -51,7 +52,7 @@ export default function VolumeBackupEditDialog({
     'POSTGRES'
   ].includes(app.appType);
 
-  const form = useForm<VolumeBackupEditModel>({
+  const form = useForm<z.input<typeof volumeBackupEditZodModel>, unknown, z.output<typeof volumeBackupEditZodModel>>({
     resolver: zodResolver(volumeBackupEditZodModel),
     defaultValues: {
       ...volumeBackup,
@@ -62,7 +63,7 @@ export default function VolumeBackupEditDialog({
     }
   });
 
-  const [state, formAction] = useFormState((state: ServerActionResult<any, any>,
+  const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: VolumeBackupEditModel) =>
     saveBackupVolume(state, {
       ...payload
@@ -77,18 +78,18 @@ export default function VolumeBackupEditDialog({
       setIsOpen(false);
     }
     FormUtils.mapValidationErrorsToForm<typeof volumeBackupEditZodModel>(state, form);
-  }, [state]);
+  }, [form, state]);
 
   useEffect(() => {
     form.reset(volumeBackup);
-  }, [volumeBackup, volumes, s3Targets]);
+  }, [volumeBackup, volumes, s3Targets, form]);
 
   return (
     <>
       <div onClick={() => setIsOpen(true)}>
         {children}
       </div>
-      <Dialog open={!!isOpen} onOpenChange={(isOpened) => setIsOpen(false)}>
+      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Backup Configuration</DialogTitle>
@@ -97,7 +98,7 @@ export default function VolumeBackupEditDialog({
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form action={(e) => form.handleSubmit((data) => {
+            <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             }, console.error)()}>
               <div className="space-y-4">

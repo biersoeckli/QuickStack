@@ -1,0 +1,158 @@
+'use client';
+
+import type { z } from "zod";
+import { useActionState, useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import ContainerCommandArgsFields from "@/components/custom/container-command-args-fields";
+import { SubmitButton } from "@/components/custom/submit-button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { FormUtils } from "@/frontend/utils/form.utilts";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
+import {
+    agentContainerConfigZodModel,
+    AgentContainerConfigModel,
+} from "@/shared/model/agent-config.model";
+import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
+import { saveAgentContainerConfig } from "./actions";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
+
+export default function AgentContainerConfigCard({ agent, readonly }: {
+    agent: AgentExtendedModel;
+    readonly: boolean;
+}) {
+    const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
+    const form = useForm<z.input<typeof agentContainerConfigZodModel>, unknown, z.output<typeof agentContainerConfigZodModel>>({
+        resolver: zodResolver(agentContainerConfigZodModel),
+        defaultValues: {
+            containerCommand: ContainerCommangArgsUtils.parseStoredContainerCommandItems(agent.containerCommand),
+            containerArgs: agent.containerArgs
+                ? JSON.parse(agent.containerArgs).map((arg: string) => ({ value: arg }))
+                : [],
+            workingDir: agent.workingDir ?? '',
+            warmPoolReplicas: agent.warmPoolReplicas ?? 0,
+            deployFileBrowser: agent.deployFileBrowser,
+        },
+        disabled: readonly,
+    });
+
+    const [state, formAction] = useActionState(
+        (state: ServerActionResult<any, any>, payload: AgentContainerConfigModel) =>
+            saveAgentContainerConfig(state, payload, agent.id),
+        FormUtils.getInitialFormState<typeof agentContainerConfigZodModel>(),
+    );
+
+    useEffect(() => {
+        if (state.status === 'success') {
+            toast.success('Container configuration saved. Click "Deploy" to apply changes.');
+        }
+        FormUtils.mapValidationErrorsToForm<typeof agentContainerConfigZodModel>(state, form);
+    }, [form, state]);
+
+    return (
+        <Form {...form}>
+            <TooltipProvider delayDuration={150}>
+                <form action={() => form.handleSubmit((data) => formAction(data))()}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Container Configuration</CardTitle>
+                            <CardDescription>
+                                Configure agent sandbox startup and pre-warmed sandbox capacity.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">Runtime</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Leave command and arguments empty to use the QuickStack default container startup.
+                                    </p>
+                                </div>
+                                <ContainerCommandArgsFields
+                                    form={form}
+                                    readonly={readonly}
+                                    commandHint="Overrides the agent sandbox ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
+                                    argsHint="Overrides the agent sandbox CMD. Add one item per argument in the order the process should receive them."
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="workingDir"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Working Directory</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="/workspace"
+                                                {...field}
+                                                value={inputValue(field.value)}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="warmPoolReplicas"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Warm Pool Replicas</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                max={10}
+                                                {...field}
+                                                value={inputValue(field.value)}
+                                                onChange={(event) => field.onChange(event.target.value === '' ? 0 : Number(event.target.value))}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="deployFileBrowser"
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Deploy File Browser</FormLabel>
+                                            <p className="text-sm text-muted-foreground">
+                                                Adds a File Browser sidecar pod to each agent sandbox.
+                                            </p>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                disabled={readonly}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                        {!readonly && (
+                            <CardFooter className="gap-4">
+                                <SubmitButton>Save</SubmitButton>
+                                {state?.status === 'error' && !state?.errors && (
+                                    <p className="text-sm text-red-500">{state.message}</p>
+                                )}
+                            </CardFooter>
+                        )}
+                    </Card>
+                </form>
+            </TooltipProvider>
+        </Form>
+    );
+}

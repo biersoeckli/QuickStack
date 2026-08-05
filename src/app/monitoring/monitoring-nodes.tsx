@@ -64,10 +64,10 @@ export default function ResourcesNodes({
     }
   }, [resourcesNodes]);
 
-  const { setBreadcrumbs } = useBreadcrumbs();
+  const setBreadcrumbs = useBreadcrumbs((state) => state.setBreadcrumbs);
   useEffect(
     () => setBreadcrumbs([{ name: 'Monitoring', url: '/monitoring' }]
-    ), []);
+    ), [setBreadcrumbs]);
 
   const clusterStats = useMemo(() => {
     if (!updatedNodeRessources) return {

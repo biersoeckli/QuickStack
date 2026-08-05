@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { deploy, startApp, stopApp } from "./actions";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { ExternalLink, Hammer, Pause, Play, Rocket, Square } from "lucide-react";
+import { ExternalLink, Hammer, Play, Rocket, Square } from "lucide-react";
 import { AppEventsDialog } from "./app-events-dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { UserSession } from "@/shared/model/sim-session.model";
@@ -39,7 +39,7 @@ export default function AppActionButtons({
             }
         });
         return () => unsubscribe();
-    }, [app.id]);
+    }, [app.id, getPodsForApp, subscribeToStatusChanges]);
 
     return <Card>
         <CardContent className="p-4 ">
