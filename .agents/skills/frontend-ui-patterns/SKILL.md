@@ -21,8 +21,8 @@ When creating or updating frontend UI:
 
 - Decide the boundary first: server pages fetch data and check auth; client components handle interaction.
 - Build forms with `react-hook-form`, Zod, shadcn `Form`, and shared field wrappers.
-- Consume Server Actions through `Toast.fromAction()` or `Actions.run()`, not direct awaits.
-- Prefer Zustand-backed shared dialogs and stores over one-off local global state.
+- Choose the Server Action flow by UI need: `Toast.fromAction()` for immediate feedback, `Actions.run()` for imperatively loaded data, and `useActionState` plus `FormUtils.mapValidationErrorsToForm()` for forms with field errors.
+- Use Zustand-backed dialogs and stores for reusable or cross-component flows; use local state for page-owned dialogs.
 - Use `SimpleDataTable` for standard tables before building custom table behavior.
 - Style with shadcn/ui plus Tailwind utilities and `cn()`.
 

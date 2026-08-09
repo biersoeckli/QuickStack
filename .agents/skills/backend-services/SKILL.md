@@ -13,7 +13,7 @@ For QuickStack backend work, follow the existing service architecture:
 - Keep service dependencies as module imports of other singleton services or adapters.
 - Route Prisma and external API access through adapters, not directly from services.
 - Throw `ServiceException` or `FormValidationException` for expected domain failures.
-- Invalidate cache tags in a `finally` block after every database mutation.
+- After a mutation affecting cached reads, invalidate the matching tags in `finally`.
 
 ## Service Pattern
 
@@ -21,7 +21,6 @@ When creating or editing a service:
 
 - Put business logic in `src/server/services/`.
 - Export a singleton instance as the file default export.
-- Make all public methods `async`.
 - Accept primitives or shared model types as inputs.
 - Import dependencies at module scope; do not instantiate sibling services.
 
@@ -34,7 +33,7 @@ When creating or editing a service:
 
 ## Mutation Rules
 
-- After create, update, or delete operations, call `revalidateTag()` in `finally`.
+- After a mutation affecting cached reads, call `revalidateTag()` in `finally`.
 - Use the matching `Tags.*` helper; never hardcode cache tag strings.
 - Use transactions when multiple writes must succeed or fail together.
 
