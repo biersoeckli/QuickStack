@@ -66,10 +66,9 @@ export default thingService;
 Rules:
 
 - One class per file, one singleton instance, default export.
-- All public methods are `async`.
 - Accept primitives or shared model types as parameters.
 - Import singleton dependencies; do not instantiate services inside services.
-- For each database mutation, invalidate with `revalidateTag()` in `finally`.
+- For mutations affecting cached reads, invalidate the matching `Tags.*` entries with `revalidateTag()` in `finally`.
 
 ## Adapter pattern
 

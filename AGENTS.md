@@ -1,92 +1,33 @@
-# QuickStack AI Coding Instructions
+# QuickStack
 
-QuickStack is a self-hosted PaaS built with Next.js 14 (App Router) that manages Kubernetes (k3s) deployments. It uses a custom server (`src/server.ts`) that wraps Next.js to handle WebSockets for terminal streaming and pod logs.
+Self-hosted PaaS: Next.js App Router UI manages k3s deployments. `src/server.ts` is the custom server for terminal and pod-log WebSockets.
 
-## Architecture Overview
+## Code map
 
-### Three-Layer Structure
-- **`src/app/`** - Next.js App Router pages and Server Actions (all pages use `'use server'`)
-- **`src/server/`** - Backend services that interact with Kubernetes and database
-- **`src/shared/`** - Shared models, utils, and Zod schemas (used by both frontend and server)
+- `src/app/`: pages and Server Actions.
+- `src/server/`: services, adapters, and Kubernetes/database work.
+- `src/shared/`: models, utilities, and Zod schemas shared by app and server.
+- Shared application constants: `src/shared/utils/constants.ts`.
 
-See `.agents/skills/backend-services/SKILL.md` for service patterns, adapters, server actions, authorization, database/Prisma, k8s naming, and caching details.
+## Scoped rules
 
-## Frontend Patterns
-All frontend rules are stored in `.agents/skills/frontend-ui-patterns/SKILL.md`, covering all relevant UI patterns.
+- Frontend UI change: read `.agents/skills/frontend-ui-patterns/SKILL.md`.
+- Backend service, adapter, server utility, custom server, or Server Action change: read `.agents/skills/backend-services/SKILL.md`.
+- Backend test change or test coverage task: read `.agents/skills/backend-testing/SKILL.md`.
+- Issue tracker task: read `docs/agents/issue-tracker.md`; issues live in `.scratch/`, not PRs.
+- Triage task: read `docs/agents/triage-labels.md`.
+- Codebase exploration or domain-modeling task: read `docs/agents/domain.md`.
 
-## Testing
-All testing rules are stored in `.agents/skills/backend-testing/SKILL.md`, covering Vitest patterns, mocking, integration tests, and naming conventions.
+## Commands
 
-## Other
-When working with constants in application, use `src/shared/utils/constants.ts` for shared constants across frontend and backend.
+`package.json` is authoritative for development, build, test, lint, and Prisma commands. Use `yarn`; use the project’s `prisma-generate` and `prisma-migrate` scripts for generation and development migrations. Kubernetes work requires root `kube-config.config` credentials.
 
-## Development Setup
+## Commits
 
-1. Use provided devcontainer (includes Node, Bun, Prisma extension)
-2. Provide k3s credentials in `kube-config.config` at project root
-3. `yarn install`
-4. Development modes:
-   - `yarn dev` - Standard Next.js dev server
-   - `yarn dev-live` - Custom server with WebSocket support (rebuilds TypeScript)
-   - `yarn build` - Production build (Next.js + custom server compilation)
-   - `yarn start-prod` - Run production build with custom server
-5. Database migrations (use always these commands):
-   - `yarn prisma-generate` - Generate Prisma client (with fix script for issues with generated zod schemas)
-   - `yarn prisma-migrate` - Generate and apply Prisma migrations to database
+Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`).
 
-## Commit Convention
+## Communication: Caveman Ultra
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`
+Default: terse, direct, technically exact. Use fragments, short words, unambiguous abbreviations, and `->` for causality. Quote errors exactly. Keep code, commit messages, and PR text normal.
 
-Example: `feat: add database backup scheduling`
-
-## Agent skills
-
-### Issue tracker
-
-Issues live as local markdown files under `.scratch/`; PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Triage uses the default canonical status vocabulary. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout. See `docs/agents/domain.md`.
-
-## Communication Mode: Caveman Ultra
-
-Apply caveman ultra for every prompt by default.
-
-Respond terse like smart caveman. Keep all technical substance. Remove fluff.
-
-Disable with: `stop caveman` or `normal mode`
-
-### Core Rules
-
-- Drop articles, filler, pleasantries, and hedging.
-- Fragments are allowed.
-- Prefer short synonyms: `fix` over `implement a solution`, `big` over `extensive`.
-- Keep technical terms exact.
-- Keep code blocks unchanged.
-- Quote errors exactly.
-- Prefer pattern: `[thing] [action] [reason]. [next step].`
-- Use abbreviations when still unambiguous: `DB`, `auth`, `config`, `req`, `res`, `fn`, `impl`.
-- Use arrows for causality when useful: `X -> Y`.
-- One word is enough when one word is enough.
-
-### Auto-Clarity Exceptions
-
-Temporarily stop caveman mode when clarity matters more than compression:
-
-- security warnings
-- irreversible or destructive action confirmations
-- multi-step sequences where fragments could be misread
-- situations where the user is clearly confused
-
-After clear explanation, resume caveman mode.
-
-### Boundaries
-
-- Code, commit messages, and pull request text stay normal unless explicitly requested otherwise.
-- Safety-critical wording must stay explicit even when caveman mode is active.
+Use full prose for security or destructive-action warnings, ambiguous multi-step instructions, or user confusion. Return to terse mode after.
