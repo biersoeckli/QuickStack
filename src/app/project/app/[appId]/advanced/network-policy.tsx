@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { getTargetsForAppNetworkPolicy, saveAppNetworkPolicySettings, saveNetworkPolicy } from './actions';
-import { useDialog } from '@/frontend/states/zustand.states';
+import { useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
 import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
 import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
 
@@ -20,12 +20,14 @@ type Project = { id: string; name: string; apps: { id: string; name: string }[];
 
 export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel; readonly: boolean }) {
     const [mode, setMode] = useState(app.networkPolicyMode as 'SIMPLE' | 'EXTENDED');
+    const [persistedMode, setPersistedMode] = useState(app.networkPolicyMode as 'SIMPLE' | 'EXTENDED');
     const [enabled, setEnabled] = useState(app.useNetworkPolicy);
     const [internet, setInternet] = useState(app.appNetworkPolicy?.allowInternetAccess !== false);
     const [ingress, setIngress] = useState(app.ingressNetworkPolicy);
     const [egress, setEgress] = useState(app.egressNetworkPolicy);
     const [projects, setProjects] = useState<Project[]>([]);
     const { openDialog } = useDialog();
+    const { openConfirmDialog } = useConfirmDialog();
     const rules = app.appNetworkPolicy?.rules ?? [];
     const targets = projects.flatMap(project => [
         ...project.apps.map(item => ({ ...item, type: 'APP' as const, project })),
@@ -40,21 +42,27 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         ? Toast.fromAction(() => saveNetworkPolicy(app.id, ingress, egress, nextEnabled), 'Network policy saved.')
         : Toast.fromAction(() => saveAppNetworkPolicySettings(undefined, { mode: nextMode, useNetworkPolicy: nextEnabled, allowInternetAccess: nextInternet }, app.id), 'Network policy saved.');
 
-    const saveChanges = () => saveSettings(mode, enabled, internet);
+    const saveChanges = async () => {
+        if (mode === 'EXTENDED' && persistedMode !== 'EXTENDED') {
+            const confirmed = await openConfirmDialog({
+                title: 'Switch to Extended Network Policy?',
+                description: 'Extended mode replaces Simple mode’s implicit same-project traffic behavior. Review and save the required ingress and egress rules before deploying.',
+                okButton: 'Switch to Extended',
+            });
+            if (!confirmed) return;
+        }
 
-    const changeMode = (nextMode: 'SIMPLE' | 'EXTENDED') => {
-        setMode(nextMode);
-        saveSettings(nextMode, enabled, internet);
+        await saveSettings(mode, enabled, internet);
+        setPersistedMode(mode);
     };
 
     const changeNetworkPoliciesEnabled = (nextEnabled: boolean) => {
         setEnabled(nextEnabled);
-        saveSettings(mode, nextEnabled, internet);
+        saveSettings(persistedMode, nextEnabled, internet);
     };
 
     const changeInternetAccess = (nextInternet: boolean) => {
         setInternet(nextInternet);
-        saveSettings(mode, enabled, nextInternet);
     };
 
     const openRuleDialog = (direction: AppNetworkPolicyDirection) => openDialog(<AppNetworkPolicyRuleDialog appId={app.id} direction={direction} targets={targets} />, { maxWidth: 'max-w-md' });
@@ -68,7 +76,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
                 </CardContent>
             </Card>
 
-            {enabled && <Tabs value={mode} onValueChange={(value) => changeMode(value as 'SIMPLE' | 'EXTENDED')}>
+            {enabled && <Tabs value={mode} onValueChange={(value) => setMode(value as 'SIMPLE' | 'EXTENDED')}>
                 <TabsList>
                     <TabsTrigger value="SIMPLE" disabled={readonly}><Settings2 className="mr-2 h-4 w-4" />Simple</TabsTrigger>
                     <TabsTrigger value="EXTENDED" disabled={readonly}><Waypoints className="mr-2 h-4 w-4" />Extended</TabsTrigger>
@@ -85,7 +93,9 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
                 </TabsContent>
             </Tabs>}
         </CardContent>
-        {!readonly && enabled && mode === 'SIMPLE' && <CardFooter className="flex items-center justify-between gap-4 border-t pt-6"><Button onClick={saveChanges}>Save changes</Button></CardFooter>}
+        {!readonly && enabled && <CardFooter className="flex items-center justify-between gap-4 border-t pt-6">
+            <Button onClick={saveChanges}>{mode === persistedMode ? 'Save changes' : `Switch to ${mode === 'EXTENDED' ? 'Extended' : 'Simple'}`}</Button>
+        </CardFooter>}
     </Card>;
 }
 
