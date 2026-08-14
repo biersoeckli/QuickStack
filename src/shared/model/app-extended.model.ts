@@ -2,13 +2,15 @@ import { z } from "zod";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNetworkPolicyModel, AppNetworkPolicyRuleModel, AppNodePortModel, AppPortModel, AppVolumeModel, ProjectModel } from "./generated-zod";
 import { App, Project } from "@prisma/client";
 
-export const AppNetworkPolicyRuleWithTargetAppZodModel = AppNetworkPolicyRuleModel.extend({
-    targetApp: z.object({ id: z.string(), name: z.string(), projectId: z.string() }),
+export const AppNetworkPolicyRuleWithTargetZodModel = AppNetworkPolicyRuleModel.extend({
+    targetApp: z.object({ id: z.string(), name: z.string(), projectId: z.string() }).nullish(),
+    targetAgent: z.object({ id: z.string(), name: z.string(), projectId: z.string() }).nullish(),
 });
-export type AppNetworkPolicyRuleWithTargetAppModel = z.infer<typeof AppNetworkPolicyRuleWithTargetAppZodModel>;
+export type AppNetworkPolicyRuleWithTargetModel = z.infer<typeof AppNetworkPolicyRuleWithTargetZodModel>;
+export type AppNetworkPolicyRuleWithTargetAppModel = AppNetworkPolicyRuleWithTargetModel;
 
 const AppNetworkPolicyWithRulesZodModel = AppNetworkPolicyModel.extend({
-    rules: z.array(AppNetworkPolicyRuleWithTargetAppZodModel),
+    rules: z.array(AppNetworkPolicyRuleWithTargetZodModel),
 });
 
 export const AppExtendedZodModel = z.lazy(() => AppModel.extend({
@@ -38,7 +40,10 @@ const omitFieldsSubObjects = { ...omitFields, appId: true } as const;
 
 const appNetworkPolicyRuleWriteZodModel = AppNetworkPolicyRuleModel.omit({
     id: true, appNetworkPolicyId: true, createdAt: true, updatedAt: true,
-}).extend({ id: z.string().optional() });
+}).extend({ id: z.string().optional() }).refine(
+    (rule) => Boolean(rule.targetAppId) !== Boolean(rule.targetAgentId),
+    'A network policy rule must reference exactly one app or agent.',
+);
 
 const appNetworkPolicyWriteZodModel = AppNetworkPolicyModel.omit({
     id: true, appId: true, createdAt: true, updatedAt: true,

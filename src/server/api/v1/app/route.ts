@@ -5,6 +5,7 @@ import appLogsService from '@/server/services/standalone-services/app-logs.servi
 import {
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
+    ensureReadAgent,
     ensureReadApp,
     ensureWriteApp,
 } from '@/server/utils/shared-authorization.utils';
@@ -109,7 +110,8 @@ export const appRoutes = new Elysia()
         }
         const saveBody = body.id ? body : stripAppSubObjectIdsForCreate(body);
         for (const rule of saveBody.appNetworkPolicy?.rules ?? []) {
-            ensureReadApp(identity, rule.targetAppId);
+            if (rule.targetAppId) ensureReadApp(identity, rule.targetAppId);
+            if (rule.targetAgentId) ensureReadAgent(identity, rule.targetAgentId);
         }
         return await appService.saveAppExtendedModel(saveBody);
     }, {

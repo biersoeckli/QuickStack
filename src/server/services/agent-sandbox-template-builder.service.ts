@@ -131,6 +131,19 @@ class AgentSandboxTemplateBuilder {
             }];
         const networkPolicy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy(agent.agentNetworkPolicy);
         const healthCheckProbe = this.buildHealthCheckProbe(agent);
+        const annotations = {
+            [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+            ...(deploymentInfo?.deploymentId ? { [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentInfo.deploymentId } : {}),
+            ...(deploymentInfo?.buildJobName ? { buildJobName: deploymentInfo.buildJobName } : {}),
+            ...(deploymentInfo?.gitCommitHash ? { [Constants.QS_ANNOTATION_GIT_COMMIT]: deploymentInfo.gitCommitHash } : {}),
+            ...(deploymentInfo?.gitCommitMessage ? { [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: deploymentInfo.gitCommitMessage } : {}),
+        };
+        const labels = {
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+        };
 
         return {
             apiVersion: `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
@@ -138,15 +151,8 @@ class AgentSandboxTemplateBuilder {
             metadata: {
                 name: agent.id,
                 namespace: agent.projectId,
-                annotations: {
-                    [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
-                    [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
-                    ...(deploymentInfo?.deploymentId ? { [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentInfo.deploymentId } : {}),
-                    ...(deploymentInfo?.buildJobName ? { buildJobName: deploymentInfo.buildJobName } : {}),
-                    ...(deploymentInfo?.gitCommitHash ? { [Constants.QS_ANNOTATION_GIT_COMMIT]: deploymentInfo.gitCommitHash } : {}),
-                    ...(deploymentInfo?.gitCommitMessage ? { [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: deploymentInfo.gitCommitMessage } : {}),
-                },
+                annotations,
+                labels
             },
             spec: {
                 volumeClaimTemplatesPolicy: 'Disallowed', // Default by CRD
@@ -155,6 +161,10 @@ class AgentSandboxTemplateBuilder {
                 ...(networkPolicy ? { networkPolicy } : {}),
                 service: true,
                 podTemplate: {
+                    metadata: {
+                        annotations,
+                        labels
+                    },
                     spec: {
                         volumes,
                         ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),

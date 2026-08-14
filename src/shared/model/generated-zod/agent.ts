@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel, CompleteAgentDomain, RelatedAgentDomainModel, CompleteAgentVolume, RelatedAgentVolumeModel, CompleteAgentFileMount, RelatedAgentFileMountModel, CompleteAgentGitSshKey, RelatedAgentGitSshKeyModel, CompleteAgentNetworkPolicy, RelatedAgentNetworkPolicyModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteLlmGateway, RelatedLlmGatewayModel, CompleteRoleAgentPermission, RelatedRoleAgentPermissionModel, CompleteAgentDomain, RelatedAgentDomainModel, CompleteAgentVolume, RelatedAgentVolumeModel, CompleteAgentFileMount, RelatedAgentFileMountModel, CompleteAgentGitSshKey, RelatedAgentGitSshKeyModel, CompleteAgentNetworkPolicy, RelatedAgentNetworkPolicyModel, CompleteAppNetworkPolicyRule, RelatedAppNetworkPolicyRuleModel } from "./index"
 
 export const AgentModel = z.object({
   id: z.string(),
@@ -50,6 +50,7 @@ export interface CompleteAgent extends z.infer<typeof AgentModel> {
   agentFileMounts: CompleteAgentFileMount[]
   agentGitSshKey?: CompleteAgentGitSshKey | null
   agentNetworkPolicy?: CompleteAgentNetworkPolicy | null
+  appNetworkPolicyRules: CompleteAppNetworkPolicyRule[]
 }
 
 /**
@@ -66,4 +67,5 @@ export const RelatedAgentModel: z.ZodSchema<CompleteAgent> = z.lazy(() => AgentM
   agentFileMounts: RelatedAgentFileMountModel.array(),
   agentGitSshKey: RelatedAgentGitSshKeyModel.nullish(),
   agentNetworkPolicy: RelatedAgentNetworkPolicyModel.nullish(),
+  appNetworkPolicyRules: RelatedAppNetworkPolicyRuleModel.array(),
 }))

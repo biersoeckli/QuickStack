@@ -19,14 +19,14 @@ import { saveAppNetworkPolicyRule } from './actions';
 
 type Direction = 'INGRESS' | 'EGRESS';
 type Project = { id: string; name: string };
-type SelectableApp = { id: string; name: string; project: Project };
+type SelectableTarget = { id: string; name: string; type: 'APP' | 'AGENT'; project: Project };
 
-export default function AppNetworkPolicyRuleDialog({ appId, direction, apps }: { appId: string; direction: Direction; apps: SelectableApp[] }) {
+export default function AppNetworkPolicyRuleDialog({ appId, direction, targets }: { appId: string; direction: Direction; targets: SelectableTarget[] }) {
     const { closeDialog } = useDialogContext();
     const ingress = direction === 'INGRESS';
     const form = useForm<z.input<typeof appNetworkPolicyRuleEditZodModel>, unknown, z.output<typeof appNetworkPolicyRuleEditZodModel>>({
         resolver: zodResolver(appNetworkPolicyRuleEditZodModel),
-        defaultValues: { type: direction, targetAppId: '', port: '', protocol: 'TCP' },
+        defaultValues: { type: direction, targetType: 'APP', targetId: '', port: '', protocol: 'TCP' },
     });
     const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: AppNetworkPolicyRuleEditModel) =>
@@ -46,19 +46,23 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, apps }: {
     return <>
         <DialogHeader>
             <DialogTitle>Add {ingress ? 'ingress' : 'egress'} rule</DialogTitle>
-            <DialogDescription>{ingress ? 'Allow a source app to access this app.' : 'Allow this app to access a target app.'}</DialogDescription>
+            <DialogDescription>{ingress ? 'Allow a source app or agent sandbox to access this app.' : 'Allow this app to access a target app or agent sandbox.'}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form action={() => form.handleSubmit(data => formAction(data))()} className="space-y-5 py-6">
                 <FormField
                     control={form.control}
-                    name="targetAppId"
+                    name="targetId"
                     render={({ field }) => <FormItem>
-                        <FormLabel>{ingress ? 'Source App' : 'Target App'}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select app" /></SelectTrigger></FormControl>
+                        <FormLabel>{ingress ? 'Source' : 'Target'}</FormLabel>
+                        <Select value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
+                            const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
+                            form.setValue('targetType', targetType);
+                            field.onChange(targetId);
+                        }}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select target" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {apps.map(app => <SelectItem key={app.id} value={app.id}>{app.project.name} / {app.name}</SelectItem>)}
+                                {targets.map(target => <SelectItem key={`${target.type}:${target.id}`} value={`${target.type}:${target.id}`}>{target.project.name} / {target.name} ({target.type === 'APP' ? 'App' : 'Agent sandbox'})</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <FormMessage />

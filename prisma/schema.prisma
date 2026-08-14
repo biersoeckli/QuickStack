@@ -268,6 +268,7 @@ model Agent {
   agentFileMounts      AgentFileMount[]
   agentGitSshKey       AgentGitSshKey?
   agentNetworkPolicy   AgentNetworkPolicy?
+  appNetworkPolicyRules AppNetworkPolicyRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -439,8 +440,10 @@ model AppNetworkPolicyRule {
   appNetworkPolicyId String
   appNetworkPolicy   AppNetworkPolicy @relation(fields: [appNetworkPolicyId], references: [id], onDelete: Cascade)
   type               String           // INGRESS, EGRESS
-  targetAppId        String
-  targetApp          App              @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
+  targetAppId        String?
+  targetApp          App?             @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
+  targetAgentId      String?
+  targetAgent        Agent?           @relation(fields: [targetAgentId], references: [id], onDelete: Cascade)
   port               Int
   protocol           String           @default("TCP") // TCP, UDP
 
@@ -448,6 +451,7 @@ model AppNetworkPolicyRule {
   updatedAt DateTime @updatedAt
 
   @@unique([appNetworkPolicyId, targetAppId, port, protocol, type])
+  @@unique([appNetworkPolicyId, targetAgentId, port, protocol, type])
 }
 
 model AppGitSshKey {

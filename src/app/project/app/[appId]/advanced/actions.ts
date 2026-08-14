@@ -60,7 +60,7 @@ export const saveAppNetworkPolicySettings = async (prevState: any, input: AppNet
 export const saveAppNetworkPolicyRule = async (prevState: any, input: AppNetworkPolicyRuleEditModel, appId: string) =>
     saveFormAction(input, appNetworkPolicyRuleEditZodModel, async (validated) => {
         const session = await isAuthorizedWriteForWorkload(appId);
-        if (!UserGroupUtils.sessionHasReadAccessForApp(session, validated.targetAppId)) throw new Error('You are not authorized to reference this app.');
+        if (!UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, validated.targetId)) throw new Error('You are not authorized to reference this target.');
         await appNetworkPolicyService.saveRule({ ...validated, appId });
         return new SuccessActionResult();
     });
@@ -73,14 +73,15 @@ export const deleteAppNetworkPolicyRule = async (ruleId: string) =>
         return new SuccessActionResult();
     });
 
-export const getAppsForAppNetworkPolicy = async (appId: string) =>
+export const getTargetsForAppNetworkPolicy = async (appId: string) =>
     simpleAction(async () => {
         const session = await isAuthorizedWriteForWorkload(appId);
         const projects = await projectService.getAll();
         return projects.map(project => ({
             id: project.id, name: project.name,
             apps: project.apps.filter(app => app.id !== appId && UserGroupUtils.sessionHasReadAccessForApp(session, app.id)).map(app => ({ id: app.id, name: app.name })),
-        })).filter(project => project.apps.length > 0);
+            agents: project.agents.filter(agent => UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id)).map(agent => ({ id: agent.id, name: agent.name })),
+        })).filter(project => project.apps.length > 0 || project.agents.length > 0);
     });
 
 export const saveHealthCheck = async (prevState: any, inputData: HealthCheckModel) =>

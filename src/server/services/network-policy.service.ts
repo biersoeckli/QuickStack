@@ -1,4 +1,4 @@
-import { AppExtendedModel, AppNetworkPolicyRuleWithTargetAppModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppNetworkPolicyRuleWithTargetModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { V1NetworkPolicy, V1NetworkPolicyEgressRule, V1NetworkPolicyIngressRule, V1NetworkPolicyPeer } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -13,11 +13,15 @@ export type AgentSandboxTemplateNetworkPolicyConfig = {
     rules: AgentNetworkPolicyRuleWithTargetAppModel[];
 } | null;
 
-type TargetAppNetworkPolicyRule = {
-    targetAppId: string;
-    targetApp: {
+type TargetNetworkPolicyRule = {
+    targetAppId?: string | null;
+    targetAgentId?: string | null;
+    targetApp?: {
         projectId: string;
-    };
+    } | null;
+    targetAgent?: {
+        projectId: string;
+    } | null;
     port: number;
     protocol?: string;
 };
@@ -70,7 +74,7 @@ class NetworkPolicyService {
         await this.applyNetworkPolicy(namespace, policyName, policy);
     }
 
-    private getExtendedIngressRules(rules: AppNetworkPolicyRuleWithTargetAppModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
+    private getExtendedIngressRules(rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
         const result: V1NetworkPolicyIngressRule[] = [];
         const backupAndTools: V1NetworkPolicyPeer[] = [
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
@@ -79,29 +83,32 @@ class NetworkPolicyService {
         result.push({ _from: backupAndTools });
         if (hasDomains) result.push({ _from: [{ namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } }, podSelector: { matchLabels: { 'app.kubernetes.io/name': 'traefik' } } }] });
         for (const rule of rules.filter(rule => rule.type === 'INGRESS')) result.push({
-            _from: [this.getTargetAppPeer(rule)],
+            _from: [this.getTargetPeer(rule)],
             ports: [{ protocol: rule.protocol, port: rule.port }],
         });
         return [...result, ...this.getNodePortIngressRules(nodePorts)];
     }
 
-    private getExtendedEgressRules(rules: AppNetworkPolicyRuleWithTargetAppModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
+    private getExtendedEgressRules(rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
         const result: V1NetworkPolicyEgressRule[] = [this.getDnsEgressRule()];
         if (allowInternetAccess) result.push(this.getInternetEgressRule());
-        for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetAppEgressRule(rule));
+        for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetEgressRule(rule));
         return result;
     }
 
-    private getTargetAppPeer(rule: TargetAppNetworkPolicyRule): V1NetworkPolicyPeer {
+    private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {
+        const target = rule.targetAgent ?? rule.targetApp;
+        const targetId = rule.targetAgentId ?? rule.targetAppId;
+        if (!target || !targetId) throw new Error('Network policy rule has no target.');
         return {
-            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': rule.targetApp.projectId } },
-            podSelector: { matchLabels: { app: rule.targetAppId } },
+            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': target.projectId } },
+            podSelector: { matchLabels: rule.targetAgentId ? { [Constants.QS_ANNOTATION_AGENT_ID]: targetId } : { app: targetId } },
         };
     }
 
-    private getTargetAppEgressRule(rule: TargetAppNetworkPolicyRule): V1NetworkPolicyEgressRule {
+    private getTargetEgressRule(rule: TargetNetworkPolicyRule): V1NetworkPolicyEgressRule {
         return {
-            to: [this.getTargetAppPeer(rule)],
+            to: [this.getTargetPeer(rule)],
             ports: [{ protocol: rule.protocol || 'TCP', port: rule.port }],
         };
     }
@@ -152,7 +159,7 @@ class NetworkPolicyService {
             }
             seen.add(dedupeKey);
 
-            egress.push(this.getTargetAppEgressRule({ ...rule, protocol }));
+            egress.push(this.getTargetEgressRule({ ...rule, protocol }));
         }
 
         return {

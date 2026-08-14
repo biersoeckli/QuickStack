@@ -1,12 +1,13 @@
 import * as z from "zod"
 
-import { CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteApp, RelatedAppModel } from "./index"
+import { CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteApp, RelatedAppModel, CompleteAgent, RelatedAgentModel } from "./index"
 
 export const AppNetworkPolicyRuleModel = z.object({
   id: z.string(),
   appNetworkPolicyId: z.string(),
   type: z.string(),
-  targetAppId: z.string(),
+  targetAppId: z.string().nullish(),
+  targetAgentId: z.string().nullish(),
   port: z.number().int(),
   protocol: z.string(),
   createdAt: z.date(),
@@ -15,7 +16,8 @@ export const AppNetworkPolicyRuleModel = z.object({
 
 export interface CompleteAppNetworkPolicyRule extends z.infer<typeof AppNetworkPolicyRuleModel> {
   appNetworkPolicy: CompleteAppNetworkPolicy
-  targetApp: CompleteApp
+  targetApp?: CompleteApp | null
+  targetAgent?: CompleteAgent | null
 }
 
 /**
@@ -25,5 +27,6 @@ export interface CompleteAppNetworkPolicyRule extends z.infer<typeof AppNetworkP
  */
 export const RelatedAppNetworkPolicyRuleModel: z.ZodSchema<CompleteAppNetworkPolicyRule> = z.lazy(() => AppNetworkPolicyRuleModel.extend({
   appNetworkPolicy: RelatedAppNetworkPolicyModel,
-  targetApp: RelatedAppModel,
+  targetApp: RelatedAppModel.nullish(),
+  targetAgent: RelatedAgentModel.nullish(),
 }))

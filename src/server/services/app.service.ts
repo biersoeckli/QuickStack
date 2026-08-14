@@ -91,7 +91,28 @@ class AppService {
                 appFileMounts: true,
                 appVolumes: true,
                 appBasicAuths: true,
-                appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } } } } } },
+                appNetworkPolicy: {
+                    include: {
+                        rules: {
+                            include: {
+                                targetApp: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        projectId: true
+                                    }
+                                },
+                                targetAgent: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        projectId: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 project: true
             },
             orderBy: {
@@ -112,7 +133,7 @@ class AppService {
             appNodePorts: true,
             appFileMounts: true,
             appBasicAuths: true,
-            appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } } } } } },
+            appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } }, targetAgent: { select: { id: true, name: true, projectId: true } } } } } },
         };
 
         const client = tx || dataAccess.client;
@@ -288,6 +309,7 @@ class AppService {
                         data: app.appNetworkPolicy.rules.map(rule => ({
                             appNetworkPolicyId: policy.id,
                             targetAppId: rule.targetAppId,
+                            targetAgentId: rule.targetAgentId,
                             type: rule.type,
                             port: rule.port,
                             protocol: rule.protocol,

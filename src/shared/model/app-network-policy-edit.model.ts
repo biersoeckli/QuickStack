@@ -11,7 +11,8 @@ export type AppNetworkPolicySettingsModel = z.infer<typeof appNetworkPolicySetti
 export const appNetworkPolicyRuleEditZodModel = z.object({
     id: z.string().optional(),
     type: z.enum(['INGRESS', 'EGRESS']),
-    targetAppId: z.string().trim().min(1, 'Please select an app.'),
+    targetType: z.enum(['APP', 'AGENT']),
+    targetId: z.string().trim().min(1, 'Please select a target.'),
     port: z.union([z.string(), z.number()]).transform((value) => typeof value === 'string' ? parseInt(value, 10) : value)
         .refine((value) => Number.isInteger(value) && value >= 1 && value <= 65535, 'Port must be between 1 and 65535.'),
     protocol: z.enum(['TCP', 'UDP']).default('TCP'),

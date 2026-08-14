@@ -11,12 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { getAppsForAppNetworkPolicy, saveAppNetworkPolicySettings, saveNetworkPolicy } from './actions';
+import { getTargetsForAppNetworkPolicy, saveAppNetworkPolicySettings, saveNetworkPolicy } from './actions';
 import { useDialog } from '@/frontend/states/zustand.states';
 import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
 import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
 
-type Project = { id: string; name: string; apps: { id: string; name: string }[] };
+type Project = { id: string; name: string; apps: { id: string; name: string }[]; agents: { id: string; name: string }[] };
 
 export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel; readonly: boolean }) {
     const [mode, setMode] = useState(app.networkPolicyMode as 'SIMPLE' | 'EXTENDED');
@@ -27,10 +27,13 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
     const [projects, setProjects] = useState<Project[]>([]);
     const { openDialog } = useDialog();
     const rules = app.appNetworkPolicy?.rules ?? [];
-    const apps = projects.flatMap(project => project.apps.map(item => ({ ...item, project })));
+    const targets = projects.flatMap(project => [
+        ...project.apps.map(item => ({ ...item, type: 'APP' as const, project })),
+        ...project.agents.map(item => ({ ...item, type: 'AGENT' as const, project })),
+    ]);
 
     useEffect(() => {
-        if (mode === 'EXTENDED') getAppsForAppNetworkPolicy(app.id).then(result => result.status === 'success' && setProjects(result.data ?? []));
+        if (mode === 'EXTENDED') getTargetsForAppNetworkPolicy(app.id).then(result => result.status === 'success' && setProjects(result.data ?? []));
     }, [app.id, mode]);
 
     const saveSettings = (nextMode: 'SIMPLE' | 'EXTENDED', nextEnabled: boolean, nextInternet: boolean) => nextMode === 'SIMPLE'
@@ -54,7 +57,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         saveSettings(mode, enabled, nextInternet);
     };
 
-    const openRuleDialog = (direction: AppNetworkPolicyDirection) => openDialog(<AppNetworkPolicyRuleDialog appId={app.id} direction={direction} apps={apps} />, { maxWidth: 'max-w-md' });
+    const openRuleDialog = (direction: AppNetworkPolicyDirection) => openDialog(<AppNetworkPolicyRuleDialog appId={app.id} direction={direction} targets={targets} />, { maxWidth: 'max-w-md' });
 
     return <Card>
         <CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>

@@ -36,7 +36,7 @@ export default function AppNetworkPolicyRuleSection({
 }: AppNetworkPolicyRuleSectionProps) {
     const ingress = direction === 'INGRESS';
     const title = ingress ? 'Ingress rules' : 'Egress rules';
-    const description = ingress ? 'Who can access this app?' : 'Which apps can this app access?';
+    const description = ingress ? 'Who can access this app?' : 'Which apps or agent sandboxes can this app access?';
 
     return (
         <section>
@@ -71,7 +71,7 @@ export default function AppNetworkPolicyRuleSection({
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>{ingress ? 'Source App' : 'Target App'}</TableHead>
+                                <TableHead>{ingress ? 'Source' : 'Target'}</TableHead>
                                 <TableHead>Port</TableHead>
                                 <TableHead>Protocol</TableHead>
                                 <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
@@ -94,16 +94,18 @@ export default function AppNetworkPolicyRuleSection({
 }
 
 function RuleRow({ rule, readonly }: { rule: AppNetworkPolicyRuleWithTargetAppModel; readonly: boolean }) {
+    const target = rule.targetAgent ?? rule.targetApp;
+    const targetType = rule.targetAgent ? 'Agent sandbox' : 'App';
     const copyInternalHostname = () => {
-        navigator.clipboard.writeText(InternalHostnameUtils.getInternalBaseUrlForApp(rule.targetApp, rule.port));
+        if (rule.targetApp) navigator.clipboard.writeText(InternalHostnameUtils.getInternalBaseUrlForApp(rule.targetApp, rule.port));
         toast.success('Copied internal hostname to clipboard');
     };
 
     return (
         <TableRow>
             <TableCell>
-                {rule.targetApp.name}
-                <span className="ml-2 text-muted-foreground">{rule.targetApp.projectId}</span>
+                {target?.name ?? 'Unknown target'}
+                <span className="ml-2 text-muted-foreground">{target?.projectId} · {targetType}</span>
             </TableCell>
             <TableCell>{rule.port}</TableCell>
             <TableCell>{rule.protocol}</TableCell>
@@ -117,9 +119,9 @@ function RuleRow({ rule, readonly }: { rule: AppNetworkPolicyRuleWithTargetAppMo
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={copyInternalHostname}>
+                            {rule.targetApp && <DropdownMenuItem onClick={copyInternalHostname}>
                                 <CopyIcon /> Copy internal hostname
-                            </DropdownMenuItem>
+                            </DropdownMenuItem>}
                             <DropdownMenuItem className="text-destructive" onClick={() => Toast.fromAction(() => deleteAppNetworkPolicyRule(rule.id), 'Rule deleted.')}>
                                 <TrashIcon /> Delete
                             </DropdownMenuItem>
