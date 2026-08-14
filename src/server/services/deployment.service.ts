@@ -207,6 +207,7 @@ class DeploymentService {
 
         if (app.cpuReservation || app.memoryReservation) {
             body.spec!.template!.spec!.containers[0].resources = {
+                ...body.spec!.template!.spec!.containers[0].resources,
                 requests: {}
             }
             if (app.cpuReservation) {
