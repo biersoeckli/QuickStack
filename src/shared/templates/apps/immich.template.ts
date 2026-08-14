@@ -35,6 +35,7 @@ DB_DATABASE_NAME=immich
 REDIS_HOSTNAME=immich_redis
 `,
             useNetworkPolicy: true,
+            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,

@@ -339,13 +339,13 @@ function expectIngressRules(rules: k8s.V1NetworkPolicyIngressRule[], policyType:
         dbTool: boolean;
     }> = {
         ALLOW_ALL: {
-            traefik: true,
+            traefik: false,
             namespace: true,
             backupJob: false,
             dbTool: false,
         },
         INTERNET_ONLY: {
-            traefik: true,
+            traefik: false,
             namespace: false,
             backupJob: true,
             dbTool: true,

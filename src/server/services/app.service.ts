@@ -91,6 +91,7 @@ class AppService {
                 appFileMounts: true,
                 appVolumes: true,
                 appBasicAuths: true,
+                appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } } } } } },
                 project: true
             },
             orderBy: {
@@ -110,7 +111,8 @@ class AppService {
             appPorts: true,
             appNodePorts: true,
             appFileMounts: true,
-            appBasicAuths: true
+            appBasicAuths: true,
+            appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } } } } } },
         };
 
         const client = tx || dataAccess.client;
@@ -218,7 +220,7 @@ class AppService {
                 updatedAt: z.date().optional(),
             });
 
-            const parsedAppModel = AppModel.extend(optionalParam.shape).parse(app);
+            const parsedAppModel = AppModel.extend(optionalParam.shape).parse({ ...app, networkPolicyMode: app.networkPolicyMode ?? 'SIMPLE' });
             const savedApp = await this.save({
                 ...parsedAppModel,
                 id: app.id
@@ -272,6 +274,26 @@ class AppService {
                     ...basicAuth,
                     appId: savedAppId
                 }, innerTx);
+            }
+
+            if (app.appNetworkPolicy) {
+                const policy = await innerTx.appNetworkPolicy.upsert({
+                    where: { appId: savedAppId },
+                    create: { appId: savedAppId, allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
+                    update: { allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
+                });
+                await innerTx.appNetworkPolicyRule.deleteMany({ where: { appNetworkPolicyId: policy.id } });
+                if (app.appNetworkPolicy.rules.length) {
+                    await innerTx.appNetworkPolicyRule.createMany({
+                        data: app.appNetworkPolicy.rules.map(rule => ({
+                            appNetworkPolicyId: policy.id,
+                            targetAppId: rule.targetAppId,
+                            type: rule.type,
+                            port: rule.port,
+                            protocol: rule.protocol,
+                        })),
+                    });
+                }
             }
 
             return await this.getExtendedById(savedAppId, false, innerTx);

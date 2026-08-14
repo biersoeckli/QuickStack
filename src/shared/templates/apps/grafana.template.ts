@@ -38,6 +38,7 @@ export const grafanaAppTemplate: AppTemplateModel = {
             egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
+            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,

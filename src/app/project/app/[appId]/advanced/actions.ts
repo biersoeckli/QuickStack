@@ -2,10 +2,14 @@
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
-import { isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedWriteForApp, isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model";
 import { appNetworkPolicy } from "@/shared/model/network-policy.model";
 import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
+import appNetworkPolicyService from "@/server/services/app-network-policy.service";
+import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel, AppNetworkPolicySettingsModel, appNetworkPolicySettingsZodModel } from "@/shared/model/app-network-policy-edit.model";
+import projectService from "@/server/services/project.service";
+import { UserGroupUtils } from "@/shared/utils/role.utils";
 
 
 export const saveBasicAuth = async (prevState: any, inputData: BasicAuthEditModel) =>
@@ -40,14 +44,48 @@ export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, eg
             ...app,
             ingressNetworkPolicy: ingressPolicy,
             egressNetworkPolicy: egressPolicy,
-            useNetworkPolicy: useNetworkPolicy
+            useNetworkPolicy: useNetworkPolicy,
+            networkPolicyMode: 'SIMPLE',
         });
         return new SuccessActionResult(undefined, 'Network policy saved');
     });
 
+export const saveAppNetworkPolicySettings = async (prevState: any, input: AppNetworkPolicySettingsModel, appId: string) =>
+    saveFormAction(input, appNetworkPolicySettingsZodModel, async (validated) => {
+        await isAuthorizedWriteForWorkload(appId);
+        await appNetworkPolicyService.saveSettings({ ...validated, appId });
+        return new SuccessActionResult();
+    });
+
+export const saveAppNetworkPolicyRule = async (prevState: any, input: AppNetworkPolicyRuleEditModel, appId: string) =>
+    saveFormAction(input, appNetworkPolicyRuleEditZodModel, async (validated) => {
+        const session = await isAuthorizedWriteForWorkload(appId);
+        if (!UserGroupUtils.sessionHasReadAccessForApp(session, validated.targetAppId)) throw new Error('You are not authorized to reference this app.');
+        await appNetworkPolicyService.saveRule({ ...validated, appId });
+        return new SuccessActionResult();
+    });
+
+export const deleteAppNetworkPolicyRule = async (ruleId: string) =>
+    simpleAction(async () => {
+        const rule = await appNetworkPolicyService.getRuleById(ruleId);
+        await isAuthorizedWriteForWorkload(rule.appNetworkPolicy.appId);
+        await appNetworkPolicyService.deleteRule(ruleId);
+        return new SuccessActionResult();
+    });
+
+export const getAppsForAppNetworkPolicy = async (appId: string) =>
+    simpleAction(async () => {
+        const session = await isAuthorizedWriteForWorkload(appId);
+        const projects = await projectService.getAll();
+        return projects.map(project => ({
+            id: project.id, name: project.name,
+            apps: project.apps.filter(app => app.id !== appId && UserGroupUtils.sessionHasReadAccessForApp(session, app.id)).map(app => ({ id: app.id, name: app.name })),
+        })).filter(project => project.apps.length > 0);
+    });
+
 export const saveHealthCheck = async (prevState: any, inputData: HealthCheckModel) =>
     saveFormAction(inputData, healthCheckZodModel, async (validatedData) => {
-        await isAuthorizedWriteForApp(validatedData.workloadId);
+        await isAuthorizedWriteForWorkload(validatedData.workloadId);
 
         const app = await appService.getById(validatedData.workloadId);
 

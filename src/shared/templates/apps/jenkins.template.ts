@@ -25,6 +25,7 @@ export const jenkinsAppTemplate: AppTemplateModel = {
             envVars: `JAVA_OPTS=-Djenkins.install.runSetupWizard=true
 `,
             useNetworkPolicy: true,
+            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 60,
             healthCheckTimeoutSeconds: 30,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,

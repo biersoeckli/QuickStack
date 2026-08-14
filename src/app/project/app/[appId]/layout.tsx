@@ -21,7 +21,7 @@ export default async function RootLayout({
   const session = await isAuthorizedReadForApp(appId);
   const app = await appService.getExtendedById(appId);
 
-  const showIngressWarning = app.appDomains.length > 0 && app.ingressNetworkPolicy !== 'ALLOW_ALL' && app.ingressNetworkPolicy !== 'INTERNET_ONLY';
+  const showIngressWarning = app.networkPolicyMode !== 'EXTENDED' && app.appDomains.length > 0 && app.ingressNetworkPolicy !== 'ALLOW_ALL' && app.ingressNetworkPolicy !== 'INTERNET_ONLY';
 
   return (
     <div className="flex-1 space-y-6 pt-6">

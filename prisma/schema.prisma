@@ -392,6 +392,7 @@ model App {
   ingressNetworkPolicy String  @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL, INTERNET_ONLY
   egressNetworkPolicy  String  @default("ALLOW_ALL") // ALLOW_ALL, NAMESPACE_ONLY, DENY_ALL, INTERNET_ONLY
   useNetworkPolicy     Boolean @default(true)
+  networkPolicyMode    String  @default("SIMPLE") // SIMPLE, EXTENDED
 
   // healthCheck startupProbe, readinessProbe, livenessProbe
   healthChechHttpGetPath      String?
@@ -411,12 +412,42 @@ model App {
   appFileMounts      AppFileMount[]
   appBasicAuths      AppBasicAuth[]
   appGitSshKey       AppGitSshKey?
+  appNetworkPolicy   AppNetworkPolicy?
   roleAppPermissions RoleAppPermission[]
 
   agentNetworkPolicyRules AgentNetworkPolicyRule[]
+  appNetworkPolicyRules   AppNetworkPolicyRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AppNetworkPolicy {
+  id                  String  @id @default(uuid())
+  appId               String  @unique
+  app                 App     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  allowInternetAccess Boolean @default(true)
+
+  rules AppNetworkPolicyRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppNetworkPolicyRule {
+  id                 String           @id @default(uuid())
+  appNetworkPolicyId String
+  appNetworkPolicy   AppNetworkPolicy @relation(fields: [appNetworkPolicyId], references: [id], onDelete: Cascade)
+  type               String           // INGRESS, EGRESS
+  targetAppId        String
+  targetApp          App              @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
+  port               Int
+  protocol           String           @default("TCP") // TCP, UDP
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appNetworkPolicyId, targetAppId, port, protocol, type])
 }
 
 model AppGitSshKey {

@@ -23,6 +23,10 @@ function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtended
         appFileMounts: body.appFileMounts.map(({ id: _id, ...fileMount }) => fileMount),
         appVolumes: body.appVolumes.map(({ id: _id, ...volume }) => volume),
         appBasicAuths: body.appBasicAuths.map(({ id: _id, ...basicAuth }) => basicAuth),
+        appNetworkPolicy: body.appNetworkPolicy ? {
+            ...body.appNetworkPolicy,
+            rules: body.appNetworkPolicy.rules.map(({ id: _id, ...rule }) => rule),
+        } : undefined,
     };
 }
 
@@ -104,6 +108,9 @@ export const appRoutes = new Elysia()
             }
         }
         const saveBody = body.id ? body : stripAppSubObjectIdsForCreate(body);
+        for (const rule of saveBody.appNetworkPolicy?.rules ?? []) {
+            ensureReadApp(identity, rule.targetAppId);
+        }
         return await appService.saveAppExtendedModel(saveBody);
     }, {
         body: AppExtendedWriteZodModel,

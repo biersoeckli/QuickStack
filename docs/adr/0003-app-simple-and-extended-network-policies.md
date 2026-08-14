@@ -1,0 +1,3 @@
+# Use simple and extended network-policy configurations for Apps
+
+Apps retain the existing enum-based ingress and egress policies as their Simple configuration and gain an Extended configuration selected explicitly per App. Extended configuration owns one AppNetworkPolicy with optional Internet egress and direction-tagged, app-to-app port/protocol rules; it retains inactive configuration on mode changes, preserves platform-required DNS, NodePort, backup, DB-tool, and domain-conditioned Traefik access, and may reference Apps in other projects only when the configuring user has workload permission. This makes detailed policy possible without changing existing Apps' behavior or silently breaking operational traffic.

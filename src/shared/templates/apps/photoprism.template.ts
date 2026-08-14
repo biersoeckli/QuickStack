@@ -35,6 +35,7 @@ PHOTOPRISM_EXPERIMENTAL=false
 PHOTOPRISM_DATABASE_DRIVER=sqlite
 `,
             useNetworkPolicy: true,
+            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 60,
             healthCheckTimeoutSeconds: 30,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,

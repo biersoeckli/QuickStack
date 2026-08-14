@@ -7,6 +7,34 @@ QuickStack deploys applications from container images or Git repositories into a
 **App**:
 A deployable workload managed by QuickStack.
 
+**App Network Policy Configuration**:
+The active network-policy configuration for an **App**, selected as either **Simple** or **Extended**.
+_Avoid_: advanced configuration, app firewall mode
+
+**Simple App Network Policy Configuration**:
+An **App Network Policy Configuration** that uses the App's ingress and egress policy enums.
+_Avoid_: legacy configuration, basic firewall
+
+**Extended App Network Policy Configuration**:
+An **App Network Policy Configuration** that uses detailed, separate ingress and egress rules.
+_Avoid_: advanced configuration, custom firewall
+
+**App Network Policy Rule**:
+A detailed ingress or egress rule that permits traffic between one **App** and a target App on a port and protocol.
+_Avoid_: generic app allowlist, agent network-policy rule
+
+**App Network Policy Rule Source**:
+The permitted source App of an extended ingress rule.
+_Avoid_: ingress target app
+
+**App Network Policy Rule Target**:
+The permitted destination App of an extended egress rule.
+_Avoid_: egress source app
+
+**App Domain**:
+A configured domain that exposes an **App** through Traefik.
+_Avoid_: public app address, ingress rule
+
 **Agent**:
 A long-lived, isolated container workspace managed by QuickStack for AI-assisted work.
 _Avoid_: App, fixed opencode runtime, automation run
@@ -243,6 +271,11 @@ _Avoid_: manual initial port requirement
 - A **Project Workload** means an **App** inside an **App Project** or an **Agent** inside an **Agent Project**.
 - A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Node Ports**.
+- An **App** has exactly one active **App Network Policy Configuration**.
+- An **Extended App Network Policy Configuration** can have zero or more **App Network Policy Rules** for ingress and zero or more for egress.
+- An **App Domain** permits Traefik ingress to its App when Network Policies are active.
+- An extended ingress rule identifies an **App Network Policy Rule Source**; an extended egress rule identifies an **App Network Policy Rule Target**.
+- An **App Network Policy Rule** may reference an App in another project only when its user has a **Workload Permission** for that App.
 - A **Configured Source** belongs to exactly one **App**.
 - Only application workloads can use a **Git HTTPS Source** or **Git SSH Source**.
 - A **Git HTTPS Source** belongs to exactly one **App**.
