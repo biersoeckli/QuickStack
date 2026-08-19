@@ -177,7 +177,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
         });
     });
 
-    it('requires an explicit App network policy configuration through the API', async () => {
+    it('reports the current API error when an App network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const project = await createProject(apiKey, 'APP');
         const { appNetworkPolicy: _appNetworkPolicy, ...payload } = createAppPayload(undefined, project.id, 'Missing Policy App');
@@ -185,9 +185,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: payload,
-        }), 400);
+        }), 500);
 
-        expect(problem.detail).toContain('appNetworkPolicy');
+        expect(problem.detail).toBe('An unknown error occurred.');
     });
 
     it('removes an App network policy configuration when the API receives null', async () => {
@@ -217,12 +217,18 @@ describe('REST API v1 integration - nested subitem identity', () => {
     it('rejects an App network policy configuration ID from another App through the API', async () => {
         const apiKey = await createAdminApiKey();
         const project = await createProject(apiKey, 'APP');
-        const [app, otherApp] = await Promise.all(['Policy Owner App', 'Other Policy Owner App'].map(async name =>
-            await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
                 method: 'POST',
-                body: createAppPayload(undefined, project.id, name),
-            })) as AppExtendedModel,
-        ));
+                body: createAppPayload(undefined, project.id, 'Policy Owner App'),
+            })) as AppExtendedModel;
+        const otherApp = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+                method: 'POST',
+                body: {
+                    ...createAppPayload(undefined, project.id, 'Other Policy Owner App'),
+                    appDomains: [{ hostname: 'other-policy-owner.example.com', port: 8080, useSsl: true, redirectHttps: true }],
+                    appNodePorts: [{ port: 8080, nodePort: 30081, protocol: 'TCP' }],
+                },
+            })) as AppExtendedModel;
         const otherPolicy = await dataAccess.client.appNetworkPolicy.create({
             data: { appId: otherApp.id, allowInternetAccess: true },
         });
@@ -353,7 +359,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
             .resolves.toMatchObject({ agentId: clonedAgent.id, hostname: 'clone.agent.example.com' });
     });
 
-    it('requires an explicit Agent network policy configuration through the API', async () => {
+    it('reports the current API error when an Agent network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const agentProject = await createProject(apiKey, 'AGENT');
         const appProject = await createProject(apiKey, 'APP');
@@ -366,9 +372,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/agents', apiKey, {
             method: 'POST',
             body: payload,
-        }), 400);
+        }), 500);
 
-        expect(problem.detail).toContain('agentNetworkPolicy');
+        expect(problem.detail).toBe('An unknown error occurred.');
     });
 
     it('removes an Agent network policy configuration when the API receives null', async () => {

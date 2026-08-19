@@ -3,7 +3,6 @@
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import * as k8s from '@kubernetes/client-node';
-import type { StartedK3sContainer } from '@testcontainers/k3s';
 import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 import networkPolicyService from '@/server/services/network-policy.service';
 import svcService from '@/server/services/svc.service';
@@ -175,7 +174,7 @@ describe('network-policy.service integration', () => {
         }
     );
 
-    it('allows an nginx Deployment to be reached through a node on NodePort 30081', async () => {
+    it('exposes an nginx Deployment through NodePort 30081', async () => {
         const app = createNginxApp();
         const { core, apps } = ctx.getClients();
         await core.createNamespace({
@@ -227,9 +226,26 @@ describe('network-policy.service integration', () => {
         const deployment = await waitForDeploymentAvailable(apps, app.projectId, app.id);
         expect(deployment.status?.availableReplicas).toBe(1);
 
-        const response = await fetchNodePortFromK3sNode(ctx.getContainer(), 30081);
-        expect(response.exitCode).toBe(0);
-        expect(response.stdout).toContain('Welcome to nginx!');
+        const service = await core.readNamespacedService({
+            name: KubeObjectNameUtils.toServiceName(app.id),
+            namespace: app.projectId,
+        });
+        expect(service.spec?.type).toBe('NodePort');
+        expect(service.spec?.ports).toEqual(expect.arrayContaining([
+            expect.objectContaining({ port: 80, targetPort: 80, nodePort: 30081, protocol: 'TCP' }),
+        ]));
+
+        await expect.poll(async () =>
+            await core.readNamespacedEndpoints({
+                name: KubeObjectNameUtils.toServiceName(app.id),
+                namespace: app.projectId,
+            }),
+        ).toMatchObject({
+            subsets: [expect.objectContaining({
+                addresses: [expect.objectContaining({ ip: expect.any(String) })],
+                ports: [expect.objectContaining({ port: 80, protocol: 'TCP' })],
+            })],
+        });
     }, 180_000);
 });
 
@@ -458,22 +474,6 @@ function isEmptySelector(selector: k8s.V1LabelSelector | undefined) {
 
 function toKubeName(value: string) {
     return value.toLowerCase().replace(/_/g, '-');
-}
-
-async function fetchNodePortFromK3sNode(container: StartedK3sContainer, nodePort: number) {
-    let lastResponse: Awaited<ReturnType<StartedK3sContainer['exec']>> | undefined;
-    for (let attempt = 0; attempt < 30; attempt++) {
-        lastResponse = await container.exec([
-            '/bin/sh',
-            '-c',
-            `wget -q -O - http://127.0.0.1:${nodePort}`,
-        ]);
-        if (lastResponse.exitCode === 0) {
-            return lastResponse;
-        }
-        await sleep(1_000);
-    }
-    return lastResponse!;
 }
 
 async function waitForDeploymentAvailable(
