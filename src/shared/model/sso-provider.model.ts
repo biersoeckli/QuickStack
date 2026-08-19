@@ -18,22 +18,6 @@ export const ssoProviderEditZodModel = z
     issuer: z.string().trim().optional().default(""),
     tenantId: z.string().trim().optional().default(""),
     defaultUserGroupId: z.string().uuid("Default user group is required."),
-  })
-  .superRefine((value, ctx) => {
-    if (value.type === "OIDC" && !value.issuer) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["issuer"],
-        message: "Issuer is required for OIDC.",
-      });
-    }
-    if (value.type === "AZURE_AD" && !value.tenantId) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["tenantId"],
-        message: "Tenant ID is required for Azure AD.",
-      });
-    }
   });
 
 export type SsoProviderEditModel = z.infer<typeof ssoProviderEditZodModel>;

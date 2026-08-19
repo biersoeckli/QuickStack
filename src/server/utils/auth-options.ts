@@ -1,6 +1,6 @@
 import { User } from "@prisma/client";
 import { NextAuthOptions } from "next-auth";
-import { AdapterUser } from "next-auth/adapters";
+import { AdapterAccount, AdapterUser } from "next-auth/adapters";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -10,6 +10,22 @@ import dataAccess from "@/server/adapter/db.client";
 import userService from "@/server/services/user.service";
 import ssoProviderService from "@/server/services/sso-provider.service";
 import { UserSession } from "@/shared/model/sim-session.model";
+
+function mapOidcProfile(profile: Record<string, unknown>) {
+  return {
+    id: profile.sub as string,
+    // Microsoft Entra ID does not guarantee an `email` claim for work and
+    // school accounts. Its `preferred_username` claim is normally the UPN.
+    email:
+      (profile.email as string | undefined) ??
+      (profile.preferred_username as string | undefined) ??
+      (profile.upn as string | undefined),
+    name:
+      (profile.name as string | undefined) ??
+      (profile.preferred_username as string | undefined),
+    image: (profile.picture as string | null | undefined) ?? null,
+  };
+}
 
 export function mapToNextAuthProvider(
   provider: Awaited<
@@ -31,18 +47,16 @@ export function mapToNextAuthProvider(
         type: "oauth" as const,
         wellKnown: `${provider.issuer!.replace(/\/$/, "")}/.well-known/openid-configuration`,
         authorization: { params: { scope: "openid email profile" } },
-        profile(profile: Record<string, any>) {
-          return {
-            id: profile.sub,
-            email: profile.email,
-            name: profile.name ?? profile.preferred_username,
-          };
-        },
+        profile: mapOidcProfile,
       };
     case "GOOGLE":
       return GoogleProvider(common);
     case "AZURE_AD":
-      return AzureADProvider({ ...common, tenantId: provider.tenantId! });
+      return AzureADProvider({
+        ...common,
+        tenantId: provider.tenantId!,
+        profile: mapOidcProfile,
+      });
     case "GITHUB":
       return GitHubProvider(common);
   }
@@ -126,6 +140,24 @@ export async function buildAuthOptions(): Promise<NextAuthOptions> {
       ...PrismaAdapter(dataAccess.client),
       createUser: (user: AdapterUser) =>
         dataAccess.client.user.create({ data: { ...user, password: "" } }),
+      // OIDC providers may return non-standard token fields (for example
+      // Azure's `ext_expires_in`). Prisma only accepts fields in Account.
+      linkAccount: (account: AdapterAccount) =>
+        dataAccess.client.account.create({
+          data: {
+            userId: account.userId,
+            type: account.type,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+            refresh_token: account.refresh_token,
+            access_token: account.access_token,
+            expires_at: account.expires_at,
+            token_type: account.token_type,
+            scope: account.scope,
+            id_token: account.id_token,
+            session_state: account.session_state,
+          },
+        }),
     },
   };
 }
