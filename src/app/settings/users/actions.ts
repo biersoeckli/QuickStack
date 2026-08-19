@@ -12,7 +12,6 @@ import restApiKeyService from "@/server/services/rest-api-key.service";
 import { RestApiKeyCreateModel, restApiKeyCreateZodModel } from "@/shared/model/rest-api-key.model";
 import { CryptoUtils } from "@/server/utils/crypto.utils";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 import ssoProviderService from "@/server/services/sso-provider.service";
 import { SsoProviderEditModel, ssoProviderEditZodModel } from "@/shared/model/sso-provider.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
@@ -31,13 +30,11 @@ export const saveSsoProvider = async (prevState: any, inputData: SsoProviderEdit
             });
         }
         await ssoProviderService.save(validatedData);
-        revalidatePath("/settings/users");
     });
 
 export const deleteSsoProvider = async (id: string) => simpleAction(async () => {
     await getAdminUserSession();
     await ssoProviderService.deleteById(id);
-    revalidatePath("/settings/users");
     return new SuccessActionResult(undefined, "SSO provider deleted");
 });
 

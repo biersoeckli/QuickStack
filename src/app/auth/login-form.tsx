@@ -12,17 +12,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AuthFormInputSchema, authFormInputSchemaZod } from "@/shared/model/auth-form"
 import { authUser } from "./actions"
-import { getProviders, signIn } from "next-auth/react";
-import type { ClientSafeProvider } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import TwoFaAuthForm from "./two-fa-auth"
 
-export default function UserLoginForm() {
+type SsoLoginProvider = {
+    id: string;
+    name: string;
+};
+
+export default function UserLoginForm({ ssoProviders }: { ssoProviders: SsoLoginProvider[] }) {
     const form = useForm<z.input<typeof authFormInputSchemaZod>, unknown, z.output<typeof authFormInputSchemaZod>>({
         resolver: zodResolver(authFormInputSchemaZod)
     });
@@ -30,12 +34,6 @@ export default function UserLoginForm() {
     const [errorMessages, setErrorMessages] = useState<string | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(false);
     const [authInput, setAuthInput] = useState<AuthFormInputSchema | undefined>(undefined);
-    const [providers, setProviders] = useState<Record<string, ClientSafeProvider>>({});
-    const ssoProviders = Object.values(providers).filter((provider) => provider.id !== "credentials");
-
-    useEffect(() => {
-        getProviders().then((value) => setProviders(value ?? {}));
-    }, []);
 
     function redirectToProjects() {
         const currentUrl = window.location.href

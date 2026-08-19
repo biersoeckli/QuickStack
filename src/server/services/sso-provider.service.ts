@@ -1,5 +1,5 @@
 import { SsoProvider, SsoProviderType } from "@prisma/client";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "@/server/adapter/db.client";
 import { CryptoUtils } from "@/server/utils/crypto.utils";
 import { Tags } from "@/server/utils/cache-tag-generator.utils";
@@ -13,15 +13,7 @@ type AuthProvider = Omit<SsoProvider, "clientSecretEnc"> & {
   clientSecret: string;
 };
 
-let authCache: { expiresAt: number; providers: AuthProvider[] } | undefined;
-const CACHE_TTL_MS = 30_000;
-
 class SsoProviderService {
-
-  private clearAuthCache() {
-    authCache = undefined;
-  }
-
   private toUiModel(provider: SsoProvider): SsoProviderUiModel {
     return {
       id: provider.id,
@@ -48,16 +40,17 @@ class SsoProviderService {
   }
 
   async getEnabledForAuth(): Promise<AuthProvider[]> {
-    if (authCache && authCache.expiresAt > Date.now()) {
-      return authCache.providers;
-    }
-    const providers = await dataAccess.client.ssoProvider.findMany({ where: { enabled: true } });
-    const decrypted = providers.map(({ clientSecretEnc, ...provider }) => ({
-      ...provider,
-      clientSecret: CryptoUtils.decrypt(clientSecretEnc),
-    }));
-    authCache = { providers: decrypted, expiresAt: Date.now() + CACHE_TTL_MS };
-    return decrypted;
+    return await unstable_cache(
+      async () => {
+        const providers = await dataAccess.client.ssoProvider.findMany({ where: { enabled: true } });
+        return providers.map(({ clientSecretEnc, ...provider }) => ({
+          ...provider,
+          clientSecret: CryptoUtils.decrypt(clientSecretEnc),
+        }));
+      },
+      [Tags.ssoProviders(), "enabled-for-auth"],
+      { tags: [Tags.ssoProviders()] },
+    )();
   }
 
   async save(input: SsoProviderEditModel) {
@@ -91,7 +84,6 @@ class SsoProviderService {
         : await dataAccess.client.ssoProvider.create({ data });
       return this.toUiModel(provider);
     } finally {
-      this.clearAuthCache();
       revalidateTag(Tags.ssoProviders());
     }
   }
@@ -100,12 +92,10 @@ class SsoProviderService {
     try {
       await dataAccess.client.ssoProvider.delete({ where: { id } });
     } finally {
-      this.clearAuthCache();
       revalidateTag(Tags.ssoProviders());
     }
   }
 }
 
-export const ssoProviderCacheTtlMs = CACHE_TTL_MS;
 const ssoProviderService = new SsoProviderService();
 export default ssoProviderService;
