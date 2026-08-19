@@ -25,7 +25,7 @@ export const resourceRoutes = new Elysia()
         params: z.object({
             id: z.string(),
         }),
-        response: ApiUtils.mapReponseModel(ResourceModel),
+        response: ApiUtils.mapResponseModel(ResourceModel),
         detail: { summary: 'Get resource by id', security: [{ bearerAuth: [] }] }
     });
 ```
@@ -36,7 +36,7 @@ export const resourceRoutes = new Elysia()
 - Import `ApiUtils` from `src/server/utils/api-response.utils`.
 - Import `ApiUnauthorizedException`, `ApiNotFoundException`, and `ServiceException` from `src/shared/model/service.exception.model` as needed.
 - Declare `query`, `params`, and `body` directly in route options with Zod schemas.
-- Declare `response` with `ApiUtils.mapReponseModel(successSchema)`.
+- Declare `response` with `ApiUtils.mapResponseModel(successSchema)`.
 - Keep OpenAPI metadata in `detail`, with a short `summary` and `security: [{ bearerAuth: [] }]` for protected routes.
 
 ## Handler Rules
@@ -55,8 +55,8 @@ export const resourceRoutes = new Elysia()
 - Use existing write schemas, such as `AppExtendedWriteZodModel` or a local `projectWriteSchema`, for bodies.
 - Do not parse `query`, `params`, or `body` inside the handler if the route option already declares the schema.
 - Do not use nested `schema: { query, params, body }` in these route modules.
-- For delete routes, return `undefined` and declare `response: ApiUtils.mapReponseModel(z.undefined())`.
-- For deployment request routes, return `{ deploymentId }` and declare `response: ApiUtils.mapReponseModel(z.object({ deploymentId: z.string() }))`.
+- For delete routes, return `undefined` and declare `response: ApiUtils.mapResponseModel(z.undefined())`.
+- For deployment request routes, return `{ deploymentId }` and declare `response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() }))`.
 
 ## Write Route Pattern
 
@@ -77,7 +77,7 @@ Use POST upsert semantics:
     return projectService.save({ id: existing?.id, name: body.name });
 }, {
     body: projectWriteSchema,
-    response: ApiUtils.mapReponseModel(ProjectModel),
+    response: ApiUtils.mapResponseModel(ProjectModel),
     detail: { summary: 'Create or update project', security: [{ bearerAuth: [] }] }
 })
 ```
@@ -86,6 +86,6 @@ Use POST upsert semantics:
 
 - Run `yarn tsc --noEmit` after route changes.
 - Check that every accepted input has a route-level Zod schema.
-- Check that every route has `response: ApiUtils.mapReponseModel(...)`.
-- Check that expected failures are thrown as exceptions and mapped centrally by `ApiUtils.mapError(...)`.
+- Check that every route has `response: ApiUtils.mapResponseModel(...)`.
+- Check that expected failures are thrown as exceptions; route mounting maps them centrally with `ApiUtils.mapError(...)`.
 - Check `CONTEXT.md` for REST API domain terms and write semantics before changing behavior.

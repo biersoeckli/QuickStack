@@ -53,7 +53,7 @@ Every form follows this pattern:
 2. Import `z` from `"zod"` and use the schema input/output types: `useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({ resolver: zodResolver(schema) })`.
 3. Wrap in shadcn `<Form>` provider.
 4. Use `<FormField>` with `control`, `name`, and `render`.
-5. Submit through `Toast.fromAction()` or `Actions.run()`.
+5. Use `useActionState` for forms that map field errors; use `Toast.fromAction()` (with sonner spinner) or `Actions.run()` (without spinner)for simple user-triggered actions.
 
 ```tsx
 'use client'
@@ -97,7 +97,7 @@ Use existing custom form field wrappers when applicable:
 
 ## Server Action Consumption
 
-Always use a wrapper — never `await` a Server Action directly from client code.
+Choose the wrapper from the interaction. Use `useActionState` with `FormUtils.mapValidationErrorsToForm()` for validated forms, `Toast.fromAction()` for immediate feedback, and `Actions.run()` for imperatively loaded data with caller-managed loading state.
 
 ### `Toast.fromAction()`
 
@@ -176,7 +176,7 @@ Columns are tuples: `[accessorKey, headerLabel, isVisible, renderFn?]`
 
 ## Dialogs
 
-Use Zustand-backed global dialogs instead of one-off dialog state. Keep trigger and dialog content in separate components (often separate files for reuse).
+Use Zustand-backed global dialogs for reusable or cross-component flows. Page-owned dialogs may use local `useState` with shadcn `Dialog`; see `src/app/projects/edit-project-dialog.tsx`. Keep trigger and dialog content separate when reuse earns the extra seam.
 
 ### Pattern: Trigger + Dialog Content
 

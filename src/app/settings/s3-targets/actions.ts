@@ -13,7 +13,7 @@ export const saveS3Target = async (prevState: any, inputData: S3TargetEditModel)
         await getAdminUserSession();
 
         const url = new URL(validatedData.endpoint.includes('://') ? validatedData.endpoint : `https://${validatedData.endpoint}`);
-        validatedData.endpoint = url.hostname;
+        validatedData.endpoint = url.origin;
 
         if (!await s3Service.testConnection(validatedData as S3Target)) {
             throw new ServiceException('Could not connect to S3 Target, please check your credentials and try again');

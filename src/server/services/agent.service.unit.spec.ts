@@ -538,11 +538,20 @@ describe('agent.service', () => {
                             },
                         },
                         podSelector: {
-                            matchExpressions: [{
-                                key: 'k8s-app',
-                                operator: 'In',
-                                values: ['kube-dns', 'coredns'],
-                            }],
+                            matchLabels: {
+                                'k8s-app': 'kube-dns',
+                            },
+                        },
+                    }, {
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': 'kube-system',
+                            },
+                        },
+                        podSelector: {
+                            matchLabels: {
+                                'k8s-app': 'coredns',
+                            },
                         },
                     }],
                     ports: [

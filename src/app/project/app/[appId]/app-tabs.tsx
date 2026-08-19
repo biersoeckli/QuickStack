@@ -68,7 +68,7 @@ export default function AppTabs({
                     {app.appType !== 'APP' && <TabsTrigger value="credentials"><Key className="mr-2 h-4 w-4" />Credentials</TabsTrigger>}
                     <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
                     <TabsTrigger value="environment"><Zap className="mr-2 h-4 w-4" />Environment</TabsTrigger>
-                    <TabsTrigger value="domains"><Globe className="mr-2 h-4 w-4" />Domains</TabsTrigger>
+                    <TabsTrigger value="domains"><Globe className="mr-2 h-4 w-4" />Domains &amp; Networking</TabsTrigger>
                     <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage</TabsTrigger>
                     <TabsTrigger value="advanced"><Cog className="mr-2 h-4 w-4" />Advanced</TabsTrigger>
                 </TabsList>
@@ -96,6 +96,7 @@ export default function AppTabs({
                 <DomainsCard readonly={readonly} domains={app.appDomains} workloadId={app.id} workloadType={'app'} />
                 <InternalHostnames readonly={readonly} app={app} />
                 <NodePortsCard readonly={readonly} app={app} />
+                <NetworkPolicy readonly={readonly} app={app} />
             </TabsContent>
             <TabsContent value="storage" className="space-y-4">
                 <StorageList readonly={readonly} app={app} storageClasses={storageClasses} />
@@ -108,7 +109,6 @@ export default function AppTabs({
             </TabsContent>
             <TabsContent value="advanced" className="space-y-4">
                 <BasicAuth readonly={readonly} app={app} />
-                <NetworkPolicy readonly={readonly} app={app} />
                 <HealthCheckSettings readonly={readonly} workload={app} saveHealthCheck={saveHealthCheck} />
             </TabsContent>
         </Tabs>

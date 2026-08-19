@@ -13,6 +13,7 @@ import svcService from "./svc.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import crypto from "crypto";
 import networkPolicyService from "./network-policy.service";
+import appNetworkPolicyService from "./app-network-policy.service";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
 
@@ -91,6 +92,28 @@ class AppService {
                 appFileMounts: true,
                 appVolumes: true,
                 appBasicAuths: true,
+                appNetworkPolicy: {
+                    include: {
+                        rules: {
+                            include: {
+                                targetApp: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        projectId: true
+                                    }
+                                },
+                                targetAgent: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        projectId: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 project: true
             },
             orderBy: {
@@ -110,7 +133,8 @@ class AppService {
             appPorts: true,
             appNodePorts: true,
             appFileMounts: true,
-            appBasicAuths: true
+            appBasicAuths: true,
+            appNetworkPolicy: { include: { rules: { include: { targetApp: { select: { id: true, name: true, projectId: true } }, targetAgent: { select: { id: true, name: true, projectId: true } } } } } },
         };
 
         const client = tx || dataAccess.client;
@@ -218,7 +242,7 @@ class AppService {
                 updatedAt: z.date().optional(),
             });
 
-            const parsedAppModel = AppModel.extend(optionalParam.shape).parse(app);
+            const parsedAppModel = AppModel.extend(optionalParam.shape).parse({ ...app, networkPolicyMode: app.networkPolicyMode ?? 'SIMPLE' });
             const savedApp = await this.save({
                 ...parsedAppModel,
                 id: app.id
@@ -227,6 +251,9 @@ class AppService {
             const savedAppId = savedApp.id;
 
             const parsedDomains = AppDomainModel.extend(optionalParam.shape).array().parse(app.appDomains);
+            await innerTx.appDomain.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedDomains.flatMap(domain => domain.id ? [domain.id] : []) } },
+            });
             for (const domain of parsedDomains) {
                 await this.saveDomain({
                     ...domain,
@@ -235,6 +262,9 @@ class AppService {
             }
 
             const parsedVolumes = AppVolumeModel.extend(optionalParam.shape).array().parse(app.appVolumes);
+            await innerTx.appVolume.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedVolumes.flatMap(volume => volume.id ? [volume.id] : []) } },
+            });
             for (const volume of parsedVolumes) {
                 await this.saveVolume({
                     ...volume,
@@ -243,6 +273,9 @@ class AppService {
             }
 
             const parsedFileMounts = AppFileMountModel.extend(optionalParam.shape).array().parse(app.appFileMounts);
+            await innerTx.appFileMount.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedFileMounts.flatMap(fileMount => fileMount.id ? [fileMount.id] : []) } },
+            });
             for (const fileMount of parsedFileMounts) {
                 await this.saveFileMount({
                     ...fileMount,
@@ -251,6 +284,9 @@ class AppService {
             }
 
             const parsedPorts = AppPortModel.extend(optionalParam.shape).array().parse(app.appPorts);
+            await innerTx.appPort.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedPorts.flatMap(port => port.id ? [port.id] : []) } },
+            });
             for (const port of parsedPorts) {
                 await this.savePort({
                     ...port,
@@ -259,6 +295,9 @@ class AppService {
             }
 
             const parsedNodePorts = AppNodePortModel.extend(optionalParam.shape).array().parse(app.appNodePorts);
+            await innerTx.appNodePort.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedNodePorts.flatMap(nodePort => nodePort.id ? [nodePort.id] : []) } },
+            });
             for (const nodePort of parsedNodePorts) {
                 await this.saveNodePort({
                     ...nodePort,
@@ -267,12 +306,17 @@ class AppService {
             }
 
             const parsedBasicAuths = AppBasicAuthModel.extend(optionalParam.shape).array().parse(app.appBasicAuths);
+            await innerTx.appBasicAuth.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedBasicAuths.flatMap(basicAuth => basicAuth.id ? [basicAuth.id] : []) } },
+            });
             for (const basicAuth of parsedBasicAuths) {
                 await this.saveBasicAuth({
                     ...basicAuth,
                     appId: savedAppId
                 }, innerTx);
             }
+
+            await appNetworkPolicyService.replaceConfiguration(innerTx, savedAppId, app.appNetworkPolicy);
 
             return await this.getExtendedById(savedAppId, false, innerTx);
         };

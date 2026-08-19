@@ -75,4 +75,44 @@ describe('network-policy.service', () => {
             }],
         }]);
     });
+
+    it('selects all sandboxes of an agent by agent ID label', async () => {
+        const app = {
+            id: 'demo-app',
+            projectId: 'app-project',
+            useNetworkPolicy: true,
+            networkPolicyMode: 'EXTENDED',
+            ingressNetworkPolicy: 'DENY_ALL',
+            egressNetworkPolicy: 'DENY_ALL',
+            appDomains: [],
+            appNodePorts: [],
+            appNetworkPolicy: {
+                allowInternetAccess: false,
+                rules: [{
+                    id: 'rule-1',
+                    appNetworkPolicyId: 'policy-1',
+                    type: 'EGRESS',
+                    targetAppId: null,
+                    targetAgentId: 'agent-1',
+                    targetApp: null,
+                    targetAgent: { id: 'agent-1', name: 'Agent one', projectId: 'agent-project' },
+                    port: 8080,
+                    protocol: 'TCP',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }],
+            },
+        } as unknown as AppExtendedModel;
+
+        await networkPolicyService.reconcileNetworkPolicy(app);
+
+        const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
+        expect(policy.spec.egress).toEqual(expect.arrayContaining([expect.objectContaining({
+            to: [{
+                namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'agent-project' } },
+                podSelector: { matchLabels: { 'qs-agent-id': 'agent-1' } },
+            }],
+            ports: [{ protocol: 'TCP', port: 8080 }],
+        })]));
+    });
 });

@@ -94,7 +94,7 @@ export const AgentExtendedWriteZodModel = AgentModel
         agentDomains: AgentDomainModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
         agentVolumes: AgentVolumeModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
         agentFileMounts: AgentFileMountModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
-        agentNetworkPolicy: AgentNetworkPolicyWriteZodModel.nullish(),
+        agentNetworkPolicy: AgentNetworkPolicyWriteZodModel.nullable(),
     });
 
 export type AgentExtendedWriteModel = z.infer<typeof AgentExtendedWriteZodModel>;

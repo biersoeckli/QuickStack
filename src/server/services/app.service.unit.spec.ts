@@ -13,8 +13,12 @@ vi.mock('@/server/adapter/db.client', () => ({
             const client = {
             project: { findUnique: vi.fn() },
             app: { create: vi.fn(), update: vi.fn() },
-            appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-            appPort: { create: vi.fn() },
+            appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+            appVolume: { deleteMany: vi.fn() },
+            appFileMount: { deleteMany: vi.fn() },
+            appPort: { create: vi.fn(), deleteMany: vi.fn() },
+            appNodePort: { deleteMany: vi.fn() },
+            appBasicAuth: { deleteMany: vi.fn() },
                 $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(client)),
             };
             return client;
@@ -29,6 +33,7 @@ vi.mock('@/server/services/pvc.service', () => ({ default: {} }));
 vi.mock('@/server/services/svc.service', () => ({ default: {} }));
 vi.mock('@/server/services/deployment-logs.service', () => ({ default: {}, dlog: vi.fn() }));
 vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
+vi.mock('@/server/services/app-network-policy.service', () => ({ default: { replaceConfiguration: vi.fn() } }));
 
 import appService from './app.service';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
@@ -49,7 +54,7 @@ describe('app.service', () => {
         vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({}) as never);
         const saveNodePort = vi.spyOn(appService, 'saveNodePort').mockResolvedValue({} as never);
 
-        await appService.saveAppExtendedModel(createApp({
+        const app = createApp({
             appNodePorts: [
                 {
                     id: 'node-port-1',
@@ -61,7 +66,8 @@ describe('app.service', () => {
                     updatedAt: new Date(),
                 },
             ],
-        }));
+        });
+        await appService.saveAppExtendedModel({ ...app, appNetworkPolicy: app.appNetworkPolicy ?? null });
 
         expect(saveNodePort).toHaveBeenCalledWith(
             expect.objectContaining({
