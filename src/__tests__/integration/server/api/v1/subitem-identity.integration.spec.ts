@@ -352,6 +352,76 @@ describe('REST API v1 integration - nested subitem identity', () => {
         await expect(dataAccess.client.agentDomain.findUniqueOrThrow({ where: { id: clonedAgent.agentDomains[0].id } }))
             .resolves.toMatchObject({ agentId: clonedAgent.id, hostname: 'clone.agent.example.com' });
     });
+
+    it('requires an explicit Agent network policy configuration through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const agentProject = await createProject(apiKey, 'AGENT');
+        const appProject = await createProject(apiKey, 'APP');
+        const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
+        });
+        const { agentNetworkPolicy: _agentNetworkPolicy, ...payload } = createAgentPayload(undefined, agentProject.id, gateway.id, targetApp.id, 'Missing Agent Policy');
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/agents', apiKey, {
+            method: 'POST',
+            body: payload,
+        }), 400);
+
+        expect(problem.detail).toContain('agentNetworkPolicy');
+    });
+
+    it('removes an Agent network policy configuration when the API receives null', async () => {
+        const apiKey = await createAdminApiKey();
+        const agentProject = await createProject(apiKey, 'AGENT');
+        const appProject = await createProject(apiKey, 'APP');
+        const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
+        });
+        const agent = await expectApiJson(await apiFetch('/api/v1/agents', apiKey, {
+            method: 'POST',
+            body: createAgentPayload(undefined, agentProject.id, gateway.id, targetApp.id, 'Agent Policy Removal'),
+        })) as AgentExtendedModel;
+
+        await expectApiJson(await apiFetch('/api/v1/agents', apiKey, {
+            method: 'POST',
+            body: { ...agent, agentNetworkPolicy: null },
+        }));
+
+        await expect(dataAccess.client.agentNetworkPolicy.findUnique({ where: { agentId: agent.id } }))
+            .resolves.toBeNull();
+    });
+
+    it('rejects an Agent network policy configuration ID from another Agent through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const agentProject = await createProject(apiKey, 'AGENT');
+        const appProject = await createProject(apiKey, 'APP');
+        const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
+        const gateway = await dataAccess.client.llmGateway.create({
+            data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
+        });
+        const [agent, otherAgent] = await Promise.all(['Agent Policy Owner', 'Other Agent Policy Owner'].map(async name =>
+            await expectApiJson(await apiFetch('/api/v1/agents', apiKey, {
+                method: 'POST',
+                body: createAgentPayload(undefined, agentProject.id, gateway.id, targetApp.id, name),
+            })) as AgentExtendedModel,
+        ));
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/agents', apiKey, {
+            method: 'POST',
+            body: {
+                ...agent,
+                agentNetworkPolicy: {
+                    id: otherAgent.agentNetworkPolicy!.id,
+                    allowInternetAccess: true,
+                    rules: [],
+                },
+            },
+        }), 400);
+
+        expect(problem.detail).toBe('Agent network policy configuration not found.');
+    });
 });
 
 async function createAdminApiKey() {

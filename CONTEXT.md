@@ -13,6 +13,12 @@ _Avoid_: advanced configuration, app firewall mode
 
 In an App Extended **Full Schema Write**, the App Network Policy Configuration is provided explicitly as either its complete value or `null`; omitting it is invalid.
 
+**Agent Network Policy Configuration**:
+The active egress network-policy configuration for an **Agent**, consisting of optional Internet access and detailed target-App rules.
+_Avoid_: agent firewall, app network-policy configuration
+
+In an Agent Extended **Full Schema Write**, the Agent Network Policy Configuration is provided explicitly as either its complete value or `null`; omitting it is invalid.
+
 **Simple App Network Policy Configuration**:
 An **App Network Policy Configuration** that uses the App's ingress and egress policy enums.
 _Avoid_: legacy configuration, basic firewall
