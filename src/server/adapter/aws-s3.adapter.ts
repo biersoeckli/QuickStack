@@ -11,7 +11,9 @@ class AwsS3Adapter {
                 accessKeyId: s3Target.accessKeyId,
                 secretAccessKey: s3Target.secretKey,
             },
-            endpoint: `https://${s3Target.endpoint}`
+            endpoint: /^https?:\/\//.test(s3Target.endpoint)
+                ? s3Target.endpoint
+                : `https://${s3Target.endpoint}`
         });
     }
 }
