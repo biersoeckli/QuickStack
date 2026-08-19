@@ -253,5 +253,6 @@ function createAppPayload(projectId: string, name: string, hostname: string): Ap
         appFileMounts: [],
         appVolumes: [],
         appBasicAuths: [],
+        appNetworkPolicy: null,
     };
 }

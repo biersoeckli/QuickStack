@@ -61,7 +61,7 @@ export const AppExtendedWriteZodModel = AppModel
         appFileMounts: AppFileMountModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appVolumes: AppVolumeModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appBasicAuths: AppBasicAuthModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
-        appNetworkPolicy: appNetworkPolicyWriteZodModel.nullish(),
+        appNetworkPolicy: appNetworkPolicyWriteZodModel.nullable(),
     });
 
 export type AppExtendedWriteModel = z.infer<typeof AppExtendedWriteZodModel>;

@@ -10,7 +10,7 @@ import {
     ensureWriteApp,
 } from '@/server/utils/shared-authorization.utils';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
-import { AppExtendedWriteModel, AppExtendedWriteZodModel, AppExtendedZodModel } from '@/shared/model/app-extended.model';
+import { AppExtendedModel, AppExtendedWriteModel, AppExtendedWriteZodModel, AppExtendedZodModel } from '@/shared/model/app-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { appLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
@@ -24,10 +24,13 @@ function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtended
         appFileMounts: body.appFileMounts.map(({ id: _id, ...fileMount }) => fileMount),
         appVolumes: body.appVolumes.map(({ id: _id, ...volume }) => volume),
         appBasicAuths: body.appBasicAuths.map(({ id: _id, ...basicAuth }) => basicAuth),
-        appNetworkPolicy: body.appNetworkPolicy ? {
-            ...body.appNetworkPolicy,
-            rules: body.appNetworkPolicy.rules.map(({ id: _id, ...rule }) => rule),
-        } : undefined,
+        appNetworkPolicy: body.appNetworkPolicy ? (() => {
+            const { id: _id, ...policy } = body.appNetworkPolicy;
+            return {
+                ...policy,
+                rules: policy.rules.map(({ id: _ruleId, ...rule }) => rule),
+            };
+        })() : null,
     };
 }
 
@@ -95,7 +98,7 @@ export const appRoutes = new Elysia()
     .post('/apps', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
-        let existing: AppExtendedWriteModel | null = null;
+        let existing: AppExtendedModel | null = null;
         if (!body.id) {
             ensureCreateAppInProject(identity, body.projectId);
         } else {

@@ -76,6 +76,12 @@ describe('REST API v1 integration - nested subitem identity', () => {
                 ...nodePort,
                 nodePort: nodePort.nodePort + 1,
             })),
+            appNetworkPolicy: fetchedApp.appNetworkPolicy
+                ? {
+                    ...fetchedApp.appNetworkPolicy,
+                    rules: fetchedApp.appNetworkPolicy.rules.map(({ targetApp: _targetApp, targetAgent: _targetAgent, ...rule }) => rule),
+                }
+                : null,
         } satisfies AppExtendedWriteModel;
 
         const clonedApp = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
@@ -95,6 +101,37 @@ describe('REST API v1 integration - nested subitem identity', () => {
             .resolves.toMatchObject({ appId: sourceApp.id, hostname: 'source.example.com' });
         await expect(dataAccess.client.appDomain.findUniqueOrThrow({ where: { id: clonedApp.appDomains[0].id } }))
             .resolves.toMatchObject({ appId: clonedApp.id, hostname: 'clone.example.com' });
+    });
+
+    it('replaces all App subitem collections through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: createAppPayload(undefined, project.id, 'Full Schema Write App'),
+        })) as AppExtendedModel;
+
+        const updated = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appDomains: [],
+                appPorts: [],
+                appNodePorts: [],
+                appFileMounts: [],
+                appVolumes: [],
+                appBasicAuths: [],
+            },
+        })) as AppExtendedModel;
+
+        expect(updated).toMatchObject({
+            appDomains: [],
+            appPorts: [],
+            appNodePorts: [],
+            appFileMounts: [],
+            appVolumes: [],
+            appBasicAuths: [],
+        });
     });
 
     it('preserves App network policy rule IDs when updating through the API', async () => {
@@ -138,6 +175,67 @@ describe('REST API v1 integration - nested subitem identity', () => {
         expect(updated.appNetworkPolicy).toMatchObject({
             rules: [expect.objectContaining({ id: ruleId, targetAppId: targetApp.id, port: 443 })],
         });
+    });
+
+    it('requires an explicit App network policy configuration through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const { appNetworkPolicy: _appNetworkPolicy, ...payload } = createAppPayload(undefined, project.id, 'Missing Policy App');
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: payload,
+        }), 400);
+
+        expect(problem.detail).toContain('appNetworkPolicy');
+    });
+
+    it('removes an App network policy configuration when the API receives null', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: createAppPayload(undefined, project.id, 'Policy Removal App'),
+        })) as AppExtendedModel;
+        const withPolicy = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appNetworkPolicy: { allowInternetAccess: false, rules: [] },
+            },
+        })) as AppExtendedModel;
+
+        await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: { ...withPolicy, appNetworkPolicy: null },
+        }));
+
+        await expect(dataAccess.client.appNetworkPolicy.findUnique({ where: { appId: app.id } }))
+            .resolves.toBeNull();
+    });
+
+    it('rejects an App network policy configuration ID from another App through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const [app, otherApp] = await Promise.all(['Policy Owner App', 'Other Policy Owner App'].map(async name =>
+            await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+                method: 'POST',
+                body: createAppPayload(undefined, project.id, name),
+            })) as AppExtendedModel,
+        ));
+        const otherPolicy = await dataAccess.client.appNetworkPolicy.create({
+            data: { appId: otherApp.id, allowInternetAccess: true },
+        });
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appNetworkPolicy: { id: otherPolicy.id, allowInternetAccess: true, rules: [] },
+            },
+        }), 400);
+
+        expect(problem.detail).toBe('App network policy configuration not found.');
     });
 
     it('rejects duplicate App network policy rules through the API', async () => {
@@ -292,6 +390,7 @@ function createAppPayload(id: string | undefined, projectId: string, name: strin
         appFileMounts: [{ containerMountPath: '/etc/app/config.json', content: '{}' }],
         appVolumes: [{ containerMountPath: '/data', size: 1, accessMode: 'rwo', storageClassName: 'longhorn', shareWithOtherApps: false }],
         appBasicAuths: [{ username: 'source-user', password: 'source-pass' }],
+        appNetworkPolicy: null,
     };
     if (id) {
         return { ...retVal, id };

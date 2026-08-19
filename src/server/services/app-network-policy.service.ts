@@ -4,6 +4,9 @@ import dataAccess from '../adapter/db.client';
 import { Tags } from '../utils/cache-tag-generator.utils';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import { AppNetworkPolicyRuleEditModel, AppNetworkPolicySettingsModel } from '@/shared/model/app-network-policy-edit.model';
+import { AppExtendedWriteModel } from '@/shared/model/app-extended.model';
+
+type AppNetworkPolicyConfigurationWriteModel = NonNullable<AppExtendedWriteModel['appNetworkPolicy']>;
 
 class AppNetworkPolicyService {
     private async ensurePolicy(db: Prisma.TransactionClient, appId: string) {
@@ -97,21 +100,59 @@ class AppNetworkPolicyService {
         });
     }
 
-    async replaceRules(db: Prisma.TransactionClient, appId: string, rules: AppNetworkPolicyRuleEditModel[]) {
-        const { policy } = await this.ensurePolicy(db, appId);
+    private async replaceRules(
+        db: Prisma.TransactionClient,
+        appId: string,
+        policyId: string,
+        rules: AppNetworkPolicyRuleEditModel[],
+    ) {
         const savedRuleIds: string[] = [];
 
         for (const rule of rules) {
-            const savedRule = await this.saveRuleInTransaction(db, appId, policy.id, rule);
+            const savedRule = await this.saveRuleInTransaction(db, appId, policyId, rule);
             savedRuleIds.push(savedRule.id);
         }
 
         await db.appNetworkPolicyRule.deleteMany({
             where: {
-                appNetworkPolicyId: policy.id,
+                appNetworkPolicyId: policyId,
                 id: { notIn: savedRuleIds },
             },
         });
+    }
+
+    async replaceConfiguration(
+        db: Prisma.TransactionClient,
+        appId: string,
+        input: AppNetworkPolicyConfigurationWriteModel | null,
+    ) {
+        if (!input) {
+            await db.appNetworkPolicy.deleteMany({ where: { appId } });
+            return;
+        }
+
+        const existingPolicy = await db.appNetworkPolicy.findUnique({ where: { appId } });
+        if (input.id && input.id !== existingPolicy?.id) {
+            throw new ServiceException('App network policy configuration not found.');
+        }
+
+        const policy = existingPolicy
+            ? await db.appNetworkPolicy.update({
+                where: { id: existingPolicy.id },
+                data: { allowInternetAccess: input.allowInternetAccess },
+            })
+            : await db.appNetworkPolicy.create({
+                data: { appId, allowInternetAccess: input.allowInternetAccess },
+            });
+
+        await this.replaceRules(db, appId, policy.id, input.rules.map(rule => ({
+            id: rule.id,
+            type: rule.type as 'INGRESS' | 'EGRESS',
+            targetType: rule.targetAppId ? 'APP' : 'AGENT',
+            targetId: rule.targetAppId ?? rule.targetAgentId!,
+            port: rule.port,
+            protocol: rule.protocol as 'TCP' | 'UDP',
+        })));
     }
 
     async saveSettings(input: AppNetworkPolicySettingsModel & { appId: string }) {

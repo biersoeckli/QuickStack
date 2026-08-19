@@ -11,6 +11,8 @@ A deployable workload managed by QuickStack.
 The active network-policy configuration for an **App**, selected as either **Simple** or **Extended**.
 _Avoid_: advanced configuration, app firewall mode
 
+In an App Extended **Full Schema Write**, the App Network Policy Configuration is provided explicitly as either its complete value or `null`; omitting it is invalid.
+
 **Simple App Network Policy Configuration**:
 An **App Network Policy Configuration** that uses the App's ingress and egress policy enums.
 _Avoid_: legacy configuration, basic firewall

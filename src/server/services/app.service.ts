@@ -251,6 +251,9 @@ class AppService {
             const savedAppId = savedApp.id;
 
             const parsedDomains = AppDomainModel.extend(optionalParam.shape).array().parse(app.appDomains);
+            await innerTx.appDomain.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedDomains.flatMap(domain => domain.id ? [domain.id] : []) } },
+            });
             for (const domain of parsedDomains) {
                 await this.saveDomain({
                     ...domain,
@@ -259,6 +262,9 @@ class AppService {
             }
 
             const parsedVolumes = AppVolumeModel.extend(optionalParam.shape).array().parse(app.appVolumes);
+            await innerTx.appVolume.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedVolumes.flatMap(volume => volume.id ? [volume.id] : []) } },
+            });
             for (const volume of parsedVolumes) {
                 await this.saveVolume({
                     ...volume,
@@ -267,6 +273,9 @@ class AppService {
             }
 
             const parsedFileMounts = AppFileMountModel.extend(optionalParam.shape).array().parse(app.appFileMounts);
+            await innerTx.appFileMount.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedFileMounts.flatMap(fileMount => fileMount.id ? [fileMount.id] : []) } },
+            });
             for (const fileMount of parsedFileMounts) {
                 await this.saveFileMount({
                     ...fileMount,
@@ -275,6 +284,9 @@ class AppService {
             }
 
             const parsedPorts = AppPortModel.extend(optionalParam.shape).array().parse(app.appPorts);
+            await innerTx.appPort.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedPorts.flatMap(port => port.id ? [port.id] : []) } },
+            });
             for (const port of parsedPorts) {
                 await this.savePort({
                     ...port,
@@ -283,6 +295,9 @@ class AppService {
             }
 
             const parsedNodePorts = AppNodePortModel.extend(optionalParam.shape).array().parse(app.appNodePorts);
+            await innerTx.appNodePort.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedNodePorts.flatMap(nodePort => nodePort.id ? [nodePort.id] : []) } },
+            });
             for (const nodePort of parsedNodePorts) {
                 await this.saveNodePort({
                     ...nodePort,
@@ -291,6 +306,9 @@ class AppService {
             }
 
             const parsedBasicAuths = AppBasicAuthModel.extend(optionalParam.shape).array().parse(app.appBasicAuths);
+            await innerTx.appBasicAuth.deleteMany({
+                where: { appId: savedAppId, id: { notIn: parsedBasicAuths.flatMap(basicAuth => basicAuth.id ? [basicAuth.id] : []) } },
+            });
             for (const basicAuth of parsedBasicAuths) {
                 await this.saveBasicAuth({
                     ...basicAuth,
@@ -298,21 +316,7 @@ class AppService {
                 }, innerTx);
             }
 
-            if (app.appNetworkPolicy) {
-                await innerTx.appNetworkPolicy.upsert({
-                    where: { appId: savedAppId },
-                    create: { appId: savedAppId, allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
-                    update: { allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
-                });
-                await appNetworkPolicyService.replaceRules(innerTx, savedAppId, app.appNetworkPolicy.rules.map(rule => ({
-                    id: rule.id,
-                    type: rule.type as 'INGRESS' | 'EGRESS',
-                    targetType: rule.targetAppId ? 'APP' : 'AGENT',
-                    targetId: rule.targetAppId ?? rule.targetAgentId!,
-                    port: rule.port,
-                    protocol: rule.protocol as 'TCP' | 'UDP',
-                })));
-            }
+            await appNetworkPolicyService.replaceConfiguration(innerTx, savedAppId, app.appNetworkPolicy);
 
             return await this.getExtendedById(savedAppId, false, innerTx);
         };
