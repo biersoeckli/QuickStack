@@ -7,7 +7,7 @@ Free, open-source, self-hosted PaaS alternative to Vercel, Netlify, Railway and 
 [Quick Start](https://quickstack.dev/docs/tutorials/installation) • [Website](https://quickstack.dev) • [Docs](https://quickstack.dev/docs)
 
 
-[![GitHub stars](https://img.shields.io/github/stars/biersoeckli/QuickStack?style=social)](https://github.com/biersoeckli/QuickStack/stargazers) [![GitHub license](https://img.shields.io/github/license/biersoeckli/QuickStack?color=22c55e)](https://github.com/biersoeckli/QuickStack/blob/main/LICENSE) [![GitHub release](https://img.shields.io/github/v/release/biersoeckli/QuickStack?color=22c55e)](https://github.com/biersoeckli/QuickStack/releases)
+[![GitHub stars](https://img.shields.io/github/stars/biersoeckli/QuickStack?style=social)](https://github.com/biersoeckli/QuickStack/stargazers) [![GitHub license](https://img.shields.io/github/license/biersoeckli/QuickStack?color=22c55e)](https://github.com/biersoeckli/QuickStack/blob/main/LICENSE) [![GitHub release](https://img.shields.io/github/v/release/biersoeckli/QuickStack?color=22c55e)](https://github.com/biersoeckli/QuickStack/releases) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/biersoeckli/QuickStack)
 
 </div>
 
