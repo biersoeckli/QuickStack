@@ -35,6 +35,10 @@ const dbAgentFileMountMocks = vi.hoisted(() => ({
     findMany: vi.fn(),
 }));
 
+const dbAgentNetworkPolicyMocks = vi.hoisted(() => ({
+    deleteMany: vi.fn(),
+}));
+
 const namespaceServiceMocks = vi.hoisted(() => ({
     createNamespaceIfNotExists: vi.fn(),
 }));
@@ -48,6 +52,7 @@ vi.mock("@/server/adapter/db.client", () => ({
             agentDomain: dbAgentDomainMocks,
             agentVolume: dbAgentVolumeMocks,
             agentFileMount: dbAgentFileMountMocks,
+            agentNetworkPolicy: dbAgentNetworkPolicyMocks,
             $transaction: vi.fn((fn: any) => fn({
                 project: dbProjectMocks,
                 llmGateway: dbGatewayMocks,
@@ -55,6 +60,7 @@ vi.mock("@/server/adapter/db.client", () => ({
                 agentDomain: dbAgentDomainMocks,
                 agentVolume: dbAgentVolumeMocks,
                 agentFileMount: dbAgentFileMountMocks,
+                agentNetworkPolicy: dbAgentNetworkPolicyMocks,
             })),
         },
     },
@@ -128,6 +134,7 @@ describe("agent-template.service", () => {
             agentDomains: [],
             agentVolumes: [],
             agentFileMounts: [],
+            agentNetworkPolicy: null,
         });
         namespaceServiceMocks.createNamespaceIfNotExists.mockResolvedValue(undefined);
     });

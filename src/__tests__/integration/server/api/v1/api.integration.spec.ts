@@ -440,6 +440,7 @@ function createGitAppPayload(id: string | undefined, projectId: string, name: st
         appFileMounts: [],
         appVolumes: [],
         appBasicAuths: [],
+        appNetworkPolicy: null,
     };
     if (id) {
         return { ...retVal, id };

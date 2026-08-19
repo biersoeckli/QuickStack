@@ -98,6 +98,7 @@ class AgentTemplateService {
             ...agent,
             projectId,
             encryptedEnvVars,
+            agentNetworkPolicy: null,
         };
 
         const createdAgent = await agentService.saveAgentExtendedModel(writeModel, tx);

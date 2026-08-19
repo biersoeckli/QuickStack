@@ -217,37 +217,7 @@ class AgentService {
                 }, tx);
             }
 
-            if (agentNetworkPolicyInput) {
-                await agentNetworkPolicyService.saveSettings({
-                    allowInternetAccess: agentNetworkPolicyInput.allowInternetAccess ?? true,
-                    agentId: savedAgentId,
-                }, tx);
-
-                // Delete stale egress rules before upserts so newly created rules without id are not removed immediately.
-                {
-                    const existingPolicy = await tx.agentNetworkPolicy.findUnique({ where: { agentId: savedAgentId } });
-                    if (existingPolicy) {
-                        const existingRules = await tx.agentNetworkPolicyRule.findMany({ where: { agentNetworkPolicyId: existingPolicy.id } });
-                        const keepIds = new Set(agentNetworkPolicyInput.rules.map((r) => r.id).filter(Boolean) as string[]);
-                        for (const existing of existingRules) {
-                            if (!keepIds.has(existing.id)) {
-                                await agentNetworkPolicyService.deleteEgressRule(existing.id, tx);
-                            }
-                        }
-                    }
-                }
-
-                for (const rule of agentNetworkPolicyInput.rules) {
-                    await agentNetworkPolicyService.saveEgressRule({
-                        id: rule.id,
-                        type: 'EGRESS',
-                        targetAppId: rule.targetAppId,
-                        port: rule.port ?? 443,
-                        protocol: (rule.protocol as 'TCP' | 'UDP') ?? 'TCP',
-                        agentId: savedAgentId,
-                    }, tx);
-                }
-            }
+            await agentNetworkPolicyService.replaceConfiguration(tx, savedAgentId, agentNetworkPolicyInput);
 
             return await this.getById(savedAgentId, tx);
         };

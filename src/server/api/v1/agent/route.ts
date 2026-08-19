@@ -8,7 +8,7 @@ import {
     ensureWriteProjectWorkload,
 } from '@/server/utils/shared-authorization.utils';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
-import { AgentExtendedWriteModel, AgentExtendedWriteZodModel, AgentExtendedZodModel } from '@/shared/model/agent-extended.model';
+import { AgentExtendedModel, AgentExtendedWriteModel, AgentExtendedWriteZodModel, AgentExtendedZodModel } from '@/shared/model/agent-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 
@@ -72,7 +72,7 @@ export const agentRoutes = new Elysia()
     .post('/agents', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
-        let existing: AgentExtendedWriteModel | null = null;
+        let existing: AgentExtendedModel | null = null;
         if (!body.id) {
             ensureCreateAgentInProject(identity, body.projectId);
         } else {

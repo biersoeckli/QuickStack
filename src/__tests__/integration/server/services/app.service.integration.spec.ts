@@ -152,6 +152,82 @@ describe('app.service integration - subitem ownership guards', () => {
         await expect(dataAccess.client.app.findUnique({ where: { id: 'app-rollback-app' } }))
             .resolves.toBeNull();
     });
+
+    it('preserves network policy rule IDs when saving an extended App', async () => {
+        const { sourceApp, targetApp } = await createProjectAndApps();
+        const policy = await dataAccess.client.appNetworkPolicy.create({
+            data: { appId: sourceApp.id, allowInternetAccess: true },
+        });
+        const rule = await dataAccess.client.appNetworkPolicyRule.create({
+            data: {
+                appNetworkPolicyId: policy.id,
+                targetAppId: targetApp.id,
+                type: 'EGRESS',
+                port: 443,
+                protocol: 'TCP',
+            },
+        });
+
+        const savedApp = await appService.saveAppExtendedModel({
+            ...createAppPayload(sourceApp.projectId, sourceApp.name, 'source.example.com'),
+            id: sourceApp.id,
+            appNetworkPolicy: {
+                allowInternetAccess: false,
+                rules: [{
+                    id: rule.id,
+                    targetAppId: targetApp.id,
+                    targetAgentId: null,
+                    type: 'EGRESS',
+                    port: 8443,
+                    protocol: 'TCP',
+                }],
+            },
+        });
+
+        expect(savedApp.appNetworkPolicy).toMatchObject({
+            allowInternetAccess: false,
+            rules: [expect.objectContaining({ id: rule.id, port: 8443 })],
+        });
+    });
+
+    it('rejects self-referencing network policy rules in an extended App save', async () => {
+        const { sourceApp } = await createProjectAndApps();
+
+        await expect(appService.saveAppExtendedModel({
+            ...createAppPayload(sourceApp.projectId, sourceApp.name, 'source.example.com'),
+            id: sourceApp.id,
+            appNetworkPolicy: {
+                allowInternetAccess: true,
+                rules: [{
+                    targetAppId: sourceApp.id,
+                    targetAgentId: null,
+                    type: 'EGRESS',
+                    port: 443,
+                    protocol: 'TCP',
+                }],
+            },
+        })).rejects.toThrow('An app cannot reference itself.');
+    });
+
+    it('rejects duplicate network policy rules in an extended App save', async () => {
+        const { sourceApp, targetApp } = await createProjectAndApps();
+        const rule = {
+            targetAppId: targetApp.id,
+            targetAgentId: null,
+            type: 'EGRESS' as const,
+            port: 443,
+            protocol: 'TCP' as const,
+        };
+
+        await expect(appService.saveAppExtendedModel({
+            ...createAppPayload(sourceApp.projectId, sourceApp.name, 'source.example.com'),
+            id: sourceApp.id,
+            appNetworkPolicy: {
+                allowInternetAccess: true,
+                rules: [rule, rule],
+            },
+        })).rejects.toThrow('A matching network policy rule already exists.');
+    });
 });
 
 function createAppPayload(projectId: string, name: string, hostname: string): AppExtendedWriteModel {
@@ -177,5 +253,6 @@ function createAppPayload(projectId: string, name: string, hostname: string): Ap
         appFileMounts: [],
         appVolumes: [],
         appBasicAuths: [],
+        appNetworkPolicy: null,
     };
 }

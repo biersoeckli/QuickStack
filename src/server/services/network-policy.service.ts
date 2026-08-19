@@ -1,4 +1,4 @@
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppNetworkPolicyRuleWithTargetModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { V1NetworkPolicy, V1NetworkPolicyEgressRule, V1NetworkPolicyIngressRule, V1NetworkPolicyPeer } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -13,6 +13,19 @@ export type AgentSandboxTemplateNetworkPolicyConfig = {
     rules: AgentNetworkPolicyRuleWithTargetAppModel[];
 } | null;
 
+type TargetNetworkPolicyRule = {
+    targetAppId?: string | null;
+    targetAgentId?: string | null;
+    targetApp?: {
+        projectId: string;
+    } | null;
+    targetAgent?: {
+        projectId: string;
+    } | null;
+    port: number;
+    protocol?: string;
+};
+
 class NetworkPolicyService {
 
     async reconcileNetworkPolicy(app: AppExtendedModel) {
@@ -25,6 +38,7 @@ class NetworkPolicyService {
             return;
         }
 
+        const isExtended = app.networkPolicyMode === 'EXTENDED';
         const ingressPolicy = this.normalizePolicy(app.ingressNetworkPolicy);
         const egressPolicy = this.normalizePolicy(app.egressNetworkPolicy);
 
@@ -49,11 +63,74 @@ class NetworkPolicyService {
                     }
                 },
                 policyTypes: ["Ingress", "Egress"],
-                ingress: this.getIngressRules(ingressPolicy, app.appNodePorts),
-                egress: this.getEgressRules(egressPolicy)
+                ingress: isExtended
+                    ? this.getExtendedIngressRules(app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts)
+                    : this.getIngressRules(ingressPolicy, app.appNodePorts, (app.appDomains?.length ?? 0) > 0),
+                egress: isExtended
+                    ? this.getExtendedEgressRules(app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
+                    : this.getEgressRules(egressPolicy)
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
+    }
+
+    private getExtendedIngressRules(rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
+        const result: V1NetworkPolicyIngressRule[] = [];
+        const backupAndTools: V1NetworkPolicyPeer[] = [
+            { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
+            { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL } } },
+        ];
+        result.push({ _from: backupAndTools });
+        if (hasDomains) result.push({ _from: [{ namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } }, podSelector: { matchLabels: { 'app.kubernetes.io/name': 'traefik' } } }] });
+        for (const rule of rules.filter(rule => rule.type === 'INGRESS')) result.push({
+            _from: [this.getTargetPeer(rule)],
+            ports: [{ protocol: rule.protocol, port: rule.port }],
+        });
+        return [...result, ...this.getNodePortIngressRules(nodePorts)];
+    }
+
+    private getExtendedEgressRules(rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
+        const result: V1NetworkPolicyEgressRule[] = [this.getDnsEgressRule()];
+        if (allowInternetAccess) result.push(this.getInternetEgressRule());
+        for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetEgressRule(rule));
+        return result;
+    }
+
+    private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {
+        const target = rule.targetAgent ?? rule.targetApp;
+        const targetId = rule.targetAgentId ?? rule.targetAppId;
+        if (!target || !targetId) throw new Error('Network policy rule has no target.');
+        return {
+            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': target.projectId } },
+            podSelector: { matchLabels: rule.targetAgentId ? { [Constants.QS_ANNOTATION_AGENT_ID]: targetId } : { app: targetId } },
+        };
+    }
+
+    private getTargetEgressRule(rule: TargetNetworkPolicyRule): V1NetworkPolicyEgressRule {
+        return {
+            to: [this.getTargetPeer(rule)],
+            ports: [{ protocol: rule.protocol || 'TCP', port: rule.port }],
+        };
+    }
+
+    private getInternetEgressRule(): V1NetworkPolicyEgressRule {
+        return {
+            to: [{
+                ipBlock: {
+                    cidr: '0.0.0.0/0',
+                    except: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16'],
+                },
+            }],
+        };
+    }
+
+    private getNodePortIngressRules(nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
+        if (!nodePorts.length) return [];
+        return [{ _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }], ports: nodePorts.map(nodePort => ({ protocol: (nodePort.protocol || 'TCP'), port: nodePort.port })) }];
+    }
+
+    private getDnsEgressRule(): V1NetworkPolicyEgressRule {
+        return { to: [{ namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } }, podSelector: { matchLabels: { 'k8s-app': 'kube-dns' } } }, { namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } }, podSelector: { matchLabels: { 'k8s-app': 'coredns' } } }], ports: [{ protocol: 'UDP', port: 53 }, { protocol: 'TCP', port: 53 }] };
     }
 
     buildAgentSandboxTemplateNetworkPolicy(
@@ -63,41 +140,10 @@ class NetworkPolicyService {
             return undefined;
         }
 
-        const egress: NonNullable<SandboxTemplateNetworkPolicy>['egress'] = [{
-            to: [{
-                namespaceSelector: {
-                    matchLabels: {
-                        'kubernetes.io/metadata.name': 'kube-system',
-                    },
-                },
-                podSelector: {
-                    matchExpressions: [{
-                        key: 'k8s-app',
-                        operator: 'In',
-                        values: ['kube-dns', 'coredns'],
-                    }],
-                },
-            }],
-            ports: [
-                { protocol: 'UDP', port: 53 },
-                { protocol: 'TCP', port: 53 },
-            ],
-        }];
+        const egress: NonNullable<SandboxTemplateNetworkPolicy>['egress'] = [this.getDnsEgressRule()];
 
         if (agentNetworkPolicy.allowInternetAccess) {
-            egress.push({
-                to: [{
-                    ipBlock: {
-                        cidr: '0.0.0.0/0',
-                        except: [
-                            '10.0.0.0/8',
-                            '172.16.0.0/12',
-                            '192.168.0.0/16',
-                            '169.254.0.0/16',
-                        ],
-                    },
-                }],
-            });
+            egress.push(this.getInternetEgressRule());
         }
 
         const seen = new Set<string>();
@@ -113,24 +159,7 @@ class NetworkPolicyService {
             }
             seen.add(dedupeKey);
 
-            egress.push({
-                to: [{
-                    namespaceSelector: {
-                        matchLabels: {
-                            'kubernetes.io/metadata.name': targetProjectId,
-                        },
-                    },
-                    podSelector: {
-                        matchLabels: {
-                            app: rule.targetAppId,
-                        },
-                    },
-                }],
-                ports: [{
-                    protocol,
-                    port: rule.port,
-                }],
-            });
+            egress.push(this.getTargetEgressRule({ ...rule, protocol }));
         }
 
         return {
@@ -152,7 +181,7 @@ class NetworkPolicyService {
         return parsed.success ? parsed.data : 'ALLOW_ALL';
     }
 
-    private getIngressRules(policyType: AppNetworkPolicyType, nodePorts: { port: number; protocol?: string }[] = []): V1NetworkPolicyIngressRule[] {
+    private getIngressRules(policyType: AppNetworkPolicyType, nodePorts: { port: number; protocol?: string }[] = [], hasDomains = false): V1NetworkPolicyIngressRule[] {
         const rules: V1NetworkPolicyIngressRule[] = [];
 
         const traefikFrom: V1NetworkPolicyPeer[] = [
@@ -203,7 +232,7 @@ class NetworkPolicyService {
             // Allow from same namespace and from Traefik (internet traffic comes through Traefik)
             rules.push({
                 _from: [
-                    ...traefikFrom,
+                    ...(hasDomains ? traefikFrom : []),
                     {
                         podSelector: {} // Selects all pods in the same namespace
                     }
@@ -214,7 +243,7 @@ class NetworkPolicyService {
             // Block other internal pod traffic.
             rules.push({
                 _from: [
-                    ...traefikFrom,
+                    ...(hasDomains ? traefikFrom : []),
                     ...backupPodFrom,
                     ...dbToolPod
                 ]
@@ -242,8 +271,8 @@ class NetworkPolicyService {
                     index === self.findIndex(item =>
                         item.port === nodePort.port && (item.protocol || 'TCP') === (nodePort.protocol || 'TCP')))
                 .map(nodePort => ({
-                    protocol: (nodePort.protocol || 'TCP') as any,
-                    port: nodePort.port as any
+                    protocol: (nodePort.protocol || 'TCP'),
+                    port: nodePort.port
                 }));
 
             rules.push({
@@ -291,8 +320,8 @@ class NetworkPolicyService {
                 }
             ],
             ports: [
-                { protocol: 'UDP', port: 53 as any },
-                { protocol: 'TCP', port: 53 as any }
+                { protocol: 'UDP', port: 53 },
+                { protocol: 'TCP', port: 53 }
             ]
         };
 
@@ -444,8 +473,8 @@ class NetworkPolicyService {
                             }
                         ],
                         ports: [
-                            { protocol: 'UDP', port: 53 as any },
-                            { protocol: 'TCP', port: 53 as any }
+                            { protocol: 'UDP', port: 53 },
+                            { protocol: 'TCP', port: 53 }
                         ]
                     },
                     {

@@ -47,7 +47,10 @@ class AppTemplateService {
                     const updatedApps = await postFunctionForTempalte(createdTemplates);
                     // save updated apps todo
                     for (const app of updatedApps) {
-                        await appService.saveAppExtendedModel(app, tx);
+                        await appService.saveAppExtendedModel({
+                            ...app,
+                            appNetworkPolicy: app.appNetworkPolicy ?? null,
+                        }, tx);
                     }
                 }
                 return createdTemplates.map(x => x.id);

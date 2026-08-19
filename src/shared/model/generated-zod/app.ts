@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppNodePort, RelatedAppNodePortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteAgentNetworkPolicyRule, RelatedAgentNetworkPolicyRuleModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppNodePort, RelatedAppNodePortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteAgentNetworkPolicyRule, RelatedAgentNetworkPolicyRuleModel, CompleteAppNetworkPolicyRule, RelatedAppNetworkPolicyRuleModel } from "./index"
 
 export const AppModel = z.object({
   id: z.string(),
@@ -33,6 +33,7 @@ export const AppModel = z.object({
   ingressNetworkPolicy: z.string(),
   egressNetworkPolicy: z.string(),
   useNetworkPolicy: z.boolean(),
+  networkPolicyMode: z.string(),
   healthChechHttpGetPath: z.string().nullish(),
   healthCheckHttpScheme: z.string().nullish(),
   healthCheckHttpHeadersJson: z.string().nullish(),
@@ -54,8 +55,10 @@ export interface CompleteApp extends z.infer<typeof AppModel> {
   appFileMounts: CompleteAppFileMount[]
   appBasicAuths: CompleteAppBasicAuth[]
   appGitSshKey?: CompleteAppGitSshKey | null
+  appNetworkPolicy?: CompleteAppNetworkPolicy | null
   roleAppPermissions: CompleteRoleAppPermission[]
   agentNetworkPolicyRules: CompleteAgentNetworkPolicyRule[]
+  appNetworkPolicyRules: CompleteAppNetworkPolicyRule[]
 }
 
 /**
@@ -72,6 +75,8 @@ export const RelatedAppModel: z.ZodSchema<CompleteApp> = z.lazy(() => AppModel.e
   appFileMounts: RelatedAppFileMountModel.array(),
   appBasicAuths: RelatedAppBasicAuthModel.array(),
   appGitSshKey: RelatedAppGitSshKeyModel.nullish(),
+  appNetworkPolicy: RelatedAppNetworkPolicyModel.nullish(),
   roleAppPermissions: RelatedRoleAppPermissionModel.array(),
   agentNetworkPolicyRules: RelatedAgentNetworkPolicyRuleModel.array(),
+  appNetworkPolicyRules: RelatedAppNetworkPolicyRuleModel.array(),
 }))
