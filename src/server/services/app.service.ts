@@ -13,6 +13,7 @@ import svcService from "./svc.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import crypto from "crypto";
 import networkPolicyService from "./network-policy.service";
+import appNetworkPolicyService from "./app-network-policy.service";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
 
@@ -298,24 +299,19 @@ class AppService {
             }
 
             if (app.appNetworkPolicy) {
-                const policy = await innerTx.appNetworkPolicy.upsert({
+                await innerTx.appNetworkPolicy.upsert({
                     where: { appId: savedAppId },
                     create: { appId: savedAppId, allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
                     update: { allowInternetAccess: app.appNetworkPolicy.allowInternetAccess },
                 });
-                await innerTx.appNetworkPolicyRule.deleteMany({ where: { appNetworkPolicyId: policy.id } });
-                if (app.appNetworkPolicy.rules.length) {
-                    await innerTx.appNetworkPolicyRule.createMany({
-                        data: app.appNetworkPolicy.rules.map(rule => ({
-                            appNetworkPolicyId: policy.id,
-                            targetAppId: rule.targetAppId,
-                            targetAgentId: rule.targetAgentId,
-                            type: rule.type,
-                            port: rule.port,
-                            protocol: rule.protocol,
-                        })),
-                    });
-                }
+                await appNetworkPolicyService.replaceRules(innerTx, savedAppId, app.appNetworkPolicy.rules.map(rule => ({
+                    id: rule.id,
+                    type: rule.type as 'INGRESS' | 'EGRESS',
+                    targetType: rule.targetAppId ? 'APP' : 'AGENT',
+                    targetId: rule.targetAppId ?? rule.targetAgentId!,
+                    port: rule.port,
+                    protocol: rule.protocol as 'TCP' | 'UDP',
+                })));
             }
 
             return await this.getExtendedById(savedAppId, false, innerTx);

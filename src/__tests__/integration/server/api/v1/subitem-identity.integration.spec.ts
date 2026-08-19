@@ -97,6 +97,106 @@ describe('REST API v1 integration - nested subitem identity', () => {
             .resolves.toMatchObject({ appId: clonedApp.id, hostname: 'clone.example.com' });
     });
 
+    it('preserves App network policy rule IDs when updating through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const targetApp = await dataAccess.client.app.create({
+            data: { name: 'Policy Target App', projectId: project.id },
+        });
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: createAppPayload(undefined, project.id, 'Policy Source App'),
+        })) as AppExtendedModel;
+
+        const savedWithRule = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appNetworkPolicy: {
+                    allowInternetAccess: true,
+                    rules: [{
+                        targetAppId: targetApp.id,
+                        targetAgentId: null,
+                        type: 'EGRESS',
+                        port: 443,
+                        protocol: 'TCP',
+                    }],
+                },
+            },
+        })) as AppExtendedModel;
+        const ruleId = savedWithRule.appNetworkPolicy!.rules[0].id;
+
+        const updated = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...savedWithRule,
+                envVars: 'UPDATED=true',
+            },
+        })) as AppExtendedModel;
+
+        expect(updated.envVars).toBe('UPDATED=true');
+        expect(updated.appNetworkPolicy).toMatchObject({
+            rules: [expect.objectContaining({ id: ruleId, targetAppId: targetApp.id, port: 443 })],
+        });
+    });
+
+    it('rejects duplicate App network policy rules through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const targetApp = await dataAccess.client.app.create({
+            data: { name: 'Policy Target App', projectId: project.id },
+        });
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: createAppPayload(undefined, project.id, 'Duplicate Rule Source App'),
+        })) as AppExtendedModel;
+        const rule = {
+            targetAppId: targetApp.id,
+            targetAgentId: null,
+            type: 'EGRESS',
+            port: 443,
+            protocol: 'TCP',
+        };
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appNetworkPolicy: { allowInternetAccess: true, rules: [rule, rule] },
+            },
+        }), 400);
+
+        expect(problem.detail).toBe('A matching network policy rule already exists.');
+    });
+
+    it('rejects self-referencing App network policy rules through the API', async () => {
+        const apiKey = await createAdminApiKey();
+        const project = await createProject(apiKey, 'APP');
+        const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: createAppPayload(undefined, project.id, 'Self Reference Source App'),
+        })) as AppExtendedModel;
+
+        const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
+            method: 'POST',
+            body: {
+                ...app,
+                appNetworkPolicy: {
+                    allowInternetAccess: true,
+                    rules: [{
+                        targetAppId: app.id,
+                        targetAgentId: null,
+                        type: 'EGRESS',
+                        port: 443,
+                        protocol: 'TCP',
+                    }],
+                },
+            },
+        }), 400);
+
+        expect(problem.detail).toBe('An app cannot reference itself.');
+    });
+
     it('strips nested Agent subitem ids when creating from a copied GET payload', async () => {
         const apiKey = await createAdminApiKey();
         const agentProject = await createProject(apiKey, 'AGENT');
@@ -253,4 +353,12 @@ async function expectApiJson(response: Response) {
     expect(response.status, JSON.stringify(json)).toBeLessThan(300);
 
     return json;
+}
+
+async function expectApiProblem(response: Response, status: number) {
+    const text = await response.text();
+    const json = text ? JSON.parse(text) : undefined;
+
+    expect(response.status, JSON.stringify(json)).toBe(status);
+    return json as { detail?: string };
 }

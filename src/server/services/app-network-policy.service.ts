@@ -23,6 +23,97 @@ class AppNetworkPolicyService {
         revalidateTag(Tags.apps(projectId));
     }
 
+    private async saveRuleInTransaction(
+        db: Prisma.TransactionClient,
+        appId: string,
+        policyId: string,
+        input: AppNetworkPolicyRuleEditModel,
+    ) {
+        if (input.targetType === 'APP' && input.targetId === appId) {
+            throw new ServiceException('An app cannot reference itself.');
+        }
+
+        if (input.targetType === 'APP') {
+            const targetApp = await db.app.findUnique({
+                where: { id: input.targetId },
+            });
+            if (!targetApp) {
+                throw new ServiceException('Referenced app not found.');
+            }
+        } else {
+            const targetAgent = await db.agent.findUnique({
+                where: { id: input.targetId },
+            });
+            if (!targetAgent) {
+                throw new ServiceException('Referenced agent not found.');
+            }
+        }
+
+        const targetWhere = input.targetType === 'APP'
+            ? { targetAppId: input.targetId }
+            : { targetAgentId: input.targetId };
+        const duplicate = await db.appNetworkPolicyRule.findFirst({
+            where: {
+                appNetworkPolicyId: policyId,
+                ...targetWhere,
+                type: input.type,
+                port: input.port,
+                protocol: input.protocol,
+                id: input.id ? { not: input.id } : undefined,
+            },
+        });
+        if (duplicate) {
+            throw new ServiceException('A matching network policy rule already exists.');
+        }
+
+        if (input.id) {
+            const existing = await db.appNetworkPolicyRule.findFirst({
+                where: { id: input.id, appNetworkPolicyId: policyId },
+            });
+            if (!existing) {
+                throw new ServiceException('Network policy rule not found.');
+            }
+
+            return await db.appNetworkPolicyRule.update({
+                where: { id: input.id },
+                data: {
+                    targetAppId: input.targetType === 'APP' ? input.targetId : null,
+                    targetAgentId: input.targetType === 'AGENT' ? input.targetId : null,
+                    type: input.type,
+                    port: input.port,
+                    protocol: input.protocol,
+                },
+            });
+        }
+
+        return await db.appNetworkPolicyRule.create({
+            data: {
+                ...targetWhere,
+                type: input.type,
+                port: input.port,
+                protocol: input.protocol,
+                appNetworkPolicyId: policyId,
+            },
+        });
+    }
+
+    async replaceRules(db: Prisma.TransactionClient, appId: string, rules: AppNetworkPolicyRuleEditModel[]) {
+        const { policy } = await this.ensurePolicy(db, appId);
+        const savedRuleIds: string[] = [];
+
+        for (const rule of rules) {
+            const savedRule = await this.saveRuleInTransaction(db, appId, policy.id, rule);
+            savedRuleIds.push(savedRule.id);
+        }
+
+        await db.appNetworkPolicyRule.deleteMany({
+            where: {
+                appNetworkPolicyId: policy.id,
+                id: { notIn: savedRuleIds },
+            },
+        });
+    }
+
     async saveSettings(input: AppNetworkPolicySettingsModel & { appId: string }) {
         const { app } = await dataAccess.client.$transaction(async (db) => {
             const result = await this.ensurePolicy(db, input.appId);
@@ -45,72 +136,7 @@ class AppNetworkPolicyService {
     async saveRule(input: AppNetworkPolicyRuleEditModel & { appId: string }) {
         const { app } = await dataAccess.client.$transaction(async (db) => {
             const { app, policy } = await this.ensurePolicy(db, input.appId);
-            if (input.targetType === 'APP' && input.targetId === input.appId) {
-                throw new ServiceException('An app cannot reference itself.');
-            }
-
-            if (input.targetType === 'APP') {
-                const targetApp = await db.app.findUnique({
-                    where: { id: input.targetId },
-                });
-                if (!targetApp) {
-                    throw new ServiceException('Referenced app not found.');
-                }
-            } else {
-                const targetAgent = await db.agent.findUnique({
-                    where: { id: input.targetId },
-                });
-                if (!targetAgent) {
-                    throw new ServiceException('Referenced agent not found.');
-                }
-            }
-
-            const targetWhere = input.targetType === 'APP'
-                ? { targetAppId: input.targetId }
-                : { targetAgentId: input.targetId };
-            const duplicate = await db.appNetworkPolicyRule.findFirst({
-                where: {
-                    appNetworkPolicyId: policy.id,
-                    ...targetWhere,
-                    type: input.type,
-                    port: input.port,
-                    protocol: input.protocol,
-                    id: input.id ? { not: input.id } : undefined,
-                },
-            });
-            if (duplicate) {
-                throw new ServiceException('A matching network policy rule already exists.');
-            }
-
-            if (input.id) {
-                const existing = await db.appNetworkPolicyRule.findFirst({
-                    where: { id: input.id, appNetworkPolicyId: policy.id },
-                });
-                if (!existing) {
-                    throw new ServiceException('Network policy rule not found.');
-                }
-
-                await db.appNetworkPolicyRule.update({
-                    where: { id: input.id },
-                    data: {
-                        targetAppId: input.targetType === 'APP' ? input.targetId : null,
-                        targetAgentId: input.targetType === 'AGENT' ? input.targetId : null,
-                        type: input.type,
-                        port: input.port,
-                        protocol: input.protocol,
-                    },
-                });
-            } else {
-                await db.appNetworkPolicyRule.create({
-                    data: {
-                        ...targetWhere,
-                        type: input.type,
-                        port: input.port,
-                        protocol: input.protocol,
-                        appNetworkPolicyId: policy.id,
-                    },
-                });
-            }
+            await this.saveRuleInTransaction(db, app.id, policy.id, input);
             return { app };
         });
         await this.invalidate(app.id, app.projectId);
