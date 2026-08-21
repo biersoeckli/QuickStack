@@ -113,9 +113,11 @@ export const updateIngressSettings = async (prevState: any, inputData: QsIngress
       value: validatedData.disableNodePortAccess + ''
     });
 
+    const currentReleaseChannel = await paramService.getString(ParamService.USE_CANARY_CHANNEL, 'false');
+
     await quickStackService.createOrUpdateService(!validatedData.disableNodePortAccess);
     await quickStackService.createOrUpdateIngress(validatedData.serverUrl);
-    setTimeout(() => quickStackService.createOrUpdateDeployment(), 2000); // delay is needed to ensure that the response is sent before the backend restarts, otherwise an error is shown in the UI.
+    setTimeout(() => quickStackService.createOrUpdateDeployment(undefined, currentReleaseChannel === 'true' ? 'canary' : 'latest'), 2000); // delay is needed to ensure that the response is sent before the backend restarts, otherwise an error is shown in the UI.
 
   });
 
