@@ -7,7 +7,7 @@ import { CryptoUtils } from "../utils/crypto.utils";
 
 export class ParamService {
 
-    static readonly QS_SERVER_HOSTNAME = 'qsServerHostname';
+    static readonly QS_SERVER_HOSTNAME = Constants.QS_PARAM_SERVER_HOSTNAME;
     static readonly DISABLE_NODEPORT_ACCESS = 'disableNodePortAccess';
     static readonly LETS_ENCRYPT_MAIL = 'letsEncryptMail';
     static readonly USE_CANARY_CHANNEL = 'useCanaryChannel';
