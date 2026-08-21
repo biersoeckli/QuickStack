@@ -115,7 +115,8 @@ export const updateIngressSettings = async (prevState: any, inputData: QsIngress
 
     await quickStackService.createOrUpdateService(!validatedData.disableNodePortAccess);
     await quickStackService.createOrUpdateIngress(validatedData.serverUrl);
-    await quickStackService.createOrUpdateDeployment();
+    setTimeout(() => quickStackService.createOrUpdateDeployment(), 2000); // delay is needed to ensure that the response is sent before the backend restarts, otherwise an error is shown in the UI.
+
   });
 
 
