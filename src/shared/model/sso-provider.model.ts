@@ -7,6 +7,19 @@ export const ssoProviderTypes = [
   "GITHUB",
 ] as const;
 
+export type SsoProviderType = (typeof ssoProviderTypes)[number];
+
+export function formatSsoProviderType(type: SsoProviderType): string {
+  const labels: Record<SsoProviderType, string> = {
+    OIDC: "OIDC",
+    GOOGLE: "Google",
+    AZURE_AD: "Entra ID",
+    GITHUB: "GitHub",
+  };
+
+  return labels[type];
+}
+
 export const ssoProviderEditZodModel = z
   .object({
     id: z.string().uuid().optional(),

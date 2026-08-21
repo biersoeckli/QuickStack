@@ -41,7 +41,7 @@ export default async function UsersAndGroupsPage() {
                     <TabsTrigger className="px-8 gap-1.5" value="sso"><KeyRound className="w-3.5 h-3.5" /> SSO Providers</TabsTrigger>
                 </TabsList>
                 <TabsContent value="users">
-                    <UsersTable session={session} users={users} userGroups={userGroups} />
+                    <UsersTable session={session} users={users} userGroups={userGroups} ssoProviders={ssoProviders} />
                 </TabsContent>
                 <TabsContent value="groups">
                     <UserGroupsTable projects={allApps} userGroups={userGroups} />

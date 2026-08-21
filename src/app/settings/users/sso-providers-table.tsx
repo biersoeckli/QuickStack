@@ -1,15 +1,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { EditIcon, Plus, TrashIcon } from "lucide-react";
+import { CopyIcon, EditIcon, Plus, TrashIcon } from "lucide-react";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteSsoProvider } from "./actions";
 import SsoProviderEditOverlay from "./sso-provider-edit-overlay";
-import { SsoProviderUiModel } from "@/shared/model/sso-provider.model";
+import { formatSsoProviderType, SsoProviderUiModel } from "@/shared/model/sso-provider.model";
 import { UserGroupExtended } from "@/shared/model/sim-session.model";
+import { toast } from "sonner";
 
 export default function SsoProvidersTable({
   ssoProviders,
@@ -30,12 +32,17 @@ export default function SsoProvidersTable({
       await Toast.fromAction(() => deleteSsoProvider(id));
     }
   }
+  function copyRedirectUrl(id: string) {
+    const redirectUrl = `${window.location.origin}/api/auth/callback/${id}`;
+    navigator.clipboard.writeText(redirectUrl);
+    toast.success("Redirect URL copied");
+  }
   return (
     <>
       <SimpleDataTable
         columns={[
           ["id", "Provider ID", false],
-          ["type", "Type", true],
+          ["type", "Type", true, (item) => formatSsoProviderType(item.type)],
           ["name", "Display Name", true],
           ["enabled", "Enabled", true, (item) => (item.enabled ? "Yes" : "No")],
           ["defaultUserGroupId", "Default Group", true, (item) =>
@@ -47,6 +54,16 @@ export default function SsoProvidersTable({
         actionCol={(item) => (
           <div className="flex">
             <div className="flex-1" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" onClick={() => copyRedirectUrl(item.id)}>
+                    <CopyIcon />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy redirect URL to clipboard</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <SsoProviderEditOverlay provider={item} userGroups={userGroups}>
               <Button variant="ghost">
                 <EditIcon />

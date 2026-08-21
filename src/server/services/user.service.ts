@@ -130,12 +130,17 @@ export class UserService {
                 updatedAt: true,
                 userGroup: true,
                 apiOnlyUser: true,
+                accounts: { select: { provider: true } },
                 _count: { select: { restApiKeys: true } }
             }
         }),
             [Tags.users()], {
             tags: [Tags.users()]
-        })().then(users => users.map(({ _count, ...user }) => ({ ...user, apiKeyCount: _count.restApiKeys })));
+        })().then(users => users.map(({ _count, accounts, ...user }) => ({
+            ...user,
+            apiKeyCount: _count.restApiKeys,
+            oauthProviderIds: [...new Set(accounts.map((account) => account.provider))],
+        })));
     }
 
     async getUserById(id: string): Promise<UserExtended> {
@@ -151,9 +156,14 @@ export class UserService {
                 updatedAt: true,
                 userGroup: true,
                 apiOnlyUser: true,
+                accounts: { select: { provider: true } },
                 _count: { select: { restApiKeys: true } }
             }
-        }).then(({ _count, ...user }) => ({ ...user, apiKeyCount: _count.restApiKeys }));
+        }).then(({ _count, accounts, ...user }) => ({
+            ...user,
+            apiKeyCount: _count.restApiKeys,
+            oauthProviderIds: [...new Set(accounts.map((account) => account.provider))],
+        }));
     }
 
     async getUserByEmail(email: string) {

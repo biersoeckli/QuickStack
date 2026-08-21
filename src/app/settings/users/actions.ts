@@ -29,7 +29,7 @@ export const saveSsoProvider = async (prevState: any, inputData: SsoProviderEdit
                 tenantId: ["Tenant ID is required for Azure AD."],
             });
         }
-        await ssoProviderService.save(validatedData);
+        return await ssoProviderService.save(validatedData);
     });
 
 export const deleteSsoProvider = async (id: string) => simpleAction(async () => {

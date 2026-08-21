@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -35,10 +36,35 @@ import {
   ssoProviderEditZodModel,
   SsoProviderUiModel,
   ssoProviderTypes,
+  formatSsoProviderType,
 } from "@/shared/model/sso-provider.model";
 import { UserGroupExtended } from "@/shared/model/sim-session.model";
 import { saveSsoProvider } from "./actions";
+import { useDialog } from "@/frontend/states/zustand.states";
+import { useDialogContext } from "@/frontend/states/dialog-context";
 import { toast } from "sonner";
+
+function SsoProviderRedirectUrlDialog({ redirectUrl }: { redirectUrl: string }) {
+  const { closeDialog } = useDialogContext();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">SSO Provider Created</h3>
+        <p className="text-sm text-muted-foreground">
+          Add this redirect URL to your identity provider.
+        </p>
+      </div>
+      <Input value={redirectUrl} readOnly />
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => navigator.clipboard.writeText(redirectUrl)}>
+          Copy
+        </Button>
+        <Button onClick={() => closeDialog(true)}>Close</Button>
+      </div>
+    </div>
+  );
+}
 
 export default function SsoProviderEditOverlay({
   children,
@@ -50,6 +76,7 @@ export default function SsoProviderEditOverlay({
   userGroups: UserGroupExtended[];
 }) {
   const [open, setOpen] = useState(false);
+  const { openDialog } = useDialog();
   const form = useForm<
     z.input<typeof ssoProviderEditZodModel>,
     unknown,
@@ -87,12 +114,20 @@ export default function SsoProviderEditOverlay({
     if (state.status === "success") {
       toast.success("SSO provider saved");
       setOpen(false);
+      if (!provider && state.data?.id) {
+        void openDialog(
+          <SsoProviderRedirectUrlDialog
+            redirectUrl={`${window.location.origin}/api/auth/callback/${state.data.id}`}
+          />,
+          { maxWidth: "640px" },
+        );
+      }
     }
     FormUtils.mapValidationErrorsToForm<typeof ssoProviderEditZodModel>(
       state,
       form,
     );
-  }, [form, state]);
+  }, [form, openDialog, provider, state]);
   return (
     <>
       <div onClick={() => setOpen(true)}>{children}</div>
@@ -121,7 +156,7 @@ export default function SsoProviderEditOverlay({
                       <SelectContent>
                         {ssoProviderTypes.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {value}
+                            {formatSsoProviderType(value)}
                           </SelectItem>
                         ))}
                       </SelectContent>

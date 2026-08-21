@@ -21,7 +21,8 @@
 				"qwtel.sqlite-viewer",
 				"ms-kubernetes-tools.vscode-kubernetes-tools",
 				"vitest.explorer",
-				"ms-vscode.vscode-chat-customizations-evaluations"
+				"ms-vscode.vscode-chat-customizations-evaluations",
+				"TypeScriptTeam.native-preview"
 			]
 		}
 	},
