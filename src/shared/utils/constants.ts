@@ -41,5 +41,6 @@ export class Constants {
     static readonly QS_AUTH_PROXY_IMAGE = 'quickstack/auth-proxy:canary';
     static readonly QS_AGENT_CLAIM_COOKIE = 'qs-agent-claim';
     static readonly QS_AGENT_ACCESS_COOKIE = 'qs-agent-access';
+    static readonly QS_PARAM_SERVER_HOSTNAME = 'qsServerHostname';
 
 }

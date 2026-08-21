@@ -6,6 +6,8 @@ import crypto from "crypto";
 import { FancyConsoleUtils } from "../../shared/utils/fancy-console.utils";
 import standalonePodService from "./standalone-services/standalone-pod.service";
 import ingressSetupService from "./setup-services/ingress-setup.service";
+import dataAccess from "../adapter/db.client";
+import { Constants } from "@/shared/utils/constants";
 
 class QuickStackService {
 
@@ -259,6 +261,11 @@ class QuickStackService {
     async createOrUpdateDeployment(inputNextAuthSecret?: string, imageTag = 'latest') {
         const generatedNextAuthSecret = crypto.randomBytes(32).toString('base64');
         const existingDeployment = await this.getExistingDeployment();
+        const hostnameParam = await dataAccess.client.parameter.findUnique({
+            where: { name: Constants.QS_PARAM_SERVER_HOSTNAME },
+            select: { value: true },
+        });
+        const nextAuthUrl = hostnameParam?.value ? `https://${hostnameParam.value}` : undefined;
         const body: V1Deployment = {
             metadata: {
                 name: this.QUICKSTACK_DEPLOYMENT_NAME,
@@ -299,6 +306,10 @@ class QuickStackService {
                                         name: 'NEXTAUTH_SECRET',
                                         value: inputNextAuthSecret || existingDeployment.nextAuthSecret || generatedNextAuthSecret
                                     },
+                                    ...nextAuthUrl ? [{
+                                        name: 'NEXTAUTH_URL',
+                                        value: nextAuthUrl,
+                                    }] : [],
                                     ...process.env.K3S_JOIN_TOKEN ? [{
                                         name: 'K3S_JOIN_TOKEN',
                                         value: process.env.K3S_JOIN_TOKEN
