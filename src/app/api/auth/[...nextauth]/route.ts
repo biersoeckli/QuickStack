@@ -1,7 +1,11 @@
-import NextAuth, {  } from "next-auth"
-import { authOptions } from "@/server/utils/auth-options";
+import NextAuth from "next-auth";
+import { buildAuthOptions } from "@/server/utils/auth-options";
 
+async function handler(
+  req: Request,
+  ctx: { params: Promise<{ nextauth: string[] }> },
+) {
+  return NextAuth(await buildAuthOptions())(req, { params: await ctx.params });
+}
 
-const handler = NextAuth(authOptions)
-
-export { handler as GET, handler as POST }
+export { handler as GET, handler as POST };

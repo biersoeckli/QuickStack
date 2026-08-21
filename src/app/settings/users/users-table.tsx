@@ -11,6 +11,7 @@ import { UserExtended } from "@/shared/model/user-extended.model";
 import UserEditOverlay from "./user-edit-overlay";
 import { deleteUser } from "./actions";
 import { UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
+import { SsoProviderUiModel } from "@/shared/model/sso-provider.model";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,11 +23,14 @@ import UsersBulkRoleAssignment from "./users-table-bulk-role-assignment";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { UserApiKeysDialog } from "./user-api-keys-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SsoProviderLogo } from "@/components/custom/sso-provider-logo";
 
-export default function UsersTable({ users, userGroups, session }: {
+export default function UsersTable({ users, userGroups, session, ssoProviders }: {
     users: UserExtended[];
     userGroups: UserGroupExtended[];
     session: UserSession;
+    ssoProviders: SsoProviderUiModel[];
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -79,6 +83,34 @@ export default function UsersTable({ users, userGroups, session }: {
             ['id', 'ID', false],
             ['email', 'Mail', true, (item) => <span className="flex items-center gap-2">{item.email}{item.apiOnlyUser && <span className="rounded bg-muted px-1.5 py-0.5 text-xs">API only</span>}</span>],
             ['userGroup.name', 'Group', true],
+            ['oauthProviderIds', 'OAuth Providers', true, (item) => {
+                const providers = item.oauthProviderIds
+                    .map((providerId) => ssoProviders.find((provider) => provider.id === providerId))
+                    .filter((provider): provider is SsoProviderUiModel => !!provider);
+
+                if (providers.length === 0) return "None";
+
+                return (
+                    <TooltipProvider>
+                        <div className="flex items-center gap-2">
+                            {providers.map((provider) =>
+                                provider.type !== "OIDC" ? (
+                                    <Tooltip key={provider.id}>
+                                        <TooltipTrigger asChild>
+                                            <span className="inline-flex cursor-default" aria-label={provider.name}>
+                                                <SsoProviderLogo type={provider.type} className="size-4" />
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{provider.name}</TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <span key={provider.id}>{provider.name}</span>
+                                ),
+                            )}
+                        </div>
+                    </TooltipProvider>
+                );
+            }],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}

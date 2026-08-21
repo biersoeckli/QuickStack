@@ -9,4 +9,5 @@ export type UserExtended = {
     updatedAt: Date;
     apiOnlyUser: boolean;
     apiKeyCount: number;
+    oauthProviderIds: string[];
 };

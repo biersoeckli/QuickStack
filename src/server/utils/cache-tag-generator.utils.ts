@@ -20,6 +20,10 @@ export class Tags {
         return `llm-gateways`;
     }
 
+    static ssoProviders() {
+        return `sso-providers`;
+    }
+
     static volumeBackups() {
         return `volume-backups`;
     }
