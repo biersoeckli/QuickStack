@@ -25,7 +25,7 @@ import { PathUtils } from "@/server/utils/path.utils";
 import { FsUtils } from "@/server/utils/fs.utils";
 import fs from "fs";
 import { z } from "zod";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Tags } from "@/server/utils/cache-tag-generator.utils";
 import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
@@ -34,6 +34,7 @@ import longhornUpdateService from "@/server/services/upgrade-services/longhorn-u
 import longhornUiService from "@/server/services/longhorn-ui.service";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
+import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
   saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
@@ -384,6 +385,63 @@ export const startLonghornUpgrade = async () =>
     await getAdminUserSession();
     await longhornUpdateService.upgrade();
     return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
+  });
+
+export const installClusterAddon = async (addonId: string) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const addon = clusterAddonRegistryService.getById(addonId);
+    if (!addon) {
+      throw new Error(`Cluster add-on ${addonId} was not found.`);
+    }
+
+    try {
+      const result = await addon.install();
+      if (result.status === 'failed') {
+        throw new Error(result.error ?? `Installation of ${addon.metadata.displayName} failed.`);
+      }
+      return new SuccessActionResult(result, `${addon.metadata.displayName} installation has started.`);
+    } finally {
+      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
+    }
+  });
+
+export const updateClusterAddon = async (addonId: string) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const addon = clusterAddonRegistryService.getById(addonId);
+    if (!addon) {
+      throw new Error(`Cluster add-on ${addonId} was not found.`);
+    }
+
+    try {
+      const result = await addon.update();
+      if (result.status === 'failed') {
+        throw new Error(result.error ?? `Update of ${addon.metadata.displayName} failed.`);
+      }
+      return new SuccessActionResult(result, `${addon.metadata.displayName} update has started.`);
+    } finally {
+      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
+    }
+  });
+
+export const uninstallClusterAddon = async (addonId: string) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    const addon = clusterAddonRegistryService.getById(addonId);
+    if (!addon) {
+      throw new Error(`Cluster add-on ${addonId} was not found.`);
+    }
+
+    try {
+      const result = await addon.uninstall();
+      if (result.status === 'failed') {
+        throw new Error(result.error ?? `Removal of ${addon.metadata.displayName} failed.`);
+      }
+      return new SuccessActionResult(result, `${addon.metadata.displayName} removal has started.`);
+    } finally {
+      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
+    }
   });
 
 export const getLonghornUiIngressStatus = async () =>

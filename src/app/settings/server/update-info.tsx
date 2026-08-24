@@ -9,6 +9,9 @@ import K3sUpdateInfo from "./k3s-update-info";
 import LonghornUpdateInfo from "./longhorn-update-info";
 import quickStackService from "@/server/services/qs.service";
 import quickStackUpdateService from "@/server/services/qs-update.service";
+import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
+import ClusterAddonUpdateInfo, { ClusterAddonUpdateInfo as ClusterAddonUpdateInfoModel } from './cluster-addon-update-info';
+import { Separator } from '@/components/ui/separator';
 
 export default async function UpdateInfoPage() {
 
@@ -72,6 +75,25 @@ export default async function UpdateInfoPage() {
         }
     }
 
+    const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll().map(async (addon) => {
+        try {
+            const status = await addon.getStatus();
+            let availableVersion: string | undefined;
+            let message = status.message;
+            if (status.status === 'ready') {
+                try {
+                availableVersion = (await addon.getAvailableUpdate())?.version;
+                } catch (error) {
+                    message = error instanceof Error ? error.message : 'Could not check for updates.';
+                }
+            }
+            return { ...addon.metadata, ...status, availableVersion, message };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Could not load add-on status.';
+            return { ...addon.metadata, status: 'failed' as const, message };
+        }
+    }));
+
 
     return <div className="grid gap-6">
         <QuickStackVersionInfo newVersionInfo={newVersionInfo} currentVersion={currentVersion} useCanaryChannel={useCanaryChannel!} />
@@ -79,11 +101,19 @@ export default async function UpdateInfoPage() {
             k3sNextVersionInfo={k3sNextVersionInfo}
             k3sUpgradeIsInProgress={k3sUpgradeIsInProgress}
             initialControllerStatus={k3sControllerStatus} />
+        <div className="space-y-2 pt-2">
+            <Separator />
+            <div className="pt-4">
+                <h2 className="text-xl font-semibold tracking-tight">Cluster Add-ons</h2>
+                <p className="text-sm text-muted-foreground">Install and keep optional cluster components up to date.</p>
+            </div>
+        </div>
         <LonghornUpdateInfo
             longhornInstalled={longhornInstalled}
             longhornCurrentVersionInfo={longhornCurrentVersionInfo}
             longhornNextVersionInfo={longhornNextVersionInfo}
             longhornUpgradeIsInProgress={longhornUpgradeIsInProgress} />
+        {addons.map((addon) => <ClusterAddonUpdateInfo key={addon.id} addon={addon} />)}
     </div>;
 
 }

@@ -101,7 +101,7 @@ export default async function ProjectPage({
                         <TabsTrigger value="builds"><Hammer className="mr-2 h-4 w-4" />Builds</TabsTrigger>
                         <TabsTrigger value="api"><ChevronsLeftRightEllipsis className="mr-2 h-4 w-4" />REST API</TabsTrigger>
                         <TabsTrigger value="cluster"><Network className="mr-2 h-4 w-4" />Cluster</TabsTrigger>
-                        <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
+                        <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates &amp; Add-Ons {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
                         <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
                     </TabsList>
                     <ScrollBar orientation="horizontal" />

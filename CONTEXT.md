@@ -4,6 +4,41 @@ QuickStack deploys applications from container images or Git repositories into a
 
 ## Language
 
+**Cluster Add-on**:
+A QuickStack-managed Kubernetes platform extension that an administrator can install, update, inspect, and remove. Agent Sandbox is a Cluster Add-on; its installed controller and CRDs are not Agents.
+_Avoid_: plugin, App, Agent
+
+**Add-on**:
+Short form for a **Cluster Add-on**.
+
+**Add-on Installation Source**:
+The per-Add-on source that provides its Kubernetes manifests and version information; it may be a fixed code-defined release or an external release catalog.
+_Avoid_: universal add-on catalog
+
+**Add-on Release**:
+An installable, versioned Add-on manifest selected by an Add-on Installation Source.
+_Avoid_: update flag, manifest URL when the release is meant
+
+**Trusted Add-on**:
+A Cluster Add-on implemented and registered in QuickStack source code. Administrators cannot install arbitrary third-party Add-ons or manifests.
+_Avoid_: plugin marketplace, external Add-on
+
+**Add-on Configuration**:
+The Add-on-specific configuration owned, stored, validated, and reconciled by that Add-on. QuickStack does not provide a generic configuration store.
+_Avoid_: global add-on configuration
+
+**Add-on Readiness**:
+The operational state of an installed Cluster Add-on, determined by its declared Kubernetes resources. It does not prove that external runtime prerequisites for workloads using the Add-on are present.
+_Avoid_: runtime support
+
+**Add-on Lifecycle Status**:
+The shared Add-on state reported as `notInstalled`, `installing`, `ready`, `updating`, `uninstalling`, or `failed`, with an optional detail message and installed version.
+_Avoid_: Add-on-specific status enum
+
+**Agent Sandbox Add-on**:
+The Cluster Add-on that installs the Agent Sandbox controller and its extension CRDs, including SandboxTemplate and SandboxWarmPool. It does not create user workload resources.
+_Avoid_: Agent, Agent runtime
+
 **App**:
 A deployable workload managed by QuickStack.
 

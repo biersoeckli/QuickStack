@@ -105,21 +105,17 @@ export class K3sApiAdapter {
     * @param kc KubeConfig instance
     * @param spec Resource specification
     */
-    public async applyResource(spec: any, namespace: string): Promise<void> {
+    public async applyResource(spec: any, namespace?: string): Promise<void> {
         if (!spec || !spec.kind) {
             console.error('Invalid resource specification:', spec);
             throw new Error('Invalid resource specification');
         }
 
-        namespace = spec.metadata.namespace || namespace;
-
-        if (!namespace) {
-            throw new ServiceException('Namespace is required in resource metadata in method applyResource');
-        }
+        namespace = spec.metadata?.namespace || namespace;
 
         const name = spec.metadata?.name;
 
-        console.log(`Applying ${spec.kind}/${name} to namespace ${namespace}`);
+        console.log(`Applying ${spec.kind}/${name}${namespace ? ` to namespace ${namespace}` : ''}`);
 
         try {
             const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
@@ -137,6 +133,18 @@ export class K3sApiAdapter {
             console.error(`Failed to apply ${spec.kind}/${name}:`, error);
             throw error;
         }
+    }
+
+    /**
+     * Deletes a single Kubernetes resource. The resource may be namespaced or cluster-scoped.
+     */
+    public async deleteResource(spec: any): Promise<void> {
+        if (!spec?.kind || !spec?.metadata?.name) {
+            throw new ServiceException('Kind and metadata.name are required in method deleteResource');
+        }
+
+        const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
+        await client.delete(spec);
     }
 }
 
