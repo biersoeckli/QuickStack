@@ -9186,6 +9186,14 @@
                         ],
                         "x-kubernetes-list-type": "map"
                       },
+                      "schedulingGroup": {
+                        "type": "object",
+                        "properties": {
+                          "podGroupName": {
+                            "type": "string"
+                          }
+                        }
+                      },
                       "securityContext": {
                         "type": "object",
                         "properties": {
@@ -10643,24 +10651,6 @@
                           "name"
                         ],
                         "x-kubernetes-list-type": "map"
-                      },
-                      "workloadRef": {
-                        "type": "object",
-                        "required": [
-                          "name",
-                          "podGroup"
-                        ],
-                        "properties": {
-                          "name": {
-                            "type": "string"
-                          },
-                          "podGroup": {
-                            "type": "string"
-                          },
-                          "podGroupReplicaKey": {
-                            "type": "string"
-                          }
-                        }
                       }
                     }
                   }
@@ -10924,13 +10914,13 @@
           "spec": {
             "type": "object",
             "required": [
-              "replicas",
               "sandboxTemplateRef"
             ],
             "properties": {
               "replicas": {
                 "type": "integer",
                 "format": "int32",
+                "default": 1,
                 "minimum": 0
               },
               "sandboxTemplateRef": {
@@ -10962,6 +10952,11 @@
           "status": {
             "type": "object",
             "properties": {
+              "observedGeneration": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
               "readyReplicas": {
                 "type": "integer",
                 "format": "int32"

@@ -6158,6 +6158,14 @@
                         ],
                         "x-kubernetes-list-type": "map"
                       },
+                      "schedulingGroup": {
+                        "type": "object",
+                        "properties": {
+                          "podGroupName": {
+                            "type": "string"
+                          }
+                        }
+                      },
                       "securityContext": {
                         "type": "object",
                         "properties": {
@@ -7615,24 +7623,6 @@
                           "name"
                         ],
                         "x-kubernetes-list-type": "map"
-                      },
-                      "workloadRef": {
-                        "type": "object",
-                        "required": [
-                          "name",
-                          "podGroup"
-                        ],
-                        "properties": {
-                          "name": {
-                            "type": "string"
-                          },
-                          "podGroup": {
-                            "type": "string"
-                          },
-                          "podGroupReplicaKey": {
-                            "type": "string"
-                          }
-                        }
                       }
                     }
                   }
@@ -7822,7 +7812,13 @@
                 },
                 "x-kubernetes-list-type": "atomic"
               }
-            }
+            },
+            "x-kubernetes-validations": [
+              {
+                "rule": "has(self.volumeClaimTemplates) == has(oldSelf.volumeClaimTemplates) && (!has(self.volumeClaimTemplates) || self.volumeClaimTemplates == oldSelf.volumeClaimTemplates)",
+                "message": "volumeClaimTemplates is immutable"
+              }
+            ]
           },
           "status": {
             "type": "object",
