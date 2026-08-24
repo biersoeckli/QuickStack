@@ -26,7 +26,6 @@ import crypto from "crypto";
 import buildService from "./build.service";
 import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
-import { CatchUtils } from "@/shared/utils/catch.utils";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 
@@ -35,11 +34,6 @@ type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedUpdateInput, 'modelAlias'> & { modelAlias?: unknown });
 
 class AgentService {
-
-    async agentCrdAreInstalled() {
-        const result = await CatchUtils.resultOrUndefined(() => agentSandboxAdapter.sandboxClaimApiIsInstalled());
-        return !!(result ?? false);
-    }
 
     private get agentInclude() {
         return {

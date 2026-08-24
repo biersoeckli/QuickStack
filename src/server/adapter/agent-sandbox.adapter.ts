@@ -13,23 +13,6 @@ export const WARMPOOL_PLURAL = 'sandboxwarmpools';
 export const CLAIM_PLURAL = 'sandboxclaims';
 
 class AgentSandboxAdapter {
-    async sandboxClaimApiIsInstalled(): Promise<boolean> {
-        try {
-            await k3s.customObjects.listCustomObjectForAllNamespaces({
-                group: SANDBOX_API_GROUP,
-                version: SANDBOX_API_VERSION,
-                plural: CLAIM_PLURAL,
-                limit: 1,
-            });
-            return true;
-        } catch (err) {
-            const error = err as ApiException<any>;
-            if (error?.code === 404) {
-                return false;
-            }
-            throw error;
-        }
-    }
 
     async getSandbox(name: string, namespace: string): Promise<Sandbox | null> {
         try {
