@@ -1,14 +1,9 @@
-import * as k8s from '@kubernetes/client-node';
 import { AddonRelease } from '@/shared/model/cluster-addon.model';
-import { ServiceException } from '@/shared/model/service.exception.model';
+import { AddonKubernetesUtils } from '@/server/utils/addon-kubernetes.utils';
 
 class AgentSandboxManifestAdapter {
     async getResources(release: AddonRelease): Promise<any[]> {
-        const response = await fetch(release.manifestUrl);
-        if (!response.ok) {
-            throw new ServiceException(`Failed to fetch Kubernetes Agent Sandbox manifest: ${response.statusText}`);
-        }
-        return k8s.loadAllYaml(await response.text()).filter((spec): spec is any => Boolean(spec?.kind));
+        return AddonKubernetesUtils.fetchManifestYaml(release.manifestUrl, 'Kubernetes Agent Sandbox');
     }
 }
 

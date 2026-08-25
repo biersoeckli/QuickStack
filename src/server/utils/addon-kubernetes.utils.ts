@@ -3,8 +3,19 @@ import {
     AddonRelease,
     AddonResourceOperation,
 } from '@/shared/model/cluster-addon.model';
+import * as k8s from '@kubernetes/client-node';
+import { ServiceException } from '@/shared/model/service.exception.model';
 
 export class AddonKubernetesUtils {
+
+    static async fetchManifestYaml(url: string, addonName: string): Promise<any[]> {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new ServiceException(`Failed to fetch ${addonName} manifest: ${response.statusText}`);
+        }
+        return k8s.loadAllYaml(await response.text()).filter((spec): spec is any => Boolean(spec?.kind));
+    }
+
     static toResourceOperation(spec: any): AddonResourceOperation {
         return {
             apiVersion: spec.apiVersion,

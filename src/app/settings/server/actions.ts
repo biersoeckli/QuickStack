@@ -379,7 +379,11 @@ export const startK3sUpgrade = async () =>
     return new SuccessActionResult(undefined, 'The upgrade process has started.');
   });
 
-export const installClusterAddon = async (addonId: string) =>
+const runClusterAddonAction = (
+  addonId: string,
+  operation: 'install' | 'update' | 'uninstall',
+  noun: string,
+) =>
   simpleAction(async () => {
     await getAdminUserSession();
     const addon = clusterAddonRegistryService.getById(addonId);
@@ -388,53 +392,19 @@ export const installClusterAddon = async (addonId: string) =>
     }
 
     try {
-      const result = await addon.install();
+      const result = await addon[operation]();
       if (result.status === 'failed') {
-        throw new Error(result.error ?? `Installation of ${addon.metadata.displayName} failed.`);
+        throw new Error(result.error ?? `${noun} of ${addon.metadata.displayName} failed.`);
       }
-      return new SuccessActionResult(result, `${addon.metadata.displayName} installation has started.`);
+      return new SuccessActionResult(result, `${addon.metadata.displayName} ${noun.toLowerCase()} has started.`);
     } finally {
-      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
+      revalidatePath('/settings/server'); // Required because the service has no cache.
     }
   });
 
-export const updateClusterAddon = async (addonId: string) =>
-  simpleAction(async () => {
-    await getAdminUserSession();
-    const addon = clusterAddonRegistryService.getById(addonId);
-    if (!addon) {
-      throw new Error(`Cluster add-on ${addonId} was not found.`);
-    }
-
-    try {
-      const result = await addon.update();
-      if (result.status === 'failed') {
-        throw new Error(result.error ?? `Update of ${addon.metadata.displayName} failed.`);
-      }
-      return new SuccessActionResult(result, `${addon.metadata.displayName} update has started.`);
-    } finally {
-      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
-    }
-  });
-
-export const uninstallClusterAddon = async (addonId: string) =>
-  simpleAction(async () => {
-    await getAdminUserSession();
-    const addon = clusterAddonRegistryService.getById(addonId);
-    if (!addon) {
-      throw new Error(`Cluster add-on ${addonId} was not found.`);
-    }
-
-    try {
-      const result = await addon.uninstall();
-      if (result.status === 'failed') {
-        throw new Error(result.error ?? `Removal of ${addon.metadata.displayName} failed.`);
-      }
-      return new SuccessActionResult(result, `${addon.metadata.displayName} removal has started.`);
-    } finally {
-      revalidatePath('/settings/server'); // exception bexause the serveice uses no caching
-    }
-  });
+export const installClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'install', 'Installation');
+export const updateClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'update', 'Update');
+export const uninstallClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'uninstall', 'Removal');
 
 export const getLonghornUiIngressStatus = async () =>
   simpleAction(async () => {

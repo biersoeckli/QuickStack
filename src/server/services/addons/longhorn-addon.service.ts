@@ -2,7 +2,6 @@ import k3s from '@/server/adapter/kubernetes-api.adapter';
 import longhornManifestAdapter from '@/server/adapter/longhorn-manifest.adapter';
 import { LonghornReleaseInfo, qsVersionInfoAdapter } from '@/server/adapter/qs-versioninfo.adapter';
 import {
-    AddonLifecycleStatus,
     AddonMetadata,
     AddonOperationResult,
     AddonRelease,
@@ -38,11 +37,17 @@ class LonghornAddonService extends BaseClusterAddon implements ClusterAddon {
         },
     };
 
-    private activeOperation?: Exclude<AddonLifecycleStatus, 'notInstalled' | 'ready' | 'failed'>;
+    constructor() {
+        super('longhorn');
+    }
 
     async getStatus(): Promise<AddonStatus> {
-        if (this.activeOperation) return { status: this.activeOperation };
+        const activeOperation = this.getActiveOperation();
+        if (activeOperation) return { status: activeOperation };
+        return this.getStatusRaw();
+    }
 
+    private async getStatusRaw(): Promise<AddonStatus> {
         let daemonSet: any;
         try {
             daemonSet = await k3s.apps.readNamespacedDaemonSet({
@@ -76,12 +81,14 @@ class LonghornAddonService extends BaseClusterAddon implements ClusterAddon {
     }
 
     async install(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) {
-            throw new ServiceException('Longhorn is already installed or installation is in progress.');
-        }
-        const catalog = await this.getCatalog();
-        return await this.reconcile('installing', this.toAddonRelease(catalog.installRelease));
+        return this.runExclusive('installing', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) {
+                throw new ServiceException('Longhorn is already installed or installation is in progress.');
+            }
+            const catalog = await this.getCatalog();
+            return this.reconcile(this.toAddonRelease(catalog.installRelease));
+        });
     }
 
     async getAvailableUpdate(): Promise<AddonRelease | undefined> {
@@ -97,32 +104,27 @@ class LonghornAddonService extends BaseClusterAddon implements ClusterAddon {
     }
 
     async update(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status === 'updating') {
-            throw new ServiceException('A Longhorn upgrade is already in progress. Please wait for it to complete.');
-        }
-        if (status.status !== 'ready') {
-            throw new ServiceException('Longhorn is not ready for an update.');
-        }
-        const update = await this.getAvailableUpdate();
-        if (!update) throw new ServiceException('No newer Longhorn version available for upgrade.');
-        return await this.reconcile('updating', update);
+        return this.runExclusive('updating', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status === 'updating') {
+                throw new ServiceException('A Longhorn upgrade is already in progress. Please wait for it to complete.');
+            }
+            if (status.status !== 'ready') throw new ServiceException('Longhorn is not ready for an update.');
+            const update = await this.getAvailableUpdateRaw(status);
+            if (!update) throw new ServiceException('No newer Longhorn version available for upgrade.');
+            return this.reconcile(update);
+        });
     }
 
     async uninstall(): Promise<AddonOperationResult> {
         throw new ServiceException('Longhorn cannot be removed through QuickStack.');
     }
 
-    private async reconcile(operation: 'installing' | 'updating', release: AddonRelease): Promise<AddonOperationResult> {
-        this.activeOperation = operation;
-        try {
-            const specs = await longhornManifestAdapter.getResources(release);
-            const resources: AddonResourceOperation[] = [];
-            for (const spec of specs) resources.push(await this.applyResource(spec));
-            return AddonKubernetesUtils.operationResult(release, resources);
-        } finally {
-            this.activeOperation = undefined;
-        }
+    private async reconcile(release: AddonRelease): Promise<AddonOperationResult> {
+        const specs = await longhornManifestAdapter.getResources(release);
+        const resources: AddonResourceOperation[] = [];
+        for (const spec of specs) resources.push(await this.applyResource(spec));
+        return AddonKubernetesUtils.operationResult(release, resources);
     }
 
     private async getCatalog() {
@@ -132,6 +134,14 @@ class LonghornAddonService extends BaseClusterAddon implements ClusterAddon {
 
     private toAddonRelease(release: LonghornReleaseInfo): AddonRelease {
         return { version: release.version, manifestUrl: release.yamlUrl };
+    }
+
+    private async getAvailableUpdateRaw(status: AddonStatus): Promise<AddonRelease | undefined> {
+        if (!status.installedVersion) return undefined;
+        const { releases } = await this.getCatalog();
+        const installedIndex = releases.findIndex((release) => release.version === status.installedVersion);
+        const nextRelease = installedIndex === -1 ? releases.at(-1) : releases[installedIndex + 1];
+        return nextRelease ? this.toAddonRelease(nextRelease) : undefined;
     }
 }
 

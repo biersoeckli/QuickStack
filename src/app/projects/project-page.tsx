@@ -15,7 +15,7 @@ export default async function ProjectPage() {
 
     const session = await getAuthUserSession();
     const data = await projectService.getAll();
-    const agentsAvailable = (await agentSandboxAddonService.getStatus()).status === 'ready';
+    const agentsAvailable = await agentSandboxAddonService.isAvailable();
     const relevantProjectsForUser = data.filter((project) =>
         UserGroupUtils.sessionHasReadAccessToProject(session, project.id));
 

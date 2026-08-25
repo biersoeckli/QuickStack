@@ -50,6 +50,20 @@ describe('AgentSandboxAddonService', () => {
         });
     });
 
+    it('checks availability with only the CRD probe', async () => {
+        vi.mocked(k3s.customObjects.listCustomObjectForAllNamespaces).mockResolvedValue({ items: [] } as any);
+
+        await expect(agentSandboxAddonService.isAvailable()).resolves.toBe(true);
+        expect(k3s.apps.readNamespacedDeployment).not.toHaveBeenCalled();
+    });
+
+    it('treats an unavailable Kubernetes API as unavailable without reading the controller', async () => {
+        vi.mocked(k3s.customObjects.listCustomObjectForAllNamespaces).mockRejectedValue(new Error('connection refused'));
+
+        await expect(agentSandboxAddonService.isAvailable()).resolves.toBe(false);
+        expect(k3s.apps.readNamespacedDeployment).not.toHaveBeenCalled();
+    });
+
     it('installs namespaced and cluster-scoped manifest resources', async () => {
         vi.mocked(k3s.customObjects.listCustomObjectForAllNamespaces).mockRejectedValue(notFound);
         vi.mocked(agentSandboxManifestAdapter.getResources).mockResolvedValue([

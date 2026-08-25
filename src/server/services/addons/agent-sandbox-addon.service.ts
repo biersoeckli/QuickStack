@@ -10,7 +10,6 @@ import {
     WARMPOOL_PLURAL,
 } from '@/server/adapter/agent-sandbox.adapter';
 import {
-    AddonLifecycleStatus,
     AddonMetadata,
     AddonOperationResult,
     AddonRelease,
@@ -46,18 +45,35 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
         canUninstall: true,
     };
 
-    private activeOperation?: Exclude<AddonLifecycleStatus, 'notInstalled' | 'ready' | 'failed'>;
-
     constructor() {
-        super();
+        super('agent-sandbox');
         AddonKubernetesUtils.assertReleaseOrder(AgentSandboxAddonService.RELEASES);
     }
 
     async getStatus(): Promise<AddonStatus> {
-        if (this.activeOperation) {
-            return { status: this.activeOperation };
+        const activeOperation = this.getActiveOperation();
+        if (activeOperation) {
+            return { status: activeOperation };
         }
 
+        return this.getStatusRaw();
+    }
+
+    async isAvailable(): Promise<boolean> {
+        try {
+            await k3s.customObjects.listCustomObjectForAllNamespaces({
+                group: SANDBOX_API_GROUP,
+                version: SANDBOX_API_VERSION,
+                plural: CLAIM_PLURAL,
+                limit: 1,
+            });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private async getStatusRaw(): Promise<AddonStatus> {
         try {
             await k3s.customObjects.listCustomObjectForAllNamespaces({
                 group: SANDBOX_API_GROUP,
@@ -66,12 +82,9 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
                 limit: 1,
             });
         } catch (error) {
-            if (AddonKubernetesUtils.isNotFound(error)) {
-                return { status: 'notInstalled' };
-            }
+            if (AddonKubernetesUtils.isNotFound(error)) return { status: 'notInstalled' };
             return { status: 'failed', message: AddonKubernetesUtils.errorMessage(error) };
         }
-
         try {
             const deployment = await k3s.apps.readNamespacedDeployment({
                 name: AgentSandboxAddonService.CONTROLLER_NAME,
@@ -96,11 +109,13 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
     }
 
     async install(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) {
-            throw new ServiceException('Kubernetes Agent Sandbox is already installed or installation is in progress.');
-        }
-        return await this.reconcile('installing', this.getLatestRelease());
+        return this.runExclusive('installing', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) {
+                throw new ServiceException('Kubernetes Agent Sandbox is already installed or installation is in progress.');
+            }
+            return this.reconcile(this.getLatestRelease());
+        });
     }
 
     async getAvailableUpdate(): Promise<AddonRelease | undefined> {
@@ -118,50 +133,39 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
     }
 
     async update(): Promise<AddonOperationResult> {
-        const update = await this.getAvailableUpdate();
-        if (!update) {
-            throw new ServiceException('No Kubernetes Agent Sandbox update is available.');
-        }
-        return await this.reconcile('updating', update);
+        return this.runExclusive('updating', async () => {
+            const update = await this.getAvailableUpdateRaw();
+            if (!update) throw new ServiceException('No Kubernetes Agent Sandbox update is available.');
+            return this.reconcile(update);
+        });
     }
 
     async uninstall(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status === 'notInstalled') {
-            throw new ServiceException('Kubernetes Agent Sandbox is not installed.');
-        }
-        const installedRelease = this.getManagedRelease(status.installedVersion);
-
-        await this.assertNoSandboxResources();
-        return await this.removeManifest(installedRelease);
+        return this.runExclusive('uninstalling', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status === 'notInstalled') throw new ServiceException('Kubernetes Agent Sandbox is not installed.');
+            const installedRelease = this.getManagedRelease(status.installedVersion);
+            await this.assertNoSandboxResources();
+            return this.removeManifest(installedRelease);
+        });
     }
 
-    private async reconcile(operation: 'installing' | 'updating', release: AddonRelease): Promise<AddonOperationResult> {
-        this.activeOperation = operation;
-        try {
-            const specs = await this.fetchManifest(release);
-            const resources: AddonResourceOperation[] = [];
-            for (const spec of specs) {
-                resources.push(await this.applyResource(spec));
-            }
-            return AddonKubernetesUtils.operationResult(release, resources);
-        } finally {
-            this.activeOperation = undefined;
+    private async reconcile(release: AddonRelease): Promise<AddonOperationResult> {
+        const specs = await this.fetchManifest(release);
+        const resources: AddonResourceOperation[] = [];
+        for (const spec of specs) {
+            resources.push(await this.applyResource(spec));
         }
+        return AddonKubernetesUtils.operationResult(release, resources);
     }
 
     private async removeManifest(release: AddonRelease): Promise<AddonOperationResult> {
-        this.activeOperation = 'uninstalling';
-        try {
-            const specs = await this.fetchManifest(release);
-            const resources: AddonResourceOperation[] = [];
-            for (const spec of specs.reverse()) {
-                resources.push(await this.deleteResource(spec));
-            }
-            return AddonKubernetesUtils.operationResult(release, resources);
-        } finally {
-            this.activeOperation = undefined;
+        const specs = await this.fetchManifest(release);
+        const resources: AddonResourceOperation[] = [];
+        for (const spec of specs.reverse()) {
+            resources.push(await this.deleteResource(spec));
         }
+        return AddonKubernetesUtils.operationResult(release, resources);
     }
 
     private async fetchManifest(release: AddonRelease): Promise<any[]> {
@@ -183,6 +187,14 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
 
     private getLatestRelease(): AddonRelease {
         return AgentSandboxAddonService.RELEASES[0];
+    }
+
+    private async getAvailableUpdateRaw(): Promise<AddonRelease | undefined> {
+        const status = await this.getStatusRaw();
+        if (!status.installedVersion) return undefined;
+        const installedReleaseIndex = AgentSandboxAddonService.RELEASES.findIndex((release) => release.version === status.installedVersion);
+        if (installedReleaseIndex === -1) throw new ServiceException(`Installed Kubernetes Agent Sandbox version ${status.installedVersion} is not managed by QuickStack.`);
+        return AgentSandboxAddonService.RELEASES[installedReleaseIndex - 1];
     }
 
     private getManagedRelease(installedVersion: string | undefined): AddonRelease {

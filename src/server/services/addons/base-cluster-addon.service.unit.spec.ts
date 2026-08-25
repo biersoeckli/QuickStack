@@ -15,6 +15,10 @@ import k3s from '@/server/adapter/kubernetes-api.adapter';
 import { BaseClusterAddon } from './base-cluster-addon.service';
 
 class TestClusterAddon extends BaseClusterAddon {
+    constructor(addonId = 'test') {
+        super(addonId);
+    }
+
     list() {
         return this.listResources('example.test', 'v1', 'examples');
     }
@@ -25,6 +29,10 @@ class TestClusterAddon extends BaseClusterAddon {
 
     delete(spec: any) {
         return this.deleteResource(spec);
+    }
+
+    run<T>(operation: 'installing' | 'updating' | 'uninstalling', fn: () => Promise<T>) {
+        return this.runExclusive(operation, fn);
     }
 }
 
@@ -53,5 +61,26 @@ describe('BaseClusterAddon', () => {
 
         await expect(addon.delete({ apiVersion: 'v1', kind: 'Namespace', metadata: { name: 'agent-sandbox-system' } }))
             .resolves.toMatchObject({ status: 'succeeded' });
+    });
+
+    it('claims the operation lock before asynchronous work starts', async () => {
+        let release!: () => void;
+        const first = addon.run('installing', () => new Promise<void>((resolve) => { release = resolve; }));
+
+        await expect(addon.run('updating', async () => undefined)).rejects.toThrow('An operation is already in progress.');
+
+        release();
+        await expect(first).resolves.toBeUndefined();
+    });
+
+    it('shares operation locks between instances for the same add-on', async () => {
+        const secondInstance = new TestClusterAddon();
+        let release!: () => void;
+        const first = addon.run('installing', () => new Promise<void>((resolve) => { release = resolve; }));
+
+        await expect(secondInstance.run('updating', async () => undefined)).rejects.toThrow('An operation is already in progress.');
+
+        release();
+        await expect(first).resolves.toBeUndefined();
     });
 });

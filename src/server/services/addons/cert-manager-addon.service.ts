@@ -1,11 +1,12 @@
 import k3s, { kubernetesPatchOptions } from '@/server/adapter/kubernetes-api.adapter';
-import { AddonLifecycleStatus, AddonMetadata, AddonOperationResult, AddonRelease, AddonResourceOperation, AddonStatus } from '@/shared/model/cluster-addon.model';
+import { AddonMetadata, AddonOperationResult, AddonRelease, AddonResourceOperation, AddonStatus } from '@/shared/model/cluster-addon.model';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import { AddonKubernetesUtils } from '@/server/utils/addon-kubernetes.utils';
 import { PatchStrategy } from '@kubernetes/client-node';
 import { ClusterAddon } from './cluster-addon.interface';
+import { BaseClusterAddon } from './base-cluster-addon.service';
 
-class CertManagerAddonService implements ClusterAddon {
+class CertManagerAddonService extends BaseClusterAddon implements ClusterAddon {
 
     private static readonly NAMESPACE = 'cert-manager';
     private static readonly HELM_CHART_NAMESPACE = 'kube-system';
@@ -31,14 +32,18 @@ class CertManagerAddonService implements ClusterAddon {
         canUninstall: true,
     };
 
-    private activeOperation?: Exclude<AddonLifecycleStatus, 'notInstalled' | 'ready' | 'failed'>;
-
     constructor() {
+        super('cert-manager');
         AddonKubernetesUtils.assertReleaseOrder(CertManagerAddonService.RELEASES);
     }
 
     async getStatus(): Promise<AddonStatus> {
-        if (this.activeOperation) return { status: this.activeOperation };
+        const activeOperation = this.getActiveOperation();
+        if (activeOperation) return { status: activeOperation };
+        return this.getStatusRaw();
+    }
+
+    private async getStatusRaw(): Promise<AddonStatus> {
         let controller: any;
         try {
             controller = await k3s.apps.readNamespacedDeployment({ name: CertManagerAddonService.CONTROLLER_DEPLOYMENTS[0], namespace: CertManagerAddonService.NAMESPACE });
@@ -65,9 +70,11 @@ class CertManagerAddonService implements ClusterAddon {
     }
 
     async install(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) throw new ServiceException('CertManager is already installed or installation is in progress.');
-        return await this.reconcile('installing', this.getLatestRelease());
+        return this.runExclusive('installing', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status !== 'notInstalled' && !(status.status === 'failed' && !status.installedVersion)) throw new ServiceException('CertManager is already installed or installation is in progress.');
+            return this.reconcile(this.getLatestRelease());
+        });
     }
 
     async getAvailableUpdate(): Promise<AddonRelease | undefined> {
@@ -79,28 +86,28 @@ class CertManagerAddonService implements ClusterAddon {
     }
 
     async update(): Promise<AddonOperationResult> {
-        const update = await this.getAvailableUpdate();
-        if (!update) throw new ServiceException('No CertManager update is available.');
-        return await this.reconcile('updating', update);
+        return this.runExclusive('updating', async () => {
+            const update = await this.getAvailableUpdateRaw();
+            if (!update) throw new ServiceException('No CertManager update is available.');
+            return this.reconcile(update);
+        });
     }
 
     async uninstall(): Promise<AddonOperationResult> {
-        const status = await this.getStatus();
-        if (status.status === 'notInstalled') throw new ServiceException('CertManager is not installed.');
-        const release = this.getManagedRelease(status.installedVersion);
-        this.activeOperation = 'uninstalling';
-        try {
-            await k3s.customObjects.deleteNamespacedCustomObject(this.helmChartCoordinates());
-            return AddonKubernetesUtils.operationResult(release, [this.helmChartResource()]);
-        } catch (error) {
-            return this.failedOperation(release, error);
-        } finally {
-            this.activeOperation = undefined;
-        }
+        return this.runExclusive('uninstalling', async () => {
+            const status = await this.getStatusRaw();
+            if (status.status === 'notInstalled') throw new ServiceException('CertManager is not installed.');
+            const release = this.getManagedRelease(status.installedVersion);
+            try {
+                await k3s.customObjects.deleteNamespacedCustomObject(this.helmChartCoordinates());
+                return AddonKubernetesUtils.operationResult(release, [this.helmChartResource()]);
+            } catch (error) {
+                return this.failedOperation(release, error);
+            }
+        });
     }
 
-    private async reconcile(operation: 'installing' | 'updating', release: AddonRelease): Promise<AddonOperationResult> {
-        this.activeOperation = operation;
+    private async reconcile(release: AddonRelease): Promise<AddonOperationResult> {
         try {
             const coordinates = this.helmChartCoordinates();
             const chart = this.helmChart(release);
@@ -114,8 +121,6 @@ class CertManagerAddonService implements ClusterAddon {
             return AddonKubernetesUtils.operationResult(release, [this.helmChartResource()]);
         } catch (error) {
             return this.failedOperation(release, error);
-        } finally {
-            this.activeOperation = undefined;
         }
     }
 
@@ -167,6 +172,14 @@ class CertManagerAddonService implements ClusterAddon {
 
     private getLatestRelease(): AddonRelease {
         return CertManagerAddonService.RELEASES[0];
+    }
+
+    private async getAvailableUpdateRaw(): Promise<AddonRelease | undefined> {
+        const status = await this.getStatusRaw();
+        if (!status.installedVersion) return undefined;
+        const installedReleaseIndex = CertManagerAddonService.RELEASES.findIndex((release) => release.version === status.installedVersion);
+        if (installedReleaseIndex === -1) throw new ServiceException(`Installed CertManager version ${status.installedVersion} is not managed by QuickStack.`);
+        return CertManagerAddonService.RELEASES[installedReleaseIndex - 1];
     }
 
     private getManagedRelease(installedVersion: string | undefined): AddonRelease {
