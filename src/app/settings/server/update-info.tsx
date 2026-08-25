@@ -1,12 +1,10 @@
 'use server'
 
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
-import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import paramService, { ParamService } from "@/server/services/param.service";
 import { getAdminUserSession } from "@/server/utils/action-wrapper.utils";
 import QuickStackVersionInfo from "./qs-version-info";
 import K3sUpdateInfo from "./k3s-update-info";
-import LonghornUpdateInfo from "./longhorn-update-info";
 import quickStackService from "@/server/services/qs.service";
 import quickStackUpdateService from "@/server/services/qs-update.service";
 import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
@@ -22,13 +20,11 @@ export default async function UpdateInfoPage() {
         currentVersion,
         newVersionInfo,
         k3sControllerStatus,
-        longhornInstalled,
     ] = await Promise.all([
         paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false),
         quickStackService.getVersionOfCurrentQuickstackInstance(),
         quickStackUpdateService.getNewVersionInfo(),
         k3sUpdateService.isSystemUpgradeControllerPresent(),
-        longhornUpdateService.isInstalled()
     ]);
 
     // Loading K3s data with sideeffects
@@ -50,29 +46,6 @@ export default async function UpdateInfoPage() {
         k3sUpgradeIsInProgress = k3sUpgradeIsInProgressLoaded;
     } catch (error) {
         console.error('Error fetching K3s version info:', error);
-    }
-
-    // Loading Longhorn data with sideeffects
-    let longhornCurrentVersionInfo;
-    let longhornNextVersionInfo;
-    let longhornUpgradeIsInProgress = false;
-    if (longhornInstalled) {
-        try {
-            const [
-                longhornCurrentVersionInfoLoaded,
-                longhornNextVersionInfoLoaded,
-                longhornUpgradeIsInProgressLoaded,
-            ] = await Promise.all([
-                longhornUpdateService.getVersionInfoForCurrentVersion(),
-                longhornUpdateService.getNextAvailableVersion(),
-                longhornUpdateService.isUpgradeInProgress()
-            ]);
-            longhornCurrentVersionInfo = longhornCurrentVersionInfoLoaded;
-            longhornNextVersionInfo = longhornNextVersionInfoLoaded;
-            longhornUpgradeIsInProgress = longhornUpgradeIsInProgressLoaded;
-        } catch (error) {
-            console.error('Error fetching Longhorn version info:', error);
-        }
     }
 
     const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll().map(async (addon) => {
@@ -108,11 +81,6 @@ export default async function UpdateInfoPage() {
                 <p className="text-sm text-muted-foreground">Install and keep optional cluster components up to date.</p>
             </div>
         </div>
-        <LonghornUpdateInfo
-            longhornInstalled={longhornInstalled}
-            longhornCurrentVersionInfo={longhornCurrentVersionInfo}
-            longhornNextVersionInfo={longhornNextVersionInfo}
-            longhornUpgradeIsInProgress={longhornUpgradeIsInProgress} />
         {addons.map((addon) => <ClusterAddonUpdateInfo key={addon.id} addon={addon} />)}
     </div>;
 

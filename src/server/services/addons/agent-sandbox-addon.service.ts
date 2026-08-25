@@ -43,6 +43,7 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
         description: 'Installs the Agent Sandbox components and enables QuickStack to manage and deploy Agent Sandboxes.',
         documentationUrl: 'https://github.com/kubernetes-sigs/agent-sandbox',
         managedNamespaces: [AgentSandboxAddonService.CONTROLLER_NAMESPACE],
+        canUninstall: true,
     };
 
     private activeOperation?: Exclude<AddonLifecycleStatus, 'notInstalled' | 'ready' | 'failed'>;

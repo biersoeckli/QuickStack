@@ -30,7 +30,6 @@ import { Tags } from "@/server/utils/cache-tag-generator.utils";
 import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
-import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import longhornUiService from "@/server/services/longhorn-ui.service";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
@@ -378,13 +377,6 @@ export const startK3sUpgrade = async () =>
     await getAdminUserSession();
     await k3sUpdateService.createUpgradePlans();
     return new SuccessActionResult(undefined, 'The upgrade process has started.');
-  });
-
-export const startLonghornUpgrade = async () =>
-  simpleAction(async () => {
-    await getAdminUserSession();
-    await longhornUpdateService.upgrade();
-    return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
   });
 
 export const installClusterAddon = async (addonId: string) =>

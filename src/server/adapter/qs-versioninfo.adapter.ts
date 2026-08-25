@@ -18,6 +18,11 @@ export interface LonghornReleaseInfo {
     yamlUrl: string;
 }
 
+export interface LonghornReleaseCatalog {
+    installRelease: LonghornReleaseInfo;
+    releases: LonghornReleaseInfo[];
+}
+
 interface ReleaseResponse {
     prodInstallVersion: string;
     canaryInstallVersion: string;
@@ -79,14 +84,16 @@ class QsVersionInfoAdapter {
         return releaseInfo.canary;
     }
 
-    public async getProdLonghornReleaseInfo(): Promise<LonghornReleaseInfo[]> {
-        const releaseInfo = await this.getLonghornVersioninfo();
-        return releaseInfo.prod;
-    }
 
-    public async getCanaryLonghornReleaseInfo(): Promise<LonghornReleaseInfo[]> {
+    public async getLonghornReleaseCatalog(useCanary: boolean): Promise<LonghornReleaseCatalog> {
         const releaseInfo = await this.getLonghornVersioninfo();
-        return releaseInfo.canary;
+        const releases = useCanary ? releaseInfo.canary : releaseInfo.prod;
+        const installVersion = useCanary ? releaseInfo.canaryInstallVersion : releaseInfo.prodInstallVersion;
+        const installRelease = releases.find((release) => release.version === installVersion);
+        if (!installRelease) {
+            throw new Error(`Longhorn install version ${installVersion} is not present in the selected release channel.`);
+        }
+        return { installRelease, releases };
     }
 
     public async getLatestQuickStackVersion(instanceId?: string): Promise<QuickStackReleaseInfo> {

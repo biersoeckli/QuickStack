@@ -12,6 +12,11 @@ export type AddonMetadata = {
     description: string;
     documentationUrl: string;
     managedNamespaces: string[];
+    canUninstall: boolean;
+    updateWarning?: {
+        title: string;
+        items: string[];
+    };
 };
 
 export type AddonRelease = {

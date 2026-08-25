@@ -1,8 +1,9 @@
 import { ClusterAddon } from './cluster-addon.interface';
 import agentSandboxAddonService from './agent-sandbox-addon.service';
+import longhornAddonService from './longhorn-addon.service';
 
 class ClusterAddonRegistryService {
-    private readonly addons: readonly ClusterAddon[] = [agentSandboxAddonService];
+    private readonly addons: readonly ClusterAddon[] = [agentSandboxAddonService, longhornAddonService];
 
     getAll(): readonly ClusterAddon[] {
         return this.addons;

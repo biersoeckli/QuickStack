@@ -18,6 +18,11 @@ export type ClusterAddonUpdateInfo = {
     displayName: string;
     description: string;
     documentationUrl: string;
+    canUninstall: boolean;
+    updateWarning?: {
+        title: string;
+        items: string[];
+    };
     status: AddonLifecycleStatus;
     installedVersion?: string;
     availableVersion?: string;
@@ -36,7 +41,7 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
     const busy = ['installing', 'updating', 'uninstalling'].includes(addon.status);
     const canInstall = addon.status === 'notInstalled' || (addon.status === 'failed' && !addon.installedVersion);
     const canUpdate = addon.status === 'ready' && !!addon.availableVersion;
-    const canRemove = (addon.status === 'ready' || addon.status === 'failed') && !!addon.installedVersion;
+    const canRemove = addon.canUninstall && (addon.status === 'ready' || addon.status === 'failed') && !!addon.installedVersion;
 
     const runOperation = async (operation: 'install' | 'update' | 'remove') => {
         const version = operation === 'update' ? ` to ${addon.availableVersion}` : '';
@@ -45,6 +50,16 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
             title: `${actionLabel} ${addon.displayName}`,
             description: operation === 'remove'
                 ? `Do you want to remove ${addon.displayName}? QuickStack will delete the add-on's Kubernetes resources from this cluster. This cannot be undone.`
+                : operation === 'update' && addon.updateWarning
+                    ? <div className="space-y-3">
+                        <p>{`Do you want to update ${addon.displayName}${version}? QuickStack will apply the add-on's Kubernetes resources to this cluster.`}</p>
+                        <div>
+                            <p className="text-sm font-semibold text-orange-600">{addon.updateWarning.title}</p>
+                            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+                                {addon.updateWarning.items.map((item) => <li key={item}>{item}</li>)}
+                            </ul>
+                        </div>
+                    </div>
                 : `Do you want to ${operation} ${addon.displayName}${version}? QuickStack will apply the add-on's Kubernetes resources to this cluster.`,
             okButton: actionLabel,
         });
