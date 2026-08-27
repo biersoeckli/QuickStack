@@ -1,14 +1,15 @@
 'use server'
 
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
-import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import paramService, { ParamService } from "@/server/services/param.service";
 import { getAdminUserSession } from "@/server/utils/action-wrapper.utils";
 import QuickStackVersionInfo from "./qs-version-info";
 import K3sUpdateInfo from "./k3s-update-info";
-import LonghornUpdateInfo from "./longhorn-update-info";
 import quickStackService from "@/server/services/qs.service";
 import quickStackUpdateService from "@/server/services/qs-update.service";
+import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
+import ClusterAddonUpdateInfo, { ClusterAddonUpdateInfo as ClusterAddonUpdateInfoModel } from './cluster-addon-update-info';
+import { Separator } from '@/components/ui/separator';
 
 export default async function UpdateInfoPage() {
 
@@ -19,13 +20,11 @@ export default async function UpdateInfoPage() {
         currentVersion,
         newVersionInfo,
         k3sControllerStatus,
-        longhornInstalled,
     ] = await Promise.all([
         paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false),
         quickStackService.getVersionOfCurrentQuickstackInstance(),
         quickStackUpdateService.getNewVersionInfo(),
         k3sUpdateService.isSystemUpgradeControllerPresent(),
-        longhornUpdateService.isInstalled()
     ]);
 
     // Loading K3s data with sideeffects
@@ -49,28 +48,24 @@ export default async function UpdateInfoPage() {
         console.error('Error fetching K3s version info:', error);
     }
 
-    // Loading Longhorn data with sideeffects
-    let longhornCurrentVersionInfo;
-    let longhornNextVersionInfo;
-    let longhornUpgradeIsInProgress = false;
-    if (longhornInstalled) {
+    const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll().map(async (addon) => {
         try {
-            const [
-                longhornCurrentVersionInfoLoaded,
-                longhornNextVersionInfoLoaded,
-                longhornUpgradeIsInProgressLoaded,
-            ] = await Promise.all([
-                longhornUpdateService.getVersionInfoForCurrentVersion(),
-                longhornUpdateService.getNextAvailableVersion(),
-                longhornUpdateService.isUpgradeInProgress()
-            ]);
-            longhornCurrentVersionInfo = longhornCurrentVersionInfoLoaded;
-            longhornNextVersionInfo = longhornNextVersionInfoLoaded;
-            longhornUpgradeIsInProgress = longhornUpgradeIsInProgressLoaded;
+            const status = await addon.getStatus();
+            let availableVersion: string | undefined;
+            let message = status.message;
+            if (status.status === 'ready') {
+                try {
+                availableVersion = (await addon.getAvailableUpdate())?.version;
+                } catch (error) {
+                    message = error instanceof Error ? error.message : 'Could not check for updates.';
+                }
+            }
+            return { ...addon.metadata, ...status, availableVersion, message };
         } catch (error) {
-            console.error('Error fetching Longhorn version info:', error);
+            const message = error instanceof Error ? error.message : 'Could not load add-on status.';
+            return { ...addon.metadata, status: 'failed' as const, message };
         }
-    }
+    }));
 
 
     return <div className="grid gap-6">
@@ -79,11 +74,14 @@ export default async function UpdateInfoPage() {
             k3sNextVersionInfo={k3sNextVersionInfo}
             k3sUpgradeIsInProgress={k3sUpgradeIsInProgress}
             initialControllerStatus={k3sControllerStatus} />
-        <LonghornUpdateInfo
-            longhornInstalled={longhornInstalled}
-            longhornCurrentVersionInfo={longhornCurrentVersionInfo}
-            longhornNextVersionInfo={longhornNextVersionInfo}
-            longhornUpgradeIsInProgress={longhornUpgradeIsInProgress} />
+        <div className="space-y-2 pt-2">
+            <Separator />
+            <div className="pt-4">
+                <h2 className="text-xl font-semibold tracking-tight">Cluster Add-ons</h2>
+                <p className="text-sm text-muted-foreground">Install and keep optional cluster components up to date.</p>
+            </div>
+        </div>
+        {addons.map((addon) => <ClusterAddonUpdateInfo key={addon.id} addon={addon} />)}
     </div>;
 
 }

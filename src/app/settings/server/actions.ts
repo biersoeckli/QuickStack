@@ -25,15 +25,15 @@ import { PathUtils } from "@/server/utils/path.utils";
 import { FsUtils } from "@/server/utils/fs.utils";
 import fs from "fs";
 import { z } from "zod";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Tags } from "@/server/utils/cache-tag-generator.utils";
 import clusterService from "@/server/services/cluster.service";
 import { TraefikIpPropagationStatus } from "@/shared/model/traefik-ip-propagation.model";
 import k3sUpdateService from "@/server/services/upgrade-services/k3s-update.service";
-import longhornUpdateService from "@/server/services/upgrade-services/longhorn-update.service";
 import longhornUiService from "@/server/services/longhorn-ui.service";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
+import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
   saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
@@ -379,12 +379,32 @@ export const startK3sUpgrade = async () =>
     return new SuccessActionResult(undefined, 'The upgrade process has started.');
   });
 
-export const startLonghornUpgrade = async () =>
+const runClusterAddonAction = (
+  addonId: string,
+  operation: 'install' | 'update' | 'uninstall',
+  noun: string,
+) =>
   simpleAction(async () => {
     await getAdminUserSession();
-    await longhornUpdateService.upgrade();
-    return new SuccessActionResult(undefined, 'Longhorn upgrade has been initiated. Volume engines will be upgraded automatically.');
+    const addon = clusterAddonRegistryService.getById(addonId);
+    if (!addon) {
+      throw new Error(`Cluster add-on ${addonId} was not found.`);
+    }
+
+    try {
+      const result = await addon[operation]();
+      if (result.status === 'failed') {
+        throw new Error(result.error ?? `${noun} of ${addon.metadata.displayName} failed.`);
+      }
+      return new SuccessActionResult(result, `${addon.metadata.displayName} ${noun.toLowerCase()} has started.`);
+    } finally {
+      revalidatePath('/settings/server'); // Required because the service has no cache.
+    }
   });
+
+export const installClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'install', 'Installation');
+export const updateClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'update', 'Update');
+export const uninstallClusterAddon = async (addonId: string) => runClusterAddonAction(addonId, 'uninstall', 'Removal');
 
 export const getLonghornUiIngressStatus = async () =>
   simpleAction(async () => {

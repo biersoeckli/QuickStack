@@ -9,13 +9,13 @@ import { EditProjectDialog } from "./edit-project-dialog";
 import ProjectsBreadcrumbs from "./projects-breadcrumbs";
 import { Plus } from "lucide-react";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import agentService from "@/server/services/agent.service";
+import agentSandboxAddonService from "@/server/services/addons/agent-sandbox-addon.service";
 
 export default async function ProjectPage() {
 
     const session = await getAuthUserSession();
     const data = await projectService.getAll();
-    const agentsAvailable = await agentService.agentCrdAreInstalled();
+    const agentsAvailable = await agentSandboxAddonService.isAvailable();
     const relevantProjectsForUser = data.filter((project) =>
         UserGroupUtils.sessionHasReadAccessToProject(session, project.id));
 
