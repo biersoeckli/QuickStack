@@ -165,6 +165,11 @@ class NetworkPolicyService {
         return {
             ingress: [{
                 from: [{
+                    namespaceSelector: {
+                        matchLabels: {
+                            'kubernetes.io/metadata.name': Constants.QS_NAMESPACE,
+                        },
+                    },
                     podSelector: {
                         matchLabels: {
                             app: QS_AUTH_PROXY_SERVICE_NAME,
