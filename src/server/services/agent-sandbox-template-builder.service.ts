@@ -171,6 +171,7 @@ class AgentSandboxTemplateBuilder {
                         containers: [{
                             name: 'agent',
                             image: effectiveImage,
+                            imagePullPolicy: 'Always',
                             ...(usesDefaultOpenCodeStartup
                                 ? {}
                                 : {
