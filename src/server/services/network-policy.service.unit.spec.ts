@@ -59,7 +59,7 @@ describe('network-policy.service', () => {
         );
     });
 
-    it('allows ingress from auth proxy to all sandbox ports', () => {
+    it('allows auth proxy ingress from the quickstack namespace to all sandbox ports', () => {
         const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
             allowInternetAccess: false,
             rules: [],
@@ -67,6 +67,11 @@ describe('network-policy.service', () => {
 
         expect(policy?.ingress).toEqual([{
             from: [{
+                namespaceSelector: {
+                    matchLabels: {
+                        'kubernetes.io/metadata.name': 'quickstack',
+                    },
+                },
                 podSelector: {
                     matchLabels: {
                         app: 'qs-auth-proxy',
