@@ -143,7 +143,11 @@ class AgentRuntimeService {
     }
 
     private resolveClaimStatus(claim: any): DeploymentStatus {
-        const conditions: Array<{ type: string; status: string; message?: string }> =
+        if (claim?.metadata?.deletionTimestamp) {
+            return 'SHUTTING_DOWN';
+        }
+
+        const conditions: Array<{ type: string; status: string; reason?: string; message?: string }> =
             claim?.status?.conditions || [];
 
         const ready = conditions.find((c) =>
@@ -153,13 +157,26 @@ class AgentRuntimeService {
             return 'DEPLOYED';
         }
 
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
+        const readinessCondition = conditions.find((c) =>
+            c.type === 'Ready' || c.type === 'Available',
         );
-        if (failed) {
+        if (readinessCondition?.reason === 'ClaimExpired' || readinessCondition?.reason === 'Expired') {
+            return 'SHUTTING_DOWN';
+        }
+
+        const terminalFailureReasons = new Set([
+            'TemplateNotFound',
+            'WarmPoolNotFound',
+            'InvalidMetadata',
+            'EnvVarsInjectionRejected',
+            'VolumeClaimTemplatesError',
+            'ReconcilerError',
+        ]);
+        if (terminalFailureReasons.has(readinessCondition?.reason ?? '')) {
             return 'ERROR';
         }
 
+        // Ready=False is the controller's normal state while a claim is being fulfilled.
         return 'DEPLOYING';
     }
 
