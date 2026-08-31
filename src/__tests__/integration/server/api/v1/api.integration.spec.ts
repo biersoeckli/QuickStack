@@ -335,6 +335,13 @@ describe('REST API v1 integration', () => {
         expect(deployResponse.deploymentId).toEqual(expect.any(String));
 
         // retrieve deployment details
+        await expect.poll(async () => (
+            await apiFetch(`/api/v1/apps/${app.id}/deploy/${deployResponse.deploymentId}`, apiKey)
+        ).status, {
+            timeout: 30_000,
+            interval: 1_000,
+        }).toBe(200);
+
         const deploymentDetails = await expectApiJson(
             await apiFetch(`/api/v1/apps/${app.id}/deploy/${deployResponse.deploymentId}`, apiKey),
         );
