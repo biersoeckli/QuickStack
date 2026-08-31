@@ -20,6 +20,8 @@ function getTextForStatus(status: DeploymentStatus) {
     switch (status) {
         case 'SHUTDOWN':
             return 'Shutdown';
+        case 'SHUTTING_DOWN':
+            return 'Stopping';
         case 'BUILDING':
             return 'Building';
         case 'ERROR':
@@ -40,6 +42,8 @@ function getBackgroundColorForStatus(status: DeploymentStatus) {
 
         case 'SHUTDOWN':
             return 'bg-slate-100';
+        case 'SHUTTING_DOWN':
+            return 'bg-yellow-100';
         case 'ERROR':
             return 'bg-red-100';
         case 'BUILDING':
@@ -60,6 +64,8 @@ function getTextColorForStatus(status: DeploymentStatus) {
 
         case 'SHUTDOWN':
             return 'text-slate-800';
+        case 'SHUTTING_DOWN':
+            return 'text-yellow-800';
         case 'ERROR':
             return 'text-red-800';
         case 'BUILDING':

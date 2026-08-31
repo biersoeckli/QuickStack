@@ -399,7 +399,7 @@ describe('agent-runtime.service', () => {
             expect(status).toBe('DEPLOYED');
         });
 
-        it('returns ERROR when claim has failed condition', async () => {
+        it('returns DEPLOYING when the claim is not ready yet', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
                 apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
@@ -411,7 +411,37 @@ describe('agent-runtime.service', () => {
 
             const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
 
+            expect(status).toBe('DEPLOYING');
+        });
+
+        it('returns ERROR for a terminal SandboxClaim reconciliation failure', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
+                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+                kind: 'SandboxClaim',
+                metadata: { name: AGENT_ID },
+                spec: { warmPoolRef: { name: AGENT_ID } },
+                status: { conditions: [{ type: 'Ready', status: 'False', reason: 'WarmPoolNotFound' }] },
+            } as any);
+
+            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
+
             expect(status).toBe('ERROR');
+        });
+
+        it('returns SHUTTING_DOWN while the claim is terminating', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
+                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+                kind: 'SandboxClaim',
+                metadata: { name: AGENT_ID, deletionTimestamp: '2026-08-31T12:00:00Z' },
+                spec: { warmPoolRef: { name: AGENT_ID } },
+                status: { conditions: [{ type: 'Ready', status: 'True' }] },
+            } as any);
+
+            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
+
+            expect(status).toBe('SHUTTING_DOWN');
         });
 
         it('compares status text for deployed to Running', async () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
@@ -34,6 +34,9 @@ interface SandboxInfo {
     createdAt: string | null;
 }
 
+const SSE_RETRY_BASE_DELAY_MS = 1_000;
+const SSE_RETRY_MAX_DELAY_MS = 30_000;
+
 export default function AgentSandboxesCard({
     agentId,
     readonly,
@@ -49,83 +52,118 @@ export default function AgentSandboxesCard({
     const [sandboxes, setSandboxes] = useState<SandboxInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-    const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
 
     // SSE stream for live sandbox updates
     useEffect(() => {
         const controller = new AbortController();
+        let stopped = false;
+        let reader: ReadableStreamDefaultReader<string> | null = null;
+        let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+        let resolveRetry: (() => void) | null = null;
+        let retryAttempt = 0;
+
+        const waitForRetry = (delayMs: number) => new Promise<void>(resolve => {
+            resolveRetry = resolve;
+            retryTimeout = setTimeout(() => {
+                retryTimeout = null;
+                resolveRetry = null;
+                resolve();
+            }, delayMs);
+        });
 
         const connectSse = async () => {
-            try {
-                const response = await fetch('/api/agent-sandboxes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/event-stream' },
-                    body: JSON.stringify({ agentId }),
-                    signal: controller.signal,
-                });
+            while (!stopped) {
+                try {
+                    const response = await fetch('/api/agent-sandboxes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/event-stream' },
+                        body: JSON.stringify({ agentId }),
+                        signal: controller.signal,
+                    });
 
-                if (!response.ok || !response.body) return;
+                    if (!response.ok || !response.body) {
+                        throw new Error(`SSE request failed with status ${response.status}`);
+                    }
 
-                setIsConnected(true);
-                const reader = response.body
-                    .pipeThrough(new TextDecoderStream())
-                    .getReader();
-                readerRef.current = reader;
+                    setIsConnected(true);
+                    reader = response.body
+                        .pipeThrough(new TextDecoderStream())
+                        .getReader();
 
-                let buffer = '';
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
+                    let buffer = '';
+                    while (!stopped) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
 
-                    buffer += value;
+                        buffer += value;
 
-                    // Parse SSE frames: split by double newline
-                    const frames = buffer.split('\n\n');
-                    buffer = frames.pop() || ''; // keep incomplete frame in buffer
+                        // Parse SSE frames: split by double newline
+                        const frames = buffer.split('\n\n');
+                        buffer = frames.pop() || ''; // keep incomplete frame in buffer
 
-                    for (const frame of frames) {
-                        const lines = frame.split('\n');
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                try {
-                                    const msg = JSON.parse(line.slice(6));
-                                    if (msg.type === 'FULL' && Array.isArray(msg.data)) {
-                                        setSandboxes(ListUtils.dedupByName(msg.data, 'name'));
-                                    } else if (msg.type === 'ADDED' && msg.sandbox) {
-                                        setSandboxes(prev => {
-                                            if (prev.some(i => i.name === msg.sandbox.name)) return prev;
-                                            return [...prev, msg.sandbox];
-                                        });
-                                    } else if (msg.type === 'MODIFIED' && msg.sandbox) {
-                                        setSandboxes(prev => prev.map(i =>
-                                            i.name === msg.sandbox.name ? msg.sandbox : i
-                                        ));
-                                    } else if (msg.type === 'DELETED' && msg.sandbox?.name) {
-                                        setSandboxes(prev => prev.filter(i =>
-                                            i.name !== msg.sandbox.name
-                                        ));
+                        for (const frame of frames) {
+                            const lines = frame.split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const msg = JSON.parse(line.slice(6));
+                                        if (msg.type === 'FULL' && Array.isArray(msg.data)) {
+                                            setSandboxes(ListUtils.dedupByName(msg.data, 'name'));
+                                        } else if (msg.type === 'ADDED' && msg.sandbox) {
+                                            setSandboxes(prev => {
+                                                if (prev.some(i => i.name === msg.sandbox.name)) return prev;
+                                                return [...prev, msg.sandbox];
+                                            });
+                                        } else if (msg.type === 'MODIFIED' && msg.sandbox) {
+                                            setSandboxes(prev => prev.map(i =>
+                                                i.name === msg.sandbox.name ? msg.sandbox : i
+                                            ));
+                                        } else if (msg.type === 'DELETED' && msg.sandbox?.name) {
+                                            setSandboxes(prev => prev.filter(i =>
+                                                i.name !== msg.sandbox.name
+                                            ));
+                                        }
+                                    } catch {
+                                        // Ignore malformed SSE payloads and keep the stream alive.
                                     }
-                                } catch {
-                                    // ignore parse errors on partial chunks
                                 }
                             }
                         }
                     }
+                } catch (err: any) {
+                    if (err?.name !== 'AbortError' && !stopped) {
+                        console.error('Agent sandboxes SSE error:', err);
+                    }
+                } finally {
+                    reader = null;
+                    if (!stopped) {
+                        setIsConnected(false);
+                    }
                 }
-            } catch (err: any) {
-                if (err?.name !== 'AbortError') {
-                    console.error('Agent sandboxes SSE error:', err);
-                }
-            } finally {
-                setIsConnected(false);
+
+                if (stopped) break;
+
+                const exponentialDelay = Math.min(
+                    SSE_RETRY_BASE_DELAY_MS * 2 ** retryAttempt,
+                    SSE_RETRY_MAX_DELAY_MS,
+                );
+                const jitteredDelay = exponentialDelay * (0.8 + Math.random() * 0.4);
+                retryAttempt += 1;
+                await waitForRetry(jitteredDelay);
             }
         };
 
-        connectSse();
+        void connectSse();
 
         return () => {
+            stopped = true;
             controller.abort();
-            readerRef.current?.cancel();
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+                retryTimeout = null;
+            }
+            resolveRetry?.();
+            void reader?.cancel();
         };
     }, [agentId]);
 
