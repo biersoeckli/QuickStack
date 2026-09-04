@@ -176,6 +176,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(commandResultZodModel),
         detail: {
             summary: 'Run command in agent sandbox',
+            description: 'Run a shell command in a running Agent Sandbox. CLI harness templates stay alive with `sleep infinity`; invoke their documented `qs-*` wrapper here so it receives the Agent Runtime Secret and selected LiteLLM Model Alias.',
             operationId: 'runAgentSandboxCommand',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],

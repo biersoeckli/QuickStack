@@ -102,7 +102,7 @@ describe("agent-template.service", () => {
             modelAlias: JSON.stringify(["gpt-4o"]),
             sourceType: "CONTAINER",
             buildMethod: "DOCKERFILE",
-            containerImageSource: "ghcr.io/anomalyco/opencode:latest",
+            containerImageSource: "quickstack/agent-opencode:1.18.27",
             containerRegistryUsername: null,
             containerRegistryPassword: null,
             gitUrl: null,
@@ -156,7 +156,7 @@ describe("agent-template.service", () => {
                 modelAlias: JSON.stringify(["gpt-4o"]),
                 sourceType: "CONTAINER",
                 buildMethod: "DOCKERFILE",
-                containerImageSource: "ghcr.io/anomalyco/opencode:latest",
+                containerImageSource: "quickstack/agent-opencode:1.18.27",
                 warmPoolReplicas: 0,
             }),
         });

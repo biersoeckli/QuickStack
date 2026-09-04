@@ -1,4 +1,5 @@
 import agentHarnessOpenCodeService from "@/server/services/agent-harness-opencode.service";
+import agentHarnessConfigService from "@/server/services/agent-harness-config.service";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentTemplateModel, AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
 import { AgentFileMount } from "@prisma/client";
@@ -11,7 +12,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
             {
                 key: "containerImageSource",
                 label: "Container Image",
-                value: "ghcr.io/anomalyco/opencode:latest",
+                value: "quickstack/agent-opencode:1.18.27",
                 isEnvVar: false,
                 randomGeneratedIfEmpty: false,
             },
@@ -66,6 +67,10 @@ export const postCreateOpencodeAppTemplate = async (createdAgents: AgentExtended
 
     const opencodeConfig = agentHarnessOpenCodeService.buildConfig(createdAgent);
     createdAgent.agentFileMounts = [
+        {
+            containerMountPath: '/etc/quickstack/harness.env',
+            content: agentHarnessConfigService.buildEnvironment(createdAgent),
+        } as AgentFileMount,
         {
             containerMountPath: '/root/.config/opencode/opencode.json',
             content: JSON.stringify(opencodeConfig, null, 2),
