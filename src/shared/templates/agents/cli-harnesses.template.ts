@@ -1,4 +1,4 @@
-import agentHarnessConfigService from "@/server/services/agent-harness-config.service";
+import agentHarnessConfigService, { CliHarness } from "@/server/services/agent-harness-config.service";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentTemplateModel, AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
 import { AgentFileMount } from "@prisma/client";
@@ -27,22 +27,32 @@ function createTemplate({ name, image, iconName, command }: HarnessTemplateOptio
     };
 }
 
-export const opencodeCliAgentTemplate = createTemplate({ name: 'OpenCode CLI', image: 'quickstack/agent-opencode:1.18.27', iconName: 'https://opencode.ai/favicon.svg', command: 'exec sleep infinity' });
-export const geminiCliAgentTemplate = createTemplate({ name: 'Gemini CLI', image: 'quickstack/agent-gemini-cli:0.58.0', command: 'exec sleep infinity' });
-export const copilotCliAgentTemplate = createTemplate({ name: 'GitHub Copilot CLI', image: 'quickstack/agent-copilot-cli:1.0.82', command: 'exec sleep infinity' });
-export const claudeCodeAgentTemplate = createTemplate({ name: 'Claude Code CLI', image: 'quickstack/agent-claude-code:2.1.260', command: 'exec sleep infinity' });
-export const deepSeekHarnessWebAgentTemplate = createTemplate({ name: 'DeepSeek Harness Web', image: 'quickstack/agent-deepseek-harness:0.1.2-rc.1', command: 'exec qs-dsh web --no-open --host 0.0.0.0 --port 3080' });
-export const deepSeekHarnessCliAgentTemplate = createTemplate({ name: 'DeepSeek Harness CLI', image: 'quickstack/agent-deepseek-harness:0.1.2-rc.1', command: 'exec sleep infinity' });
+const bootstrapCommand = 'exec /bin/sh /workspace/quickstack-bootstrap.sh';
+export const opencodeCliAgentTemplate = createTemplate({ name: 'OpenCode CLI', image: 'ghcr.io/anomalyco/opencode:1.18.27', iconName: 'https://opencode.ai/favicon.svg', command: 'exec sleep infinity' });
+export const geminiCliAgentTemplate = createTemplate({ name: 'Gemini CLI', image: 'us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:0.42.0-nightly.20260428.g59b2dea0e', command: bootstrapCommand });
+export const copilotCliAgentTemplate = createTemplate({ name: 'GitHub Copilot CLI', image: 'node:24-bookworm', command: bootstrapCommand });
+export const claudeCodeAgentTemplate = createTemplate({ name: 'Claude Code CLI', image: 'node:24-bookworm', command: bootstrapCommand });
+export const deepSeekHarnessCliAgentTemplate = createTemplate({ name: 'DeepSeek Harness CLI', image: 'node:24-bookworm', command: bootstrapCommand });
 
 export const postCreateCliHarnessTemplate = async (createdAgents: AgentExtendedModel[], context: AgentTemplatePostCreateContext): Promise<AgentExtendedModel[]> => {
     const agent = createdAgents[0];
     if (!agent) return createdAgents;
+    const harnessByTemplate: Record<string, CliHarness> = {
+        'Gemini CLI': 'gemini',
+        'GitHub Copilot CLI': 'copilot',
+        'Claude Code CLI': 'claude',
+        'DeepSeek Harness CLI': 'deepseek',
+    };
+    const harness = harnessByTemplate[context.templateName];
     const mounts: AgentFileMount[] = [{
-        containerMountPath: '/etc/quickstack/harness.env',
+        containerMountPath: '/workspace/quickstack-harness.env',
         content: agentHarnessConfigService.buildEnvironment(agent),
     } as AgentFileMount];
-    if (context.templateName.startsWith('DeepSeek Harness')) {
-        mounts.push({ containerMountPath: '/root/.dsh/settings.yaml', content: agentHarnessConfigService.buildDeepSeekConfig(agent) } as AgentFileMount);
+    if (harness) {
+        mounts.push({ containerMountPath: '/workspace/quickstack-bootstrap.sh', content: agentHarnessConfigService.buildBootstrapScript(agent, harness) } as AgentFileMount);
+    }
+    if (harness === 'deepseek') {
+        mounts.push({ containerMountPath: '/workspace/quickstack-dsh-settings.yaml', content: agentHarnessConfigService.buildDeepSeekConfig(agent) } as AgentFileMount);
     }
     agent.agentFileMounts = mounts;
     return [agent];

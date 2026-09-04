@@ -12,7 +12,7 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
             {
                 key: "containerImageSource",
                 label: "Container Image",
-                value: "quickstack/agent-opencode:1.18.27",
+                value: "ghcr.io/anomalyco/opencode:1.18.27",
                 isEnvVar: false,
                 randomGeneratedIfEmpty: false,
             },
@@ -68,7 +68,7 @@ export const postCreateOpencodeAppTemplate = async (createdAgents: AgentExtended
     const opencodeConfig = agentHarnessOpenCodeService.buildConfig(createdAgent);
     createdAgent.agentFileMounts = [
         {
-            containerMountPath: '/etc/quickstack/harness.env',
+            containerMountPath: '/workspace/quickstack-harness.env',
             content: agentHarnessConfigService.buildEnvironment(createdAgent),
         } as AgentFileMount,
         {

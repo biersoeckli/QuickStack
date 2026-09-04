@@ -6,7 +6,6 @@ import {
     claudeCodeAgentTemplate,
     copilotCliAgentTemplate,
     deepSeekHarnessCliAgentTemplate,
-    deepSeekHarnessWebAgentTemplate,
     geminiCliAgentTemplate,
     opencodeCliAgentTemplate,
     postCreateCliHarnessTemplate,
@@ -18,7 +17,6 @@ export const agentTemplates: AgentTemplateModel[] = [
     geminiCliAgentTemplate,
     copilotCliAgentTemplate,
     claudeCodeAgentTemplate,
-    deepSeekHarnessWebAgentTemplate,
     deepSeekHarnessCliAgentTemplate,
 ];
 
@@ -31,6 +29,5 @@ export const postCreateAgentTemplateFunctions: Map<
     [geminiCliAgentTemplate.name, postCreateCliHarnessTemplate],
     [copilotCliAgentTemplate.name, postCreateCliHarnessTemplate],
     [claudeCodeAgentTemplate.name, postCreateCliHarnessTemplate],
-    [deepSeekHarnessWebAgentTemplate.name, postCreateCliHarnessTemplate],
     [deepSeekHarnessCliAgentTemplate.name, postCreateCliHarnessTemplate],
 ]);
