@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const drawioAppTemplate: AppTemplateModel = {
     name: "draw.io",
+    description: 'A browser-based diagram editor for flowcharts, architecture diagrams, and visual documentation.',
+    websiteUrl: 'https://github.com/jgraph/drawio',
     iconName: 'https://raw.githubusercontent.com/jgraph/drawio/dev/src/main/webapp/images/drawlogo.svg',
     templates: [{
         inputSettings: [

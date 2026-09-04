@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const jenkinsAppTemplate: AppTemplateModel = {
     name: "Jenkins",
+    description: 'A widely used automation server for building, testing, and deploying software.',
+    websiteUrl: 'https://github.com/jenkinsci/jenkins',
     iconName: 'https://www.jenkins.io/images/logos/jenkins/jenkins.svg',
     templates: [{
         inputSettings: [

@@ -7,6 +7,8 @@ import { AppTemplateUtils } from "@/server/utils/app-template.utils";
 
 export const docmostAppTemplate: AppTemplateModel = {
     name: "Docmost",
+    description: 'An open-source collaborative wiki and documentation workspace for teams.',
+    websiteUrl: 'https://github.com/docmost/docmost',
     iconName: 'https://cdn-1.webcatalog.io/catalog/docmost/docmost-icon-filled-256.webp',
     templates: [
         // PostgreSQL

@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const giteaAppTemplate: AppTemplateModel = {
     name: "Gitea",
+    description: 'A lightweight self-hosted Git service with repository hosting, issues, pull requests, and packages.',
+    websiteUrl: 'https://github.com/go-gitea/gitea',
     iconName: 'https://raw.githubusercontent.com/go-gitea/gitea/main/assets/logo.svg',
     templates: [{
         inputSettings: [

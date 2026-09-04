@@ -4,14 +4,16 @@ import { AgentTemplateModel, AgentTemplatePostCreateContext } from "@/shared/mod
 import { AgentFileMount } from "@prisma/client";
 
 export const opencodeAgentTemplate: AgentTemplateModel = {
-    name: "OpenCode",
-    iconName: "https://opencode.ai/favicon.svg",
+    name: "OpenCode Web",
+    iconName: 'opencode.svg',
+    description: 'A browser-based interface for the OpenCode coding agent. It can plan, edit, and run code, using QuickStack LiteLLM or a directly configured model provider.',
+    websiteUrl: 'https://opencode.ai/',
     templates: [{
         inputSettings: [
             {
                 key: "containerImageSource",
                 label: "Container Image",
-                value: "ghcr.io/anomalyco/opencode:latest",
+                value: "ghcr.io/anomalyco/opencode:1.18.27",
                 isEnvVar: false,
                 randomGeneratedIfEmpty: false,
             },

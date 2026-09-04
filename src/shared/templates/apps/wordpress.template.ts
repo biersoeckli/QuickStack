@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const wordpressAppTemplate: AppTemplateModel = {
     name: "WordPress",
+    description: 'A popular content management system for websites, blogs, and online publishing.',
+    websiteUrl: 'https://github.com/WordPress/wordpress-develop',
     iconName: 'wordpress.png',
     templates: [{
         // MariaDB

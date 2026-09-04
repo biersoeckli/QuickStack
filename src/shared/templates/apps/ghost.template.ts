@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const ghostAppTemplate: AppTemplateModel = {
     name: "Ghost",
+    description: 'A publishing platform for independent blogs, newsletters, and membership sites.',
+    websiteUrl: 'https://github.com/TryGhost/Ghost',
     iconName: 'https://cdn.simpleicons.org/ghost',
     templates: [{
         inputSettings: [

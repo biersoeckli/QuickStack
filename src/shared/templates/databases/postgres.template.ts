@@ -71,6 +71,8 @@ export function getPostgresAppTemplate(config?: {
 
 export const postgreAppTemplate: AppTemplateModel = {
     name: "PostgreSQL",
+    description: 'A powerful open-source relational database with advanced SQL and extensibility features.',
+    websiteUrl: 'https://github.com/postgres/postgres',
     iconName: 'postgres.svg',
     templates: [
         getPostgresAppTemplate()

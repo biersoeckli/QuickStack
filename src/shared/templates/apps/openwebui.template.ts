@@ -5,6 +5,8 @@ import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
 
 export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
+    description: 'A self-hosted chat interface for working with language models and OpenAI-compatible APIs.',
+    websiteUrl: 'https://github.com/open-webui/open-webui',
     iconName: 'https://avatars.githubusercontent.com/u/158137808',
     templates: [{
         // Ollama Backend

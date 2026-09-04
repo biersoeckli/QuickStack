@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const rocketchatAppTemplate: AppTemplateModel = {
     name: "Rocket.Chat",
+    description: 'A self-hosted communications platform for team chat, collaboration, and omnichannel messaging.',
+    websiteUrl: 'https://github.com/RocketChat/Rocket.Chat',
     iconName: 'https://raw.githubusercontent.com/RocketChat/Rocket.Chat.Artwork/master/Logos/icon.svg',
     templates: [{
         inputSettings: [

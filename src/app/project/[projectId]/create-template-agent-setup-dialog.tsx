@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +19,7 @@ import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { createAgentFromTemplate, getLlmGateways, getModelAliasesForGateway } from "./actions";
 import { useDialogContext } from "@/frontend/states/dialog-context";
+import { TemplateDetailsPanel } from "./template-details-panel";
 
 interface LlmGatewayOption {
     id: string;
@@ -100,20 +101,23 @@ export default function CreateTemplateAgentSetupDialog({
         <>
             <DialogHeader>
                 <DialogTitle>Create Agent &quot;{agentTemplate.name}&quot;</DialogTitle>
-                <DialogDescription>
-                    Insert your values for the template.
-                </DialogDescription>
+                <DialogDescription>Configure the agent workspace and its model access.</DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[70vh]">
-                <div className="px-2">
-                    <Form {...form}>
-                        <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                            <div className="space-y-6">
+            <Form {...form}>
+                <form action={() => form.handleSubmit((data) => formAction(data))()}>
+                    <ScrollArea className="-mx-6 h-[calc(60vh-4.5rem)] px-6">
+                        <div className="grid gap-6 py-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                            <section className="rounded-lg border bg-card p-5 shadow-sm">
+                                <div className="mb-6 space-y-1">
+                                    <h2 className="text-base font-semibold">Configuration</h2>
+                                    <p className="text-sm text-muted-foreground">Choose a gateway and at least one model alias.</p>
+                                </div>
+                                <div className="space-y-6">
                                 {agentTemplate.templates.map((t, templateIndex) => (
                                     <Fragment key={templateIndex}>
-                                        {templateIndex > 0 && <div className="border-t pb-4"></div>}
+                                        {templateIndex > 0 && <div className="border-t pt-6"></div>}
                                         {agentTemplate.templates.length > 1 &&
-                                            <div className="text-xl font-semibold">{t.name}</div>}
+                                            <h3 className="text-sm font-semibold">{t.name}</h3>}
                                         <FormField
                                             control={form.control}
                                             name={`templates.${templateIndex}.name` as any}
@@ -208,13 +212,17 @@ export default function CreateTemplateAgentSetupDialog({
                                         ))}
                                     </Fragment>
                                 ))}
-                                <p className="text-red-500">{state.message}</p>
-                                <SubmitButton>Create</SubmitButton>
-                            </div>
-                        </form>
-                    </Form>
-                </div>
-            </ScrollArea>
+                                </div>
+                            </section>
+                            <TemplateDetailsPanel template={agentTemplate} />
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter className="mt-5 border-t pt-4 sm:items-center sm:justify-between">
+                        <p role="alert" className="text-sm text-destructive">{state.message}</p>
+                        <SubmitButton>Create agent</SubmitButton>
+                    </DialogFooter>
+                </form>
+            </Form>
         </>
     );
 }

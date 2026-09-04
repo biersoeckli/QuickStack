@@ -52,14 +52,14 @@ export default function ChooseTemplateDialog({
         if (templateType === 'agent-template') {
             openDialog(
                 <CreateTemplateAgentSetupDialog agentTemplate={template as AgentTemplateModel} projectId={projectId} />,
-                { maxWidth: '540px' }
+                { maxWidth: '900px' }
             );
             return;
         }
 
         openDialog(
             <CreateTemplateAppSetupDialog appTemplate={template as AppTemplateModel} projectId={projectId} />,
-            { maxWidth: '500px' }
+            { maxWidth: '900px' }
         );
     };
 

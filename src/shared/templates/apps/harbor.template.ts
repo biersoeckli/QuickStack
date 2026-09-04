@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const harborAppTemplate: AppTemplateModel = {
     name: "Harbor Registry",
+    description: 'A secure cloud-native registry for container images, Helm charts, vulnerability scanning, and access control.',
+    websiteUrl: 'https://github.com/goharbor/harbor',
     iconName: 'https://raw.githubusercontent.com/goharbor/harbor/main/src/portal/src/images/harbor-logo.svg',
     templates: [{
         inputSettings: [

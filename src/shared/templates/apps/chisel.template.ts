@@ -60,6 +60,8 @@ export function getChiselAppTemplate(config?: {
 
 export const chiselAppTemplate: AppTemplateModel = {
     name: "Chisel Tunnel",
+    description: 'A fast TCP/UDP tunnel over HTTP, useful for securely exposing internal services through a reverse tunnel.',
+    websiteUrl: 'https://github.com/jpillora/chisel',
     iconName: 'chisel.svg',
     templates: [
         getChiselAppTemplate()

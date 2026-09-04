@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const tikaAppTemplate: AppTemplateModel = {
     name: "Apache Tika",
+    description: 'A content-detection and extraction service for documents, images, archives, and metadata.',
+    websiteUrl: 'https://github.com/apache/tika',
     iconName: 'https://tika.apache.org/tika.png',
     templates: [{
         inputSettings: [

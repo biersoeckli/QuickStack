@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const jellyfinAppTemplate: AppTemplateModel = {
     name: "Jellyfin",
+    description: 'A free media server for organizing and streaming movies, shows, music, and live TV.',
+    websiteUrl: 'https://github.com/jellyfin/jellyfin',
     iconName: 'https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg',
     templates: [{
         inputSettings: [

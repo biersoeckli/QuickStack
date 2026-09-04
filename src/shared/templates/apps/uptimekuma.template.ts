@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const uptimekumaAppTemplate: AppTemplateModel = {
     name: "Uptime Kuma",
+    description: 'A self-hosted monitoring service for uptime checks, status pages, and notifications.',
+    websiteUrl: 'https://github.com/louislam/uptime-kuma',
     iconName: 'https://raw.githubusercontent.com/louislam/uptime-kuma/master/public/icon.svg',
     templates: [{
         inputSettings: [

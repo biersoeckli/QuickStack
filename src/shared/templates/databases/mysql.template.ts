@@ -78,6 +78,8 @@ export function getMysqlAppTemplate(config?: {
 
 export const mysqlAppTemplate: AppTemplateModel = {
     name: "MySQL",
+    description: 'A widely used open-source relational database management system.',
+    websiteUrl: 'https://github.com/mysql/mysql-server',
     iconName: 'mysql.svg',
     templates: [
         getMysqlAppTemplate()

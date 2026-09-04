@@ -12,6 +12,64 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedWriteModel, AgentExtendedModel } from "@/shared/model/agent-extended.model";
 
 class AgentTemplateService {
+    private async getLiteLlmNetworkPolicy(
+        baseUrl: string,
+        tx: Prisma.TransactionClient,
+    ): Promise<NonNullable<AgentExtendedWriteModel['agentNetworkPolicy']> | null> {
+        let url: URL;
+        try {
+            url = new URL(baseUrl);
+        } catch {
+            return null;
+        }
+
+        const match = /^svc-([a-z0-9-]+)\.([a-z0-9-]+)\.svc\.cluster\.local$/i.exec(url.hostname);
+        if (match) {
+            const port = url.port
+                ? Number(url.port)
+                : url.protocol === 'https:' ? 443 : 80;
+            const targetApp = await tx.app.findFirst({
+                where: { id: match[1], projectId: match[2] },
+                select: { id: true },
+            });
+            if (targetApp) {
+                return this.createLiteLlmEgressPolicy(targetApp.id, port);
+            }
+        }
+
+        const targetApp = await tx.app.findFirst({
+            where: { appDomains: { some: { hostname: url.hostname } } },
+            select: {
+                id: true,
+                appDomains: {
+                    where: { hostname: url.hostname },
+                    select: { port: true },
+                },
+            },
+        });
+        const port = targetApp?.appDomains[0]?.port;
+        if (!targetApp || !port) {
+            return null;
+        }
+
+        return this.createLiteLlmEgressPolicy(targetApp.id, port);
+    }
+
+    private createLiteLlmEgressPolicy(
+        targetAppId: string,
+        port: number,
+    ): NonNullable<AgentExtendedWriteModel['agentNetworkPolicy']> {
+        return {
+            allowInternetAccess: true,
+            rules: [{
+                type: 'EGRESS',
+                targetAppId,
+                port,
+                protocol: 'TCP',
+            }],
+        };
+    }
+
     async createAgentFromTemplate(projectId: string, template: AgentTemplateModel) {
         if (!agentTemplates.find((x) => x.name === template.name)) {
             throw new ServiceException(`Agent template with name '${template.name}' not found.`);
@@ -78,7 +136,7 @@ class AgentTemplateService {
 
         const gateway = await tx.llmGateway.findUnique({
             where: { id: template.llmGatewayId },
-            select: { id: true },
+            select: { id: true, baseUrl: true },
         });
         if (!gateway) {
             throw new ServiceException("LLM Gateway not found.");
@@ -98,7 +156,7 @@ class AgentTemplateService {
             ...agent,
             projectId,
             encryptedEnvVars,
-            agentNetworkPolicy: null,
+            agentNetworkPolicy: await this.getLiteLlmNetworkPolicy(gateway.baseUrl, tx),
         };
 
         const createdAgent = await agentService.saveAgentExtendedModel(writeModel, tx);

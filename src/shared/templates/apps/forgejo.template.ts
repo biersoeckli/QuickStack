@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const forgejopAppTemplate: AppTemplateModel = {
     name: "Forgejo",
+    description: 'A lightweight, self-hosted Git forge for repositories, issues, pull requests, and CI integrations.',
+    websiteUrl: 'https://codeberg.org/forgejo/forgejo',
     iconName: 'https://codeberg.org/forgejo/forgejo/raw/branch/forgejo/assets/logo.svg',
     templates: [{
         inputSettings: [

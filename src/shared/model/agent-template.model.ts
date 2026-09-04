@@ -16,6 +16,8 @@ export type AgentTemplateContentModel = z.infer<typeof agentTemplateContentZodMo
 export const agentTemplateZodModel = z.object({
     name: z.string(),
     iconName: z.string().nullish(),
+    description: z.string().trim().min(1).optional(),
+    websiteUrl: z.string().url().optional(),
     templates: agentTemplateContentZodModel.array(),
 });
 
