@@ -178,6 +178,20 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('resolves the harness virtual-key reference before creating the runtime secret', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                encryptedEnvVars: JSON.stringify([
+                    { name: 'ANTHROPIC_AUTH_TOKEN', value: 'encrypted:__quickstack_runtime_virtual_key__' },
+                ]),
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
+
+            const secretData = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
+            expect(secretData.ANTHROPIC_AUTH_TOKEN).toBe('sk-v-test-key');
+        });
+
         it('omits system prompt from secret when agent has none', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ systemPrompt: null }) as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');

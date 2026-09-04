@@ -37,6 +37,19 @@ const dbAgentFileMountMocks = vi.hoisted(() => ({
 
 const dbAgentNetworkPolicyMocks = vi.hoisted(() => ({
     deleteMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+}));
+
+const dbAgentNetworkPolicyRuleMocks = vi.hoisted(() => ({
+    deleteMany: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+}));
+
+const dbAppMocks = vi.hoisted(() => ({
+    findFirst: vi.fn(),
 }));
 
 const namespaceServiceMocks = vi.hoisted(() => ({
@@ -53,6 +66,8 @@ vi.mock("@/server/adapter/db.client", () => ({
             agentVolume: dbAgentVolumeMocks,
             agentFileMount: dbAgentFileMountMocks,
             agentNetworkPolicy: dbAgentNetworkPolicyMocks,
+            agentNetworkPolicyRule: dbAgentNetworkPolicyRuleMocks,
+            app: dbAppMocks,
             $transaction: vi.fn((fn: any) => fn({
                 project: dbProjectMocks,
                 llmGateway: dbGatewayMocks,
@@ -61,6 +76,8 @@ vi.mock("@/server/adapter/db.client", () => ({
                 agentVolume: dbAgentVolumeMocks,
                 agentFileMount: dbAgentFileMountMocks,
                 agentNetworkPolicy: dbAgentNetworkPolicyMocks,
+                agentNetworkPolicyRule: dbAgentNetworkPolicyRuleMocks,
+                app: dbAppMocks,
             })),
         },
     },
@@ -81,6 +98,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 import agentTemplateService from "./agent-template.service";
 import namespaceService from "./namespace.service";
 import { opencodeAgentTemplate } from "@/shared/templates/agents/opencode.template";
+import { geminiCliAgentTemplate } from "@/shared/templates/agents/gemini-cli.template";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
 describe("agent-template.service", () => {
@@ -94,6 +112,11 @@ describe("agent-template.service", () => {
         dbAgentDomainMocks.findMany.mockResolvedValue([]);
         dbAgentVolumeMocks.findMany.mockResolvedValue([]);
         dbAgentFileMountMocks.findMany.mockResolvedValue([]);
+        dbAppMocks.findFirst.mockResolvedValue(null);
+        dbAgentNetworkPolicyMocks.findUnique.mockResolvedValue(null);
+        dbAgentNetworkPolicyMocks.create.mockResolvedValue({ id: 'policy-1' });
+        dbAgentNetworkPolicyRuleMocks.findFirst.mockResolvedValue(null);
+        dbAgentNetworkPolicyRuleMocks.create.mockResolvedValue({ id: 'rule-1' });
         dbAgentMocks.findFirstOrThrow.mockResolvedValue({
             id: "agent-opencode",
             name: "OpenCode",
@@ -205,5 +228,57 @@ describe("agent-template.service", () => {
             .rejects.toThrow(ServiceException);
         expect(dbAgentMocks.create).not.toHaveBeenCalled();
         expect(dbAgentMocks.update).not.toHaveBeenCalled();
+    });
+
+    it('adds an egress rule for an internal LiteLLM Gateway', async () => {
+        dbGatewayMocks.findUnique.mockResolvedValue({
+            id: 'gateway-1',
+            baseUrl: 'http://svc-litellm-app.llm-project.svc.cluster.local:4000',
+        });
+        dbAppMocks.findFirst.mockResolvedValue({ id: 'litellm-app' });
+        const template = structuredClone(opencodeAgentTemplate);
+        template.templates[0].llmGatewayId = 'gateway-1';
+        template.templates[0].modelAlias = ['gpt-4o'];
+
+        await agentTemplateService.createAgentFromTemplate('project-1', template);
+
+        expect(dbAgentNetworkPolicyMocks.create).toHaveBeenCalledWith({
+            data: { agentId: 'agent-opencode', allowInternetAccess: true },
+        });
+        expect(dbAgentNetworkPolicyRuleMocks.create).toHaveBeenCalledWith({
+            data: {
+                agentNetworkPolicyId: 'policy-1',
+                type: 'EGRESS',
+                targetAppId: 'litellm-app',
+                port: 4000,
+                protocol: 'TCP',
+            },
+        });
+    });
+
+    it('adds an egress rule for a LiteLLM Gateway exposed through an app domain', async () => {
+        dbGatewayMocks.findUnique.mockResolvedValue({
+            id: 'gateway-1',
+            baseUrl: 'https://litellm.example',
+        });
+        dbAppMocks.findFirst.mockResolvedValue({
+            id: 'litellm-app',
+            appDomains: [{ hostname: 'litellm.example', port: 4000 }],
+        });
+        const template = structuredClone(geminiCliAgentTemplate);
+        template.templates[0].llmGatewayId = 'gateway-1';
+        template.templates[0].modelAlias = ['gpt-4o'];
+
+        await agentTemplateService.createAgentFromTemplate('project-1', template);
+
+        expect(dbAgentNetworkPolicyRuleMocks.create).toHaveBeenCalledWith({
+            data: {
+                agentNetworkPolicyId: 'policy-1',
+                type: 'EGRESS',
+                targetAppId: 'litellm-app',
+                port: 4000,
+                protocol: 'TCP',
+            },
+        });
     });
 });

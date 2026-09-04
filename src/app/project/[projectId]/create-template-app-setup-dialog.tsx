@@ -24,6 +24,7 @@ import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-templa
 import { createAppFromTemplate } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useDialogContext } from "@/frontend/states/dialog-context"
+import { TemplateDetailsPanel } from "./template-details-panel"
 
 export default function CreateTemplateAppSetupDialog({
     appTemplate,
@@ -68,7 +69,7 @@ export default function CreateTemplateAppSetupDialog({
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh]">
-                <div className="px-2">
+                <div className="grid gap-6 px-2 lg:grid-cols-[minmax(0,1fr)_18rem]">
                     <Form {...form} >
                         <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
@@ -118,6 +119,7 @@ export default function CreateTemplateAppSetupDialog({
 
                         </form>
                     </Form >
+                    <TemplateDetailsPanel template={appTemplate} />
                 </div>
             </ScrollArea>
         </>

@@ -1,12 +1,13 @@
 import agentHarnessOpenCodeService from "@/server/services/agent-harness-opencode.service";
-import agentHarnessConfigService from "@/server/services/agent-harness-config.service";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { AgentTemplateModel, AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
 import { AgentFileMount } from "@prisma/client";
 
 export const opencodeAgentTemplate: AgentTemplateModel = {
-    name: "OpenCode",
-    iconName: "https://opencode.ai/favicon.svg",
+    name: "OpenCode Web",
+    iconName: 'opencode.svg',
+    description: 'A browser-based interface for the OpenCode coding agent. It can plan, edit, and run code, using QuickStack LiteLLM or a directly configured model provider.',
+    websiteUrl: 'https://opencode.ai/',
     templates: [{
         inputSettings: [
             {
@@ -67,10 +68,6 @@ export const postCreateOpencodeAppTemplate = async (createdAgents: AgentExtended
 
     const opencodeConfig = agentHarnessOpenCodeService.buildConfig(createdAgent);
     createdAgent.agentFileMounts = [
-        {
-            containerMountPath: '/workspace/quickstack-harness.env',
-            content: agentHarnessConfigService.buildEnvironment(createdAgent),
-        } as AgentFileMount,
         {
             containerMountPath: '/root/.config/opencode/opencode.json',
             content: JSON.stringify(opencodeConfig, null, 2),

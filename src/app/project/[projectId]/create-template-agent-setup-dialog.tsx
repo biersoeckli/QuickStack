@@ -19,6 +19,7 @@ import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { createAgentFromTemplate, getLlmGateways, getModelAliasesForGateway } from "./actions";
 import { useDialogContext } from "@/frontend/states/dialog-context";
+import { TemplateDetailsPanel } from "./template-details-panel";
 
 interface LlmGatewayOption {
     id: string;
@@ -105,7 +106,7 @@ export default function CreateTemplateAgentSetupDialog({
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh]">
-                <div className="px-2">
+                <div className="grid gap-6 px-2 lg:grid-cols-[minmax(0,1fr)_18rem]">
                     <Form {...form}>
                         <form action={() => form.handleSubmit((data) => formAction(data))()}>
                             <div className="space-y-6">
@@ -213,6 +214,7 @@ export default function CreateTemplateAgentSetupDialog({
                             </div>
                         </form>
                     </Form>
+                    <TemplateDetailsPanel template={agentTemplate} />
                 </div>
             </ScrollArea>
         </>

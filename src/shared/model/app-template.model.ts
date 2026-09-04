@@ -58,6 +58,8 @@ export type AppTemplateContentModel = z.infer<typeof appTemplateContentZodModel>
 export const appTemplateZodModel = z.object({
     name: z.string(),
     iconName: z.string().nullish(),
+    description: z.string().trim().min(1).optional(),
+    websiteUrl: z.string().url().optional(),
     templates: appTemplateContentZodModel.array(),
 });
 

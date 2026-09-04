@@ -4,12 +4,24 @@ import { AgentTemplatePostCreateContext } from "@/shared/model/agent-template.mo
 import { opencodeAgentTemplate, postCreateOpencodeAppTemplate } from "./agents/opencode.template";
 import {
     claudeCodeAgentTemplate,
+    postCreateClaudeCodeTemplate,
+} from "./agents/claude-code.template";
+import {
     copilotCliAgentTemplate,
+    postCreateCopilotCliTemplate,
+} from "./agents/copilot-cli.template";
+import {
     deepSeekHarnessCliAgentTemplate,
+    postCreateDeepSeekHarnessCliTemplate,
+} from "./agents/deepseek-harness-cli.template";
+import {
     geminiCliAgentTemplate,
+    postCreateGeminiCliTemplate,
+} from "./agents/gemini-cli.template";
+import {
     opencodeCliAgentTemplate,
-    postCreateCliHarnessTemplate,
-} from "./agents/cli-harnesses.template";
+    postCreateOpenCodeCliTemplate,
+} from "./agents/opencode-cli.template";
 
 export const agentTemplates: AgentTemplateModel[] = [
     opencodeAgentTemplate,
@@ -25,9 +37,9 @@ export const postCreateAgentTemplateFunctions: Map<
     (createdAgents: AgentExtendedModel[], context: AgentTemplatePostCreateContext) => Promise<AgentExtendedModel[]>
 > = new Map([
     [opencodeAgentTemplate.name, postCreateOpencodeAppTemplate],
-    [opencodeCliAgentTemplate.name, postCreateCliHarnessTemplate],
-    [geminiCliAgentTemplate.name, postCreateCliHarnessTemplate],
-    [copilotCliAgentTemplate.name, postCreateCliHarnessTemplate],
-    [claudeCodeAgentTemplate.name, postCreateCliHarnessTemplate],
-    [deepSeekHarnessCliAgentTemplate.name, postCreateCliHarnessTemplate],
+    [opencodeCliAgentTemplate.name, postCreateOpenCodeCliTemplate],
+    [geminiCliAgentTemplate.name, postCreateGeminiCliTemplate],
+    [copilotCliAgentTemplate.name, postCreateCopilotCliTemplate],
+    [claudeCodeAgentTemplate.name, postCreateClaudeCodeTemplate],
+    [deepSeekHarnessCliAgentTemplate.name, postCreateDeepSeekHarnessCliTemplate],
 ]);

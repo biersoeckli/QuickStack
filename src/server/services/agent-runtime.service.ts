@@ -14,6 +14,8 @@ import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.servic
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
 
+const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
+
 export type StartAgentSandboxOptions = {
     timeoutMs?: number;
     env?: Record<string, string>;
@@ -67,7 +69,7 @@ class AgentRuntimeService {
             data.QS_SYSTEM_PROMPT = systemPrompt;
         }
         for (const [key, value] of Object.entries(decryptedEnvVars)) {
-            data[key] = value;
+            data[key] = value === HARNESS_VIRTUAL_KEY_REFERENCE ? virtualKey : value;
         }
         return data;
     }
