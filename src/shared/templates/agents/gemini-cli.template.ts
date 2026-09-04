@@ -50,7 +50,7 @@ export async function postCreateGeminiCliTemplate(
     setHarnessRuntimeEnvironment(agent, config, [
         { name: 'GEMINI_API_KEY', value: HARNESS_VIRTUAL_KEY_REFERENCE },
         { name: 'GEMINI_MODEL', value: config.defaultModelAlias },
-        { name: 'GOOGLE_GEMINI_BASE_URL', value: `${config.gatewayBaseUrl}/gemini` },
+        { name: 'GOOGLE_GEMINI_BASE_URL', value: config.gatewayBaseUrl },
     ]);
     agent.agentFileMounts = [
         {

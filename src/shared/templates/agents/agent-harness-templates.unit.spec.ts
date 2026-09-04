@@ -20,7 +20,7 @@ function makeAgent(): AgentExtendedModel {
 describe('Agent harness templates', () => {
     it('registers six valid Agent Templates', () => {
         const templates = [opencodeAgentTemplate, opencodeCliAgentTemplate, geminiCliAgentTemplate, copilotCliAgentTemplate, claudeCodeAgentTemplate, deepSeekHarnessCliAgentTemplate];
-        expect(templates.map((template) => template.name)).toEqual(['OpenCode', 'OpenCode CLI', 'Gemini CLI', 'GitHub Copilot CLI', 'Claude Code CLI', 'DeepSeek Harness CLI']);
+        expect(templates.map((template) => template.name)).toEqual(['OpenCode Web', 'OpenCode CLI', 'Gemini CLI', 'GitHub Copilot CLI', 'Claude Code CLI', 'DeepSeek Harness CLI']);
         templates.forEach((template) => expect(agentTemplateZodModel.parse(template)).toEqual(template));
     });
 
@@ -79,5 +79,19 @@ describe('Agent harness templates', () => {
         const bootstrap = agent.agentFileMounts.find((mount) => mount.containerMountPath === '/workspace/quickstack-bootstrap.sh');
         expect(bootstrap?.content).toContain('@google/gemini-cli@0.58.0');
         expect(bootstrap?.content).toContain('/usr/local/bin/gemini');
+    });
+
+    it('configures Gemini CLI with the LiteLLM Proxy root URL', async () => {
+        const [agent] = await postCreateGeminiCliTemplate([makeAgent()], { templateName: 'Gemini CLI', templates: [] });
+        const environment = JSON.parse(agent.encryptedEnvVars ?? '[]') as Array<{ name: string; value: string }>;
+
+        expect(environment).toContainEqual({
+            name: 'GOOGLE_GEMINI_BASE_URL',
+            value: 'https://litellm.example',
+        });
+        expect(environment).toContainEqual({
+            name: 'GEMINI_MODEL',
+            value: 'model-a',
+        });
     });
 });

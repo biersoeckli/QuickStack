@@ -18,6 +18,10 @@ Use `opencode`, `gemini`, `copilot`, `claude`, or `dsh`, according to the templa
 The bootstrap script installs pinned CLI versions into the Agent Volume and creates
 global wrappers where needed. The LiteLLM endpoint, selected default Model Alias,
 and provider-specific variables are injected through the Agent Runtime Secret, so
+they are available to terminal commands and the harness process. Gemini CLI uses
+the LiteLLM Gateway root URL. For non-Gemini models, configure a Gemini-facing
+LiteLLM `router_settings.model_group_alias` (for example, `gemini-2.5-pro` to a
+DeepSeek deployment) and select that Gemini-facing alias for the Agent.
 they are available in the terminal and in every command API execution.
 Do not pass provider API keys to the command endpoint.
 
