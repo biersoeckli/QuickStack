@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const plausibleAppTemplate: AppTemplateModel = {
     name: "Plausible Analytics",
+    description: 'A lightweight, privacy-friendly web analytics platform.',
+    websiteUrl: 'https://github.com/plausible/analytics',
     iconName: 'https://plausible.io/assets/images/icon/plausible_logo.svg',
     templates: [{
         inputSettings: [

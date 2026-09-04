@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const dozzleAppTemplate: AppTemplateModel = {
     name: "Dozzle",
+    description: 'A lightweight web UI for viewing live container logs.',
+    websiteUrl: 'https://github.com/amir20/dozzle',
     iconName: 'https://raw.githubusercontent.com/amir20/dozzle/master/assets/logo.svg',
     templates: [{
         inputSettings: [

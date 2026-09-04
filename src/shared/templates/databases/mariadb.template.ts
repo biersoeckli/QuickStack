@@ -78,6 +78,8 @@ export function getMariadbAppTemplate(config?: {
 
 export const mariadbAppTemplate: AppTemplateModel = {
     name: "MariaDB",
+    description: 'A community-developed relational database server compatible with MySQL.',
+    websiteUrl: 'https://github.com/MariaDB/server',
     iconName: 'mariadb.svg',
     templates: [
         getMariadbAppTemplate()

@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
     FormControl,
@@ -64,22 +64,23 @@ export default function CreateTemplateAppSetupDialog({
         <>
             <DialogHeader>
                 <DialogTitle>Create App &quot;{appTemplate.name}&quot;</DialogTitle>
-                <DialogDescription>
-                    Insert your values for the template.
-                </DialogDescription>
+                <DialogDescription>Review the service settings before creating the application.</DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[70vh]">
-                <div className="grid gap-6 px-2 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                    <Form {...form} >
-                        <form action={() => form.handleSubmit((data) => {
-                            return formAction(data);
-                        })()}>
-                            <div className="space-y-6">
+            <Form {...form}>
+                <form action={() => form.handleSubmit((data) => formAction(data))()}>
+                    <ScrollArea className="-mx-6 h-[calc(70vh-4.5rem)] px-6">
+                        <div className="grid gap-6 py-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                            <section className="rounded-lg border bg-card p-5 shadow-sm">
+                                <div className="mb-6 space-y-1">
+                                    <h2 className="text-base font-semibold">Configuration</h2>
+                                    <p className="text-sm text-muted-foreground">Adjust the names, images, and credentials required by this template.</p>
+                                </div>
+                                <div className="space-y-6">
                                 {appTemplate.templates.map((t, templateIndex) => (
                                     <Fragment key={templateIndex}>
-                                        {templateIndex > 0 && <div className="border-t pb-4"></div>}
+                                        {templateIndex > 0 && <div className="border-t pt-6"></div>}
                                         {appTemplate.templates.length > 1 &&
-                                            <div className="text-2xl font-semibold">{t.appModel.name}</div>}
+                                            <h3 className="text-sm font-semibold">{t.appModel.name}</h3>}
                                         <FormField
                                             control={form.control}
                                             name={`templates[${templateIndex}].appModel.name` as any}
@@ -113,15 +114,17 @@ export default function CreateTemplateAppSetupDialog({
                                         ))}
                                     </Fragment>
                                 ))}
-                                <p className="text-red-500">{state.message}</p>
-                                <SubmitButton>Create</SubmitButton>
-                            </div>
-
-                        </form>
-                    </Form >
-                    <TemplateDetailsPanel template={appTemplate} />
-                </div>
-            </ScrollArea>
+                                </div>
+                            </section>
+                            <TemplateDetailsPanel template={appTemplate} />
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter className="mt-5 border-t pt-4 sm:items-center sm:justify-between">
+                        <p role="alert" className="text-sm text-destructive">{state.message}</p>
+                        <SubmitButton>Create app</SubmitButton>
+                    </DialogFooter>
+                </form>
+            </Form>
         </>
     )
 

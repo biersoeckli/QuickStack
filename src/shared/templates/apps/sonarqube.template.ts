@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const sonarqubeAppTemplate: AppTemplateModel = {
     name: "SonarQube",
+    description: 'A code-quality and security platform for continuous static analysis.',
+    websiteUrl: 'https://github.com/SonarSource/sonarqube',
     iconName: 'https://avatars.githubusercontent.com/u/54465?s=200&v=4',
     templates: [{
         inputSettings: [

@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const hedgedocAppTemplate: AppTemplateModel = {
     name: "HedgeDoc",
+    description: 'A collaborative Markdown editor for real-time notes, documentation, and presentations.',
+    websiteUrl: 'https://github.com/hedgedoc/hedgedoc',
     iconName: 'https://raw.githubusercontent.com/hedgedoc/hedgedoc/master/public/icons/android-chrome-512x512.png',
     templates: [{
         inputSettings: [

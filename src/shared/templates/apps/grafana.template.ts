@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const grafanaAppTemplate: AppTemplateModel = {
     name: "Grafana",
+    description: 'An observability platform for dashboards, metrics, logs, traces, and alerting.',
+    websiteUrl: 'https://github.com/grafana/grafana',
     iconName: 'https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg',
     templates: [{
         inputSettings: [

@@ -70,6 +70,8 @@ export function getMongodbAppTemplate(config?: {
 
 export const mongodbAppTemplate: AppTemplateModel = {
     name: "MongoDB",
+    description: 'A document-oriented NoSQL database for flexible application data and queries.',
+    websiteUrl: 'https://github.com/mongodb/mongo',
     iconName: 'mongodb.svg',
     templates: [
         getMongodbAppTemplate()

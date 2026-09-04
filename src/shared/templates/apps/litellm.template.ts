@@ -7,6 +7,8 @@ import { getRedisAppTemplate, postCreateRedisAppTemplate } from "../databases/re
 
 export const litellmAppTemplate: AppTemplateModel = {
     name: "LiteLLM",
+    description: 'An AI gateway that exposes many language-model providers through a single OpenAI-compatible API.',
+    websiteUrl: 'https://github.com/BerriAI/litellm',
     iconName: 'litellm.jpg',
     templates: [
         getPostgresAppTemplate({

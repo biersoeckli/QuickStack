@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const outlineAppTemplate: AppTemplateModel = {
     name: "Outline",
+    description: 'A collaborative knowledge base for team documentation, collections, and publishing.',
+    websiteUrl: 'https://github.com/outline/outline',
     iconName: 'https://cdn.simpleicons.org/outline',
     templates: [{
         inputSettings: [

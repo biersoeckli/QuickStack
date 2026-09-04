@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const minioAppTemplate: AppTemplateModel = {
     name: "MinIO",
+    description: 'A high-performance S3-compatible object storage server for files, backups, and application data.',
+    websiteUrl: 'https://github.com/minio/minio',
     iconName: 'https://raw.githubusercontent.com/minio/minio/master/.github/logo.svg',
     templates: [{
         inputSettings: [

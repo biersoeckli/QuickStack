@@ -1,5 +1,8 @@
 import Image from 'next/image';
 import { ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 type TemplateDetails = {
     name: string;
@@ -19,33 +22,44 @@ export function TemplateDetailsPanel({ template }: { template: TemplateDetails }
     const iconSource = getIconSource(template.iconName);
 
     return (
-        <aside className="rounded-lg border bg-muted/30 p-5 lg:sticky lg:top-0 lg:self-start">
-            <div className="flex items-center gap-3">
+        <aside className="lg:sticky lg:top-0 lg:self-start">
+            <Card className="overflow-hidden">
+                <CardHeader className="gap-4 border-b bg-muted/30 p-5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected template</p>
+                    <div className="flex items-center gap-3">
                 {iconSource && (
-                    <Image
-                        src={iconSource}
-                        alt={`${template.name} logo`}
-                        width={56}
-                        height={56}
-                        className="h-14 w-14 object-contain"
-                        unoptimized
-                    />
+                        <div className="flex size-12 shrink-0 items-center justify-center rounded-md border bg-background p-2">
+                            <Image
+                                src={iconSource}
+                                alt={`${template.name} logo`}
+                                width={40}
+                                height={40}
+                                className="size-10 object-contain"
+                                unoptimized
+                            />
+                        </div>
                 )}
-                <h2 className="text-lg font-semibold">{template.name}</h2>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                {template.description ?? 'No description is available for this template.'}
-            </p>
-            {template.websiteUrl && (
-                <a
-                    href={template.websiteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-                >
-                    Website <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-            )}
+                        <CardTitle className="text-lg leading-6">{template.name}</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                        {template.description ?? 'No description is available for this template.'}
+                    </p>
+                </CardContent>
+                {template.websiteUrl && (
+                    <>
+                        <Separator />
+                        <CardFooter className="p-3">
+                            <Button asChild variant="ghost" size="sm" className="w-full justify-between">
+                                <a href={template.websiteUrl} target="_blank" rel="noreferrer">
+                                    Open website <ExternalLink />
+                                </a>
+                            </Button>
+                        </CardFooter>
+                    </>
+                )}
+            </Card>
         </aside>
     );
 }

@@ -86,6 +86,19 @@ describe('Template Icons', () => {
                 expect(template.name.length).toBeGreaterThan(0);
             });
         });
+
+        test('All templates should have non-empty descriptions', () => {
+            allTemplates.forEach(template => {
+                expect(template.description).toBeDefined();
+                expect(template.description?.length).toBeGreaterThan(0);
+            });
+        });
+
+        test('All templates should have valid website URLs', () => {
+            allTemplates.forEach(template => {
+                expect(template.websiteUrl).toMatch(/^https:\/\//);
+            });
+        });
     });
 
     describe('URL Format Validation', () => {

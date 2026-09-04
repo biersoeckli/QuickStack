@@ -6,6 +6,8 @@ import { EnvVarUtils } from "@/server/utils/env-var.utils";
 
 export const n8nAppTemplate: AppTemplateModel = {
     name: "n8n",
+    description: 'A workflow automation platform for connecting apps, APIs, and custom business processes.',
+    websiteUrl: 'https://github.com/n8n-io/n8n',
     iconName: 'https://avatars.githubusercontent.com/u/45487711',
     templates: [{
         inputSettings: [
@@ -72,4 +74,3 @@ export const postCreateN8NAppTemplate = async (createdApps: AppExtendedModel[]):
 
     return [createdN8nApp];
 };
-

@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const filebrowserAppTemplate: AppTemplateModel = {
     name: "File Browser",
+    description: 'A web-based file manager for browsing, uploading, downloading, and sharing files.',
+    websiteUrl: 'https://github.com/filebrowser/filebrowser',
     iconName: 'https://raw.githubusercontent.com/filebrowser/logo/master/banner.svg',
     templates: [{
         inputSettings: [

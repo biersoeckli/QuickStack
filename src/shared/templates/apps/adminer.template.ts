@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const adminerAppTemplate: AppTemplateModel = {
     name: "Adminer",
+    description: 'A compact web interface for managing MySQL, PostgreSQL, SQLite, MongoDB, and other databases.',
+    websiteUrl: 'https://github.com/vrana/adminer',
     iconName: 'https://cdn.simpleicons.org/adminer',
     templates: [{
         inputSettings: [

@@ -9,6 +9,8 @@ import { getRedisAppTemplate } from "../databases/redis.template";
 
 export const libredeskAppTemplate: AppTemplateModel = {
     name: "Libredesk",
+    description: 'An open-source customer-support inbox for managing conversations across channels.',
+    websiteUrl: 'https://github.com/abhinavxd/libredesk',
     iconName: 'libredesk.png',
     templates: [
         // PostgreSQL Database

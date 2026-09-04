@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const elementAppTemplate: AppTemplateModel = {
     name: "Element Web",
+    description: 'A secure web client for Matrix chat, rooms, and collaboration.',
+    websiteUrl: 'https://github.com/element-hq/element-web',
     iconName: 'https://raw.githubusercontent.com/element-hq/element-web/develop/res/vector-icons/1024.png',
     templates: [{
         inputSettings: [

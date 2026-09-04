@@ -3,6 +3,8 @@ import { AppTemplateModel } from "../../model/app-template.model";
 
 export const prometheusAppTemplate: AppTemplateModel = {
     name: "Prometheus",
+    description: 'A monitoring and alerting toolkit for collecting and querying time-series metrics.',
+    websiteUrl: 'https://github.com/prometheus/prometheus',
     iconName: 'https://raw.githubusercontent.com/prometheus/prometheus/main/documentation/images/prometheus-logo.svg',
     templates: [{
         inputSettings: [
