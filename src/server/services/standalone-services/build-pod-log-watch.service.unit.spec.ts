@@ -106,4 +106,41 @@ describe('BuildPodLogWatchService', () => {
         endStream?.();
         await flushPromises();
     });
+
+    it('streams queue init-container logs', async () => {
+        const pod = {
+            metadata: {
+                uid: 'pod-uid-queue',
+                name: 'build-pod-queue',
+                annotations: {
+                    'qs-deplyoment-id': 'deployment-queue',
+                },
+            },
+            spec: {
+                initContainers: [{ name: 'build-queue-init' }],
+                containers: [],
+            },
+            status: {
+                initContainerStatuses: [
+                    { name: 'build-queue-init', state: { terminated: { exitCode: 0 } } },
+                ],
+            },
+        };
+
+        vi.mocked(k3s.log.log).mockImplementation(async (_ns, _podName, _containerName, logStream) => {
+            (logStream as stream.PassThrough).end();
+            return { abort: vi.fn() } as any;
+        });
+
+        await (buildPodLogWatchService as any).captureLogsForPod(pod);
+        await flushPromises();
+
+        expect(vi.mocked(k3s.log.log)).toHaveBeenCalledWith(
+            'qs-build',
+            'build-pod-queue',
+            'build-queue-init',
+            expect.any(stream.PassThrough),
+            expect.objectContaining({ follow: false }),
+        );
+    });
 });

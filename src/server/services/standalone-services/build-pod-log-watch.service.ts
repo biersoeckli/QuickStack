@@ -84,10 +84,7 @@ class BuildPodLogWatchService {
         const containerStatuses = pod.status?.containerStatuses ?? [];
 
         return [
-            ...(pod.spec?.initContainers ?? []).filter((container) => {
-                // th elogs of the container wich waits for the build to start does not contain useful information, so we skip it.
-                return !container.name.toLowerCase().includes(Constants.QS_BUILD_INIT_CONTAINER_NAME.toLowerCase());
-            }).map((container) => ({
+            ...(pod.spec?.initContainers ?? []).map((container) => ({
                 name: container.name!,
                 status: initStatuses.find((status) => status.name === container.name),
             })),
