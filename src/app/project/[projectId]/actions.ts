@@ -1,9 +1,9 @@
 'use server'
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
+import { z } from "zod";
 import appService from "@/server/services/app.service";
 import { getAuthUserSession, isAuthorizedDeleteForProject, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
-import { z } from "zod";
 import appTemplateService from "@/server/services/app-template.service";
 import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-template.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
@@ -20,6 +20,7 @@ import agentService from "@/server/services/agent.service";
 import llmGatewayService from "@/server/services/llm-gateway.service";
 import agentTemplateService from "@/server/services/agent-template.service";
 import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-template.model";
+import { RenameAgentModel, renameAgentZodModel } from "@/shared/model/rename-agent.model";
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -85,6 +86,21 @@ export const createAgent = async (agentName: string, projectId: string, llmGatew
         });
 
         return new SuccessActionResult(returnData, 'Agent created successfully.');
+    });
+
+export const renameAgent = async (_prevState: unknown, inputData: RenameAgentModel, agentId: string) =>
+    saveFormAction(inputData, renameAgentZodModel, async (validatedData) => {
+        const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
+        const agent = await agentService.getById(agentId);
+        ensureCreateProjectWorkloadInProject(identity, agent.projectId);
+
+        const returnData = await agentService.saveAgent({
+            id: agent.id,
+            name: validatedData.name,
+        });
+
+        return new SuccessActionResult(returnData, 'Agent renamed successfully.');
     });
 
 export const getLlmGateways = async () =>

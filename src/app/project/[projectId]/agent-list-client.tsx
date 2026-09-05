@@ -3,15 +3,16 @@
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { Bot, Eye, MoreHorizontal, Trash } from "lucide-react";
+import { Bot, Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "./create-project-actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { deleteAgent } from "./actions";
+import { RenameAgentDialog } from "./rename-agent-dialog";
 import {
     Empty,
     EmptyContent,
@@ -31,6 +32,7 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
     const canDelete = UserGroupUtils.sessionCanDeleteAgentsForProject(session, projectId);
     const { openConfirmDialog } = useConfirmDialog();
+    const { openDialog } = useDialog();
 
     if (agents.length === 0 && !canCreate) {
         return (
@@ -100,6 +102,11 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                                         <Eye /> <span>Show Agent Details</span>
                                     </DropdownMenuItem>
                                 </Link>
+                                {canCreate && (
+                                    <DropdownMenuItem onClick={() => openDialog(<RenameAgentDialog agent={item} />, { maxWidth: 'max-w-md' })}>
+                                        <Edit2 /> <span>Rename Agent</span>
+                                    </DropdownMenuItem>
+                                )}
                                 {canDelete && (
                                     <>
                                         <DropdownMenuSeparator />
