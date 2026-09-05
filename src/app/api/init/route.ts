@@ -1,4 +1,5 @@
 import paramService, { ParamService } from "@/server/services/param.service";
+import configurationMigrationRegistryService from "@/server/services/configuration-migrations/configuration-migration-registry.service";
 import buildPodLogWatchService from "@/server/services/standalone-services/build-pod-log-watch.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
 import deploymentEventWatchService from "@/server/services/standalone-services/deployment-event-watch.service";
@@ -18,6 +19,12 @@ export async function GET(request: Request) {
 
         if (!globalThis.quickStackInitKey || key !== globalThis.quickStackInitKey) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        try {
+            await configurationMigrationRegistryService.runPending();
+        } catch (error) {
+            console.error('Failed to run pending configuration migrations:', error);
         }
 
         await buildWatchService.startWatch();
