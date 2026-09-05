@@ -5,5 +5,6 @@ Only the **Extended App Network Policy Configuration** will remain supported; ea
 ## Consequences
 
 - Apps already in **Extended** mode are untouched. Apps in **Simple** mode have any dormant Extended configuration replaced by the derived rules so the migrated state exactly matches the current Simple firewall.
+- In **Extended** mode the reconcile always permits traffic between replicas of the same App on all ports; this self-peer is added by the reconcile, is not part of the stored rules, and cannot be disabled through the UI.
 - Apps with network policies disabled are flipped to `EXTENDED` with no configuration written.
 - The legacy Simple enum columns are kept as the pre-migration record; a separate later cleanup removes them once only **Extended** mode is enforced.

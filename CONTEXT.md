@@ -323,6 +323,7 @@ _Avoid_: manual initial port requirement
 - A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Node Ports**.
 - An **App** has exactly one active **App Network Policy Configuration**.
+- Traffic between replicas of the same **App** is always permitted and cannot be disabled.
 - A **Network Policy Mode Migration** replaces an App's active **Simple App Network Policy Configuration** with its equivalent **Extended App Network Policy Configuration**.
 - An **Extended App Network Policy Configuration** can have zero or more **App Network Policy Rules** for ingress and zero or more for egress.
 - An **App Domain** permits Traefik ingress to its App when Network Policies are active.
