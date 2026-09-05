@@ -1,4 +1,5 @@
 import k3s from "../../../adapter/kubernetes-api.adapter";
+import s3Adapter from "../../../adapter/aws-s3.adapter";
 import { V1Job } from "@kubernetes/client-node";
 import { Constants } from "../../../../shared/utils/constants";
 import { AppTemplateUtils } from "../../../utils/app-template.utils";
@@ -28,7 +29,7 @@ class MongoDbBackupService {
         console.log(`MongoDB URI: ${mongodbUri.replace(dbCredentials.password, '***')}`);
         console.log(`S3 Key: ${s3Key}`);
 
-        const endpoint = backupVolume.target.endpoint.includes('http') ? backupVolume.target.endpoint : `https://${backupVolume.target.endpoint}`;
+        const endpoint = s3Adapter.getEndpointUrl(backupVolume.target.endpoint, backupVolume.target.useSsl);
         console.log(`S3 Endpoint: ${endpoint}`);
 
         const imageTag = process.env.QS_VERSION?.includes('canary') || process.env.NODE_ENV !== 'production' ? 'canary' : 'latest';
@@ -82,6 +83,14 @@ class MongoDbBackupService {
                                     {
                                         name: "S3_REGION",
                                         value: backupVolume.target.region
+                                    },
+                                    {
+                                        name: "S3_FORCE_PATH_STYLE",
+                                        value: String(backupVolume.target.forcePathStyle)
+                                    },
+                                    {
+                                        name: "S3_V4AUTH",
+                                        value: String(backupVolume.target.v4Auth)
                                     },
                                     {
                                         name: "S3_KEY",

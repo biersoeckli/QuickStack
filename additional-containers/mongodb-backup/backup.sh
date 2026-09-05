@@ -51,6 +51,25 @@ export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
 export AWS_DEFAULT_REGION="$S3_REGION"
 
+# Apply advanced S3 options (addressing style + signature version) when provided by QuickStack
+if [ -n "$S3_FORCE_PATH_STYLE" ] || [ -n "$S3_V4AUTH" ]; then
+    AWS_CONFIG_FILE="${AWS_CONFIG_FILE:-$HOME/.aws/config}"
+    mkdir -p "$(dirname "$AWS_CONFIG_FILE")"
+
+    ADDRESSING_STYLE="virtual"
+    if [ "$S3_FORCE_PATH_STYLE" = "true" ]; then
+        ADDRESSING_STYLE="path"
+    fi
+    SIGNATURE_VERSION="s3v4"
+    if [ "$S3_V4AUTH" = "false" ]; then
+        SIGNATURE_VERSION="s3"
+    fi
+
+    printf '[default]\ns3 =\n  addressing_style = %s\n  signature_version = %s\n' "$ADDRESSING_STYLE" "$SIGNATURE_VERSION" > "$AWS_CONFIG_FILE"
+    export AWS_CONFIG_FILE
+    echo "S3 addressing style: $ADDRESSING_STYLE (signature $SIGNATURE_VERSION)"
+fi
+
 # Upload to S3
 echo "Uploading to S3..."
 echo "Destination: s3://$S3_BUCKET_NAME/$S3_KEY"
