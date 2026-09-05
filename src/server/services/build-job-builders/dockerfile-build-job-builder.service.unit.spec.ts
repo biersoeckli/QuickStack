@@ -18,6 +18,7 @@ describe('DockerfileBuildJobBuilder', () => {
             latestRemoteGitHash: 'abc123',
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
+            maxParallelBuilds: 2,
         });
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('DOCKERFILE');
@@ -26,6 +27,8 @@ describe('DockerfileBuildJobBuilder', () => {
             'build-queue-init',
             'build-git-init',
         ]);
+        const queueInitContainer = job.spec?.template?.spec?.initContainers?.find((container) => container.name === 'build-queue-init')!;
+        expect(queueInitContainer.env?.find((entry) => entry.name === 'MAX_PARALLEL_BUILDS')?.value).toBe('2');
         expect(job.spec?.template?.spec?.volumes).toEqual([
             expect.objectContaining({
                 name: 'build-workspace',
@@ -65,6 +68,7 @@ describe('DockerfileBuildJobBuilder', () => {
             latestRemoteGitHash: 'abc123',
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
+            maxParallelBuilds: 2,
             gitSshPrivateKeySecretName: 'git-ssh-build-1',
         });
 

@@ -20,6 +20,7 @@ export class ParamService {
     static readonly BUILD_CPU_LIMIT = 'buildCpuLimit';
     static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
     static readonly BUILD_NODE = 'buildNode';
+    static readonly MAX_PARALLEL_BUILDS = 'maxParallelBuilds';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';

@@ -33,10 +33,11 @@ vi.mock('@/server/services/param.service', () => ({
         BUILD_MEMORY_RESERVATION: 'BUILD_MEMORY_RESERVATION',
         BUILD_CPU_LIMIT: 'BUILD_CPU_LIMIT',
         BUILD_CPU_RESERVATION: 'BUILD_CPU_RESERVATION',
+        MAX_PARALLEL_BUILDS: 'MAX_PARALLEL_BUILDS',
     },
     default: {
         getString: vi.fn(async (key: string) => key === 'REGISTRY_SOTRAGE_LOCATION' ? 'registry-path' : undefined),
-        getNumber: vi.fn().mockResolvedValue(undefined),
+        getNumber: vi.fn(async (name: string) => name === 'MAX_PARALLEL_BUILDS' ? 1 : undefined),
     },
 }));
 vi.mock('@/server/services/cluster.service', () => ({
@@ -71,6 +72,7 @@ import dockerfileBuildJobBuilder from '@/server/services/build-job-builders/dock
 import railpackBuildJobBuilder from '@/server/services/build-job-builders/railpack-build-job-builder.service';
 import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
 import agentGitSshKeyService from '@/server/services/agent-git-ssh-key.service';
+import paramService from '@/server/services/param.service';
 
 describe('BuildService.buildApp builder selection', () => {
     const dockerfileCheckSpy = vi.fn();
@@ -152,5 +154,23 @@ describe('BuildService.buildApp builder selection', () => {
             gitSshPrivateKeySecretName: 'agent-git-ssh-build-secret',
         }));
         expect(railpackBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
+    });
+
+    it('passes the configured max parallel builds to the selected builder', async () => {
+        vi.mocked(paramService.getNumber).mockImplementation(async (name: string) => name === 'MAX_PARALLEL_BUILDS' ? 3 : undefined);
+
+        await buildService.buildApp('deployment-1', {
+            id: 'app-1',
+            projectId: 'project-1',
+            sourceType: 'GIT',
+            buildMethod: 'DOCKERFILE',
+            gitUrl: 'https://github.com/example/repo.git',
+            gitBranch: 'main',
+            dockerfilePath: './Dockerfile',
+        } as any);
+
+        expect(dockerfileBuildJobBuilder.buildJobDefinition).toHaveBeenCalledWith(expect.objectContaining({
+            maxParallelBuilds: 3,
+        }));
     });
 });
