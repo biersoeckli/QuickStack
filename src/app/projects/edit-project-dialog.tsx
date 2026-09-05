@@ -2,8 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -19,79 +17,83 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Toast } from '@/frontend/utils/toast.utils';
+import { useDialogContext } from '@/frontend/states/dialog-context';
+import { useDialog } from '@/frontend/states/zustand.states';
 import { ProjectType } from '@/shared/model/project-type.model';
 import { Project } from '@prisma/client';
 import { useState } from 'react';
 import { createProject } from './actions';
+
+function EditProjectForm({ existingItem, agentsAvailable }: {
+    existingItem?: Project;
+    agentsAvailable: boolean;
+}) {
+    const { closeDialog } = useDialogContext();
+    const [name, setName] = useState(existingItem?.name ?? '');
+    const [projectType, setProjectType] = useState<ProjectType | undefined>(
+        agentsAvailable ? existingItem?.projectType as ProjectType | undefined : 'APP',
+    );
+
+    const submit = async () => {
+        if (!name.trim() || !projectType) return;
+        await Toast.fromAction(() => createProject(name.trim(), projectType, existingItem?.id));
+        closeDialog();
+    };
+
+    return <>
+        <DialogHeader>
+            <DialogTitle>{existingItem ? 'Edit Project' : 'Create Project'}</DialogTitle>
+            <DialogDescription>
+                {existingItem
+                    ? 'Rename this Project. Project Type cannot be changed.'
+                    : 'Choose the workload type this Project will contain.'}
+            </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+                <Label htmlFor="project-name">Name</Label>
+                <Input
+                    id="project-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                />
+            </div>
+            <div className="grid gap-2">
+                <Label>Project Type</Label>
+                <Select
+                    disabled={!!existingItem}
+                    value={projectType}
+                    onValueChange={(value) => setProjectType(value as ProjectType)}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Project Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="APP">App</SelectItem>
+                        {agentsAvailable && <SelectItem value="AGENT">Agent</SelectItem>}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+        <DialogFooter>
+            <Button disabled={!name.trim() || !projectType} onClick={submit}>
+                {existingItem ? 'Save Project' : 'Create Project'}
+            </Button>
+            <Button variant="secondary" onClick={() => closeDialog()}>Cancel</Button>
+        </DialogFooter>
+    </>;
+}
 
 export function EditProjectDialog({ children, existingItem, agentsAvailable }: {
     children?: React.ReactNode;
     existingItem?: Project;
     agentsAvailable: boolean;
 }) {
-    const [open, setOpen] = useState(false);
-    const [name, setName] = useState(existingItem?.name ?? '');
-    const [projectType, setProjectType] = useState<ProjectType | undefined>(
-        agentsAvailable ? existingItem?.projectType as ProjectType | undefined : 'APP',
-    );
+    const { openDialog } = useDialog();
 
-    const openDialog = () => {
-        setName(existingItem?.name ?? '');
-        setProjectType(existingItem?.projectType as ProjectType | undefined);
-        setOpen(true);
+    const handleOpen = () => {
+        openDialog(<EditProjectForm existingItem={existingItem} agentsAvailable={agentsAvailable} />, { maxWidth: '425px' });
     };
 
-    const submit = async () => {
-        if (!name.trim() || !projectType) return;
-        await Toast.fromAction(() => createProject(name.trim(), projectType, existingItem?.id));
-        setOpen(false);
-    };
-
-    return <>
-        <div onClick={openDialog}>{children}</div>
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{existingItem ? 'Edit Project' : 'Create Project'}</DialogTitle>
-                    <DialogDescription>
-                        {existingItem
-                            ? 'Rename this Project. Project Type cannot be changed.'
-                            : 'Choose the workload type this Project will contain.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="project-name">Name</Label>
-                        <Input
-                            id="project-name"
-                            value={name}
-                            onChange={(event) => setName(event.target.value)}
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Project Type</Label>
-                        <Select
-                            disabled={!!existingItem}
-                            value={projectType}
-                            onValueChange={(value) => setProjectType(value as ProjectType)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Project Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="APP">App</SelectItem>
-                                {agentsAvailable && <SelectItem value="AGENT">Agent</SelectItem>}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button disabled={!name.trim() || !projectType} onClick={submit}>
-                        {existingItem ? 'Save Project' : 'Create Project'}
-                    </Button>
-                    <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    </>;
+    return <div onClick={handleOpen}>{children}</div>;
 }
