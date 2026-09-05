@@ -35,7 +35,7 @@ export default function QsBuildSettings({
     });
 
     const [state, formAction] = useActionState(
-        (state: ServerActionResult<any, any>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
+        (state: ServerActionResult<BuildSettingsModel, void>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
         FormUtils.getInitialFormState<typeof buildSettingsZodModel>()
     );
 
@@ -55,7 +55,7 @@ export default function QsBuildSettings({
             <CardHeader>
                 <CardTitle>Build Container Settings</CardTitle>
                 <CardDescription>
-                    Configure global resource limits and node placement for all build containers.
+                    Configure global resource limits, node placement, and the number of parallel builds for all build containers.
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
@@ -67,6 +67,23 @@ export default function QsBuildSettings({
                     return formAction(payload);
                 })()}>
                     <CardContent className="space-y-6">
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="maxParallelBuilds"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Max Parallel Builds</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" min={1} max={20} step={1} {...field} value={field.value as string | number | undefined ?? ''} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}

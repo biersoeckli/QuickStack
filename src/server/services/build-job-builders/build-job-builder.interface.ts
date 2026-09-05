@@ -14,6 +14,7 @@ export type BuildJobBuilderContext = {
     latestRemoteGitHash: string;
     latestRemoteGitCommitMessage: string;
     queuedAt: string;
+    maxParallelBuilds: number;
     nodeSelector?: Record<string, string>;
     resources?: V1ResourceRequirements;
     gitSshPrivateKeySecretName?: string;

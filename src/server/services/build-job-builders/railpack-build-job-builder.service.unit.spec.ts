@@ -17,6 +17,7 @@ describe('RailpackBuildJobBuilder', () => {
             latestRemoteGitHash: 'abc123',
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
+            maxParallelBuilds: 2,
         });
 
         const initContainers = job.spec?.template?.spec?.initContainers ?? [];

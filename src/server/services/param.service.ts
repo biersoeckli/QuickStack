@@ -20,6 +20,7 @@ export class ParamService {
     static readonly BUILD_CPU_LIMIT = 'buildCpuLimit';
     static readonly BUILD_CPU_RESERVATION = 'buildCpuReservation';
     static readonly BUILD_NODE = 'buildNode';
+    static readonly MAX_PARALLEL_BUILDS = 'maxParallelBuilds';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
@@ -83,7 +84,7 @@ export class ParamService {
         })(name);
     }
 
-    async getBoolean(name: string, defaultValue?: boolean) {
+    async getBoolean(name: string, defaultValue?: boolean, revalidateParam = true) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return param.value === 'true';
@@ -92,13 +93,13 @@ export class ParamService {
             await this.save({
                 name,
                 value: defaultValue.toString()
-            });
+            }, revalidateParam);
             return defaultValue;
         }
         return undefined;
     }
 
-    async getString(name: string, defaultValue?: string) {
+    async getString(name: string, defaultValue?: string, revalidateParam = true) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return param.value;
@@ -107,13 +108,13 @@ export class ParamService {
             await this.save({
                 name,
                 value: defaultValue
-            });
+            }, revalidateParam);
             return defaultValue;
         }
         return undefined;
     }
 
-    async getNumber(name: string, defaultValue?: number) {
+    async getNumber(name: string, defaultValue?: number, revalidateParam = true) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return Number(param.value);
@@ -122,7 +123,7 @@ export class ParamService {
             await this.save({
                 name,
                 value: defaultValue.toString()
-            });
+            }, revalidateParam);
             return defaultValue;
         }
         return undefined;
@@ -169,7 +170,7 @@ export class ParamService {
     }
 
 
-    async save(item: Prisma.ParameterUncheckedCreateInput | Prisma.ParameterUncheckedUpdateInput) {
+    async save(item: Prisma.ParameterUncheckedCreateInput | Prisma.ParameterUncheckedUpdateInput, revalidateParam = true) {
         let savedItem: Parameter;
         try {
             savedItem = await dataAccess.client.parameter.upsert({
@@ -182,7 +183,9 @@ export class ParamService {
                 } as Prisma.ParameterUncheckedUpdateInput
             });
         } finally {
-            revalidateTag(Tags.parameter());
+            if (revalidateParam) {
+                revalidateTag(Tags.parameter());
+            }
         }
         return savedItem;
     }

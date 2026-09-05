@@ -29,7 +29,7 @@ import UpdateInfoPage from "./update-info";
 import LonghornUiToggle from "./longhorn-ui-toggle";
 import RestApiSettings from "./rest-api-settings";
 
-export default async function ProjectPage({
+export default async function QuickStackSettingsPage({
     searchParams
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -48,14 +48,14 @@ export default async function ProjectPage({
         clusterJoinToken,
         openApiEnabled
     ] = await Promise.all([
-        paramService.getString(ParamService.QS_SERVER_HOSTNAME, ''),
-        paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false),
-        paramService.getString(ParamService.LETS_ENCRYPT_MAIL, session.email),
-        paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
-        paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS),
-        paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-        paramService.getString(ParamService.K3S_JOIN_TOKEN),
-        paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED)
+        paramService.getString(ParamService.QS_SERVER_HOSTNAME, '', false),
+        paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false, false),
+        paramService.getString(ParamService.LETS_ENCRYPT_MAIL, session.email, false),
+        paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION, false),
+        paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS, undefined, false),
+        paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED, false),
+        paramService.getString(ParamService.K3S_JOIN_TOKEN, undefined, false),
+        paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED, undefined, false)
     ]);
 
     const [
@@ -71,7 +71,7 @@ export default async function ProjectPage({
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
         quickStackUpdateService.getNewVersionInfo(),
         clusterService.getNodeInfo(),
-        getBuildSettings()
+        getBuildSettings(false)
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);

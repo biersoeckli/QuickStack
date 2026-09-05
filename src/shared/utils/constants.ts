@@ -36,6 +36,8 @@ export class Constants {
     static readonly TOLERATION_FOR_EXECUTED_CRON_BACKUPS_MS = 60 * 60 * 1000; // 60 minutes;
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
+    static readonly DEFAULT_MAX_PARALLEL_BUILDS = 1;
+    static readonly MAX_PARALLEL_BUILDS_LIMIT = 20;
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
     static readonly QS_AGENT_ROUTER_NAMESPACE = Constants.QS_NAMESPACE;
     static readonly QS_AUTH_PROXY_IMAGE = 'quickstack/auth-proxy:canary';

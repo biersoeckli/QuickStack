@@ -57,27 +57,28 @@ class BuildInitContainerService {
         }, BUILD_NAMESPACE);
     }
 
-    getInitContainer(currentJobName: string, queuedAt: string): V1Container {
+    getInitContainer(currentJobName: string, queuedAt: string, maxParallelBuilds: number = Constants.DEFAULT_MAX_PARALLEL_BUILDS): V1Container {
+        const maxParallel = Math.min(Constants.MAX_PARALLEL_BUILDS_LIMIT, Math.max(Constants.DEFAULT_MAX_PARALLEL_BUILDS, Math.floor(maxParallelBuilds)));
         const script = [
             'sleep $((RANDOM % 5 + 1));',
             'while true; do',
             '  DATA=$(kubectl get jobs -n "$NAMESPACE" \\',
             '    -o go-template=\'{{range .items}}{{.metadata.name}}{{"\\t"}}{{index .metadata.annotations "qs-build-queued-at"}}{{"\\t"}}{{range .status.conditions}}{{.type}}={{.status}},{{end}}{{"\\n"}}{{end}}\');',
-            '  OLDEST=$(echo "$DATA" | awk \'',
-            '    BEGIN { min_ts=""; min_name="" }',
+            '  OLDER=$(echo "$DATA" | awk \'',
             '    {',
             '      name=$1; ts=$2; conds=$3;',
-            '      if (conds ~ /Complete=True/ || conds ~ /Failed=True/) next;',
             '      if (ts == "") next;',
-            '      if (min_ts=="" || ts+0 < min_ts+0) { min_ts=ts; min_name=name }',
+            '      if (conds ~ /Complete=True/ || conds ~ /Failed=True/) next;',
+            '      if (ts+0 < myts+0) older++;',
+            '      else if (ts+0 == myts+0 && name < myname) older++;',
             '    }',
-            '    END { print min_name }',
-            '  \');',
-            '  if [ "$OLDEST" = "$CURRENT_JOB_NAME" ]; then',
-            '    echo "Queue slot acquired (oldest pending build: $CURRENT_JOB_NAME). Starting build.";',
+            '    END { print older+0 }',
+            '  \' myname="$CURRENT_JOB_NAME" myts="$QUEUED_AT");',
+            '  if [ "$OLDER" -lt "$MAX_PARALLEL_BUILDS" ]; then',
+            '    echo "Queue slot acquired ($OLDER older build(s) pending, max parallel: $MAX_PARALLEL_BUILDS). Starting build.";',
             '    exit 0;',
             '  fi;',
-            '  echo "Waiting for older build to finish (oldest pending: $OLDEST). Retrying...";',
+            '  echo "Waiting for older builds to finish (older pending: $OLDER, max parallel: $MAX_PARALLEL_BUILDS). Retrying...";',
             '  sleep $((RANDOM % 5 + 5));',
             'done',
         ].join('\n');
@@ -99,6 +100,10 @@ class BuildInitContainerService {
                 {
                     name: 'QUEUED_AT',
                     value: queuedAt,
+                },
+                {
+                    name: 'MAX_PARALLEL_BUILDS',
+                    value: maxParallel.toString(),
                 },
             ],
         };

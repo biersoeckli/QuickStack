@@ -21,7 +21,7 @@ export default async function UpdateInfoPage() {
         newVersionInfo,
         k3sControllerStatus,
     ] = await Promise.all([
-        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false),
+        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false, false),
         quickStackService.getVersionOfCurrentQuickstackInstance(),
         quickStackUpdateService.getNewVersionInfo(),
         k3sUpdateService.isSystemUpgradeControllerPresent(),

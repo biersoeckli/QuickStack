@@ -104,6 +104,7 @@ class BuildService {
 
         const queuedAt = Date.now().toString();
         const schedulingConfig = await this.getBuildSchedulingConfig(deploymentId);
+        const maxParallelBuilds = await this.getMaxParallelBuilds(deploymentId);
         const gitSshPrivateKeySecretName = workload.sourceType === 'GIT_SSH'
             ? await this.createTemporaryGitSshBuildSecret(workloadType, workload.id, buildName)
             : undefined;
@@ -118,6 +119,7 @@ class BuildService {
                 latestRemoteGitCommitMessage,
                 queuedAt,
                 ...schedulingConfig,
+                maxParallelBuilds,
                 gitSshPrivateKeySecretName,
             });
 
@@ -136,6 +138,13 @@ class BuildService {
             return 'DOCKERFILE';
         }
         return workload.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK';
+    }
+
+    private async getMaxParallelBuilds(deploymentId: string): Promise<number> {
+        const configured = await paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS, Constants.DEFAULT_MAX_PARALLEL_BUILDS) ?? Constants.DEFAULT_MAX_PARALLEL_BUILDS;
+        const maxParallelBuilds = Math.min(Constants.MAX_PARALLEL_BUILDS_LIMIT, Math.max(Constants.DEFAULT_MAX_PARALLEL_BUILDS, Math.floor(configured)));
+        await dlog(deploymentId, `Max parallel builds: ${maxParallelBuilds}`);
+        return maxParallelBuilds;
     }
 
     private getBuilder(buildMethod: AppBuildMethod): BuildJobBuilder {

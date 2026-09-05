@@ -70,7 +70,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                         hostUsers: false,
                         serviceAccountName: 'qs-build-watcher',
                         initContainers: [
-                            buildQueueInitContainer.getInitContainer(ctx.buildName, ctx.queuedAt),
+                            buildQueueInitContainer.getInitContainer(ctx.buildName, ctx.queuedAt, ctx.maxParallelBuilds),
                             buildGitInitContainerService.getInitContainer(ctx),
                         ],
                         ...(ctx.nodeSelector ? { nodeSelector: ctx.nodeSelector } : {}),

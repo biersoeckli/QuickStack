@@ -17,6 +17,7 @@ describe('BuildGitInitContainerService', () => {
             latestRemoteGitHash: 'abc123',
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
+            maxParallelBuilds: 1,
         });
 
         expect(container.name).toBe('build-git-init');
@@ -55,6 +56,7 @@ describe('BuildGitInitContainerService', () => {
             latestRemoteGitHash: 'abc123',
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
+            maxParallelBuilds: 1,
             gitSshPrivateKeySecretName: 'git-ssh-build-1',
         });
 

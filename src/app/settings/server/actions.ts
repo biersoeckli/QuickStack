@@ -60,18 +60,20 @@ export const saveBuildSettings = async (prevState: any, inputData: BuildSettings
       await paramService.deleteByNameIfExists(ParamService.BUILD_CPU_RESERVATION);
     }
     await saveOrDelete(ParamService.BUILD_NODE, validatedData.buildNode);
+    await paramService.save({ name: ParamService.MAX_PARALLEL_BUILDS, value: String(validatedData.maxParallelBuilds) });
   });
 
-export const getBuildSettings = async (): Promise<BuildSettingsModel> => {
+export const getBuildSettings = async (revalidateParam = true): Promise<BuildSettingsModel> => {
   await getAdminUserSession();
-  const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode] = await Promise.all([
-    paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
-    paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
-    paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
-    paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
-    paramService.getString(ParamService.BUILD_NODE),
+  const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, maxParallelBuilds] = await Promise.all([
+    paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT, undefined, revalidateParam),
+    paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION, undefined, revalidateParam),
+    paramService.getNumber(ParamService.BUILD_CPU_LIMIT, undefined, revalidateParam),
+    paramService.getNumber(ParamService.BUILD_CPU_RESERVATION, undefined, revalidateParam),
+    paramService.getString(ParamService.BUILD_NODE, undefined, revalidateParam),
+    paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS, Constants.DEFAULT_MAX_PARALLEL_BUILDS, revalidateParam),
   ]);
-  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode };
+  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, maxParallelBuilds: maxParallelBuilds ?? Constants.DEFAULT_MAX_PARALLEL_BUILDS };
 };
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
