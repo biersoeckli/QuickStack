@@ -9,6 +9,7 @@ import s3TargetService from "./s3-target.service";
 import clusterService from "./cluster.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import s3Adapter from "../adapter/aws-s3.adapter";
+import { shortGitHash } from "@/shared/utils/git-hash.utils";
 
 const REGISTRY_NODE_PORT = 30100;
 const REGISTRY_CONTAINER_PORT = 5000;
@@ -58,18 +59,27 @@ class RegistryService {
         return false;
     }
 
-    createInternalContainerRegistryUrlForAppId(appId?: string) {
+    createInternalContainerRegistryUrlForAppId(appId?: string, tag?: string) {
         if (!appId) {
             return undefined;
         }
-        return `${REGISTRY_URL_INTERNAL}/${appId}:latest`;
+        return `${REGISTRY_URL_INTERNAL}/${appId}:${tag || 'latest'}`;
     }
 
-    createContainerRegistryUrlForAppId(appId?: string) {
+    createContainerRegistryUrlForAppId(appId?: string, tag?: string) {
         if (!appId) {
             return undefined;
         }
-        return `${REGISTRY_URL_EXTERNAL}/${appId}:latest`;
+        return `${REGISTRY_URL_EXTERNAL}/${appId}:${tag || 'latest'}`;
+    }
+
+    createInternalContainerRegistryImageNamesForApp(appId: string, commitHash?: string | null) {
+        const latest = this.createInternalContainerRegistryUrlForAppId(appId);
+        const commitTag = shortGitHash(commitHash);
+        if (!latest || !commitTag) {
+            return latest;
+        }
+        return `${latest},${this.createInternalContainerRegistryUrlForAppId(appId, commitTag)}`;
     }
 
     async deployRegistry(registryLocation: string, forceDeploy = false) {

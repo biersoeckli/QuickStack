@@ -22,6 +22,7 @@ import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
+import { shortGitHash } from "@/shared/utils/git-hash.utils";
 
 class DeploymentService {
 
@@ -85,6 +86,7 @@ class DeploymentService {
         gitCommitHash?: string,
         gitCommitMessage?: string,
         buildMethod?: AppBuildMethod,
+        isRollback?: boolean,
     ) {
         await this.validateDeployment(app);
 
@@ -143,14 +145,15 @@ class DeploymentService {
                             [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
                             deploymentTimestamp: new Date().getTime() + "",
-                            "kubernetes.io/change-cause": `Deployment ${new Date().toISOString()}`
+                            "kubernetes.io/change-cause": `Deployment ${new Date().toISOString()}`,
+                            ...(isRollback ? { [Constants.QS_ANNOTATION_ROLLBACK]: 'true' } : {}),
                         }
                     },
                     spec: {
                         containers: [
                             {
                                 name: app.id,
-                                image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
+                                image: (buildJobName || gitCommitHash) ? registryService.createContainerRegistryUrlForAppId(app.id, shortGitHash(gitCommitHash)) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
                                 ...(app.containerCommand ? { command: ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
@@ -393,6 +396,7 @@ class DeploymentService {
                 status: status,
                 deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!,
                 buildMethod: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
+                isRollback: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_ROLLBACK] === 'true',
             }
         });
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);

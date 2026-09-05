@@ -16,6 +16,9 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
         const contextPaths = PathUtils.splitPath(ctx.workload.dockerfilePath || './Dockerfile');
         const dockerfileContextPath = this.getDockerfileContextPath(contextPaths.folderPath);
+        const imageNames = ctx.workloadType === 'app'
+            ? registryService.createInternalContainerRegistryImageNamesForApp(ctx.workload.id, ctx.latestRemoteGitHash)
+            : registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id);
 
         const buildkitArgs = [
             "build",
@@ -28,7 +31,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `filename=${contextPaths.filePath}`,
             "--output",
-            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id)},push=true,registry.insecure=true`
+            `type=image,name=${imageNames},push=true,registry.insecure=true`
         ];
 
         return {

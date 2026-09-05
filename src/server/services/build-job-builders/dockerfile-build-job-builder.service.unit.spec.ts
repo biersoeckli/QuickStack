@@ -49,6 +49,9 @@ describe('DockerfileBuildJobBuilder', () => {
             'context=/workspace/source/apps/web',
             'dockerfile=/workspace/source/apps/web',
         ]));
+        expect(buildContainer.args).toEqual(expect.arrayContaining([
+            expect.stringContaining('name=registry-svc.registry-and-build.svc.cluster.local:5000/app-1:latest,registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123'),
+        ]));
         expect(buildContainer.args).not.toContain('context=https://github.com/example/repo.git#refs/heads/main:./apps/web');
     });
 

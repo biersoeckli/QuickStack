@@ -24,6 +24,13 @@ export const deleteBuild = async (buildName: string) =>
         return new SuccessActionResult(undefined, 'Successfully stopped and deleted build.');
     });
 
+export const rollbackToDeployment = async (appId: string, deploymentId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForApp(appId);
+        await appService.rollbackToDeployment(appId, deploymentId);
+        return new SuccessActionResult(undefined, 'Successfully started rollback.');
+    });
+
 export const getPodsForApp = async (appId: string) =>
     simpleAction(async () => {
         await isAuthorizedReadForApp(appId);

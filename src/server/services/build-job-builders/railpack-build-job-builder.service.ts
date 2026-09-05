@@ -19,6 +19,10 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
     readonly buildMethod: AppBuildMethod = 'RAILPACK';
 
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
+        const imageNames = ctx.workloadType === 'app'
+            ? registryService.createInternalContainerRegistryImageNamesForApp(ctx.workload.id, ctx.latestRemoteGitHash)
+            : registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id);
+
         const buildkitArgs = [
             "build",
             "--local",
@@ -30,7 +34,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `source=${RAILPACK_FRONTEND_IMAGE}`,
             "--output",
-            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id)},push=true,registry.insecure=true`
+            `type=image,name=${imageNames},push=true,registry.insecure=true`
         ];
 
         return {

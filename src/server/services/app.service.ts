@@ -7,6 +7,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
 import buildService from "./build.service";
+import registryService from "./registry.service";
 import ingressService from "./ingress.service";
 import pvcService from "./pvc.service";
 import svcService from "./svc.service";
@@ -16,6 +17,7 @@ import networkPolicyService from "./network-policy.service";
 import appNetworkPolicyService from "./app-network-policy.service";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
+import { shortGitHash } from "@/shared/utils/git-hash.utils";
 
 class AppService {
 
@@ -49,6 +51,49 @@ class AppService {
             } else {
                 // only deploy
                 await deploymentService.createDeployment(deploymentId, app);
+            }
+        });
+        return deploymentId;
+    }
+
+    async rollbackToDeployment(appId: string, targetDeploymentId: string) {
+        const deploymentId = crypto.randomUUID();
+        await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
+            const app = await this.getExtendedById(appId);
+
+            const target = await deploymentService.getDeploymentHistoryEntryById(app.projectId, appId, targetDeploymentId);
+            if (!target) {
+                throw new ServiceException('The selected deployment could not be found.');
+            }
+
+            const gitCommit = target.gitCommit;
+            if (!gitCommit) {
+                throw new ServiceException('The selected deployment has no git commit to roll back to.');
+            }
+
+            await dlog(deploymentId, `
+----------------------------------------------
+ Rollback:     ${deploymentId}
+ App:          ${app.id}
+ Project:      ${app.projectId}
+ Target:       ${gitCommit}
+----------------------------------------------`, false);
+
+            const tag = shortGitHash(gitCommit);
+            if (tag && await registryService.doesImageExist(app.id, tag)) {
+                await dlog(deploymentId, `Image for commit ${gitCommit} already exists in the registry, redeploying it.`);
+                await deploymentService.createDeployment(
+                    deploymentId,
+                    app,
+                    undefined,
+                    gitCommit,
+                    target.gitCommitMessage,
+                    target.buildMethod,
+                    true,
+                );
+            } else {
+                await dlog(deploymentId, `Image for commit ${gitCommit} not found in the registry, starting a new build.`);
+                await buildService.buildAppAtCommit(deploymentId, app, gitCommit, target.gitCommitMessage);
             }
         });
         return deploymentId;

@@ -22,6 +22,7 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import appGitSshKeyService from "./app-git-ssh-key.service";
 import agentGitSshKeyService from "./agent-git-ssh-key.service";
+import { shortGitHash } from "@/shared/utils/git-hash.utils";
 
 type BuildWorkload = AppExtendedModel | AgentExtendedModel;
 
@@ -31,11 +32,15 @@ class BuildService {
         return this.buildWorkload(deploymentId, app, 'app', forceBuild);
     }
 
+    async buildAppAtCommit(deploymentId: string, app: AppExtendedModel, commitHash: string, commitMessage: string = ''): Promise<[string, string, string, boolean]> {
+        return this.buildWorkload(deploymentId, app, 'app', false, commitHash, commitMessage);
+    }
+
     async buildAgent(deploymentId: string, agent: AgentExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
         return this.buildWorkload(deploymentId, agent, 'agent', forceBuild);
     }
 
-    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
+    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false, targetCommitHash?: string, targetCommitMessage?: string): Promise<[string, string, string, boolean]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -49,6 +54,11 @@ class BuildService {
         await dlog(deploymentId, `Initialized ${workloadType} build...`);
         await dlog(deploymentId, `Selected build method: ${buildMethod}`);
         await dlog(deploymentId, `Trying to clone repository...`);
+
+        if (targetCommitHash) {
+            await dlog(deploymentId, `Building specific git commit ${targetCommitHash}...`);
+            return this.createAndStartBuildJob(deploymentId, workload, workloadType, targetCommitHash, targetCommitMessage ?? '');
+        }
 
         const latestSuccessfulBuild = buildsForWorkload.find(x => x.status === 'SUCCEEDED');
         const { latestRemoteGitHash, latestRemoteGitCommitMessage } = await gitService.openGitContext({
@@ -71,7 +81,8 @@ class BuildService {
 
         if (!forceBuild && latestSuccessfulBuild?.gitCommit && latestRemoteGitHash &&
             latestSuccessfulBuild.gitCommit === latestRemoteGitHash) {
-            if (await registryService.doesImageExist(workload.id, 'latest')) {
+            const imageTag = shortGitHash(latestRemoteGitHash) ?? 'latest';
+            if (await registryService.doesImageExist(workload.id, imageTag)) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
                 return [latestSuccessfulBuild.name, latestRemoteGitHash, latestRemoteGitCommitMessage, true];
             }
