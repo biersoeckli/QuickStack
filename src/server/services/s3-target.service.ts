@@ -40,6 +40,17 @@ class S3TargetService {
         });
     }
 
+    async existsById(id: string) {
+        return !!await dataAccess.client.s3Target.findUnique({
+            where: {
+                id
+            },
+            select: {
+                id: true
+            }
+        });
+    }
+
     async save(item: Prisma.S3TargetUncheckedCreateInput | Prisma.S3TargetUncheckedUpdateInput) {
         let savedItem: S3Target;
         try {

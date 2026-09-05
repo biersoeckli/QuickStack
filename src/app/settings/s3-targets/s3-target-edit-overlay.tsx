@@ -159,9 +159,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
                     />
 
                     <p className="text-sm font-medium pt-2">Advanced Options</p>
-                    <p className="text-sm text-muted-foreground -mt-2">
-                      Connection options for S3-compatible providers. Used for the internal registry storage.
-                    </p>
+                   
 
                     <CheckboxFormField form={form} name="useSsl" label="Use HTTPS / SSL (secure connection)" />
                     <CheckboxFormField form={form} name="v4Auth" label="Use AWS Signature Version 4 (v4auth)" />
