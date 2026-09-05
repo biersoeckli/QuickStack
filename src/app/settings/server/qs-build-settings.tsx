@@ -35,7 +35,7 @@ export default function QsBuildSettings({
     });
 
     const [state, formAction] = useActionState(
-        (state: ServerActionResult<any, any>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
+        (state: ServerActionResult<BuildSettingsModel, void>, payload: BuildSettingsModel) => saveBuildSettings(state, payload),
         FormUtils.getInitialFormState<typeof buildSettingsZodModel>()
     );
 
@@ -67,6 +67,23 @@ export default function QsBuildSettings({
                     return formAction(payload);
                 })()}>
                     <CardContent className="space-y-6">
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="maxParallelBuilds"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Max Parallel Builds</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" min={1} max={20} step={1} {...field} value={field.value as string | number | undefined ?? ''} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -101,22 +118,6 @@ export default function QsBuildSettings({
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="maxParallelBuilds"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Max Parallel Builds</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" min={1} max={20} step={1} {...field} value={field.value as string | number | undefined ?? ''} />
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
