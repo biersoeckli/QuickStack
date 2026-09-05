@@ -8,6 +8,7 @@ import { S3Target } from "@prisma/client";
 import s3TargetService from "./s3-target.service";
 import clusterService from "./cluster.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import s3Adapter from "../adapter/aws-s3.adapter";
 
 const REGISTRY_NODE_PORT = 30100;
 const REGISTRY_CONTAINER_PORT = 5000;
@@ -40,7 +41,7 @@ class RegistryService {
             throw new Error('Cannot run garbage collection, because registry is not running.');
         }
         console.log("Running garbage collection...");
-        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['bin/registry', 'garbage-collect', '/etc/docker/registry/config.yml']);
+        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['bin/registry', 'garbage-collect', '/etc/distribution/config.yml']);
         console.log("Garbage collection completed.");
     }
 
@@ -224,12 +225,12 @@ class RegistryService {
                         containers: [
                             {
                                 name: deploymentName,
-                                image: 'registry:2.8',
+                                image: 'registry:3.1.1',
                                 volumeMounts: [
                                     ...localStorageVolumeMount,
                                     {
                                         name: REGISTRY_CONFIG_MAP_NAME,
-                                        mountPath: '/etc/docker/registry',
+                                        mountPath: '/etc/distribution',
                                         readOnly: true,
                                     }
                                 ],
@@ -268,9 +269,13 @@ class RegistryService {
     secretkey: ${s3Target.secretKey}
     region: ${s3Target.region}
     bucket: ${s3Target.bucketName}
+    secure: ${s3Target.useSsl}
+    v4auth: ${s3Target.v4Auth}
     loglevel: debug`;
             if (s3Target.endpoint) {
-                storageS3provider += `\n    regionendpoint: ${s3Target.endpoint}`;
+                storageS3provider += `
+    regionendpoint: ${s3Adapter.getEndpointUrl(s3Target.endpoint, s3Target.useSsl)}
+    forcepathstyle: ${s3Target.forcePathStyle}`;
             }
             storageProvider = storageS3provider;
         } else {

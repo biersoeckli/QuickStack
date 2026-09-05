@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { S3TargetEditModel, s3TargetEditZodModel } from "@/shared/model/s3-target-edit.model"
 import { saveS3Target } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
@@ -156,6 +157,15 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
                         </FormItem>
                       )}
                     />
+
+                    <p className="text-sm font-medium pt-2">Advanced Options</p>
+                    <p className="text-sm text-muted-foreground -mt-2">
+                      Connection options for S3-compatible providers. Used for the internal registry storage.
+                    </p>
+
+                    <CheckboxFormField form={form} name="useSsl" label="Use HTTPS / SSL (secure connection)" />
+                    <CheckboxFormField form={form} name="v4Auth" label="Use AWS Signature Version 4 (v4auth)" />
+                    <CheckboxFormField form={form} name="forcePathStyle" label="Force path-style addressing (forcepathstyle)" />
 
                     <p className="text-red-500">{state.message}</p>
                     <SubmitButton>Save</SubmitButton>
