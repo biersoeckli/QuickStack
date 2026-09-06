@@ -15,10 +15,10 @@ export default function S3TargetsTable({ targets }: {
     targets: S3Target[]
 }) {
 
-    const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openConfirmDialog } = useConfirmDialog();
 
     const asyncDeleteTarget = async (id: string) => {
-        const confirm = await openDialog({
+        const confirm = await openConfirmDialog({
             title: "Delete S3 Target",
             description: "Do you really want to delete this S3 Target?",
             okButton: "Delete S3 Target"

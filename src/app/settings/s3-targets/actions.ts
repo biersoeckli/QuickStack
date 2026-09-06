@@ -5,6 +5,7 @@ import { getAdminUserSession, saveFormAction, simpleAction } from "@/server/util
 import { S3TargetEditModel, s3TargetEditZodModel } from "@/shared/model/s3-target-edit.model";
 import s3TargetService from "@/server/services/s3-target.service";
 import s3Service from "@/server/services/aws-s3.service";
+import s3Adapter from "@/server/adapter/aws-s3.adapter";
 import { S3Target } from "@prisma/client";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
@@ -12,9 +13,8 @@ export const saveS3Target = async (prevState: any, inputData: S3TargetEditModel)
     saveFormAction(inputData, s3TargetEditZodModel, async (validatedData) => {
         await getAdminUserSession();
 
-        const url = new URL(validatedData.endpoint.includes('://') ? validatedData.endpoint : `https://${validatedData.endpoint}`);
+        const url = new URL(s3Adapter.getEndpointUrl(validatedData.endpoint));
         validatedData.endpoint = url.origin;
-
         if (!await s3Service.testConnection(validatedData as S3Target)) {
             throw new ServiceException('Could not connect to S3 Target, please check your credentials and try again');
         }

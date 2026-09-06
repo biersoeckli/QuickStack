@@ -23,7 +23,9 @@ import { toast } from "sonner"
 import { S3TargetEditModel, s3TargetEditZodModel } from "@/shared/model/s3-target-edit.model"
 import { saveS3Target } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
+const NEW_S3_TARGET_DEFAULT_VALUES = { v4Auth: true }
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
 
@@ -32,7 +34,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
 
   const form = useForm<z.input<typeof s3TargetEditZodModel>, unknown, z.output<typeof s3TargetEditZodModel>>({
     resolver: zodResolver(s3TargetEditZodModel),
-    defaultValues: target
+    defaultValues: target ?? NEW_S3_TARGET_DEFAULT_VALUES
   });
 
   const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
@@ -52,7 +54,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
   }, [form, state]);
 
   useEffect(() => {
-    form.reset(target);
+    form.reset(target ?? NEW_S3_TARGET_DEFAULT_VALUES);
   }, [form, target]);
 
   return (
@@ -156,6 +158,11 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
                         </FormItem>
                       )}
                     />
+
+                    <p className="text-sm font-medium pt-2">Advanced Options</p>
+
+                    <CheckboxFormField form={form} name="v4Auth" label="Use AWS Signature Version 4 (v4auth)" />
+                    <CheckboxFormField form={form} name="forcePathStyle" label="Force path-style addressing (forcepathstyle)" />
 
                     <p className="text-red-500">{state.message}</p>
                     <SubmitButton>Save</SubmitButton>

@@ -2,18 +2,29 @@ import { S3Client } from "@aws-sdk/client-s3";
 
 import { S3Target } from "@prisma/client";
 
+export type S3ClientTarget = Pick<S3Target, 'region' | 'accessKeyId' | 'secretKey' | 'endpoint' | 'forcePathStyle'>;
+
 class AwsS3Adapter {
 
-    getS3Client(s3Target: S3Target) {
+    getEndpointUrl(endpoint: string) {
+        return /^https?:\/\//i.test(endpoint)
+            ? endpoint
+            : `https://${endpoint}`;
+    }
+
+    isSecureEndpoint(endpoint: string) {
+        return new URL(this.getEndpointUrl(endpoint)).protocol === 'https:';
+    }
+
+    getS3Client(s3Target: S3ClientTarget) {
         return new S3Client({
             region: s3Target.region,
             credentials: {
                 accessKeyId: s3Target.accessKeyId,
                 secretAccessKey: s3Target.secretKey,
             },
-            endpoint: /^https?:\/\//.test(s3Target.endpoint)
-                ? s3Target.endpoint
-                : `https://${s3Target.endpoint}`
+            endpoint: this.getEndpointUrl(s3Target.endpoint),
+            forcePathStyle: s3Target.forcePathStyle,
         });
     }
 }

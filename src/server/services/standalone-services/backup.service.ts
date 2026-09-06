@@ -216,7 +216,7 @@ class BackupService {
         return { backupInfoModels, backupsVolumesWithoutActualBackups };
     }
 
-    private async listAndParseBackupFiles(s3Target: { id: string; createdAt: Date; updatedAt: Date; name: string; bucketName: string; endpoint: string; region: string; accessKeyId: string; secretKey: string; }) {
+    private async listAndParseBackupFiles(s3Target: S3Target) {
         const fileKeys = await s3Service.listFiles(s3Target);
         const backupData = fileKeys.filter(x => {
             if (!x.Key) {

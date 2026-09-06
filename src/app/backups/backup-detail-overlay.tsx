@@ -29,6 +29,11 @@ export function BackupDetailDialog({
     const { openConfirmDialog } = useConfirmDialog();
     const [isOpen, setIsOpen] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
+    const [backups, setBackups] = React.useState(backupInfo.backups);
+
+    React.useEffect(() => {
+        setBackups(backupInfo.backups);
+    }, [backupInfo.backups]);
 
     const asyncDownloadPvcData = async (s3Key: string) => {
         try {
@@ -49,7 +54,15 @@ export function BackupDetailDialog({
             description: 'This action deletes the backup from the storage. This action cannot be undone.',
             okButton: 'Delete'
         })) {
-            await Toast.fromAction(() => deleteBackup(backupInfo.s3TargetId, s3Key));
+            try {
+                setIsLoading(true);
+                const result = await Toast.fromAction(() => deleteBackup(backupInfo.s3TargetId, s3Key));
+                if (result.status === 'success') {
+                    setBackups((currentBackups) => currentBackups.filter((backup) => backup.key !== s3Key));
+                }
+            } finally {
+                setIsLoading(false);
+            }
         }
     }
 
@@ -71,7 +84,7 @@ export function BackupDetailDialog({
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh]">
                     <Table>
-                        <TableCaption>{backupInfo.backups.length} Backups</TableCaption>
+                        <TableCaption>{backups.length} Backups</TableCaption>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Time</TableHead>
@@ -80,8 +93,8 @@ export function BackupDetailDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {backupInfo.backups.map((item, index) => (
-                                <TableRow key={index}>
+                            {backups.map((item) => (
+                                <TableRow key={item.key}>
                                     <TableCell>{formatDateTime(item.backupDate, true)}</TableCell>
                                     <TableCell>{item.sizeBytes ? KubeSizeConverter.convertBytesToReadableSize(item.sizeBytes) : 'unknown'}</TableCell>
                                     <TableCell className="flex justify-end gap-2">

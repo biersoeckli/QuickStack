@@ -577,9 +577,11 @@ model S3Target {
   bucketName    String
   endpoint      String
   region        String
-  accessKeyId   String
-  secretKey     String
-  volumeBackups VolumeBackup[]
+  accessKeyId    String
+  secretKey      String
+  v4Auth         Boolean  @default(true) // use AWS Signature Version 4 (registry storage `v4auth`)
+  forcePathStyle Boolean  @default(false) // use path-style S3 addressing (registry storage `forcepathstyle`)
+  volumeBackups  VolumeBackup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

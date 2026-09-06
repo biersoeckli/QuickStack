@@ -48,7 +48,9 @@ export default async function UpdateInfoPage() {
         console.error('Error fetching K3s version info:', error);
     }
 
-    const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll().map(async (addon) => {
+    const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll()
+        .filter((addon) => useCanaryChannel || addon.metadata.id !== 'agent-sandbox')
+        .map(async (addon) => {
         try {
             const status = await addon.getStatus();
             let availableVersion: string | undefined;
@@ -65,7 +67,7 @@ export default async function UpdateInfoPage() {
             const message = error instanceof Error ? error.message : 'Could not load add-on status.';
             return { ...addon.metadata, status: 'failed' as const, message };
         }
-    }));
+        }));
 
 
     return <div className="grid gap-6">
