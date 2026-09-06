@@ -90,6 +90,7 @@ type PeerNodeData = {
     name: string;
     side: 'left' | 'right';
     both: boolean;
+    externalProject: boolean;
     caption?: string;
 };
 
@@ -109,7 +110,8 @@ const CenterNode = ({ data }: NodeProps<Node<CenterNodeData, 'center'>>) => (
         <Handle id="in-left" type="target" position={Position.Left} className={handleClassName} style={{ top: '50%' }} />
         <Handle id="out-right" type="source" position={Position.Right} className={handleClassName} style={{ top: '22%' }} />
         <Handle id="in-right" type="target" position={Position.Right} className={handleClassName} style={{ top: '78%' }} />
-        <Handle id="out-internet" type="source" position={Position.Top} className={handleClassName} />
+        <Handle id="out-internet" type="source" position={Position.Top} className={handleClassName} style={{ left: '35%' }} />
+        <Handle id="in-internet" type="target" position={Position.Top} className={handleClassName} style={{ left: '65%' }} />
     </div>
 );
 
@@ -119,7 +121,10 @@ const PeerNode = ({ data }: NodeProps<Node<PeerNodeData, 'peer'>>) => {
         ? 'bg-violet-500/15 text-violet-600 ring-violet-500/30'
         : 'bg-qs-500/10 text-qs-600 ring-qs-500/30';
     return (
-        <div className="group flex w-[200px] cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-colors hover:border-qs-500/50 hover:shadow-md">
+        <div className={cn(
+            'group flex w-[200px] cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-colors hover:border-qs-500/50 hover:shadow-md',
+            data.externalProject && 'border-dashed border-amber-500/70 bg-amber-500/5',
+        )}>
             <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg ring-1', iconClasses)}>
                 <AgentIcon className="size-4" />
             </div>
@@ -144,7 +149,8 @@ const InternetNode = () => (
             <Cloud className="size-7" />
         </div>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Internet</span>
-        <Handle id="target" type="target" position={Position.Bottom} className={handleClassName} />
+        <Handle id="target" type="target" position={Position.Bottom} className={handleClassName} style={{ left: '35%' }} />
+        <Handle id="source" type="source" position={Position.Bottom} className={handleClassName} style={{ left: '65%' }} />
     </div>
 );
 
@@ -165,6 +171,7 @@ function Legend() {
             {getLegendItem('Ingress rule', <span className="inline-block h-0.5 w-6 rounded-full" style={{ background: EDGE_COLORS.ingress }} />)}
             {getLegendItem('Egress rule', <span className="inline-block h-0.5 w-6 rounded-full" style={{ background: EDGE_COLORS.egress }} />)}
             {getLegendItem('Internet access', <span className="inline-block h-0 w-6 border-t-2 border-dashed" style={{ borderColor: EDGE_COLORS.internet }} />)}
+            {getLegendItem('Cross-project connection', <span className="inline-block h-0 w-6 border-t-2 border-dashed border-amber-500" />)}
             {getLegendItem('App', <Boxes className="size-3.5 text-qs-600" />)}
             {getLegendItem('Agent sandbox', <Bot className="size-3.5 text-violet-500" />)}
             <span className="flex items-center gap-1.5"><MoveRight className="size-3.5" />Arrows point in the direction of allowed traffic</span>
@@ -187,6 +194,7 @@ export default function NetworkPolicyGraph({
     appProjectId,
     rules,
     allowInternetAccess,
+    domainLabels,
     projects,
 }: {
     appId: string;
@@ -194,6 +202,7 @@ export default function NetworkPolicyGraph({
     appProjectId: string;
     rules: AppNetworkPolicyRuleWithTargetAppModel[];
     allowInternetAccess: boolean;
+    domainLabels: string[];
     projects: ProjectBrief[];
 }) {
     const router = useRouter();
@@ -212,7 +221,8 @@ export default function NetworkPolicyGraph({
         const leftPeers = [...ingressOnly].sort((a, b) => a.name.localeCompare(b.name));
         const rightPeers = [...egressOnly, ...both].sort((a, b) => a.name.localeCompare(b.name));
 
-        const hasContent = neighbors.length > 0 || allowInternetAccess;
+        const hasDomains = domainLabels.length > 0;
+        const hasContent = neighbors.length > 0 || allowInternetAccess || hasDomains;
 
         const nodes: (Node<CenterNodeData, 'center'> | Node<PeerNodeData, 'peer'> | Node<InternetNodeData, 'internet'>)[] = [];
         const edges: Edge[] = [];
@@ -239,7 +249,7 @@ export default function NetworkPolicyGraph({
                 id: `${neighbor.type}:${neighbor.id}`,
                 type: 'peer',
                 position: { x: COLUMN_X_LEFT - PEER_WIDTH / 2, y: y - 28 },
-                data: { type: neighbor.type, name: neighbor.name, side: 'left', both: false, caption: captionFor(neighbor) },
+                data: { type: neighbor.type, name: neighbor.name, side: 'left', both: false, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
             });
             edges.push({
                 ...edgeLabelStyle(),
@@ -250,7 +260,7 @@ export default function NetworkPolicyGraph({
                 targetHandle: 'in-left',
                 label: aggregateLabels(neighbor.ingress),
                 markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.ingress, width: 16, height: 16 },
-                style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5 },
+                style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
             });
         });
 
@@ -261,7 +271,7 @@ export default function NetworkPolicyGraph({
                 id: `${neighbor.type}:${neighbor.id}`,
                 type: 'peer',
                 position: { x: COLUMN_X_RIGHT - PEER_WIDTH / 2, y: y - 28 },
-                data: { type: neighbor.type, name: neighbor.name, side: 'right', both: hasIngress, caption: captionFor(neighbor) },
+                data: { type: neighbor.type, name: neighbor.name, side: 'right', both: hasIngress, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
             });
             edges.push({
                 ...edgeLabelStyle(),
@@ -272,7 +282,7 @@ export default function NetworkPolicyGraph({
                 targetHandle: 'egress-in',
                 label: aggregateLabels(neighbor.egress),
                 markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.egress, width: 16, height: 16 },
-                style: { stroke: EDGE_COLORS.egress, strokeWidth: 1.5 },
+                style: { stroke: EDGE_COLORS.egress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
             });
             if (hasIngress) {
                 edges.push({
@@ -284,31 +294,45 @@ export default function NetworkPolicyGraph({
                     targetHandle: 'in-right',
                     label: aggregateLabels(neighbor.ingress),
                     markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.ingress, width: 16, height: 16 },
-                    style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5 },
+                    style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
                 });
             }
         });
 
-        if (allowInternetAccess) {
+        if (allowInternetAccess || hasDomains) {
             nodes.push({
                 id: 'internet',
                 type: 'internet',
                 position: { x: -48, y: INTERNET_Y - 48 },
                 data: {},
             });
-            edges.push({
-                id: 'edge-internet',
-                source: 'center',
-                target: 'internet',
-                sourceHandle: 'out-internet',
-                targetHandle: 'target',
-                markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.internet, width: 16, height: 16 },
-                style: { stroke: EDGE_COLORS.internet, strokeWidth: 1.5, strokeDasharray: '5 4' },
-            });
+            if (allowInternetAccess) {
+                edges.push({
+                    id: 'edge-internet-egress',
+                    source: 'center',
+                    target: 'internet',
+                    sourceHandle: 'out-internet',
+                    targetHandle: 'target',
+                    markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.internet, width: 16, height: 16 },
+                    style: { stroke: EDGE_COLORS.internet, strokeWidth: 1.5, strokeDasharray: '5 4' },
+                });
+            }
+            if (hasDomains) {
+                edges.push({
+                    id: 'edge-internet-ingress',
+                    source: 'internet',
+                    target: 'center',
+                    sourceHandle: 'source',
+                    targetHandle: 'in-internet',
+                    label: aggregateLabels(domainLabels),
+                    markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.ingress, width: 16, height: 16 },
+                    style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5 },
+                });
+            }
         }
 
         return { nodes, edges, hasContent };
-    }, [allowInternetAccess, appId, appName, appProjectId, projectNameById, rules]);
+    }, [allowInternetAccess, appId, appName, appProjectId, domainLabels, projectNameById, rules]);
 
     if (!hasContent) {
         return (

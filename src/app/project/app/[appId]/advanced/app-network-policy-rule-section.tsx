@@ -14,12 +14,15 @@ import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
 import { deleteAppNetworkPolicyRule } from './actions';
 
 export type AppNetworkPolicyDirection = 'INGRESS' | 'EGRESS';
+type ProjectBrief = { id: string; name: string };
 
 type AppNetworkPolicyRuleSectionProps = {
     direction: AppNetworkPolicyDirection;
     rules: AppNetworkPolicyRuleWithTargetAppModel[];
     readonly: boolean;
     onAdd: () => void;
+    currentProjectId: string;
+    projects: ProjectBrief[];
     internetAccess?: boolean;
     onInternetAccessChange?: (checked: boolean) => void;
     networkPoliciesEnabled?: boolean;
@@ -30,6 +33,8 @@ export default function AppNetworkPolicyRuleSection({
     rules,
     readonly,
     onAdd,
+    currentProjectId,
+    projects,
     internetAccess,
     onInternetAccessChange,
     networkPoliciesEnabled,
@@ -78,7 +83,7 @@ export default function AppNetworkPolicyRuleSection({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {rules.length > 0 ? rules.map(rule => <RuleRow key={rule.id} rule={rule} readonly={readonly} />) : (
+                            {rules.length > 0 ? rules.map(rule => <RuleRow key={rule.id} rule={rule} readonly={readonly} currentProjectId={currentProjectId} projects={projects} />) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">No rules configured.</TableCell>
                                 </TableRow>
@@ -93,9 +98,12 @@ export default function AppNetworkPolicyRuleSection({
     );
 }
 
-function RuleRow({ rule, readonly }: { rule: AppNetworkPolicyRuleWithTargetAppModel; readonly: boolean }) {
+function RuleRow({ rule, readonly, currentProjectId, projects }: { rule: AppNetworkPolicyRuleWithTargetAppModel; readonly: boolean; currentProjectId: string; projects: ProjectBrief[] }) {
     const target = rule.targetAgent ?? rule.targetApp;
     const targetType = rule.targetAgent ? 'Agent sandbox' : 'App';
+    const projectName = target?.projectId === currentProjectId
+        ? 'This project'
+        : projects.find(project => project.id === target?.projectId)?.name ?? 'Unknown project';
     const copyInternalHostname = () => {
         if (rule.targetApp) navigator.clipboard.writeText(InternalHostnameUtils.getInternalBaseUrlForApp(rule.targetApp, rule.port));
         toast.success('Copied internal hostname to clipboard');
@@ -105,7 +113,7 @@ function RuleRow({ rule, readonly }: { rule: AppNetworkPolicyRuleWithTargetAppMo
         <TableRow>
             <TableCell>
                 {target?.name ?? 'Unknown target'}
-                <span className="ml-2 text-muted-foreground">{target?.projectId} · {targetType}</span>
+                <span className="ml-2 text-muted-foreground">{projectName} · {targetType}</span>
             </TableCell>
             <TableCell>{rule.port}</TableCell>
             <TableCell>{rule.protocol}</TableCell>

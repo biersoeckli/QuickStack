@@ -67,11 +67,11 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
                     <TabsTrigger value="graph"><Waypoints className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
                 </TabsList>
                 <TabsContent value="rules" className="mt-5 space-y-8">
-                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} />
-                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} internetAccess={internet} onInternetAccessChange={changeInternetAccess} networkPoliciesEnabled={enabled} />
+                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} currentProjectId={app.project.id} projects={projects} />
+                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} currentProjectId={app.project.id} projects={projects} internetAccess={internet} onInternetAccessChange={changeInternetAccess} networkPoliciesEnabled={enabled} />
                 </TabsContent>
                 <TabsContent value="graph" className="mt-5">
-                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={rules} allowInternetAccess={internet} projects={projects} />
+                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={rules} allowInternetAccess={internet} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />
                 </TabsContent>
             </Tabs>}
         </CardContent>
