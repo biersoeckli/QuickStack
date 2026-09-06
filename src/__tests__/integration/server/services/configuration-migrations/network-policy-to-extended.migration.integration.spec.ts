@@ -1,17 +1,9 @@
 // @vitest-environment node
 
-vi.mock('@/server/services/configuration-migrations/network-policy-to-extended.derivation', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@/server/services/configuration-migrations/network-policy-to-extended.derivation')>();
-    return {
-        ...actual,
-        deriveExtendedConfiguration: vi.fn(actual.deriveExtendedConfiguration),
-    };
-});
-
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import dataAccess from '@/server/adapter/db.client';
 import networkPolicyToExtendedMigration from '@/server/services/configuration-migrations/network-policy-migration/network-policy-to-extended.migration';
-import { deriveExtendedConfiguration } from '@/server/services/configuration-migrations/network-policy-to-extended.derivation';
+import { NetworkPolicyToExtendedUtils } from '@/server/services/configuration-migrations/network-policy-migration/network-policy-to-extended.utils';
 
 describe('network-policy-to-extended migration', () => {
     createPrismaTestContext('network-policy-to-extended-migration');
@@ -73,10 +65,11 @@ describe('network-policy-to-extended migration', () => {
             .sort();
     }
 
-    const originalDerive = vi.mocked(deriveExtendedConfiguration).getMockImplementation()!;
+    const originalDerive = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration;
+    const mockedDerive = vi.spyOn(NetworkPolicyToExtendedUtils, 'deriveExtendedConfiguration');
 
     afterEach(() => {
-        vi.mocked(deriveExtendedConfiguration).mockImplementation(originalDerive);
+        mockedDerive.mockClear();
     });
 
     it('converts every Simple App to its Extended equivalent within its project', async () => {
@@ -175,7 +168,7 @@ describe('network-policy-to-extended migration', () => {
         await createApp('proj-p', { id: 'app-a', ports: [80] });
         await createApp('proj-p', { id: 'app-b', ports: [80] });
 
-        vi.mocked(deriveExtendedConfiguration).mockImplementation((app, peers) => {
+        mockedDerive.mockImplementation((app, peers) => {
             if (app.id === 'app-b') {
                 throw new Error('derivation exploded');
             }
