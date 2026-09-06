@@ -36,7 +36,7 @@ export default async function QuickStackSettingsPage({
 }) {
     const resolvedSearchParams = await searchParams;
 
-    const session = await getAdminUserSession();
+    await getAdminUserSession();
 
     const [
         serverUrl,
@@ -48,14 +48,14 @@ export default async function QuickStackSettingsPage({
         clusterJoinToken,
         openApiEnabled
     ] = await Promise.all([
-        paramService.getString(ParamService.QS_SERVER_HOSTNAME, '', false),
-        paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS, false, false),
-        paramService.getString(ParamService.LETS_ENCRYPT_MAIL, session.email, false),
-        paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION, false),
-        paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS, undefined, false),
-        paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED, false),
-        paramService.getString(ParamService.K3S_JOIN_TOKEN, undefined, false),
-        paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED, undefined, false)
+        paramService.getString(ParamService.QS_SERVER_HOSTNAME),
+        paramService.getBoolean(ParamService.DISABLE_NODEPORT_ACCESS),
+        paramService.getString(ParamService.LETS_ENCRYPT_MAIL),
+        paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION),
+        paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS),
+        paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION),
+        paramService.getString(ParamService.K3S_JOIN_TOKEN),
+        paramService.getBoolean(ParamService.API_OPEN_API_SPEC_ENABLED)
     ]);
 
     const [
@@ -71,7 +71,7 @@ export default async function QuickStackSettingsPage({
         podService.getPodsForApp(Constants.QS_NAMESPACE, Constants.QS_APP_NAME),
         quickStackUpdateService.getNewVersionInfo(),
         clusterService.getNodeInfo(),
-        getBuildSettings(false)
+        getBuildSettings()
     ]);
 
     const qsPodInfo = qsPodInfos.find(p => !!p);
@@ -140,7 +140,7 @@ export default async function QuickStackSettingsPage({
 
                 <TabsContent value="api" className="space-y-4">
                     <div className="grid gap-6">
-                        <RestApiSettings openApiEnabled={openApiEnabled ?? false} />
+                        <RestApiSettings openApiEnabled={openApiEnabled!} />
                     </div>
                 </TabsContent>
 

@@ -84,47 +84,26 @@ export class ParamService {
         })(name);
     }
 
-    async getBoolean(name: string, defaultValue?: boolean, revalidateParam = true) {
+    async getBoolean(name: string) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return param.value === 'true';
         }
-        if (defaultValue) {
-            await this.save({
-                name,
-                value: defaultValue.toString()
-            }, revalidateParam);
-            return defaultValue;
-        }
         return undefined;
     }
 
-    async getString(name: string, defaultValue?: string, revalidateParam = true) {
+    async getString(name: string) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return param.value;
         }
-        if (defaultValue) {
-            await this.save({
-                name,
-                value: defaultValue
-            }, revalidateParam);
-            return defaultValue;
-        }
         return undefined;
     }
 
-    async getNumber(name: string, defaultValue?: number, revalidateParam = true) {
+    async getNumber(name: string) {
         const param = await this.getOrUndefined(name);
         if (param) {
             return Number(param.value);
-        }
-        if (defaultValue) {
-            await this.save({
-                name,
-                value: defaultValue.toString()
-            }, revalidateParam);
-            return defaultValue;
         }
         return undefined;
     }

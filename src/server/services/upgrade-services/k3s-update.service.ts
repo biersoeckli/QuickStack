@@ -109,7 +109,7 @@ class K3sUpdateService {
     }
 
     private async getVersionInfoForCurrentChannel() {
-        const useCanary = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false)
+        const useCanary = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL)
         if (useCanary) {
             return await qsVersionInfoAdapter.getCanaryK3sReleaseInfo();
         }

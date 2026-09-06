@@ -19,10 +19,11 @@ export const registerUser = async (prevState: any, inputData: RegisterFormInputS
         }
         const adminRole = await userGroupService.getOrCreateAdminRole();
         await userService.registerUser(validatedData.email, validatedData.password, adminRole.id);
+        await paramService.getOrCreate(ParamService.LETS_ENCRYPT_MAIL, validatedData.email);
         await quickStackService.createOrUpdateCertIssuer(validatedData.email);
 
         try {
-            await paramService.getString(ParamService.PUBLIC_IPV4_ADDRESS, await ipAddressFinderAdapter.getPublicIpOfServer());
+            await paramService.getOrCreate(ParamService.PUBLIC_IPV4_ADDRESS, await ipAddressFinderAdapter.getPublicIpOfServer());
         } catch (e) {
             // ignore
             console.error('Failes to evaluate public ip address', e);

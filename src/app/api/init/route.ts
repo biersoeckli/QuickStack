@@ -24,15 +24,22 @@ export async function GET(request: Request) {
         await buildPodLogWatchService.startWatch();
         await deploymentEventWatchService.startWatch();
 
-        const instanceId = await paramService.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID());
+        const [instanceId, registryLocation] = await Promise.all([
+            paramService.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID()),
+            paramService.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false'),
+            paramService.getOrCreate(ParamService.USE_CANARY_CHANNEL, 'false'),
+            paramService.getOrCreate(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
+            paramService.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
+            paramService.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS)),
+            paramService.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false'),
+        ]);
 
         // Always (re)deploy the registry on startup so storage settings and image version are never stale.
-        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
-        const isLocalRegistryStorage = registryLocation === Constants.INTERNAL_REGISTRY_LOCATION;
-        if (isLocalRegistryStorage || await s3TargetService.existsById(registryLocation!)) {
-            await registryService.deployRegistry(registryLocation!, true);
+        const isLocalRegistryStorage = registryLocation.value === Constants.INTERNAL_REGISTRY_LOCATION;
+        if (isLocalRegistryStorage || await s3TargetService.existsById(registryLocation.value)) {
+            await registryService.deployRegistry(registryLocation.value, true);
         } else {
-            console.warn(`Skipping registry deployment because S3 target ${registryLocation} no longer exists.`);
+            console.warn(`Skipping registry deployment because S3 target ${registryLocation.value} no longer exists.`);
         }
 
         console.log('Initialized services successfully via init route for instanceId:', instanceId);

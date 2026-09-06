@@ -128,8 +128,8 @@ class LonghornAddonService extends BaseClusterAddon implements ClusterAddon {
     }
 
     private async getCatalog() {
-        const useCanary = (await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false)) ?? false;
-        return await qsVersionInfoAdapter.getLonghornReleaseCatalog(useCanary);
+        const useCanary = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL);
+        return await qsVersionInfoAdapter.getLonghornReleaseCatalog(!!useCanary);
     }
 
     private toAddonRelease(release: LonghornReleaseInfo): AddonRelease {
