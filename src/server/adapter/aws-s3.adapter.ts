@@ -2,15 +2,18 @@ import { S3Client } from "@aws-sdk/client-s3";
 
 import { S3Target } from "@prisma/client";
 
-export type S3ClientTarget = Pick<S3Target, 'region' | 'accessKeyId' | 'secretKey' | 'endpoint' | 'useSsl' | 'forcePathStyle'>;
+export type S3ClientTarget = Pick<S3Target, 'region' | 'accessKeyId' | 'secretKey' | 'endpoint' | 'forcePathStyle'>;
 
 class AwsS3Adapter {
 
-    getEndpointUrl(endpoint: string, useSsl: boolean) {
-        const host = /^https?:\/\//i.test(endpoint)
-            ? endpoint.replace(/^https?:\/\//i, '')
-            : endpoint;
-        return `${useSsl ? 'https' : 'http'}://${host}`;
+    getEndpointUrl(endpoint: string) {
+        return /^https?:\/\//i.test(endpoint)
+            ? endpoint
+            : `https://${endpoint}`;
+    }
+
+    isSecureEndpoint(endpoint: string) {
+        return new URL(this.getEndpointUrl(endpoint)).protocol === 'https:';
     }
 
     getS3Client(s3Target: S3ClientTarget) {
@@ -20,7 +23,7 @@ class AwsS3Adapter {
                 accessKeyId: s3Target.accessKeyId,
                 secretAccessKey: s3Target.secretKey,
             },
-            endpoint: this.getEndpointUrl(s3Target.endpoint, s3Target.useSsl),
+            endpoint: this.getEndpointUrl(s3Target.endpoint),
             forcePathStyle: s3Target.forcePathStyle,
         });
     }

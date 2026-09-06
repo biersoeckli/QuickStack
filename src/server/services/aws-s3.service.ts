@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, type _Object } from "@aws-sdk/client-s3";
 import { S3Target } from "@prisma/client";
 import s3Adapter from "../adapter/aws-s3.adapter";
 import { createReadStream } from "fs";
@@ -21,11 +21,19 @@ export class S3Service {
 
     async listFiles(s3Target: S3Target) {
         const client = s3Adapter.getS3Client(s3Target);
-        const command = new ListObjectsV2Command({
-            Bucket: s3Target.bucketName,
-        });
-        const output = await client.send(command);
-        return output.Contents ?? [];
+        const fileKeys: _Object[] = [];
+        let continuationToken: string | undefined;
+
+        do {
+            const output = await client.send(new ListObjectsV2Command({
+                Bucket: s3Target.bucketName,
+                ContinuationToken: continuationToken,
+            }));
+            fileKeys.push(...(output.Contents ?? []));
+            continuationToken = output.IsTruncated ? output.NextContinuationToken : undefined;
+        } while (continuationToken);
+
+        return fileKeys;
     }
 
     async deleteFile(s3Target: S3Target, fileName: string) {

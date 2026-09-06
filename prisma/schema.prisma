@@ -579,7 +579,6 @@ model S3Target {
   region        String
   accessKeyId    String
   secretKey      String
-  useSsl         Boolean  @default(true) // use HTTPS (registry storage `secure`, S3 client scheme)
   v4Auth         Boolean  @default(true) // use AWS Signature Version 4 (registry storage `v4auth`)
   forcePathStyle Boolean  @default(false) // use path-style S3 addressing (registry storage `forcepathstyle`)
   volumeBackups  VolumeBackup[]

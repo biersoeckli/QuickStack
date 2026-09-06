@@ -13,9 +13,8 @@ export const saveS3Target = async (prevState: any, inputData: S3TargetEditModel)
     saveFormAction(inputData, s3TargetEditZodModel, async (validatedData) => {
         await getAdminUserSession();
 
-        const url = new URL(s3Adapter.getEndpointUrl(validatedData.endpoint, validatedData.useSsl));
+        const url = new URL(s3Adapter.getEndpointUrl(validatedData.endpoint));
         validatedData.endpoint = url.origin;
-
         if (!await s3Service.testConnection(validatedData as S3Target)) {
             throw new ServiceException('Could not connect to S3 Target, please check your credentials and try again');
         }

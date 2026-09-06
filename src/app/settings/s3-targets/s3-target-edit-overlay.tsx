@@ -25,7 +25,7 @@ import { saveS3Target } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
-const NEW_S3_TARGET_DEFAULT_VALUES = { useSsl: true }
+const NEW_S3_TARGET_DEFAULT_VALUES = { v4Auth: true }
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
 
@@ -160,9 +160,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
                     />
 
                     <p className="text-sm font-medium pt-2">Advanced Options</p>
-                   
 
-                    <CheckboxFormField form={form} name="useSsl" label="Use HTTPS / SSL (secure connection)" />
                     <CheckboxFormField form={form} name="v4Auth" label="Use AWS Signature Version 4 (v4auth)" />
                     <CheckboxFormField form={form} name="forcePathStyle" label="Force path-style addressing (forcepathstyle)" />
 

@@ -4,16 +4,21 @@ import s3Adapter from './aws-s3.adapter';
 describe('AwsS3Adapter', () => {
 
     describe('getEndpointUrl', () => {
-        it('adds https scheme when useSsl is true and endpoint has no scheme', () => {
-            expect(s3Adapter.getEndpointUrl('nbg1.your-objectstorage.com', true)).toBe('https://nbg1.your-objectstorage.com');
+        it('adds https scheme when endpoint has no scheme', () => {
+            expect(s3Adapter.getEndpointUrl('nbg1.your-objectstorage.com')).toBe('https://nbg1.your-objectstorage.com');
         });
 
-        it('keeps host and switches to http when useSsl is false', () => {
-            expect(s3Adapter.getEndpointUrl('https://nbg1.your-objectstorage.com', false)).toBe('http://nbg1.your-objectstorage.com');
+        it('preserves an explicit http scheme', () => {
+            expect(s3Adapter.getEndpointUrl('http://minio.local:9000')).toBe('http://minio.local:9000');
         });
 
-        it('keeps host and scheme from endpoint when useSsl is true', () => {
-            expect(s3Adapter.getEndpointUrl('http://minio.local:9000', true)).toBe('https://minio.local:9000');
+        it('preserves an explicit https scheme', () => {
+            expect(s3Adapter.getEndpointUrl('https://nbg1.your-objectstorage.com')).toBe('https://nbg1.your-objectstorage.com');
+        });
+
+        it('detects whether the normalized endpoint is secure', () => {
+            expect(s3Adapter.isSecureEndpoint('nbg1.your-objectstorage.com')).toBe(true);
+            expect(s3Adapter.isSecureEndpoint('http://minio.local:9000')).toBe(false);
         });
     });
 
@@ -23,7 +28,6 @@ describe('AwsS3Adapter', () => {
             accessKeyId: 'access-key',
             secretKey: 'secret-key',
             endpoint: 'nbg1.your-objectstorage.com',
-            useSsl: true,
             forcePathStyle: false,
         };
 

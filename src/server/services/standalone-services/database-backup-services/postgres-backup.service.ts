@@ -29,7 +29,7 @@ class PostgresBackupService {
         console.log(`PostgreSQL Database: ${dbCredentials.databaseName}`);
         console.log(`S3 Key: ${s3Key}`);
 
-        const endpoint = s3Adapter.getEndpointUrl(backupVolume.target.endpoint, backupVolume.target.useSsl);
+        const endpoint = s3Adapter.getEndpointUrl(backupVolume.target.endpoint);
         console.log(`S3 Endpoint: ${endpoint}`);
 
         const imageTag = process.env.QS_VERSION?.includes('canary') || process.env.NODE_ENV !== 'production' ? 'canary' : 'latest';

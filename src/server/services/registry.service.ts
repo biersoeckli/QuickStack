@@ -269,12 +269,12 @@ class RegistryService {
     secretkey: ${s3Target.secretKey}
     region: ${s3Target.region}
     bucket: ${s3Target.bucketName}
-    secure: ${s3Target.useSsl}
+    secure: ${s3Adapter.isSecureEndpoint(s3Target.endpoint)}
     v4auth: ${s3Target.v4Auth}
     loglevel: debug`;
             if (s3Target.endpoint) {
                 storageS3provider += `
-    regionendpoint: ${s3Adapter.getEndpointUrl(s3Target.endpoint, s3Target.useSsl)}
+    regionendpoint: ${s3Adapter.getEndpointUrl(s3Target.endpoint)}
     forcepathstyle: ${s3Target.forcePathStyle}`;
             }
             storageProvider = storageS3provider;
