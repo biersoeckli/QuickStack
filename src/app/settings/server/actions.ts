@@ -35,6 +35,7 @@ import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
 import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { randomUUID } from "crypto";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
   saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
@@ -215,9 +216,8 @@ export const runInitRoute = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
 
-    if (!globalThis.quickStackInitKey) {
-      throw new ServiceException('The init route is unavailable in this server process.');
-    }
+    globalThis.quickStackInitKey = randomUUID();
+    console.log('Regenerated init key successfully.');
 
     const port = process.env.PORT ?? '3000';
     const response = await fetch(`http://localhost:${port}/api/init?key=${encodeURIComponent(globalThis.quickStackInitKey)}`, {

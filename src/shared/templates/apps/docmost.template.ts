@@ -4,6 +4,7 @@ import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate } from "../databases/redis.template";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppTemplateUtils } from "@/server/utils/app-template.utils";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const docmostAppTemplate: AppTemplateModel = {
     name: "Docmost",
@@ -93,6 +94,8 @@ ${createdDocmostApp.envVars.split('\n').filter(line =>
         !line.startsWith('DATABASE_URL=') &&
         !line.startsWith('REDIS_URL=')
     ).join('\n')}`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdPostgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdRedisApp, 6379);
 
     return [createdPostgresApp, createdRedisApp, createdDocmostApp];
 };

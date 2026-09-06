@@ -4,6 +4,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate, postCreateRedisAppTemplate } from "../databases/redis.template";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const litellmAppTemplate: AppTemplateModel = {
     name: "LiteLLM",
@@ -110,6 +111,8 @@ ${createdLiteLLMApp.envVars.split('\n').filter(line =>
         !line.startsWith('REDIS_PORT=') &&
         !line.startsWith('REDIS_PASSWORD=')
     ).join('\n')}`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdPostgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdRedisApp, 6379);
 
     return [createdPostgresApp, createdRedisApp, createdLiteLLMApp];
 };

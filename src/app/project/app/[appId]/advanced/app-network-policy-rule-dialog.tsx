@@ -20,13 +20,16 @@ import { saveAppNetworkPolicyRule } from './actions';
 type Direction = 'INGRESS' | 'EGRESS';
 type Project = { id: string; name: string };
 type SelectableTarget = { id: string; name: string; type: 'APP' | 'AGENT'; project: Project };
+const appNetworkPolicyRuleFormZodModel = appNetworkPolicyRuleEditZodModel.extend({
+    projectId: z.string().optional(),
+});
 
-export default function AppNetworkPolicyRuleDialog({ appId, direction, targets }: { appId: string; direction: Direction; targets: SelectableTarget[] }) {
+export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, currentProject }: { appId: string; direction: Direction; targets: SelectableTarget[]; currentProject: Project }) {
     const { closeDialog } = useDialogContext();
     const ingress = direction === 'INGRESS';
-    const form = useForm<z.input<typeof appNetworkPolicyRuleEditZodModel>, unknown, z.output<typeof appNetworkPolicyRuleEditZodModel>>({
-        resolver: zodResolver(appNetworkPolicyRuleEditZodModel),
-        defaultValues: { type: direction, targetType: 'APP', targetId: '', port: '', protocol: 'TCP' },
+    const form = useForm<z.input<typeof appNetworkPolicyRuleFormZodModel>, unknown, z.output<typeof appNetworkPolicyRuleFormZodModel>>({
+        resolver: zodResolver(appNetworkPolicyRuleFormZodModel),
+        defaultValues: { type: direction, projectId: currentProject.id, targetType: 'APP', targetId: '', port: '', protocol: 'TCP' },
     });
     const [state, formAction] = useActionState(
         (state: ServerActionResult<any, any>, payload: AppNetworkPolicyRuleEditModel) =>
@@ -40,8 +43,15 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets }
             toast.success('Rule saved.');
             closeDialog();
         }
-        FormUtils.mapValidationErrorsToForm<typeof appNetworkPolicyRuleEditZodModel>(state, form);
+        FormUtils.mapValidationErrorsToForm<typeof appNetworkPolicyRuleFormZodModel>(state, form);
     }, [closeDialog, form, state]);
+
+    const projects = Array.from(new Map([
+        [currentProject.id, currentProject],
+        ...targets.map(target => [target.project.id, target.project] as const),
+    ]).values());
+    const selectedProjectId = form.watch('projectId') ?? '';
+    const targetsForSelectedProject = targets.filter(target => target.project.id === selectedProjectId);
 
     return <>
         <DialogHeader>
@@ -52,17 +62,35 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets }
             <form action={() => form.handleSubmit(data => formAction(data))()} className="space-y-5 py-6">
                 <FormField
                     control={form.control}
+                    name="projectId"
+                    render={({ field }) => <FormItem>
+                        <FormLabel>Project</FormLabel>
+                        <Select value={field.value} onValueChange={(projectId) => {
+                            field.onChange(projectId);
+                            form.setValue('targetId', '');
+                            form.setValue('targetType', 'APP');
+                        }}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>}
+                />
+                <FormField
+                    control={form.control}
                     name="targetId"
                     render={({ field }) => <FormItem>
                         <FormLabel>{ingress ? 'Source' : 'Target'}</FormLabel>
-                        <Select value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
+                        <Select disabled={!selectedProjectId} value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
                             const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
                             form.setValue('targetType', targetType);
                             field.onChange(targetId);
                         }}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select target" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={selectedProjectId ? 'Select app or agent sandbox' : 'Select project first'} /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {targets.map(target => <SelectItem key={`${target.type}:${target.id}`} value={`${target.type}:${target.id}`}>{target.project.name} / {target.name} ({target.type === 'APP' ? 'App' : 'Agent sandbox'})</SelectItem>)}
+                                {targetsForSelectedProject.map(target => <SelectItem key={`${target.type}:${target.id}`} value={`${target.type}:${target.id}`}>{target.name} ({target.type === 'APP' ? 'App' : 'Agent sandbox'})</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <FormMessage />

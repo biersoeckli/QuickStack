@@ -107,7 +107,7 @@ export default function QuickStackMaintenanceSettings({
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({
                         title: 'Initialize QuickStack Services',
-                        description: 'This runs the protected QuickStack init route and restarts its background watches. Continue?',
+                        description: 'This runs the QuickStack init tasks, code migrations and restarts its background watches. Continue?',
                         okButton: 'Initialize Services'
                     })) {
                         Toast.fromAction(() => runInitRoute());

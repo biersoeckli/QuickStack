@@ -2,6 +2,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
@@ -110,6 +111,7 @@ export const postCreateOpenwebuiAppTemplate = async (createdApps: AppExtendedMod
     const ollamaAppInternalHostname = KubeObjectNameUtils.toServiceName(createdOllamaApp.id);
 
     createdWebuiApp.envVars += `OLLAMA_BASE_URLS=http://${ollamaAppInternalHostname}:11434`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdWebuiApp, createdOllamaApp, 11434);
 
     return [createdOllamaApp, createdWebuiApp]
 };

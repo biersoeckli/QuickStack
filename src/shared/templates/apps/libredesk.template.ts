@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate } from "../databases/redis.template";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const libredeskAppTemplate: AppTemplateModel = {
     name: "Libredesk",
@@ -220,5 +221,7 @@ evaluation_interval = "5m"`;
     const systemUserPassword = AppTemplateUtils.generateStrongPasswort(52);
     libredeskApp.envVars += `LIBREDESK_SYSTEM_USER_PASSWORD=${systemUserPassword}
 `;
+    NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, postgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, redisApp, 6379);
     return [postgresApp, redisApp, libredeskApp];
 };
