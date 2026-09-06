@@ -43,7 +43,7 @@ describe('RailpackBuildJobBuilder', () => {
             'dockerfile=/workspace/plan',
         ]));
         expect(buildContainer.args).toEqual(expect.arrayContaining([
-            expect.stringContaining('name=registry-svc.registry-and-build.svc.cluster.local:5000/app-1:latest,registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123'),
+            expect.stringContaining('"name=registry-svc.registry-and-build.svc.cluster.local:5000/app-1:latest,registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123"'),
         ]));
 
         const prepareContainer = initContainers.find((container) => container.name === 'railpack-prepare-init')!;

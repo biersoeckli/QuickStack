@@ -34,7 +34,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `source=${RAILPACK_FRONTEND_IMAGE}`,
             "--output",
-            `type=image,name=${imageNames},push=true,registry.insecure=true`
+            `type=image,"name=${imageNames}",push=true,registry.insecure=true`
         ];
 
         return {

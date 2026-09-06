@@ -22,7 +22,7 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import appGitSshKeyService from "./app-git-ssh-key.service";
 import agentGitSshKeyService from "./agent-git-ssh-key.service";
-import { shortGitHash } from "@/shared/utils/git-hash.utils";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 type BuildWorkload = AppExtendedModel | AgentExtendedModel;
 
@@ -81,7 +81,7 @@ class BuildService {
 
         if (!forceBuild && latestSuccessfulBuild?.gitCommit && latestRemoteGitHash &&
             latestSuccessfulBuild.gitCommit === latestRemoteGitHash) {
-            const imageTag = shortGitHash(latestRemoteGitHash) ?? 'latest';
+            const imageTag = GitHashUtils.shortGitHash(latestRemoteGitHash) ?? 'latest';
             if (await registryService.doesImageExist(workload.id, imageTag)) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
                 return [latestSuccessfulBuild.name, latestRemoteGitHash, latestRemoteGitCommitMessage, true];

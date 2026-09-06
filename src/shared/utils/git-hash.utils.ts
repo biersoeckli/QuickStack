@@ -1,8 +1,10 @@
-const GIT_COMMIT_TAG_LENGTH = 12;
+const GIT_COMMIT_TAG_LENGTH = 7;
 
-export function shortGitHash(hash?: string | null): string | undefined {
-    if (!hash) {
-        return undefined;
+export class GitHashUtils {
+    static shortGitHash(hash?: string | null): string | undefined {
+        if (!hash) {
+            return undefined;
+        }
+        return hash.slice(0, GIT_COMMIT_TAG_LENGTH);
     }
-    return hash.slice(0, GIT_COMMIT_TAG_LENGTH);
 }

@@ -31,7 +31,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `filename=${contextPaths.filePath}`,
             "--output",
-            `type=image,name=${imageNames},push=true,registry.insecure=true`
+            `type=image,"name=${imageNames}",push=true,registry.insecure=true`
         ];
 
         return {

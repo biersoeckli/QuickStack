@@ -1,11 +1,11 @@
 import React from 'react';
 import { Code } from './code';
+import { GitHashUtils } from '@/shared/utils/git-hash.utils';
 
 export default function ShortCommitHash({ children }: { children?: string }) {
-    const shortHash = children ? children.slice(0, 7) : '';
+    const shortHash = GitHashUtils.shortGitHash(children) ?? '';
     if (!shortHash) {
         return <></>;
     }
     return (<Code copieableValue={children}>{shortHash}</Code>);
 };
-

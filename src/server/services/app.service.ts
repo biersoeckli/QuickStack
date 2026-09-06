@@ -17,7 +17,7 @@ import networkPolicyService from "./network-policy.service";
 import appNetworkPolicyService from "./app-network-policy.service";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
-import { shortGitHash } from "@/shared/utils/git-hash.utils";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 class AppService {
 
@@ -79,7 +79,7 @@ class AppService {
  Target:       ${gitCommit}
 ----------------------------------------------`, false);
 
-            const tag = shortGitHash(gitCommit);
+            const tag = GitHashUtils.shortGitHash(gitCommit);
             if (tag && await registryService.doesImageExist(app.id, tag)) {
                 await dlog(deploymentId, `Image for commit ${gitCommit} already exists in the registry, redeploying it.`);
                 await deploymentService.createDeployment(

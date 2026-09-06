@@ -22,7 +22,7 @@ import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { shortGitHash } from "@/shared/utils/git-hash.utils";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 class DeploymentService {
 
@@ -153,7 +153,7 @@ class DeploymentService {
                         containers: [
                             {
                                 name: app.id,
-                                image: (buildJobName || gitCommitHash) ? registryService.createContainerRegistryUrlForAppId(app.id, shortGitHash(gitCommitHash)) : app.containerImageSource as string,
+                                image: (buildJobName || gitCommitHash) ? registryService.createContainerRegistryUrlForAppId(app.id, GitHashUtils.shortGitHash(gitCommitHash)) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
                                 ...(app.containerCommand ? { command: ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),

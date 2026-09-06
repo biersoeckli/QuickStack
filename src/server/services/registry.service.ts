@@ -9,7 +9,7 @@ import s3TargetService from "./s3-target.service";
 import clusterService from "./cluster.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import s3Adapter from "../adapter/aws-s3.adapter";
-import { shortGitHash } from "@/shared/utils/git-hash.utils";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 const REGISTRY_NODE_PORT = 30100;
 const REGISTRY_CONTAINER_PORT = 5000;
@@ -75,7 +75,7 @@ class RegistryService {
 
     createInternalContainerRegistryImageNamesForApp(appId: string, commitHash?: string | null) {
         const latest = this.createInternalContainerRegistryUrlForAppId(appId);
-        const commitTag = shortGitHash(commitHash);
+        const commitTag = GitHashUtils.shortGitHash(commitHash);
         if (!latest || !commitTag) {
             return latest;
         }

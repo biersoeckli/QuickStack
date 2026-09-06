@@ -13,6 +13,10 @@ import DeploymentStatusBadge from "./deployment-status-badge";
 import { BuildLogsDialog } from "./build-logs-overlay";
 import ShortCommitHash from "@/components/custom/short-commit-hash";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { RotateCcw } from "lucide-react";
+import { DotsVerticalIcon } from "@radix-ui/react-icons";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 export default function BuildsTab({
     app,
@@ -58,7 +62,7 @@ export default function BuildsTab({
     const rollbackClick = async (item: DeploymentInfoModel) => {
         const confirm = await openDialog({
             title: "Rollback Deployment",
-            description: `Roll back to git commit ${item.gitCommit?.slice(0, 7)}? The App will be redeployed with the code from this commit.`,
+            description: `Roll back to git commit ${GitHashUtils.shortGitHash(item.gitCommit)}? The App will be redeployed with the code from this commit.`,
             okButton: "Rollback"
         });
         if (confirm) {
@@ -115,8 +119,22 @@ export default function BuildsTab({
                                 <div className="flex gap-4">
                                     <div className="flex-1"></div>
                                     {item.deploymentId && <Button variant="secondary" onClick={() => setSelectedDeploymentForLogs(item)}>Show Logs</Button>}
-                                    {role === RolePermissionEnum.READWRITE && item.gitCommit && <Button variant="outline" onClick={() => rollbackClick(item)}>Rollback</Button>}
                                     {role === RolePermissionEnum.READWRITE && item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
+                                    {role === RolePermissionEnum.READWRITE && item.gitCommit && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline">
+                                                    <DotsVerticalIcon></DotsVerticalIcon>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => rollbackClick(item)}>
+                                                    <RotateCcw />
+                                                    Rollback to this deployment
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
                             </>
                         }}
