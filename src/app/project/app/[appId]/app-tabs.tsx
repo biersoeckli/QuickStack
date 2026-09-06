@@ -13,7 +13,6 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import BuildsTab from "./overview/deployments";
 import Logs from "./overview/logs";
 import MonitoringTab from "./overview/monitoring-app";
-import InternalHostnames from "./domains/ports-and-internal-hostnames";
 import NodePortsCard from "./domains/node-ports";
 import FileMountsCard from "@/components/custom/file-mounts-card";
 import WebhookDeploymentInfo from "./overview/webhook-deployment";
@@ -94,7 +93,6 @@ export default function AppTabs({
             </TabsContent>
             <TabsContent value="domains" className="space-y-4">
                 <DomainsCard readonly={readonly} domains={app.appDomains} workloadId={app.id} workloadType={'app'} />
-                <InternalHostnames readonly={readonly} app={app} />
                 <NodePortsCard readonly={readonly} app={app} />
                 <NetworkPolicy readonly={readonly} app={app} />
             </TabsContent>

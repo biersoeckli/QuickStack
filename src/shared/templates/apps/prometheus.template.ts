@@ -40,8 +40,5 @@ export const prometheusAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 9090,
-        }]
     }],
 };

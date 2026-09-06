@@ -41,10 +41,5 @@ export const jenkinsAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }, {
-            port: 50000,
-        }]
     }],
 };

@@ -42,8 +42,5 @@ DB_FILEPATH=/wiki/data/database.sqlite
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

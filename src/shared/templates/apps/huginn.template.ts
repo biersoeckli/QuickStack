@@ -55,8 +55,5 @@ export const huginnAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

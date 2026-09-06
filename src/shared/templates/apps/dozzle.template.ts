@@ -34,8 +34,5 @@ export const dozzleAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

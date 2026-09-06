@@ -55,8 +55,5 @@ export const nextcloudAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

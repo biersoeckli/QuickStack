@@ -32,7 +32,7 @@ class AppTemplateService {
                         await appService.save({
                             id: createdAppId,
                             envVars: extendedApp.envVars
-                        }, false, tx);
+                        }, tx);
                         extendedApp = await appService.getExtendedById(createdAppId, false, tx);
                     }
                     if (extendedApp.appType !== 'APP') {
@@ -68,7 +68,7 @@ class AppTemplateService {
         const createdApp = await appService.save({
             ...mappedApp,
             projectId
-        }, false, tx);
+        }, tx);
 
         for (const domain of template.appDomains) {
             await appService.saveDomain({
@@ -87,13 +87,6 @@ class AppTemplateService {
         for (const fileMount of template.appFileMounts) {
             await appService.saveFileMount({
                 ...fileMount,
-                appId: createdApp.id
-            }, tx);
-        }
-
-        for (const port of template.appPorts) {
-            await appService.savePort({
-                ...port,
                 appId: createdApp.id
             }, tx);
         }

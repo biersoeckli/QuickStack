@@ -41,8 +41,5 @@ export const noderedAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 1880,
-        }]
     }],
 };

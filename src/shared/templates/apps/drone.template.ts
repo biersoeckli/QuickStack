@@ -55,10 +55,5 @@ export const droneAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }, {
-            port: 443,
-        }]
     }],
 };

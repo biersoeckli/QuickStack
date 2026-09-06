@@ -52,9 +52,6 @@ export function getChiselAppTemplate(config?: {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }],
     };
 }
 

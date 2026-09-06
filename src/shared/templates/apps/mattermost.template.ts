@@ -48,8 +48,5 @@ MM_SQLSETTINGS_DRIVERNAME=postgres
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8065,
-        }]
     }],
 };

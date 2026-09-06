@@ -49,8 +49,5 @@ WEBSOCKET_ENABLED=true
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

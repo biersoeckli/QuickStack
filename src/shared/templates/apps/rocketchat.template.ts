@@ -49,8 +49,5 @@ DEPLOY_METHOD=docker
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

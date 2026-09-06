@@ -24,6 +24,7 @@ export class ParamService {
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
+    static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
 
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({

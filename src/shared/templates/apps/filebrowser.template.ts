@@ -46,8 +46,5 @@ export const filebrowserAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

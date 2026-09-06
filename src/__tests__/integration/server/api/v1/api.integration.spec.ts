@@ -141,6 +141,20 @@ describe('REST API v1 integration', () => {
 
     }, 420_000);
 
+    it('rejects deprecated AppPorts in an App full-schema write', async () => {
+        const apiKey = await createAdminApiKey();
+        const { createdProject } = await createApiProject(apiKey);
+        const payload = {
+            ...createGitAppPayload(undefined, createdProject.id, 'API App With Deprecated Port'),
+            appPorts: [{ port: 3000 }],
+        };
+
+        await expectApiProblem(
+            await apiFetch('/api/v1/apps', apiKey, { method: 'POST', body: payload }),
+            422,
+        );
+    }, 420_000);
+
     it('create, read, update and delete agent through the api', async () => {
         const apiKey = await createAdminApiKey();
 
@@ -442,7 +456,6 @@ function createGitAppPayload(id: string | undefined, projectId: string, name: st
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,
         appDomains: [],
-        appPorts: [{ port: 3000 }],
         appNodePorts: [],
         appFileMounts: [],
         appVolumes: [],

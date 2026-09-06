@@ -48,9 +48,6 @@ export const duplicatiAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8200,
-        }]
     }],
 };
 

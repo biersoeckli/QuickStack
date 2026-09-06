@@ -57,8 +57,5 @@ PHOTOPRISM_DATABASE_DRIVER=sqlite
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 2342,
-        }]
     }],
 };

@@ -43,10 +43,5 @@ GITEA__database__DB_TYPE=sqlite3
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }, {
-            port: 22,
-        }]
     }],
 };

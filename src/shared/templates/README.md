@@ -25,8 +25,7 @@ export const myAppTemplate: AppTemplateModel = {
             appModel: { /* app configuration */ },
             appDomains: [ /* domain configuration */ ],
             appVolumes: [ /* volume configuration */ ],
-            appFileMounts: [ /* file mounts */ ],
-            appPorts: [ /* port configuration */ ]
+            appFileMounts: [ /* file mounts */ ]
         }
     ]
 };
@@ -140,17 +139,6 @@ File mount configurations (usually empty unless specific files need to be mounte
 appFileMounts: []
 ```
 
-#### `appPorts` (array)
-Port configurations:
-
-```typescript
-appPorts: [
-    {
-        port: 5432,                           // Container port to expose
-    }
-]
-```
-
 ## Multi-Service Templates
 
 When an application requires multiple services (e.g., Ollama + Open WebUI), define multiple objects in the `templates` array.
@@ -190,9 +178,6 @@ OLLAMA_ORIGINS=*`,
                 storageClassName: 'longhorn',
                 shareWithOtherApps: false,
             }],
-            appPorts: [{
-                port: 11434,
-            }]
         },
         {
             // Second service: Open WebUI frontend
@@ -228,9 +213,6 @@ OLLAMA_ORIGINS=*`,
                 storageClassName: 'longhorn',
                 shareWithOtherApps: false,
             }],
-            appPorts: [{
-                port: 8080,
-            }]
         }
     ]
 };
@@ -496,9 +478,6 @@ export const mydatabaseAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     }]
 };
 ```
@@ -549,9 +528,6 @@ export const myappAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }]
 };
 ```

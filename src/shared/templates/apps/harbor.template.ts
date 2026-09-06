@@ -47,8 +47,5 @@ export const harborAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

@@ -64,18 +64,20 @@ class NetworkPolicyService {
                 },
                 policyTypes: ["Ingress", "Egress"],
                 ingress: isExtended
-                    ? this.getExtendedIngressRules(app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts)
+                    ? this.getExtendedIngressRules(app.id, app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts)
                     : this.getIngressRules(ingressPolicy, app.appNodePorts, (app.appDomains?.length ?? 0) > 0),
                 egress: isExtended
-                    ? this.getExtendedEgressRules(app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
+                    ? this.getExtendedEgressRules(app.id, app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
                     : this.getEgressRules(egressPolicy)
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
     }
 
-    private getExtendedIngressRules(rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
+    private getExtendedIngressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
         const result: V1NetworkPolicyIngressRule[] = [];
+        // Traffic between replicas of the same App is always allowed on all ports.
+        result.push({ _from: [this.getSelfPeer(appId)] });
         const backupAndTools: V1NetworkPolicyPeer[] = [
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL } } },
@@ -89,11 +91,16 @@ class NetworkPolicyService {
         return [...result, ...this.getNodePortIngressRules(nodePorts)];
     }
 
-    private getExtendedEgressRules(rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
-        const result: V1NetworkPolicyEgressRule[] = [this.getDnsEgressRule()];
+    private getExtendedEgressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
+        // Traffic between replicas of the same App is always allowed on all ports.
+        const result: V1NetworkPolicyEgressRule[] = [{ to: [this.getSelfPeer(appId)] }, this.getDnsEgressRule()];
         if (allowInternetAccess) result.push(this.getInternetEgressRule());
         for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetEgressRule(rule));
         return result;
+    }
+
+    private getSelfPeer(appId: string): V1NetworkPolicyPeer {
+        return { podSelector: { matchLabels: { app: appId } } };
     }
 
     private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {

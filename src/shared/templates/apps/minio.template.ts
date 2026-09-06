@@ -56,10 +56,5 @@ export const minioAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 9000,
-        }, {
-            port: 9001,
-        }]
     }],
 };

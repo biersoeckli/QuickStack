@@ -56,8 +56,5 @@ FORCE_HTTPS=false
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

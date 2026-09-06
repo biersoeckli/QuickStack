@@ -35,8 +35,5 @@ export const adminerAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

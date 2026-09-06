@@ -1,5 +1,7 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const wordpressAppTemplate: AppTemplateModel = {
     name: "WordPress",
@@ -57,9 +59,6 @@ MYSQL_USER=wordpress
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     },
     // WordPress Backend
     {
@@ -106,8 +105,17 @@ WORDPRESS_TABLE_PREFIX=wp_
 post_max_size = 100M
 `
         }],
-        appPorts: [{
-            port: 80,
-        }]
     }]
 }
+
+export const postCreateWordpressAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+    const mariadbApp = createdApps[0];
+    const wordpressApp = createdApps[1];
+
+    if (!mariadbApp || !wordpressApp) {
+        throw new Error('Created templates for MariaDB or WordPress not found.');
+    }
+
+    NetworkPolicyTemplateUtils.allowAppConnection(wordpressApp, mariadbApp, 3306);
+    return [mariadbApp, wordpressApp];
+};

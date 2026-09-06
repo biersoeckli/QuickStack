@@ -74,6 +74,14 @@ _Avoid_: ingress target app
 The permitted destination App of an extended egress rule.
 _Avoid_: egress source app
 
+**Configuration Migration**:
+A one-time transformation of persisted QuickStack configuration from one supported shape to another, guarded so it runs at most once across server restarts.
+_Avoid_: migration when a **Database Migration** is meant, data migration
+
+**Network Policy Mode Migration**:
+The **Configuration Migration** that replaces each App's active **Simple App Network Policy Configuration** with its equivalent **Extended App Network Policy Configuration**.
+_Avoid_: policy migration, extended upgrade
+
 **App Domain**:
 A configured domain that exposes an **App** through Traefik.
 _Avoid_: public app address, ingress rule
@@ -315,6 +323,8 @@ _Avoid_: manual initial port requirement
 - A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Node Ports**.
 - An **App** has exactly one active **App Network Policy Configuration**.
+- Traffic between replicas of the same **App** is always permitted and cannot be disabled.
+- A **Network Policy Mode Migration** replaces an App's active **Simple App Network Policy Configuration** with its equivalent **Extended App Network Policy Configuration**.
 - An **Extended App Network Policy Configuration** can have zero or more **App Network Policy Rules** for ingress and zero or more for egress.
 - An **App Domain** permits Traefik ingress to its App when Network Policies are active.
 - An extended ingress rule identifies an **App Network Policy Rule Source**; an extended egress rule identifies an **App Network Policy Rule Target**.
@@ -392,3 +402,5 @@ _Avoid_: manual initial port requirement
 - "deployment trigger endpoint" may refer to **Deployment Webhook** or REST deployment endpoints and must be named explicitly.
 - "API key management API" is not part of REST `/api/v1`; API key management is UI + Server Actions only.
 - "immutable app projectId on update" means the field must always be provided and must equal the existing **App Project Assignment**; it can never be changed or omitted.
+- "migration" may refer to a **Database Migration** (Prisma `migrate deploy`) or a **Configuration Migration** (startup data transformation); name the kind explicitly.
+- "all apps in the project" for a migrated App includes database-type Apps, Apps with network policies disabled, and Apps already in **Extended** mode; only the App itself is excluded.

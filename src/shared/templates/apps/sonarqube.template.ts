@@ -47,8 +47,5 @@ export const sonarqubeAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 9000,
-        }]
     }],
 };
