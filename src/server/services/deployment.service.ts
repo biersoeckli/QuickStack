@@ -23,6 +23,8 @@ import { z } from "zod";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { DeploymentSource } from "@/shared/model/deployment-source.model";
+import { RollbackAnnotationUtils } from "@/shared/utils/rollback-annotation.utils";
 
 class DeploymentService {
 
@@ -82,12 +84,9 @@ class DeploymentService {
     async createDeployment(
         deploymentId: string,
         app: AppExtendedModel,
-        buildJobName?: string,
-        gitCommitHash?: string,
-        gitCommitMessage?: string,
-        buildMethod?: AppBuildMethod,
-        isRollback?: boolean,
+        source?: DeploymentSource,
     ) {
+        const { buildJobName, gitCommitHash, gitCommitMessage, buildMethod, isRollback } = source ?? {};
         await this.validateDeployment(app);
 
         dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
@@ -146,7 +145,7 @@ class DeploymentService {
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
                             deploymentTimestamp: new Date().getTime() + "",
                             "kubernetes.io/change-cause": `Deployment ${new Date().toISOString()}`,
-                            ...(isRollback ? { [Constants.QS_ANNOTATION_ROLLBACK]: 'true' } : {}),
+                            ...RollbackAnnotationUtils.rollbackAnnotation(isRollback),
                         }
                     },
                     spec: {
@@ -397,7 +396,7 @@ class DeploymentService {
                 status: status,
                 deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!,
                 buildMethod: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
-                isRollback: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_ROLLBACK] === 'true',
+                isRollback: RollbackAnnotationUtils.isRollbackAnnotation(rs.spec?.template?.metadata?.annotations),
             }
         });
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);

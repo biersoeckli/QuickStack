@@ -10,6 +10,7 @@ import { dlog } from '../deployment-logs.service';
 import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
+import { RollbackAnnotationUtils } from '@/shared/utils/rollback-annotation.utils';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -76,7 +77,7 @@ class BuildWatchService {
         const buildJobName = job.metadata?.name;
         const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
         const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
-        const isRollback = job.metadata?.annotations?.[Constants.QS_ANNOTATION_ROLLBACK] === 'true';
+        const isRollback = RollbackAnnotationUtils.isRollbackAnnotation(job.metadata?.annotations);
 
         if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
@@ -93,15 +94,13 @@ class BuildWatchService {
                 await agentService.deployBuiltAgent(agentId!, deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
             } else {
                 const app = await appService.getExtendedById(appId!, false);
-                await deploymentService.createDeployment(
-                    deploymentId,
-                    app,
+                await deploymentService.createDeployment(deploymentId, app, {
                     buildJobName,
                     gitCommitHash,
                     gitCommitMessage,
-                    buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+                    buildMethod: buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
                     isRollback,
-                );
+                });
             }
         } catch (e) {
             console.error(`[BuildWatch] Error triggering deployment for ${workloadType} ${appId ?? agentId}:`, e);

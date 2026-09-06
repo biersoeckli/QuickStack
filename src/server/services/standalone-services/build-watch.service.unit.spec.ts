@@ -112,11 +112,13 @@ describe('BuildWatchService', () => {
         expect(deploymentService.createDeployment).toHaveBeenCalledWith(
             'deployment-1',
             expect.anything(),
-            'build-1',
-            'abc123',
-            'feat: test',
-            'RAILPACK',
-            true,
+            expect.objectContaining({
+                buildJobName: 'build-1',
+                gitCommitHash: 'abc123',
+                gitCommitMessage: 'feat: test',
+                buildMethod: 'RAILPACK',
+                isRollback: true,
+            }),
         );
         expect(appGitSshKeyService.deleteTemporaryBuildSecret).toHaveBeenCalledWith('git-ssh-build-1');
     });

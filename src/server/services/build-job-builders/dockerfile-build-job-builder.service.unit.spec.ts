@@ -19,11 +19,10 @@ describe('DockerfileBuildJobBuilder', () => {
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
             maxParallelBuilds: 2,
-            isRollback: true,
         });
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('DOCKERFILE');
-        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBeUndefined();
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
         expect(job.spec?.template?.spec?.initContainers?.map((container) => container.name)).toEqual([
             'build-queue-init',
@@ -55,6 +54,32 @@ describe('DockerfileBuildJobBuilder', () => {
             expect.stringContaining('"name=registry-svc.registry-and-build.svc.cluster.local:5000/app-1:latest,registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123"'),
         ]));
         expect(buildContainer.args).not.toContain('context=https://github.com/example/repo.git#refs/heads/main:./apps/web');
+    });
+
+    it('tags only the immutable commit tag when building a rollback', async () => {
+        const job = await dockerfileBuildJobBuilder.buildJobDefinition({
+            workload: {
+                id: 'app-1',
+                projectId: 'project-1',
+                gitUrl: 'https://github.com/example/repo.git',
+                gitBranch: 'main',
+                dockerfilePath: './Dockerfile',
+            } as any,
+            workloadType: 'app',
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'old commit',
+            queuedAt: '123',
+            maxParallelBuilds: 2,
+            isRollback: true,
+        });
+
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        expect(job.spec?.template?.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        const imageOutputArg = job.spec?.template?.spec?.containers[0]?.args?.find((arg) => arg.includes('type=image'));
+        expect(imageOutputArg).toContain('registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123');
+        expect(imageOutputArg).not.toContain(':latest');
     });
 
     it('adds an SSH key secret volume when provided', async () => {

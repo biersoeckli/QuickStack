@@ -18,14 +18,13 @@ describe('RailpackBuildJobBuilder', () => {
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
             maxParallelBuilds: 2,
-            isRollback: true,
         });
 
         const initContainers = job.spec?.template?.spec?.initContainers ?? [];
         const buildContainer = job.spec?.template?.spec?.containers[0]!;
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('RAILPACK');
-        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBeUndefined();
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
         expect(initContainers.map((container) => container.name)).toEqual([
             'build-queue-init',
@@ -51,5 +50,30 @@ describe('RailpackBuildJobBuilder', () => {
         const prepareContainer = initContainers.find((container) => container.name === 'railpack-prepare-init')!;
         expect(prepareContainer.env?.map((entry) => entry.name)).not.toContain('GIT_URL');
         expect(prepareContainer.args?.[0]).not.toContain('git clone');
+    });
+
+    it('tags only the immutable commit tag when building a rollback', async () => {
+        const job = await railpackBuildJobBuilder.buildJobDefinition({
+            workload: {
+                id: 'app-1',
+                projectId: 'project-1',
+                gitUrl: 'https://github.com/example/repo.git',
+                gitBranch: 'main',
+            } as any,
+            workloadType: 'app',
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'old commit',
+            queuedAt: '123',
+            maxParallelBuilds: 2,
+            isRollback: true,
+        });
+
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        expect(job.spec?.template?.metadata?.annotations?.['qs-is-rollback']).toBe('true');
+        const imageOutputArg = job.spec?.template?.spec?.containers[0]?.args?.find((arg) => arg.includes('type=image'));
+        expect(imageOutputArg).toContain('registry-svc.registry-and-build.svc.cluster.local:5000/app-1:abc123');
+        expect(imageOutputArg).not.toContain(':latest');
     });
 });

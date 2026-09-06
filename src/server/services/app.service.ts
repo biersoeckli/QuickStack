@@ -38,14 +38,12 @@ class AppService {
                 const [buildJobName, gitCommitHash, gitCommitMessage, shouldDeployImmediately] = await buildService.buildApp(deploymentId, app, forceBuild);
                 if (shouldDeployImmediately) {
                     dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-                    await deploymentService.createDeployment(
-                        deploymentId,
-                        app,
+                    await deploymentService.createDeployment(deploymentId, app, {
                         buildJobName,
                         gitCommitHash,
                         gitCommitMessage,
-                        app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK',
-                    );
+                        buildMethod: app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK',
+                    });
                 }
                 // Otherwise the build-watch service will trigger the deployment once the build job completes
             } else {
@@ -82,18 +80,19 @@ class AppService {
             const tag = GitHashUtils.shortGitHash(gitCommit);
             if (tag && await registryService.doesImageExist(app.id, tag)) {
                 await dlog(deploymentId, `Image for commit ${gitCommit} already exists in the registry, redeploying it.`);
-                await deploymentService.createDeployment(
-                    deploymentId,
-                    app,
-                    undefined,
-                    gitCommit,
-                    target.gitCommitMessage,
-                    target.buildMethod,
-                    true,
-                );
+                await deploymentService.createDeployment(deploymentId, app, {
+                    gitCommitHash: gitCommit,
+                    gitCommitMessage: target.gitCommitMessage,
+                    buildMethod: target.buildMethod,
+                    isRollback: true,
+                });
             } else {
                 await dlog(deploymentId, `Image for commit ${gitCommit} not found in the registry, starting a new build.`);
-                await buildService.buildAppAtCommit(deploymentId, app, gitCommit, target.gitCommitMessage, true);
+                await buildService.buildAppAtCommit(deploymentId, app, {
+                    gitCommitHash: gitCommit,
+                    gitCommitMessage: target.gitCommitMessage,
+                    isRollback: true,
+                });
             }
         });
         return deploymentId;

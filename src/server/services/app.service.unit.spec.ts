@@ -168,11 +168,12 @@ describe('app.service', () => {
         expect(deploymentService.createDeployment).toHaveBeenCalledWith(
             expect.any(String),
             expect.objectContaining({ id: 'demo-app' }),
-            undefined,
-            'abcdef1234567890',
-            'old commit',
-            'RAILPACK',
-            true,
+            expect.objectContaining({
+                gitCommitHash: 'abcdef1234567890',
+                gitCommitMessage: 'old commit',
+                buildMethod: 'RAILPACK',
+                isRollback: true,
+            }),
         );
         expect(buildService.buildAppAtCommit).not.toHaveBeenCalled();
     });
@@ -194,9 +195,11 @@ describe('app.service', () => {
         expect(buildService.buildAppAtCommit).toHaveBeenCalledWith(
             expect.any(String),
             expect.objectContaining({ id: 'demo-app' }),
-            'abcdef1234567890',
-            'old commit',
-            true,
+            expect.objectContaining({
+                gitCommitHash: 'abcdef1234567890',
+                gitCommitMessage: 'old commit',
+                isRollback: true,
+            }),
         );
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
     });

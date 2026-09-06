@@ -15,6 +15,7 @@ export class Constants {
     static readonly QS_ANNOTATION_GIT_COMMIT = 'qs-git-commit';
     static readonly QS_ANNOTATION_GIT_COMMIT_MESSAGE = 'qs-git-commit-message';
     static readonly QS_ANNOTATION_ROLLBACK = 'qs-is-rollback';
+    static readonly QS_ANNOTATION_VALUE_TRUE = 'true';
     static readonly QS_ANNOTATION_BUILD_QUEUED_AT = 'qs-build-queued-at';
     static readonly QS_ANNOTATION_BUILD_METHOD = 'qs-build-method';
     static readonly QS_ANNOTATION_GIT_SSH_SECRET = 'qs-git-ssh-secret';
