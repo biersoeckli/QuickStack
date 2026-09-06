@@ -63,17 +63,17 @@ export const saveBuildSettings = async (prevState: any, inputData: BuildSettings
     await paramService.save({ name: ParamService.MAX_PARALLEL_BUILDS, value: String(validatedData.maxParallelBuilds) });
   });
 
-export const getBuildSettings = async (revalidateParam = true): Promise<BuildSettingsModel> => {
+export const getBuildSettings = async (): Promise<BuildSettingsModel> => {
   await getAdminUserSession();
   const [memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, maxParallelBuilds] = await Promise.all([
-    paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT, undefined, revalidateParam),
-    paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION, undefined, revalidateParam),
-    paramService.getNumber(ParamService.BUILD_CPU_LIMIT, undefined, revalidateParam),
-    paramService.getNumber(ParamService.BUILD_CPU_RESERVATION, undefined, revalidateParam),
-    paramService.getString(ParamService.BUILD_NODE, undefined, revalidateParam),
-    paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS, Constants.DEFAULT_MAX_PARALLEL_BUILDS, revalidateParam),
+    paramService.getNumber(ParamService.BUILD_MEMORY_LIMIT),
+    paramService.getNumber(ParamService.BUILD_MEMORY_RESERVATION),
+    paramService.getNumber(ParamService.BUILD_CPU_LIMIT),
+    paramService.getNumber(ParamService.BUILD_CPU_RESERVATION),
+    paramService.getString(ParamService.BUILD_NODE),
+    paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS),
   ]);
-  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, maxParallelBuilds: maxParallelBuilds ?? Constants.DEFAULT_MAX_PARALLEL_BUILDS };
+  return { memoryLimit, memoryReservation, cpuLimit, cpuReservation, buildNode, maxParallelBuilds: maxParallelBuilds! };
 };
 
 export const setNodeStatus = async (nodeName: string, schedulable: boolean) =>
@@ -115,7 +115,7 @@ export const updateIngressSettings = async (prevState: any, inputData: QsIngress
       value: validatedData.disableNodePortAccess + ''
     });
 
-    const currentReleaseChannel = await paramService.getString(ParamService.USE_CANARY_CHANNEL, 'false');
+    const currentReleaseChannel = await paramService.getString(ParamService.USE_CANARY_CHANNEL);
 
     await quickStackService.createOrUpdateService(!validatedData.disableNodePortAccess);
     await quickStackService.createOrUpdateIngress(validatedData.serverUrl);
@@ -188,9 +188,9 @@ export const revalidateQuickStackVersionCache = async () =>
 export const updateQuickstack = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
-    const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL, false);
+    const useCaranyChannel = await paramService.getBoolean(ParamService.USE_CANARY_CHANNEL);
     // delay is needed to ensure that the response is sent before the backend restarts, otherwise an error is shown in the UI.
-    setTimeout(() => quickStackService.updateQuickStack(useCaranyChannel)
+    setTimeout(() => quickStackService.updateQuickStack(useCaranyChannel!)
       .catch(e => console.error('Error occurred while updating QuickStack', e)), 2000);
     return new SuccessActionResult(undefined, 'QuickStack will be updated, refresh the page in a few seconds.');
   });
@@ -198,7 +198,7 @@ export const updateQuickstack = async () =>
 export const updateRegistry = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
-    const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
+    const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION);
     await registryService.deployRegistry(registryLocation!, true);
     return new SuccessActionResult(undefined, 'Registry will be updated, this might take a few seconds.');
   });
@@ -277,7 +277,7 @@ export const listSystemBackups = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
 
-    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION);
 
     if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
       return new SuccessActionResult([], 'No backup location configured');
@@ -292,7 +292,7 @@ export const runSystemBackupNow = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
 
-    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION);
 
     if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
       throw new Error('System backup is not configured. Please select an S3 storage target first.');
@@ -342,7 +342,7 @@ export const downloadSystemBackup = async (backupKey: string) =>
   simpleAction(async () => {
     await getAdminUserSession();
 
-    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED);
+    const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION);
 
     if (systemBackupLocationId === Constants.QS_SYSTEM_BACKUP_DEACTIVATED || !systemBackupLocationId) {
       throw new Error('System backup is not configured. Please select an S3 storage target first.');

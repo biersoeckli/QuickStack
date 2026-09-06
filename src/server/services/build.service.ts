@@ -37,7 +37,7 @@ class BuildService {
 
     async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
-        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
+        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION);
         await registryService.deployRegistry(registryLocation!);
 
         const buildsForWorkload = await this.getBuildsForWorkload(workload.id);
@@ -141,7 +141,10 @@ class BuildService {
     }
 
     private async getMaxParallelBuilds(deploymentId: string): Promise<number> {
-        const configured = await paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS, Constants.DEFAULT_MAX_PARALLEL_BUILDS) ?? Constants.DEFAULT_MAX_PARALLEL_BUILDS;
+        const configured = await paramService.getNumber(ParamService.MAX_PARALLEL_BUILDS);
+        if (configured === undefined) {
+            throw new ServiceException('Build settings have not been initialized yet.');
+        }
         const maxParallelBuilds = Math.min(Constants.MAX_PARALLEL_BUILDS_LIMIT, Math.max(Constants.DEFAULT_MAX_PARALLEL_BUILDS, Math.floor(configured)));
         await dlog(deploymentId, `Max parallel builds: ${maxParallelBuilds}`);
         return maxParallelBuilds;
