@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, List, Waypoints } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Toast } from '@/frontend/utils/toast.utils';
@@ -13,6 +14,7 @@ import { getTargetsForAppNetworkPolicy, saveAppNetworkPolicySettings } from './a
 import { useDialog } from '@/frontend/states/zustand.states';
 import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
 import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
+import NetworkPolicyGraph from './network-policy-graph';
 
 type Project = { id: string; name: string; apps: { id: string; name: string }[]; agents: { id: string; name: string }[] };
 
@@ -20,6 +22,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
     const [enabled, setEnabled] = useState(app.useNetworkPolicy);
     const [internet, setInternet] = useState(app.appNetworkPolicy?.allowInternetAccess !== false);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [view, setView] = useState<'rules' | 'graph'>('rules');
     const { openDialog } = useDialog();
     const rules = app.appNetworkPolicy?.rules ?? [];
     const targets = projects.flatMap(project => [
@@ -58,10 +61,19 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
                 </CardContent>
             </Card>
 
-            {enabled && <div className="space-y-8">
-                <AppNetworkPolicyRuleSection direction="INGRESS" rules={rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} />
-                <AppNetworkPolicyRuleSection direction="EGRESS" rules={rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} internetAccess={internet} onInternetAccessChange={changeInternetAccess} networkPoliciesEnabled={enabled} />
-            </div>}
+            {enabled && <Tabs value={view} onValueChange={(value) => setView(value as 'rules' | 'graph')}>
+                <TabsList>
+                    <TabsTrigger value="rules"><List className="mr-2 h-4 w-4" />Rules</TabsTrigger>
+                    <TabsTrigger value="graph"><Waypoints className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
+                </TabsList>
+                <TabsContent value="rules" className="mt-5 space-y-8">
+                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} />
+                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} internetAccess={internet} onInternetAccessChange={changeInternetAccess} networkPoliciesEnabled={enabled} />
+                </TabsContent>
+                <TabsContent value="graph" className="mt-5">
+                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={rules} allowInternetAccess={internet} projects={projects} />
+                </TabsContent>
+            </Tabs>}
         </CardContent>
         {!readonly && enabled && <CardFooter className="flex items-center justify-between gap-4 border-t pt-6">
             <Button onClick={saveChanges}>Save changes</Button>
