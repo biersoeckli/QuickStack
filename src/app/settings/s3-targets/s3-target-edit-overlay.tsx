@@ -25,6 +25,7 @@ import { saveS3Target } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
+const NEW_S3_TARGET_DEFAULT_VALUES = { useSsl: true }
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
 
@@ -33,7 +34,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
 
   const form = useForm<z.input<typeof s3TargetEditZodModel>, unknown, z.output<typeof s3TargetEditZodModel>>({
     resolver: zodResolver(s3TargetEditZodModel),
-    defaultValues: target
+    defaultValues: target ?? NEW_S3_TARGET_DEFAULT_VALUES
   });
 
   const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
@@ -53,7 +54,7 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
   }, [form, state]);
 
   useEffect(() => {
-    form.reset(target);
+    form.reset(target ?? NEW_S3_TARGET_DEFAULT_VALUES);
   }, [form, target]);
 
   return (
