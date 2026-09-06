@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useCallback, useEffect, useState } from "react";
-import { deleteBuild, getDeploymentsAndBuildsForApp } from "./actions";
+import { deleteBuild, getDeploymentsAndBuildsForApp, rollbackToDeployment } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -13,6 +13,10 @@ import DeploymentStatusBadge from "./deployment-status-badge";
 import { BuildLogsDialog } from "./build-logs-overlay";
 import ShortCommitHash from "@/components/custom/short-commit-hash";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { RotateCcw } from "lucide-react";
+import { DotsVerticalIcon } from "@radix-ui/react-icons";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
 export default function BuildsTab({
     app,
@@ -55,6 +59,18 @@ export default function BuildsTab({
         }
     }
 
+    const rollbackClick = async (item: DeploymentInfoModel) => {
+        const confirm = await openDialog({
+            title: "Rollback Deployment",
+            description: `Roll back to git commit ${GitHashUtils.shortGitHash(item.gitCommit)}? The App will be redeployed with the code from this commit.`,
+            okButton: "Rollback"
+        });
+        if (confirm) {
+            await Toast.fromAction(() => rollbackToDeployment(app.id, item.deploymentId));
+            await updateBuilds();
+        }
+    }
+
     useEffect(() => {
         if (app.sourceType === 'container') {
             return;
@@ -81,7 +97,12 @@ export default function BuildsTab({
                         ['replicasetName', 'Deployment Name', false],
                         ['buildJobName', 'Build Job Name', false],
                         ['deploymentId', 'Deployment Id', false],
-                        ['status', 'Status', true, (item) => <DeploymentStatusBadge>{item.status}</DeploymentStatusBadge>],
+                        ['status', 'Status', true, (item) => (
+                            <div className="flex items-center gap-2">
+                                <DeploymentStatusBadge>{item.status}</DeploymentStatusBadge>
+                                {item.isRollback && <span className="px-2 py-1 rounded-lg text-sm font-semibold bg-purple-100 text-purple-800">Rollback</span>}
+                            </div>
+                        )],
                         ['buildMethod', 'Build Method', true, (item) => (
                             <span className="text-muted-foreground text-sm">
                                 {item.buildMethod ? (item.buildMethod === 'DOCKERFILE' ? 'Dockerfile' : 'Railpack') : '—'}
@@ -94,11 +115,31 @@ export default function BuildsTab({
                         data={appBuilds}
                         hideSearchBar={true}
                         actionCol={(item) => {
+                            const isRollbackTarget = role === RolePermissionEnum.READWRITE
+                                && !!item.replicasetName
+                                && !!item.gitCommit
+                                && item.status !== 'DEPLOYING'
+                                && item.status !== 'DEPLOYED';
                             return <>
                                 <div className="flex gap-4">
                                     <div className="flex-1"></div>
                                     {item.deploymentId && <Button variant="secondary" onClick={() => setSelectedDeploymentForLogs(item)}>Show Logs</Button>}
                                     {role === RolePermissionEnum.READWRITE && item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
+                                    {isRollbackTarget && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline">
+                                                    <DotsVerticalIcon></DotsVerticalIcon>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => rollbackClick(item)}>
+                                                    <RotateCcw />
+                                                    Rollback to this deployment
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
                             </>
                         }}

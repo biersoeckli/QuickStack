@@ -26,22 +26,46 @@ vi.mock('@/server/adapter/db.client', () => ({
     },
 }));
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
-vi.mock('@/server/services/deployment.service', () => ({ default: {} }));
-vi.mock('@/server/services/build.service', () => ({ default: {} }));
+vi.mock('@/server/services/deployment.service', () => ({
+    default: {
+        getDeploymentHistoryEntryById: vi.fn(),
+        createDeployment: vi.fn(),
+    },
+}));
+vi.mock('@/server/services/build.service', () => ({
+    default: {
+        buildApp: vi.fn(),
+        buildAppAtCommit: vi.fn(),
+    },
+}));
+vi.mock('@/server/services/registry.service', () => ({
+    default: {
+        doesImageExist: vi.fn(),
+    },
+}));
 vi.mock('@/server/services/ingress.service', () => ({ default: {} }));
 vi.mock('@/server/services/pvc.service', () => ({ default: {} }));
 vi.mock('@/server/services/svc.service', () => ({ default: {} }));
-vi.mock('@/server/services/deployment-logs.service', () => ({ default: {}, dlog: vi.fn() }));
+vi.mock('@/server/services/deployment-logs.service', () => ({
+    default: {
+        catchErrosAndLog: vi.fn(async (_id: string, fn: () => Promise<void>) => fn()),
+    },
+    dlog: vi.fn(),
+}));
 vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
 vi.mock('@/server/services/app-network-policy.service', () => ({ default: { replaceConfiguration: vi.fn() } }));
 
 import appService from './app.service';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import dataAccess from '@/server/adapter/db.client';
+import deploymentService from './deployment.service';
+import buildService from './build.service';
+import registryService from './registry.service';
 
 describe('app.service', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        vi.clearAllMocks();
     });
 
     it('persists App Node Ports when saving an extended App', async () => {
@@ -125,6 +149,75 @@ describe('app.service', () => {
         })).rejects.toThrow('App domain has ID, but existing item for app was not found.');
 
         expect(dataAccess.client.appDomain.update).not.toHaveBeenCalled();
+    });
+
+    it('redeploys an existing commit image when rolling back to a deployment with a cached image', async () => {
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({ sourceType: 'GIT' }) as never);
+        vi.mocked(deploymentService.getDeploymentHistoryEntryById).mockResolvedValue({
+            deploymentId: 'target-1',
+            createdAt: new Date(),
+            status: 'DEPLOYED',
+            gitCommit: 'abcdef1234567890',
+            gitCommitMessage: 'old commit',
+            buildMethod: 'RAILPACK',
+        } as never);
+        vi.mocked(registryService.doesImageExist).mockResolvedValue(true);
+
+        await appService.rollbackToDeployment('demo-app', 'target-1');
+
+        expect(deploymentService.createDeployment).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({ id: 'demo-app' }),
+            expect.objectContaining({
+                gitCommitHash: 'abcdef1234567890',
+                gitCommitMessage: 'old commit',
+                buildMethod: 'RAILPACK',
+                isRollback: true,
+            }),
+        );
+        expect(buildService.buildAppAtCommit).not.toHaveBeenCalled();
+    });
+
+    it('builds the commit when rolling back to a deployment whose image is missing', async () => {
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({ sourceType: 'GIT' }) as never);
+        vi.mocked(deploymentService.getDeploymentHistoryEntryById).mockResolvedValue({
+            deploymentId: 'target-1',
+            createdAt: new Date(),
+            status: 'DEPLOYED',
+            gitCommit: 'abcdef1234567890',
+            gitCommitMessage: 'old commit',
+            buildMethod: 'RAILPACK',
+        } as never);
+        vi.mocked(registryService.doesImageExist).mockResolvedValue(false);
+
+        await appService.rollbackToDeployment('demo-app', 'target-1');
+
+        expect(buildService.buildAppAtCommit).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({ id: 'demo-app' }),
+            expect.objectContaining({
+                gitCommitHash: 'abcdef1234567890',
+                gitCommitMessage: 'old commit',
+                isRollback: true,
+            }),
+        );
+        expect(deploymentService.createDeployment).not.toHaveBeenCalled();
+    });
+
+    it('rejects a rollback to a deployment without a git commit', async () => {
+        vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({ sourceType: 'GIT' }) as never);
+        vi.mocked(deploymentService.getDeploymentHistoryEntryById).mockResolvedValue({
+            deploymentId: 'target-1',
+            createdAt: new Date(),
+            status: 'DEPLOYED',
+        } as never);
+
+        await expect(appService.rollbackToDeployment('demo-app', 'target-1'))
+            .rejects.toThrow('The selected deployment has no git commit to roll back to.');
+
+        expect(registryService.doesImageExist).not.toHaveBeenCalled();
+        expect(buildService.buildAppAtCommit).not.toHaveBeenCalled();
+        expect(deploymentService.createDeployment).not.toHaveBeenCalled();
     });
 });
 

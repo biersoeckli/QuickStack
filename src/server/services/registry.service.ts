@@ -9,6 +9,8 @@ import s3TargetService from "./s3-target.service";
 import clusterService from "./cluster.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import s3Adapter from "../adapter/aws-s3.adapter";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { WorkloadType } from "@/shared/model/runtime-type.model";
 
 const REGISTRY_NODE_PORT = 30100;
 const REGISTRY_CONTAINER_PORT = 5000;
@@ -58,18 +60,25 @@ class RegistryService {
         return false;
     }
 
-    createInternalContainerRegistryUrlForAppId(appId?: string) {
-        if (!appId) {
-            return undefined;
-        }
-        return `${REGISTRY_URL_INTERNAL}/${appId}:latest`;
+    createInternalContainerRegistryUrlForAppId(appId: string, tag?: string) {
+        return `${REGISTRY_URL_INTERNAL}/${appId}:${tag || 'latest'}`;
     }
 
-    createContainerRegistryUrlForAppId(appId?: string) {
-        if (!appId) {
-            return undefined;
+    createContainerRegistryUrlForAppId(appId: string, tag?: string) {
+        return `${REGISTRY_URL_EXTERNAL}/${appId}:${tag || 'latest'}`;
+    }
+
+    createBuildImageNames(appId: string, workloadType: WorkloadType, commitHash?: string | null, isRollback = false) {
+        if (workloadType === 'agent') {
+            return this.createContainerRegistryUrlForAppId(appId);
         }
-        return `${REGISTRY_URL_EXTERNAL}/${appId}:latest`;
+        const latestTag = this.createInternalContainerRegistryUrlForAppId(appId);
+        const commitTag = GitHashUtils.shortGitHash(commitHash);
+        if (!commitTag) {
+            return latestTag;
+        }
+        const commitTagUrl = this.createInternalContainerRegistryUrlForAppId(appId, commitTag);
+        return isRollback ? commitTagUrl : `${latestTag},${commitTagUrl}`;
     }
 
     async deployRegistry(registryLocation: string, forceDeploy = false) {

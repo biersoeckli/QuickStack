@@ -103,12 +103,23 @@ describe('BuildWatchService', () => {
                     'qs-git-commit': 'abc123',
                     'qs-git-commit-message': 'feat: test',
                     'qs-build-method': 'RAILPACK',
+                    'qs-is-rollback': 'true',
                     'qs-git-ssh-secret': 'git-ssh-build-1',
                 },
             },
         });
 
-        expect(deploymentService.createDeployment).toHaveBeenCalled();
+        expect(deploymentService.createDeployment).toHaveBeenCalledWith(
+            'deployment-1',
+            expect.anything(),
+            expect.objectContaining({
+                buildJobName: 'build-1',
+                gitCommitHash: 'abc123',
+                gitCommitMessage: 'feat: test',
+                buildMethod: 'RAILPACK',
+                isRollback: true,
+            }),
+        );
         expect(appGitSshKeyService.deleteTemporaryBuildSecret).toHaveBeenCalledWith('git-ssh-build-1');
     });
 });

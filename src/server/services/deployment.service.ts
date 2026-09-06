@@ -22,6 +22,9 @@ import networkPolicyService from "./network-policy.service";
 import { z } from "zod";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { DeploymentSource } from "@/shared/model/deployment-source.model";
+import { RollbackAnnotationUtils } from "@/shared/utils/rollback-annotation.utils";
 
 class DeploymentService {
 
@@ -81,11 +84,9 @@ class DeploymentService {
     async createDeployment(
         deploymentId: string,
         app: AppExtendedModel,
-        buildJobName?: string,
-        gitCommitHash?: string,
-        gitCommitMessage?: string,
-        buildMethod?: AppBuildMethod,
+        source?: DeploymentSource,
     ) {
+        const { buildJobName, gitCommitHash, gitCommitMessage, buildMethod, isRollback } = source ?? {};
         await this.validateDeployment(app);
 
         dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
@@ -143,14 +144,15 @@ class DeploymentService {
                             [Constants.QS_ANNOTATION_PROJECT_ID]: app.projectId,
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentId,
                             deploymentTimestamp: new Date().getTime() + "",
-                            "kubernetes.io/change-cause": `Deployment ${new Date().toISOString()}`
+                            "kubernetes.io/change-cause": `Deployment ${new Date().toISOString()}`,
+                            ...RollbackAnnotationUtils.rollbackAnnotation(isRollback),
                         }
                     },
                     spec: {
                         containers: [
                             {
                                 name: app.id,
-                                image: !!buildJobName ? registryService.createContainerRegistryUrlForAppId(app.id) : app.containerImageSource as string,
+                                image: (buildJobName || gitCommitHash) ? registryService.createContainerRegistryUrlForAppId(app.id, GitHashUtils.shortGitHash(gitCommitHash)) : app.containerImageSource as string,
                                 imagePullPolicy: 'Always',
                                 ...(app.containerCommand ? { command: ContainerCommangArgsUtils.parseStoredContainerCommandArray(app.containerCommand) ?? undefined } : {}),
                                 ...(app.containerArgs ? { args: JSON.parse(app.containerArgs) } : {}),
@@ -350,6 +352,7 @@ class DeploymentService {
                 gitCommitMessage: build.gitCommitMessage,
                 deploymentId: build.deploymentId,
                 buildMethod: build.buildMethod,
+                isRollback: build.isRollback,
                 }
             });
         replicasetRevisions.push(...runningOrFailedBuilds);
@@ -393,6 +396,7 @@ class DeploymentService {
                 status: status,
                 deploymentId: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID]!,
                 buildMethod: rs.spec?.template?.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
+                isRollback: RollbackAnnotationUtils.isRollbackAnnotation(rs.spec?.template?.metadata?.annotations),
             }
         });
         return ListUtils.sortByDate(revisions, (i) => i.createdAt!, true);

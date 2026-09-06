@@ -1,11 +1,11 @@
 import { V1Container, V1Job } from "@kubernetes/client-node";
 import { BuildJobBuilder, BuildJobBuilderContext } from "./build-job-builder.interface";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { Constants } from "@/shared/utils/constants";
 import buildQueueInitContainer from "./build-init-container.service";
 import buildGitInitContainerService, { BUILD_GIT_SSH_KEY_VOLUME_NAME } from "./build-git-init-container.service";
 import registryService, { BUILD_NAMESPACE } from "../registry.service";
 import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME, RAILPACK_PLAN_PATH } from "./build-workspace.constants";
+import { BuildJobAnnotationsUtils } from "./build-job-annotations.utils";
 
 const buildkitImage = "moby/buildkit:master";
 const railpackVersion = "0.15.1";
@@ -19,6 +19,8 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
     readonly buildMethod: AppBuildMethod = 'RAILPACK';
 
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
+        const imageNames = registryService.createBuildImageNames(ctx.workload.id, ctx.workloadType, ctx.latestRemoteGitHash, ctx.isRollback);
+
         const buildkitArgs = [
             "build",
             "--local",
@@ -30,7 +32,7 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
             "--opt",
             `source=${RAILPACK_FRONTEND_IMAGE}`,
             "--output",
-            `type=image,name=${registryService.createInternalContainerRegistryUrlForAppId(ctx.workload.id)},push=true,registry.insecure=true`
+            `type=image,"name=${imageNames}",push=true,registry.insecure=true`
         ];
 
         return {
@@ -39,34 +41,13 @@ class RailpackBuildJobBuilder implements BuildJobBuilder {
             metadata: {
                 name: ctx.buildName,
                 namespace: BUILD_NAMESPACE,
-                annotations: {
-                    ...(ctx.workloadType === 'app' ? { [Constants.QS_ANNOTATION_APP_ID]: ctx.workload.id } : {}),
-                    ...(ctx.workloadType === 'agent' ? { [Constants.QS_ANNOTATION_AGENT_ID]: ctx.workload.id } : {}),
-                    [Constants.QS_ANNOTATION_WORKLOAD_TYPE]: ctx.workloadType,
-                    [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.workload.projectId,
-                    [Constants.QS_ANNOTATION_GIT_COMMIT]: ctx.latestRemoteGitHash,
-                    [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
-                    [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
-                    [Constants.QS_ANNOTATION_BUILD_QUEUED_AT]: ctx.queuedAt,
-                    [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
-                    ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
-                }
+                annotations: BuildJobAnnotationsUtils.createBuildJobAnnotations(ctx, this.buildMethod, true),
             },
             spec: {
                 ttlSecondsAfterFinished: 86400,
                 template: {
                     metadata: {
-                        annotations: {
-                            ...(ctx.workloadType === 'app' ? { [Constants.QS_ANNOTATION_APP_ID]: ctx.workload.id } : {}),
-                            ...(ctx.workloadType === 'agent' ? { [Constants.QS_ANNOTATION_AGENT_ID]: ctx.workload.id } : {}),
-                            [Constants.QS_ANNOTATION_WORKLOAD_TYPE]: ctx.workloadType,
-                            [Constants.QS_ANNOTATION_PROJECT_ID]: ctx.workload.projectId,
-                            [Constants.QS_ANNOTATION_GIT_COMMIT]: ctx.latestRemoteGitHash,
-                            [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
-                            [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
-                            [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
-                            ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
-                        },
+                        annotations: BuildJobAnnotationsUtils.createBuildJobAnnotations(ctx, this.buildMethod),
                     },
                     spec: {
                         hostUsers: false,

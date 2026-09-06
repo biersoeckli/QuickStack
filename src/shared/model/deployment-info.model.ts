@@ -21,6 +21,7 @@ export const deploymentInfoZodModel = z.object({
     gitCommitMessage: z.string().optional(),
     deploymentId: z.string(),
     buildMethod: appBuildMethodZodModel.optional(),
+    isRollback: z.boolean().optional(),
 });
 
 export const deploymentDetailsResponseZodModel = deploymentInfoZodModel.omit({

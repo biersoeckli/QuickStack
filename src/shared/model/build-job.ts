@@ -14,6 +14,7 @@ export const buildJobSchemaZod = z.object({
     gitCommitMessage: z.string().optional(),
     deploymentId: z.string(),
     buildMethod: appBuildMethodZodModel.optional(),
+    isRollback: z.boolean().optional(),
 });
 
 export type BuildJobModel = z.infer<typeof buildJobSchemaZod>;

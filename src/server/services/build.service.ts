@@ -22,20 +22,33 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { V1JobStatus, V1ResourceRequirements } from "@kubernetes/client-node";
 import appGitSshKeyService from "./app-git-ssh-key.service";
 import agentGitSshKeyService from "./agent-git-ssh-key.service";
+import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { BuildTargetSource } from "@/shared/model/deployment-source.model";
+import { RollbackAnnotationUtils } from "@/shared/utils/rollback-annotation.utils";
 
 type BuildWorkload = AppExtendedModel | AgentExtendedModel;
+
+type BuildWorkloadOptions = {
+    forceBuild?: boolean;
+    target?: BuildTargetSource;
+};
 
 class BuildService {
 
     async buildApp(deploymentId: string, app: AppExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
-        return this.buildWorkload(deploymentId, app, 'app', forceBuild);
+        return this.buildWorkload(deploymentId, app, 'app', { forceBuild });
+    }
+
+    async buildAppAtCommit(deploymentId: string, app: AppExtendedModel, target: BuildTargetSource): Promise<[string, string, string, boolean]> {
+        return this.buildWorkload(deploymentId, app, 'app', { target });
     }
 
     async buildAgent(deploymentId: string, agent: AgentExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
-        return this.buildWorkload(deploymentId, agent, 'agent', forceBuild);
+        return this.buildWorkload(deploymentId, agent, 'agent', { forceBuild });
     }
 
-    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
+    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, options: BuildWorkloadOptions = {}): Promise<[string, string, string, boolean]> {
+        const { forceBuild = false, target } = options;
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -49,6 +62,11 @@ class BuildService {
         await dlog(deploymentId, `Initialized ${workloadType} build...`);
         await dlog(deploymentId, `Selected build method: ${buildMethod}`);
         await dlog(deploymentId, `Trying to clone repository...`);
+
+        if (target) {
+            await dlog(deploymentId, `Building specific git commit ${target.gitCommitHash}...`);
+            return this.createAndStartBuildJob(deploymentId, workload, workloadType, target);
+        }
 
         const latestSuccessfulBuild = buildsForWorkload.find(x => x.status === 'SUCCEEDED');
         const { latestRemoteGitHash, latestRemoteGitCommitMessage } = await gitService.openGitContext({
@@ -71,7 +89,8 @@ class BuildService {
 
         if (!forceBuild && latestSuccessfulBuild?.gitCommit && latestRemoteGitHash &&
             latestSuccessfulBuild.gitCommit === latestRemoteGitHash) {
-            if (await registryService.doesImageExist(workload.id, 'latest')) {
+            const imageTag = GitHashUtils.shortGitHash(latestRemoteGitHash) ?? 'latest';
+            if (await registryService.doesImageExist(workload.id, imageTag)) {
                 await dlog(deploymentId, `Latest build is already up to date with git repository, using container from last build.`);
                 return [latestSuccessfulBuild.name, latestRemoteGitHash, latestRemoteGitCommitMessage, true];
             }
@@ -79,15 +98,17 @@ class BuildService {
             await dlog(deploymentId, `Docker Image for last build not found in internal registry, creating new build.`);
         }
 
-        return this.createAndStartBuildJob(deploymentId, workload, workloadType, latestRemoteGitHash, latestRemoteGitCommitMessage);
+        return this.createAndStartBuildJob(deploymentId, workload, workloadType, {
+            gitCommitHash: latestRemoteGitHash,
+            gitCommitMessage: latestRemoteGitCommitMessage,
+        });
     }
 
     private async createAndStartBuildJob(
         deploymentId: string,
         workload: BuildWorkload,
         workloadType: WorkloadType,
-        latestRemoteGitHash: string,
-        latestRemoteGitCommitMessage: string = '',
+        source: BuildTargetSource,
     ): Promise<[string, string, string, boolean]> {
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(workload.id));
         const buildMethod = this.getBuildMethod(workload, workloadType);
@@ -115,12 +136,13 @@ class BuildService {
                 workloadType,
                 buildName,
                 deploymentId,
-                latestRemoteGitHash,
-                latestRemoteGitCommitMessage,
+                latestRemoteGitHash: source.gitCommitHash,
+                latestRemoteGitCommitMessage: source.gitCommitMessage ?? '',
                 queuedAt,
                 ...schedulingConfig,
                 maxParallelBuilds,
                 gitSshPrivateKeySecretName,
+                isRollback: source.isRollback ?? false,
             });
 
             await k3s.batch.createNamespacedJob({ namespace: BUILD_NAMESPACE, body: jobDefinition });
@@ -130,7 +152,7 @@ class BuildService {
         }
         await dlog(deploymentId, `Build job ${buildName} scheduled successfully`);
 
-        return [buildName, latestRemoteGitHash, latestRemoteGitCommitMessage, false];
+        return [buildName, source.gitCommitHash, source.gitCommitMessage ?? '', false];
     }
 
     private getBuildMethod(workload: BuildWorkload, workloadType: WorkloadType): AppBuildMethod {
@@ -329,6 +351,7 @@ class BuildService {
             gitCommitMessage: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
             deploymentId: job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID],
             buildMethod: job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
+            isRollback: RollbackAnnotationUtils.isRollbackAnnotation(job.metadata?.annotations),
         } as BuildJobModel));
         builds.sort((a, b) => {
             if (a.startTime && b.startTime) {
