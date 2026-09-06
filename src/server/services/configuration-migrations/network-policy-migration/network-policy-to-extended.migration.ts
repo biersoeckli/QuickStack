@@ -1,24 +1,14 @@
-import dataAccess from '../../adapter/db.client';
-import { ConfigurationMigration } from './configuration-migration.interface';
-import { deriveExtendedConfiguration } from './network-policy-to-extended.derivation';
-
-export const NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER = 'networkPolicyToExtendedMigrationApplied';
+import dataAccess from '../../../adapter/db.client';
+import { ConfigurationMigration } from '../configuration-migration.interface';
+import { NetworkPolicyToExtendedUtils } from './network-policy-to-extended.utils';
 
 /**
  * Network Policy Mode Migration: converts every App still in Simple mode to the
  * Extended App Network Policy Configuration that reproduces its current Simple
- * behavior. Runs at most once, guarded by a Parameter applied marker that is
- * written in the same transaction as the conversion.
+ * behavior. The registry records successful completion.
  */
 class NetworkPolicyToExtendedMigration implements ConfigurationMigration {
     readonly name = 'network-policy-to-extended';
-
-    async isAlreadyApplied(): Promise<boolean> {
-        const marker = await dataAccess.client.parameter.findUnique({
-            where: { name: NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER },
-        });
-        return marker !== null;
-    }
 
     async runMigration(): Promise<void> {
         await dataAccess.client.$transaction(async (db) => {
@@ -43,7 +33,7 @@ class NetworkPolicyToExtendedMigration implements ConfigurationMigration {
 
             for (const app of simpleApps) {
                 const peers = (projectApps.get(app.projectId) ?? []).filter(peer => peer.id !== app.id);
-                const derivation = deriveExtendedConfiguration(app, peers);
+                const derivation = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(app, peers);
 
                 await db.appNetworkPolicy.deleteMany({ where: { appId: app.id } });
                 if (app.useNetworkPolicy) {
@@ -67,12 +57,6 @@ class NetworkPolicyToExtendedMigration implements ConfigurationMigration {
                     data: { networkPolicyMode: 'EXTENDED' },
                 });
             }
-
-            await db.parameter.upsert({
-                where: { name: NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER },
-                create: { name: NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER, value: 'true' },
-                update: {},
-            });
         });
     }
 }

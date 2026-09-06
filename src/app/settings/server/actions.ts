@@ -34,6 +34,7 @@ import longhornUiService from "@/server/services/longhorn-ui.service";
 import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-settings.model";
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
 import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
   saveFormAction(inputData, buildSettingsZodModel, async (validatedData) => {
@@ -208,6 +209,26 @@ export const redeployQuickStackAuthProxy = async () =>
     await getAdminUserSession();
     await qsAuthProxyService.forceRedeploy();
     return new SuccessActionResult(undefined, 'QuickStack auth proxy will be redeployed, this might take a few seconds.');
+  });
+
+export const runInitRoute = async () =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    if (!globalThis.quickStackInitKey) {
+      throw new ServiceException('The init route is unavailable in this server process.');
+    }
+
+    const port = process.env.PORT ?? '3000';
+    const response = await fetch(`http://localhost:${port}/api/init?key=${encodeURIComponent(globalThis.quickStackInitKey)}`, {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new ServiceException(`Failed to run init route (${response.status}).`);
+    }
+
+    return new SuccessActionResult(undefined, 'QuickStack services were initialized successfully.');
   });
 
 export const deleteAllFailedAndSuccededPods = async () =>

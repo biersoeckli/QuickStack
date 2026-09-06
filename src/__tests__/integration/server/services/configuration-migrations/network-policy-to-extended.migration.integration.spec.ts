@@ -10,9 +10,7 @@ vi.mock('@/server/services/configuration-migrations/network-policy-to-extended.d
 
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import dataAccess from '@/server/adapter/db.client';
-import networkPolicyToExtendedMigration, {
-    NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER,
-} from '@/server/services/configuration-migrations/network-policy-to-extended.migration';
+import networkPolicyToExtendedMigration from '@/server/services/configuration-migrations/network-policy-migration/network-policy-to-extended.migration';
 import { deriveExtendedConfiguration } from '@/server/services/configuration-migrations/network-policy-to-extended.derivation';
 
 describe('network-policy-to-extended migration', () => {
@@ -79,10 +77,6 @@ describe('network-policy-to-extended migration', () => {
 
     afterEach(() => {
         vi.mocked(deriveExtendedConfiguration).mockImplementation(originalDerive);
-    });
-
-    it('reports the migration as not applied before the first run', async () => {
-        expect(await networkPolicyToExtendedMigration.isAlreadyApplied()).toBe(false);
     });
 
     it('converts every Simple App to its Extended equivalent within its project', async () => {
@@ -176,19 +170,7 @@ describe('network-policy-to-extended migration', () => {
             .toMatchObject({ networkPolicyMode: 'EXTENDED' });
     });
 
-    it('is marked applied after a successful run', async () => {
-        await createProject('proj-p');
-        await createApp('proj-p', { id: 'app-web', ports: [80] });
-
-        expect(await networkPolicyToExtendedMigration.isAlreadyApplied()).toBe(false);
-        await networkPolicyToExtendedMigration.runMigration();
-
-        expect(await networkPolicyToExtendedMigration.isAlreadyApplied()).toBe(true);
-        const marker = await dataAccess.client.parameter.findUnique({ where: { name: NETWORK_POLICY_TO_EXTENDED_MIGRATION_PARAMETER } });
-        expect(marker?.value).toBe('true');
-    });
-
-    it('rolls back every App and the applied marker when the derivation fails', async () => {
+    it('rolls back every App when the derivation fails', async () => {
         await createProject('proj-p');
         await createApp('proj-p', { id: 'app-a', ports: [80] });
         await createApp('proj-p', { id: 'app-b', ports: [80] });
@@ -207,6 +189,5 @@ describe('network-policy-to-extended migration', () => {
         expect(await dataAccess.client.app.findUniqueOrThrow({ where: { id: 'app-b' } }))
             .toMatchObject({ networkPolicyMode: 'SIMPLE' });
         expect(await dataAccess.client.appNetworkPolicy.count()).toBe(0);
-        expect(await networkPolicyToExtendedMigration.isAlreadyApplied()).toBe(false);
     });
 });

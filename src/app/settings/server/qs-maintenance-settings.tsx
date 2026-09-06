@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, redeployQuickStackAuthProxy, updateRegistry } from "./actions";
+import { cleanupOldBuildJobs, cleanupOldTmpFiles, deleteAllFailedAndSuccededPods, deleteAllNetworkPolicies, deleteOldAppLogs, purgeRegistryImages, redeployQuickStackAuthProxy, runInitRoute, updateRegistry } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
@@ -103,6 +103,16 @@ export default function QuickStackMaintenanceSettings({
                         Toast.fromAction(() => redeployQuickStackAuthProxy());
                     }
                 }}><RotateCcw /> Redeploy Auth Proxy</Button>
+
+                <Button variant="secondary" onClick={async () => {
+                    if (await useConfirm.openConfirmDialog({
+                        title: 'Initialize QuickStack Services',
+                        description: 'This runs the protected QuickStack init route and restarts its background watches. Continue?',
+                        okButton: 'Initialize Services'
+                    })) {
+                        Toast.fromAction(() => runInitRoute());
+                    }
+                }}><RotateCcw /> Run &quot;QuickStack Initialize&quot;</Button>
 
             </CardContent>
         </Card>

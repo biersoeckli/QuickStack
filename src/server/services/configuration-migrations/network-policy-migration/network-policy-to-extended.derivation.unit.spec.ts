@@ -1,4 +1,4 @@
-import { deriveExtendedConfiguration } from './network-policy-to-extended.derivation';
+import { NetworkPolicyToExtendedUtils } from './network-policy-to-extended.utils';
 
 const appWithTwoPorts = {
     id: 'app-a',
@@ -13,9 +13,9 @@ const twoPeers = [
     { id: 'web-c', appPorts: [{ port: 8080 }, { port: 9090 }] },
 ];
 
-describe('deriveExtendedConfiguration', () => {
+describe('NetworkPolicyToExtendedUtils.deriveExtendedConfiguration', () => {
     it('derives no rules and disabled Internet for DENY_ALL ingress and egress', () => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'DENY_ALL', egressNetworkPolicy: 'DENY_ALL' },
             twoPeers,
         );
@@ -30,7 +30,7 @@ describe('deriveExtendedConfiguration', () => {
         ['NAMESPACE_ONLY', false],
         ['DENY_ALL', false],
     ])('sets allowInternetAccess for egress %s', (egressPolicy, expected) => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'DENY_ALL', egressNetworkPolicy: egressPolicy },
             [],
         );
@@ -43,7 +43,7 @@ describe('deriveExtendedConfiguration', () => {
         ['ALLOW_ALL'],
         ['NAMESPACE_ONLY'],
     ])('creates an ingress rule from every project peer for every own port for ingress %s', (ingressPolicy) => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: ingressPolicy, egressNetworkPolicy: 'DENY_ALL' },
             twoPeers,
         );
@@ -60,7 +60,7 @@ describe('deriveExtendedConfiguration', () => {
         ['INTERNET_ONLY'],
         ['DENY_ALL'],
     ])('creates no ingress rules for ingress %s', (ingressPolicy) => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: ingressPolicy, egressNetworkPolicy: 'DENY_ALL' },
             twoPeers,
         );
@@ -72,7 +72,7 @@ describe('deriveExtendedConfiguration', () => {
         ['ALLOW_ALL'],
         ['NAMESPACE_ONLY'],
     ])('creates an egress rule to every project peer for every peer port for egress %s', (egressPolicy) => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'DENY_ALL', egressNetworkPolicy: egressPolicy },
             twoPeers,
         );
@@ -88,7 +88,7 @@ describe('deriveExtendedConfiguration', () => {
         ['INTERNET_ONLY'],
         ['DENY_ALL'],
     ])('creates no egress rules for egress %s', (egressPolicy) => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'DENY_ALL', egressNetworkPolicy: egressPolicy },
             twoPeers,
         );
@@ -97,7 +97,7 @@ describe('deriveExtendedConfiguration', () => {
     });
 
     it('combines ingress and egress rules for ALLOW_ALL in both directions', () => {
-        const result = deriveExtendedConfiguration(appWithTwoPorts, twoPeers);
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(appWithTwoPorts, twoPeers);
 
         expect(result.allowInternetAccess).toBe(true);
         expect(result.rules).toEqual([
@@ -112,7 +112,7 @@ describe('deriveExtendedConfiguration', () => {
     });
 
     it('creates no ingress rules when the App has no internal ports', () => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, appPorts: [], egressNetworkPolicy: 'DENY_ALL' },
             twoPeers,
         );
@@ -121,7 +121,7 @@ describe('deriveExtendedConfiguration', () => {
     });
 
     it('creates no egress rule to a peer that has no internal ports', () => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'DENY_ALL', egressNetworkPolicy: 'ALLOW_ALL' },
             [{ id: 'empty-peer', appPorts: [] }],
         );
@@ -131,7 +131,7 @@ describe('deriveExtendedConfiguration', () => {
     });
 
     it('treats an unknown stored policy value as ALLOW_ALL', () => {
-        const result = deriveExtendedConfiguration(
+        const result = NetworkPolicyToExtendedUtils.deriveExtendedConfiguration(
             { ...appWithTwoPorts, ingressNetworkPolicy: 'UNKNOWN', egressNetworkPolicy: 'UNKNOWN' },
             twoPeers,
         );
