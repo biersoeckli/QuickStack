@@ -34,8 +34,5 @@ export const nginxAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

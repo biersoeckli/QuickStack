@@ -34,8 +34,5 @@ export const elementAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

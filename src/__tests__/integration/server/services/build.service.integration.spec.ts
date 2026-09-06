@@ -228,7 +228,6 @@ function createBuildApp(input: BuildIntegrationInput & { id: string; projectId: 
             updatedAt: new Date(),
         },
         appDomains: [],
-        appPorts: [],
         appNodePorts: [],
         appFileMounts: [],
         appVolumes: [],

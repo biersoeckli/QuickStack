@@ -1,7 +1,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
-import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppPort, AppVolume, Prisma } from "@prisma/client";
+import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppVolume, Prisma } from "@prisma/client";
 import { AppExtendedModel, AppExtendedWriteModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -15,7 +15,7 @@ import deploymentLogService, { dlog } from "./deployment-logs.service";
 import crypto from "crypto";
 import networkPolicyService from "./network-policy.service";
 import appNetworkPolicyService from "./app-network-policy.service";
-import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppPortModel, AppVolumeModel } from "@/shared/model/generated-zod";
+import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
 import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 
@@ -130,7 +130,6 @@ class AppService {
                 projectId
             },
             include: {
-                appPorts: true,
                 appDomains: true,
                 appNodePorts: true,
                 appFileMounts: true,
@@ -174,7 +173,6 @@ class AppService {
             project: true,
             appDomains: true,
             appVolumes: true,
-            appPorts: true,
             appNodePorts: true,
             appFileMounts: true,
             appBasicAuths: true,
@@ -231,7 +229,7 @@ class AppService {
         });
     }
 
-    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, createDefaultPort = true, tx?: Prisma.TransactionClient) {
+    async save(item: Prisma.AppUncheckedCreateInput | Prisma.AppUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: App;
         const client = tx || dataAccess.client;
         try {
@@ -254,15 +252,6 @@ class AppService {
                 savedItem = await client.app.create({
                     data: item as Prisma.AppUncheckedCreateInput
                 });
-                if (createDefaultPort) {
-                    // add default port 80
-                    await client.appPort.create({
-                        data: {
-                            appId: savedItem.id,
-                            port: 80
-                        }
-                    });
-                }
             }
         } finally {
             if (!tx) {
@@ -290,7 +279,7 @@ class AppService {
             const savedApp = await this.save({
                 ...parsedAppModel,
                 id: app.id
-            }, false, innerTx);
+            }, innerTx);
 
             const savedAppId = savedApp.id;
 
@@ -323,17 +312,6 @@ class AppService {
             for (const fileMount of parsedFileMounts) {
                 await this.saveFileMount({
                     ...fileMount,
-                    appId: savedAppId
-                }, innerTx);
-            }
-
-            const parsedPorts = AppPortModel.extend(optionalParam.shape).array().parse(app.appPorts);
-            await innerTx.appPort.deleteMany({
-                where: { appId: savedAppId, id: { notIn: parsedPorts.flatMap(port => port.id ? [port.id] : []) } },
-            });
-            for (const port of parsedPorts) {
-                await this.savePort({
-                    ...port,
                     appId: savedAppId
                 }, innerTx);
             }
@@ -668,82 +646,6 @@ class AppService {
         }
     }
 
-    async savePort(portToBeSaved: Prisma.AppPortUncheckedCreateInput | Prisma.AppPortUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
-        let savedItem: AppPort;
-        const client = tx || dataAccess.client;
-        const existingApp = await this.getExtendedById(portToBeSaved.appId as string, false, client);
-        const allPortsOfApp = await client.appPort.findMany({
-            where: {
-                appId: portToBeSaved.appId as string,
-            }
-        });
-        if (allPortsOfApp.filter(x => x.id !== portToBeSaved.id)
-            .some(x => x.port === portToBeSaved.port)) {
-            throw new ServiceException("Port is already configured within the same app.");
-        }
-        try {
-            if (portToBeSaved.id) {
-                const existingPortForApp = await client.appPort.findFirst({
-                    where: {
-                        id: portToBeSaved.id as string,
-                        appId: portToBeSaved.appId as string,
-                    }
-                });
-                if (!existingPortForApp) {
-                    throw new ServiceException("App port has ID, but existing item for app was not found.");
-                }
-                savedItem = await client.appPort.update({
-                    where: {
-                        id: portToBeSaved.id as string
-                    },
-                    data: portToBeSaved
-                });
-            } else {
-                savedItem = await client.appPort.create({
-                    data: portToBeSaved as Prisma.AppPortUncheckedCreateInput
-                });
-            }
-
-        } finally {
-            if (!tx) {
-                revalidateTag(Tags.apps(existingApp.projectId as string));
-                revalidateTag(Tags.app(existingApp.id as string));
-            }
-        }
-        return savedItem;
-    }
-
-    async getPortById(portId: string) {
-        return await dataAccess.client.appPort.findFirstOrThrow({
-            where: {
-                id: portId
-            }
-        });
-    }
-
-    async deletePortById(id: string) {
-        const existingPort = await dataAccess.client.appPort.findFirst({
-            where: {
-                id
-            }, include: {
-                app: true
-            }
-        });
-        if (!existingPort) {
-            return;
-        }
-        try {
-            await dataAccess.client.appPort.delete({
-                where: {
-                    id
-                }
-            });
-        } finally {
-            revalidateTag(Tags.app(existingPort.appId));
-            revalidateTag(Tags.apps(existingPort.app.projectId));
-        }
-    }
-
     async saveBasicAuth(itemToBeSaved: Prisma.AppBasicAuthUncheckedCreateInput | Prisma.AppBasicAuthUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
         let savedItem: AppBasicAuth;
         const client = tx || dataAccess.client;
@@ -817,12 +719,25 @@ class AppService {
                 name: 'asc'
             },
             include: {
-                appPorts: true,
                 appDomains: true,
                 appNodePorts: true,
                 appFileMounts: true,
                 appVolumes: true,
                 appBasicAuths: true,
+                appNetworkPolicy: {
+                    include: {
+                        rules: {
+                            include: {
+                                targetApp: {
+                                    select: { id: true, name: true, projectId: true }
+                                },
+                                targetAgent: {
+                                    select: { id: true, name: true, projectId: true }
+                                }
+                            }
+                        }
+                    }
+                },
                 project: true
             }
         }) as AppExtendedModel[];

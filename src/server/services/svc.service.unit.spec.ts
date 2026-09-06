@@ -68,17 +68,17 @@ describe('svc.service', () => {
         });
     });
 
-    it('merges an App Node Port into an existing app port for the same container port', async () => {
+    it('merges an App Node Port into an ingress rule for the same container port and protocol', async () => {
         const app = createApp({
-            appPorts: [
-                {
-                    id: 'app-port-1',
-                    appId: 'demo-app',
-                    port: 300,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                },
-            ],
+            appNetworkPolicy: {
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true,
+                createdAt: new Date(), updatedAt: new Date(),
+                rules: [{
+                    id: 'rule-1', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 300, protocol: 'UDP',
+                    targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null,
+                    createdAt: new Date(), updatedAt: new Date(),
+                }],
+            },
             appNodePorts: [
                 {
                     id: 'node-port-1',
@@ -99,7 +99,7 @@ describe('svc.service', () => {
             type: 'NodePort',
             ports: [
                 {
-                    name: 'default-port-app-port-1',
+                    name: 'ingress-port-UDP-300',
                     port: 300,
                     targetPort: 300,
                     nodePort: 30080,
@@ -107,6 +107,35 @@ describe('svc.service', () => {
                 },
             ],
         });
+    });
+
+    it('deduplicates domain and ingress ports by port and protocol', async () => {
+        const app = createApp({
+            appDomains: [{ id: 'domain-1', appId: 'demo-app', hostname: 'demo.example.com', port: 443, useSsl: true, redirectHttps: true, createdAt: new Date(), updatedAt: new Date() }],
+            appNetworkPolicy: {
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true, createdAt: new Date(), updatedAt: new Date(),
+                rules: [
+                    { id: 'rule-tcp', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 443, protocol: 'TCP', targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null, createdAt: new Date(), updatedAt: new Date() },
+                    { id: 'rule-udp', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 443, protocol: 'UDP', targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null, createdAt: new Date(), updatedAt: new Date() },
+                ],
+            },
+        });
+
+        await svcService.createOrUpdateServiceForApp('deployment-1', app);
+
+        expect(k3sMocks.createNamespacedService.mock.calls[0][0].body.spec.ports).toEqual([
+            expect.objectContaining({ name: 'domain-port-domain-1', port: 443, protocol: 'TCP' }),
+            expect.objectContaining({ name: 'ingress-port-UDP-443', port: 443, protocol: 'UDP' }),
+        ]);
+    });
+
+    it('deletes an existing service when no domain, ingress rule, or NodePort remains', async () => {
+        k3sMocks.listNamespacedService.mockResolvedValue({ items: [{ metadata: { name: 'svc-demo-app' } }] });
+        k3sMocks.readNamespacedService.mockResolvedValue({});
+
+        await svcService.createOrUpdateServiceForApp('deployment-1', createApp({}));
+
+        expect(k3sMocks.deleteNamespacedService).toHaveBeenCalledWith({ name: 'svc-demo-app', namespace: 'demo-project' });
     });
 });
 
@@ -158,7 +187,6 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         healthCheckFailureThreshold: 3,
         healthCheckTcpPort: null,
         appDomains: [],
-        appPorts: [],
         appNodePorts: [],
         appVolumes: [],
         appFileMounts: [],

@@ -1,6 +1,5 @@
 'use server'
 
-import { AppPortModel, appPortZodModel } from "@/shared/model/default-port.model";
 import { nodePortEditZodModel } from "@/shared/model/node-port-edit.model";
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
@@ -9,23 +8,6 @@ import { z } from "zod";
 import { HostnameDnsProviderUtils } from "@/shared/utils/domain-dns-provider.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import paramService, { ParamService } from "@/server/services/param.service";
-
-export const savePort = async (prevState: any, inputData: AppPortModel, appId: string, portId?: string) =>
-    saveFormAction(inputData, appPortZodModel, async (validatedData) => {
-        await isAuthorizedWriteForApp(appId);
-        await appService.savePort({
-            ...validatedData,
-            id: portId ?? undefined,
-            appId
-        });
-    });
-
-export const deletePort = async (portId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedWriteForApp(await appService.getPortById(portId).then(p => p.appId));
-        await appService.deletePortById(portId);
-        return new SuccessActionResult(undefined, 'Successfully deleted port');
-    });
 
 export const getQuickstackDomainSuffix = async () => simpleAction(async () => {
     await getAuthUserSession();

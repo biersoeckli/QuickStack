@@ -72,9 +72,6 @@ litellm_settings:
     password: os.environ/REDIS_PASSWORD
 `
             }],
-            appPorts: [{
-                port: 4000,
-            }]
         }
     ],
 };

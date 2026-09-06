@@ -41,8 +41,5 @@ export const homeassistantAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8123,
-        }]
     }],
 };

@@ -61,9 +61,6 @@ export const libredeskAppTemplate: AppTemplateModel = {
                 shareWithOtherApps: false,
             }],
             appFileMounts: [],
-            appPorts: [{
-                port: 9000,
-            }]
         }
     ]
 };

@@ -34,29 +34,33 @@ class SvcService {
             ...app.appDomains.map((domain) => ({
                 name: `domain-port-${domain.id}`,
                 port: domain.port,
-                targetPort: domain.port
+                targetPort: domain.port,
+                protocol: 'TCP',
             })),
-            ...app.appPorts.map((port) => ({
-                name: `default-port-${port.id}`,
-                port: port.port,
-                targetPort: port.port
-            })),
+            ...(app.appNetworkPolicy?.rules ?? [])
+                .filter((rule) => rule.type === 'INGRESS')
+                .map((rule) => ({
+                    name: `ingress-port-${rule.protocol || 'TCP'}-${rule.port}`,
+                    port: rule.port,
+                    targetPort: rule.port,
+                    protocol: rule.protocol || 'TCP',
+                })),
         ].filter((port, index, self) =>
-            index === self.findIndex((t) =>
-                (t.port === port.port && t.targetPort === port.targetPort)));
+            index === self.findIndex((candidate) =>
+                candidate.port === port.port && (candidate.protocol || 'TCP') === (port.protocol || 'TCP')));
 
         for (const np of app.appNodePorts) {
-            const existing = ports.find(p => p.port === np.port);
+            const protocol = np.protocol || 'TCP';
+            const existing = ports.find((port) => port.port === np.port && (port.protocol || 'TCP') === protocol);
             if (existing) {
                 existing.nodePort = np.nodePort;
-                existing.protocol = np.protocol;
             } else {
                 ports.push({
                     name: `nodeport-${np.id}`,
                     port: np.port,
                     targetPort: np.port,
                     nodePort: np.nodePort,
-                    protocol: np.protocol,
+                    protocol,
                 });
             }
         }
@@ -64,7 +68,7 @@ class SvcService {
         const serviceType = app.appNodePorts.length > 0 ? 'NodePort' : undefined;
 
         if (ports.length === 0) {
-            dlog(deplyomentId, `No domain or internal port settings found, service (HTTP) will not be created or updated. The application will run, but will not be accessible via the internal network or the internet.`);
+            dlog(deplyomentId, `No domain, ingress network policy, or NodePort settings found, service (HTTP) will not be created or updated. The application will run, but will not be accessible via the internal network or the internet.`);
         }
 
         await this.createOrUpdateService(app.projectId, app.id, ports, serviceType);

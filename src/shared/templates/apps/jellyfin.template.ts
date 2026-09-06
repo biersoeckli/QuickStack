@@ -46,8 +46,5 @@ export const jellyfinAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8096,
-        }]
     }],
 };

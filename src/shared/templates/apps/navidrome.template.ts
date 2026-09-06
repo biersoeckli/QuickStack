@@ -49,8 +49,5 @@ ND_SESSIONTIMEOUT=24h
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 4533,
-        }]
     }],
 };

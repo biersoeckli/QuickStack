@@ -46,9 +46,6 @@ OLLAMA_ORIGINS=*
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 11434,
-        }]
     },
     // Open WebUI Frontend
     {
@@ -92,9 +89,6 @@ OLLAMA_ORIGINS=*
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }]
 }
 

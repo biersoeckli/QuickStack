@@ -49,8 +49,5 @@ database__connection__filename=/var/lib/ghost/content/data/ghost.db
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 2368,
-        }]
     }],
 };

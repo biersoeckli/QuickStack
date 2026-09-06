@@ -62,9 +62,6 @@ export function getMongodbAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 27017,
-        }]
     };
 }
 

@@ -41,9 +41,6 @@ export function getRedisAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 6379,
-        }]
     };
 }
 

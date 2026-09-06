@@ -11,6 +11,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
 import { EnvVarUtils } from "@/server/utils/env-var.utils";
 import { InternalHostnameUtils } from "@/server/utils/internal-hostname.utils";
+import { Constants } from "@/shared/utils/constants";
 
 
 export const saveLlmGateway = async (prevState: any, inputData: LlmGatewayEditModel) =>
@@ -92,14 +93,8 @@ export const getLiteLlmInfosFromAppId = async (appId: string) =>
             throw new ServiceException('LiteLLM Admin Key not found. Maybe this app is not a LiteLLM instance or the key has been removed.');
         }
 
-        const appPorts = app.appPorts;
-        const appPort = appPorts.find(Boolean);
-        if (!appPort) {
-            throw new ServiceException('LiteLLM Port not found. Maybe this app is not a LiteLLM instance or the port has been removed.');
-        }
-
         return {
             adminKey,
-            baseUrl: InternalHostnameUtils.getInternalBaseUrlForApp(app, appPort.port)
+            baseUrl: InternalHostnameUtils.getInternalBaseUrlForApp(app, Constants.DEFAULT_LITELLM_PORT)
         };
     });

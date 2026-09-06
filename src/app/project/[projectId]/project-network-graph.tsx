@@ -3,16 +3,13 @@
 import React, { useMemo } from 'react';
 import { ReactFlow, Node, Edge, MarkerType, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { App, AppDomain, AppPort } from '@prisma/client';
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Globe, Network, Lock, Cloud, Shield, HeartPulse } from 'lucide-react';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { useRouter } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-interface AppWithRelations extends App {
-    appPorts: AppPort[];
-    appDomains: AppDomain[];
-}
+type AppWithRelations = AppExtendedModel;
 
 interface ProjectNetworkGraphProps {
     apps: AppWithRelations[];
@@ -187,9 +184,9 @@ export default function ProjectNetworkGraph({ apps }: ProjectNetworkGraphProps) 
             const y = firstRowY;
 
             const ports = Array.from(new Set([
-                ...app.appDomains,
-                ...app.appPorts
-            ].map(d => d.port))).join(', ');
+                ...app.appDomains.map((domain) => domain.port),
+                ...(app.appNetworkPolicy?.rules ?? []).filter((rule) => rule.type === 'INGRESS').map((rule) => rule.port),
+            ])).join(', ');
 
             nodes.push({
                 id: app.id,
@@ -228,9 +225,9 @@ export default function ProjectNetworkGraph({ apps }: ProjectNetworkGraphProps) 
             const y = secondRowY;
 
             const ports = Array.from(new Set([
-                ...app.appDomains,
-                ...app.appPorts
-            ].map(d => d.port))).join(', ');
+                ...app.appDomains.map((domain) => domain.port),
+                ...(app.appNetworkPolicy?.rules ?? []).filter((rule) => rule.type === 'INGRESS').map((rule) => rule.port),
+            ])).join(', ');
 
             nodes.push({
                 id: app.id,

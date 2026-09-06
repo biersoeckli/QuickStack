@@ -55,8 +55,5 @@ export const plausibleAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8000,
-        }]
     }],
 };

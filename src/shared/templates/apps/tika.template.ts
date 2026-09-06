@@ -34,8 +34,5 @@ export const tikaAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 9998,
-        }]
     }],
 };

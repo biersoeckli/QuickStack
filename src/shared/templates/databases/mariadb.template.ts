@@ -70,9 +70,6 @@ export function getMariadbAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     };
 }
 

@@ -91,7 +91,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
         expect(clonedApp.id).not.toBe(sourceApp.id);
         expect(clonedApp.appDomains[0].id).not.toBe(sourceApp.appDomains[0].id);
-        expect(clonedApp.appPorts[0].id).not.toBe(sourceApp.appPorts[0].id);
         expect(clonedApp.appNodePorts[0].id).not.toBe(sourceApp.appNodePorts[0].id);
         expect(clonedApp.appFileMounts[0].id).not.toBe(sourceApp.appFileMounts[0].id);
         expect(clonedApp.appVolumes[0].id).not.toBe(sourceApp.appVolumes[0].id);
@@ -116,7 +115,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
             body: {
                 ...app,
                 appDomains: [],
-                appPorts: [],
                 appNodePorts: [],
                 appFileMounts: [],
                 appVolumes: [],
@@ -126,7 +124,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
         expect(updated).toMatchObject({
             appDomains: [],
-            appPorts: [],
             appNodePorts: [],
             appFileMounts: [],
             appVolumes: [],
@@ -461,7 +458,6 @@ function createAppPayload(id: string | undefined, projectId: string, name: strin
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,
         appDomains: [{ hostname: 'source.example.com', port: 8080, useSsl: true, redirectHttps: true }],
-        appPorts: [{ port: 8080 }],
         appNodePorts: [{ port: 8080, nodePort: 30080, protocol: 'TCP' }],
         appFileMounts: [{ containerMountPath: '/etc/app/config.json', content: '{}' }],
         appVolumes: [{ containerMountPath: '/data', size: 1, accessMode: 'rwo', storageClassName: 'longhorn', shareWithOtherApps: false }],

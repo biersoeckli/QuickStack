@@ -63,9 +63,6 @@ export function getPostgresAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 5432,
-        }]
     };
 }
 

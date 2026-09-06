@@ -154,7 +154,6 @@ describe('Template Icons', () => {
                     expect(config.appDomains).toBeDefined();
                     expect(config.appVolumes).toBeDefined();
                     expect(config.appFileMounts).toBeDefined();
-                    expect(config.appPorts).toBeDefined();
                 });
             });
         });

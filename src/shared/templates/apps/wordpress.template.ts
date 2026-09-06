@@ -59,9 +59,6 @@ MYSQL_USER=wordpress
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     },
     // WordPress Backend
     {
@@ -108,9 +105,6 @@ WORDPRESS_TABLE_PREFIX=wp_
 post_max_size = 100M
 `
         }],
-        appPorts: [{
-            port: 80,
-        }]
     }]
 }
 

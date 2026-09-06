@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNetworkPolicyModel, AppNetworkPolicyRuleModel, AppNodePortModel, AppPortModel, AppVolumeModel, ProjectModel } from "./generated-zod";
+import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNetworkPolicyModel, AppNetworkPolicyRuleModel, AppNodePortModel, AppVolumeModel, ProjectModel } from "./generated-zod";
 import { App, Project } from "@prisma/client";
 
 export const AppNetworkPolicyRuleWithTargetZodModel = AppNetworkPolicyRuleModel.extend({
@@ -17,7 +17,6 @@ export const AppExtendedZodModel = z.lazy(() => AppModel.extend({
     networkPolicyMode: z.string().optional(),
     project: ProjectModel,
     appDomains: AppDomainModel.array(),
-    appPorts: AppPortModel.array(),
     appNodePorts: AppNodePortModel.array(),
     appFileMounts: AppFileMountModel.array(),
     appVolumes: AppVolumeModel.array(),
@@ -55,8 +54,8 @@ export const AppExtendedWriteZodModel = AppModel
     .extend({
         id: z.string().optional(),
         networkPolicyMode: z.string().optional(),
+        appPorts: z.never().optional(),
         appDomains: AppDomainModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
-        appPorts: AppPortModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appNodePorts: AppNodePortModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appFileMounts: AppFileMountModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appVolumes: AppVolumeModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),

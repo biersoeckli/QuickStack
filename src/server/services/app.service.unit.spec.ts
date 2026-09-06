@@ -73,7 +73,6 @@ describe('app.service', () => {
         vi.spyOn(appService, 'saveDomain').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveVolume').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveFileMount').mockResolvedValue({} as never);
-        vi.spyOn(appService, 'savePort').mockResolvedValue({} as never);
         vi.spyOn(appService, 'saveBasicAuth').mockResolvedValue({} as never);
         vi.spyOn(appService, 'getExtendedById').mockResolvedValue(createApp({}) as never);
         const saveNodePort = vi.spyOn(appService, 'saveNodePort').mockResolvedValue({} as never);
@@ -269,7 +268,6 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         healthCheckFailureThreshold: 3,
         healthCheckTcpPort: null,
         appDomains: [],
-        appPorts: [],
         appNodePorts: [],
         appVolumes: [],
         appFileMounts: [],

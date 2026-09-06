@@ -89,22 +89,6 @@ describe('app.service integration - subitem ownership guards', () => {
             .resolves.toMatchObject({ appId: sourceApp.id, containerMountPath: '/config.json' });
     });
 
-    it('rejects moving an App Port to another App by id', async () => {
-        const { sourceApp, targetApp } = await createProjectAndApps();
-        const port = await dataAccess.client.appPort.create({
-            data: { appId: sourceApp.id, port: 3000 },
-        });
-
-        await expect(appService.savePort({
-            id: port.id,
-            appId: targetApp.id,
-            port: 3001,
-        })).rejects.toThrow('App port has ID, but existing item for app was not found.');
-
-        await expect(dataAccess.client.appPort.findUniqueOrThrow({ where: { id: port.id } }))
-            .resolves.toMatchObject({ appId: sourceApp.id, port: 3000 });
-    });
-
     it('rejects moving an App Node Port to another App by id', async () => {
         const { sourceApp, targetApp } = await createProjectAndApps();
         const nodePort = await dataAccess.client.appNodePort.create({
@@ -248,7 +232,6 @@ function createAppPayload(projectId: string, name: string, hostname: string): Ap
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,
         appDomains: [{ hostname, port: 8080, useSsl: true, redirectHttps: true }],
-        appPorts: [],
         appNodePorts: [],
         appFileMounts: [],
         appVolumes: [],

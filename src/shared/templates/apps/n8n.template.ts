@@ -51,9 +51,6 @@ export const n8nAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 5678,
-        }]
     }],
 };
 

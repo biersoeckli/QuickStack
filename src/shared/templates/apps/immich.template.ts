@@ -51,8 +51,5 @@ REDIS_HOSTNAME=immich_redis
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 2283,
-        }]
     }],
 };

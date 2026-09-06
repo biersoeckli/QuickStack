@@ -270,7 +270,6 @@ function createNetworkPolicyApp(overrides: Pick<AppExtendedModel,
         sourceType: 'CONTAINER',
         containerImageSource: 'nginx:1.27-alpine',
         appDomains: [],
-        appPorts: [],
         appVolumes: [],
         appFileMounts: [],
         appBasicAuths: [],
@@ -326,7 +325,6 @@ function createNginxApp(): AppExtendedModel {
         healthCheckFailureThreshold: 3,
         healthCheckTcpPort: null,
         appDomains: [],
-        appPorts: [],
         appNodePorts: [
             {
                 id: 'nginx-node-port',

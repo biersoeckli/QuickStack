@@ -50,8 +50,5 @@ CMD_ALLOW_ANONYMOUS_EDITS=true
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };
