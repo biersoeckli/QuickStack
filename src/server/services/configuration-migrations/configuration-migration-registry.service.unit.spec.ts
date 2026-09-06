@@ -1,4 +1,4 @@
-vi.mock('./network-policy-to-extended.migration', () => ({
+vi.mock('./network-policy-migration/network-policy-to-extended.migration', () => ({
     default: {
         name: 'network-policy-to-extended',
         runMigration: vi.fn(),
