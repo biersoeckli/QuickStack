@@ -18,6 +18,7 @@ export type BuildJobBuilderContext = {
     nodeSelector?: Record<string, string>;
     resources?: V1ResourceRequirements;
     gitSshPrivateKeySecretName?: string;
+    isRollback?: boolean;
 };
 
 export interface BuildJobBuilder {

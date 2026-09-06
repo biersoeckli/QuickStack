@@ -18,12 +18,14 @@ describe('RailpackBuildJobBuilder', () => {
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
             maxParallelBuilds: 2,
+            isRollback: true,
         });
 
         const initContainers = job.spec?.template?.spec?.initContainers ?? [];
         const buildContainer = job.spec?.template?.spec?.containers[0]!;
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('RAILPACK');
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
         expect(initContainers.map((container) => container.name)).toEqual([
             'build-queue-init',

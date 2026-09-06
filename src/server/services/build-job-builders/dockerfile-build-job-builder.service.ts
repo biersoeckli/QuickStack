@@ -50,6 +50,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                     [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                     [Constants.QS_ANNOTATION_BUILD_QUEUED_AT]: ctx.queuedAt,
                     [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                    ...(ctx.isRollback ? { [Constants.QS_ANNOTATION_ROLLBACK]: 'true' } : {}),
                     ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                 }
             },
@@ -66,6 +67,7 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
                             [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: ctx.latestRemoteGitCommitMessage.substring(0, 200),
                             [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: ctx.deploymentId,
                             [Constants.QS_ANNOTATION_BUILD_METHOD]: this.buildMethod,
+                            ...(ctx.isRollback ? { [Constants.QS_ANNOTATION_ROLLBACK]: 'true' } : {}),
                             ...(ctx.gitSshPrivateKeySecretName ? { [Constants.QS_ANNOTATION_GIT_SSH_SECRET]: ctx.gitSshPrivateKeySecretName } : {}),
                         },
                     },

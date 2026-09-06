@@ -19,9 +19,11 @@ describe('DockerfileBuildJobBuilder', () => {
             latestRemoteGitCommitMessage: 'feat: test',
             queuedAt: '123',
             maxParallelBuilds: 2,
+            isRollback: true,
         });
 
         expect(job.metadata?.annotations?.['qs-build-method']).toBe('DOCKERFILE');
+        expect(job.metadata?.annotations?.['qs-is-rollback']).toBe('true');
         expect(job.spec?.template?.metadata?.annotations?.['qs-deplyoment-id']).toBe('deployment-1');
         expect(job.spec?.template?.spec?.initContainers?.map((container) => container.name)).toEqual([
             'build-queue-init',

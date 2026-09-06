@@ -93,7 +93,7 @@ class AppService {
                 );
             } else {
                 await dlog(deploymentId, `Image for commit ${gitCommit} not found in the registry, starting a new build.`);
-                await buildService.buildAppAtCommit(deploymentId, app, gitCommit, target.gitCommitMessage);
+                await buildService.buildAppAtCommit(deploymentId, app, gitCommit, target.gitCommitMessage, true);
             }
         });
         return deploymentId;

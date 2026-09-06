@@ -76,6 +76,7 @@ class BuildWatchService {
         const buildJobName = job.metadata?.name;
         const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
         const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
+        const isRollback = job.metadata?.annotations?.[Constants.QS_ANNOTATION_ROLLBACK] === 'true';
 
         if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
             console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
@@ -99,6 +100,7 @@ class BuildWatchService {
                     gitCommitHash,
                     gitCommitMessage,
                     buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+                    isRollback,
                 );
             }
         } catch (e) {

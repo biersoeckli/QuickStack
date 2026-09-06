@@ -353,6 +353,7 @@ class DeploymentService {
                 gitCommitMessage: build.gitCommitMessage,
                 deploymentId: build.deploymentId,
                 buildMethod: build.buildMethod,
+                isRollback: build.isRollback,
                 }
             });
         replicasetRevisions.push(...runningOrFailedBuilds);

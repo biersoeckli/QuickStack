@@ -120,7 +120,7 @@ export default function BuildsTab({
                                     <div className="flex-1"></div>
                                     {item.deploymentId && <Button variant="secondary" onClick={() => setSelectedDeploymentForLogs(item)}>Show Logs</Button>}
                                     {role === RolePermissionEnum.READWRITE && item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
-                                    {role === RolePermissionEnum.READWRITE && item.gitCommit && (
+                                    {role === RolePermissionEnum.READWRITE && item.status !== 'DEPLOYING' && item.status !== 'DEPLOYED' && item.gitCommit && (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="outline">

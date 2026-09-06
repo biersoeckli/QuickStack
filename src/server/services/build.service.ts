@@ -32,15 +32,15 @@ class BuildService {
         return this.buildWorkload(deploymentId, app, 'app', forceBuild);
     }
 
-    async buildAppAtCommit(deploymentId: string, app: AppExtendedModel, commitHash: string, commitMessage: string = ''): Promise<[string, string, string, boolean]> {
-        return this.buildWorkload(deploymentId, app, 'app', false, commitHash, commitMessage);
+    async buildAppAtCommit(deploymentId: string, app: AppExtendedModel, commitHash: string, commitMessage: string = '', isRollback: boolean = false): Promise<[string, string, string, boolean]> {
+        return this.buildWorkload(deploymentId, app, 'app', false, commitHash, commitMessage, isRollback);
     }
 
     async buildAgent(deploymentId: string, agent: AgentExtendedModel, forceBuild: boolean = false): Promise<[string, string, string, boolean]> {
         return this.buildWorkload(deploymentId, agent, 'agent', forceBuild);
     }
 
-    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false, targetCommitHash?: string, targetCommitMessage?: string): Promise<[string, string, string, boolean]> {
+    async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, forceBuild: boolean = false, targetCommitHash?: string, targetCommitMessage?: string, isRollback: boolean = false): Promise<[string, string, string, boolean]> {
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
         const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION);
         await registryService.deployRegistry(registryLocation!);
@@ -57,7 +57,7 @@ class BuildService {
 
         if (targetCommitHash) {
             await dlog(deploymentId, `Building specific git commit ${targetCommitHash}...`);
-            return this.createAndStartBuildJob(deploymentId, workload, workloadType, targetCommitHash, targetCommitMessage ?? '');
+            return this.createAndStartBuildJob(deploymentId, workload, workloadType, targetCommitHash, targetCommitMessage ?? '', isRollback);
         }
 
         const latestSuccessfulBuild = buildsForWorkload.find(x => x.status === 'SUCCEEDED');
@@ -99,6 +99,7 @@ class BuildService {
         workloadType: WorkloadType,
         latestRemoteGitHash: string,
         latestRemoteGitCommitMessage: string = '',
+        isRollback: boolean = false,
     ): Promise<[string, string, string, boolean]> {
         const buildName = KubeObjectNameUtils.addRandomSuffix(KubeObjectNameUtils.toJobName(workload.id));
         const buildMethod = this.getBuildMethod(workload, workloadType);
@@ -132,6 +133,7 @@ class BuildService {
                 ...schedulingConfig,
                 maxParallelBuilds,
                 gitSshPrivateKeySecretName,
+                isRollback,
             });
 
             await k3s.batch.createNamespacedJob({ namespace: BUILD_NAMESPACE, body: jobDefinition });
@@ -337,6 +339,7 @@ class BuildService {
             gitCommitMessage: job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE],
             deploymentId: job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID],
             buildMethod: job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined,
+            isRollback: job.metadata?.annotations?.[Constants.QS_ANNOTATION_ROLLBACK] === 'true',
         } as BuildJobModel));
         builds.sort((a, b) => {
             if (a.startTime && b.startTime) {

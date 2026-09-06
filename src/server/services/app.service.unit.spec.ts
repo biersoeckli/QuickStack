@@ -196,6 +196,7 @@ describe('app.service', () => {
             expect.objectContaining({ id: 'demo-app' }),
             'abcdef1234567890',
             'old commit',
+            true,
         );
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
     });
