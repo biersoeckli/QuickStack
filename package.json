@@ -60,6 +60,7 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
+    "elkjs": "^0.12.0",
     "elysia": "^1.4.28",
     "exact-mirror": "^1.0.0",
     "file-type": "^22.0.1",

@@ -51,13 +51,7 @@ export default async function AppsPage({
 
     return (
         <div className="flex-1 space-y-4 pt-6">
-            <PageTitle
-                title="Apps"
-                subtitle={`App Project "${project.name}"`}>
-                {UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId) &&
-                    <CreateProjectActions projectId={projectId} projectType="app" />}
-            </PageTitle>
-            <ProjectOverview session={session} apps={relevantApps} projectId={project.id} />
+            <ProjectOverview session={session} apps={relevantApps} projectId={project.id} projectName={project.name} />
             <ProjectBreadcrumbs project={project} />
         </div>
     )
