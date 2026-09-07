@@ -26,6 +26,20 @@ export class ParamService {
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
     static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
 
+    async initializeDefaults() {
+        const [instanceId, registryLocation] = await Promise.all([
+            this.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID()),
+            this.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false'),
+            this.getOrCreate(ParamService.USE_CANARY_CHANNEL, 'false'),
+            this.getOrCreate(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
+            this.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
+            this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS)),
+            this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false'),
+        ]);
+
+        return { instanceId, registryLocation };
+    }
+
     async getUncached(name: string) {
         return await dataAccess.client.parameter.findFirstOrThrow({
             where: {

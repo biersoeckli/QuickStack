@@ -1,4 +1,4 @@
-import paramService, { ParamService } from "@/server/services/param.service";
+import paramService from "@/server/services/param.service";
 import configurationMigrationRegistryService from "@/server/services/configuration-migrations/configuration-migration-registry.service";
 import buildPodLogWatchService from "@/server/services/standalone-services/build-pod-log-watch.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
@@ -31,15 +31,7 @@ export async function GET(request: Request) {
         await buildPodLogWatchService.startWatch();
         await deploymentEventWatchService.startWatch();
 
-        const [instanceId, registryLocation] = await Promise.all([
-            paramService.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID()),
-            paramService.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false'),
-            paramService.getOrCreate(ParamService.USE_CANARY_CHANNEL, 'false'),
-            paramService.getOrCreate(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
-            paramService.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-            paramService.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS)),
-            paramService.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false'),
-        ]);
+        const { instanceId, registryLocation } = await paramService.initializeDefaults();
 
         // Always (re)deploy the registry on startup so storage settings and image version are never stale.
         const isLocalRegistryStorage = registryLocation.value === Constants.INTERNAL_REGISTRY_LOCATION;

@@ -50,8 +50,9 @@ class BuildService {
     async buildWorkload(deploymentId: string, workload: BuildWorkload, workloadType: WorkloadType, options: BuildWorkloadOptions = {}): Promise<[string, string, string, boolean]> {
         const { forceBuild = false, target } = options;
         await namespaceService.createNamespaceIfNotExists(BUILD_NAMESPACE);
-        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION);
-        await registryService.deployRegistry(registryLocation!);
+        const registryLocation = await paramService.getString(ParamService.REGISTRY_SOTRAGE_LOCATION)
+            ?? Constants.INTERNAL_REGISTRY_LOCATION;
+        await registryService.deployRegistry(registryLocation);
 
         const buildsForWorkload = await this.getBuildsForWorkload(workload.id);
         if (buildsForWorkload.some((job) => job.status === 'RUNNING' || job.status === 'PENDING')) {
