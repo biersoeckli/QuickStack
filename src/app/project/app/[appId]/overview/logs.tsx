@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import LogsStreamed from "../../../../../components/custom/logs-streamed";
 import { getPodsForApp as getPodsForAppAction } from "./actions";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
@@ -15,13 +15,16 @@ import { LogsDownloadOverlay } from "./logs-download-overlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
+import { cn } from "@/frontend/utils/utils";
 
 export default function Logs({
     app,
-    role
+    role,
+    hideCard = false,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
+    hideCard?: boolean;
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
@@ -72,13 +75,14 @@ export default function Logs({
         }
     }, [appPods, selectedPod]);
 
+    const ContentWrapper = hideCard ? Fragment : Card;
     return <>
-        <Card>
-            <CardHeader>
+        <ContentWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Logs</CardTitle>
                 <CardDescription>Read logs from all running Containers.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </CardHeader>}
+            <CardContent className={cn('space-y-4', hideCard ? 'p-0' : '')}>
                 {!appPods && <FullLoadingSpinner />}
                 {appPods && appPods.length === 0 && <div>No running pods found for this app.</div>}
                 {selectedPod && appPods && <div className="flex gap-4">
@@ -134,6 +138,6 @@ export default function Logs({
                 </div>}
                 {app.projectId && selectedPod && <LogsStreamed namespace={app.projectId} podName={selectedPod.podName} />}
             </CardContent>
-        </Card >
+        </ContentWrapper>
     </>;
 }

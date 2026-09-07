@@ -60,7 +60,7 @@ export default function PodStatusIndicator({ appId, showLabel }: PodStatusIndica
 
     if (appPods.deploymentStatus === 'DEPLOYED') {
         statusColor = 'bg-green-500';
-        statusLabel = 'Ok';
+        statusLabel = 'OK';
     }
 
     if (appPods.deploymentStatus === 'ERROR') {

@@ -25,8 +25,8 @@ function isProjectOverviewTab(value: string | null): value is ProjectOverviewTab
     return value === 'table' || value === 'graph';
 }
 
-function tabStorageKey(projectId: string) {
-    return `quickstack:project-overview-tab:${projectId}`;
+function tabStorageKey() {
+    return `quickstack:project-overview-tab`;
 }
 
 export default function AppProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
@@ -40,14 +40,14 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
             setCurrentTab(requestedTab);
             return;
         }
-        const savedTab = window.localStorage.getItem(tabStorageKey(projectId));
+        const savedTab = window.localStorage.getItem(tabStorageKey());
         setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'table');
     }, [projectId, requestedTab]);
 
     const handleTabChange = (value: string) => {
         if (!isProjectOverviewTab(value)) return;
         setCurrentTab(value);
-        window.localStorage.setItem(tabStorageKey(projectId), value);
+        window.localStorage.setItem(tabStorageKey(), value);
         router.push(`?tab=${value}`, { scroll: false });
     };
 
@@ -112,7 +112,7 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
                 <AppTable session={session} app={apps} projectId={projectId} />
             </TabsContent>
             <TabsContent value="graph">
-                <ProjectNetworkGraph apps={apps} projectId={projectId} />
+                <ProjectNetworkGraph apps={apps} projectId={projectId} session={session} />
             </TabsContent>
         </Tabs>
     );

@@ -2,7 +2,7 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { deleteBuild, getDeploymentsAndBuildsForApp, rollbackToDeployment } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { RotateCcw } from "lucide-react";
 import { DotsVerticalIcon } from "@radix-ui/react-icons";
 import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { cn } from "@/frontend/utils/utils";
 
 export default function BuildsTab({
     app,
-    role
+    role,
+    hideCard = false,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
+    hideCard?: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -85,13 +88,14 @@ export default function BuildsTab({
         return <></>;
     }
 
+    const ContentWrapper = hideCard ? Fragment : Card;
     return <>
-        <Card>
-            <CardHeader>
+        <ContentWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Deployments</CardTitle>
                 <CardDescription>This is an overview of the last deplyoments for this App.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </CardHeader>}
+            <CardContent className={cn('space-y-4', hideCard ? 'p-0' : '')}>
                 {!appBuilds ? <FullLoadingSpinner /> :
                     <SimpleDataTable columns={[
                         ['replicasetName', 'Deployment Name', false],
@@ -114,6 +118,8 @@ export default function BuildsTab({
                     ]}
                         data={appBuilds}
                         hideSearchBar={true}
+                        hideViewOptions={hideCard}
+                        hidePagination={hideCard}
                         actionCol={(item) => {
                             const isRollbackTarget = role === RolePermissionEnum.READWRITE
                                 && !!item.replicasetName
@@ -146,7 +152,7 @@ export default function BuildsTab({
                     />
                 }
             </CardContent>
-        </Card>
+        </ContentWrapper>
         <BuildLogsDialog deploymentInfo={selectedDeploymentForLogs} onClose={() => setSelectedDeploymentForLogs(undefined)} />
     </>;
 }

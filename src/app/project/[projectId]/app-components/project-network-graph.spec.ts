@@ -1,6 +1,7 @@
-import { buildProjectNetworkGraph } from '@/frontend/network-graph/project-network-graph-projection';
-import { graphEdgePresentation } from '@/frontend/network-graph/project-network-graph-visual-semantics';
+
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import { buildProjectNetworkGraph } from './project-network-graph/project-network-graph-projection';
+import { graphEdgePresentation } from './project-network-graph/project-network-graph-visual-semantics';
 
 function app(overrides: Record<string, unknown> = {}): AppExtendedModel {
     return {

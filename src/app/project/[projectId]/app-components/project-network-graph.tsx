@@ -1,6 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Background,
@@ -20,6 +21,10 @@ import { Button } from '@/components/ui/button';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import type { UserSession } from '@/shared/model/sim-session.model';
+import { UserGroupUtils } from '@/shared/utils/role.utils';
+import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
+import { NodeDetailsSheet, type PanelConnection } from './project-network-graph/node-details-sheet';
 import { NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
@@ -86,11 +91,14 @@ function Legend() {
 export default function ProjectNetworkGraph({
     apps,
     projectId,
+    session,
 }: {
     apps: AppExtendedModel[];
     projectId: string;
+    session: UserSession;
 }) {
     const router = useRouter();
+    const [selectedNodeId, setSelectedNodeId] = useState<string>();
     const { layout, updateNodePosition, saveNodePosition, resetLayout } = useProjectNetworkGraph(apps, projectId);
     const nodes: Node[] = (layout?.nodes ?? []).map(node => ({
         id: node.id,
@@ -117,14 +125,20 @@ export default function ProjectNetworkGraph({
             labelBgBorderRadius: 6,
         };
     });
-    if (edges.length === 0) {
-        return (
-            <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center text-sm text-muted-foreground">
-                <Cloud className="size-6 opacity-40" />
-                <p>No active network policy connections yet.</p>
-            </div>
-        );
-    }
+    const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
+    const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
+    const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
+    const selectedConnections = useMemo(() => (layout?.edges ?? [])
+        .filter(edge => edge.source === selectedNodeId || edge.target === selectedNodeId)
+        .map(edge => {
+            const otherNode = (layout?.nodes ?? []).find(node => node.id === (edge.source === selectedNodeId ? edge.target : edge.source));
+            const direction = edge.source === selectedNodeId ? 'Egress' : 'Ingress';
+            const port = Number.parseInt(edge.labels[0] ?? '', 10);
+            const copyValue = direction === 'Ingress' && otherNode?.kind === 'APP' && otherNode.projectId
+                ? InternalHostnameUtils.getInternalBaseUrlForApp({ id: otherNode.id.replace('APP:', ''), projectId: otherNode.projectId }, Number.isNaN(port) ? undefined : port)
+                : undefined;
+            return { id: edge.id, name: otherNode?.name ?? 'Unknown workload', direction, label: graphEdgePresentation(edge).label, copyValue } satisfies PanelConnection;
+        }), [layout, selectedNodeId]);
 
     return (
         <div className="space-y-4">
@@ -135,8 +149,8 @@ export default function ProjectNetworkGraph({
                     Reset layout
                 </Button>
             </div>
-            <div className="h-[560px] rounded-xl border bg-muted/20">
-                <ReactFlow
+            <div className="relative h-[calc(100vh-13rem)] min-h-[560px] overflow-hidden rounded-xl bg-background">
+                    <ReactFlow
                     nodes={nodes}
                     edges={edges}
                     nodeTypes={nodeTypes}
@@ -162,13 +176,14 @@ export default function ProjectNetworkGraph({
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
                         const data = node.data as NetworkGraphNode;
-                        if (data.kind === 'APP') router.push(`/project/app/${data.id.replace('APP:', '')}`);
-                        if (data.kind === 'AGENT') router.push(`/project/agent/${data.id.replace('AGENT:', '')}`);
+                        if (data.kind !== 'INTERNET') setSelectedNodeId(node.id);
                     }}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="hsl(var(--border))" />
                     <Controls showInteractive={false} />
                 </ReactFlow>
+                {edges.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p></div>}
+                {selectedNode && <NodeDetailsSheet node={selectedNode} app={selectedApp} role={selectedAppRole} connections={selectedConnections} open onOpenChange={open => { if (!open) setSelectedNodeId(undefined); }} onOpen={() => router.push(`/project/app/${selectedNode.id.replace('APP:', '')}`)} />}
             </div>
         </div>
     );
