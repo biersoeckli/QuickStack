@@ -86,6 +86,10 @@ _Avoid_: policy migration, extended upgrade
 A configured domain that exposes an **App** through Traefik.
 _Avoid_: public app address, ingress rule
 
+**Project Network Graph**:
+A visual representation of the effective traffic routes between the Apps and Agents visible from an **App Project**, including Traefik ingress permitted by each **App Domain** even when that App has Network Policies disabled.
+_Avoid_: network-policy-only graph, deployment topology
+
 **Agent**:
 A long-lived, isolated container workspace managed by QuickStack for AI-assisted work.
 _Avoid_: App, fixed opencode runtime, automation run

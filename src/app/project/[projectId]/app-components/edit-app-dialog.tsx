@@ -1,7 +1,7 @@
 'use client'
 
 import { Toast } from "@/frontend/utils/toast.utils";
-import { createApp } from "./actions";
+import { createApp } from "../actions";
 import { useRouter } from "next/navigation";
 import { App } from "@prisma/client";
 import { useInputDialog } from "@/frontend/states/zustand.states";

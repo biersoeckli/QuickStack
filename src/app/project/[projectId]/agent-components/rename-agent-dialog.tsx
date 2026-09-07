@@ -16,7 +16,7 @@ import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { toast } from "sonner";
-import { renameAgent } from "./actions";
+import { renameAgent } from "../actions";
 import { Agent } from "@prisma/client";
 
 export function RenameAgentDialog({ agent }: { agent: AgentExtendedModel }) {

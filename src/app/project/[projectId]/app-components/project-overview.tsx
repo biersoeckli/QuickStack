@@ -2,14 +2,14 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppTable from "./apps-table";
-import ProjectNetworkGraph from "./project-network-graph";
+import ProjectNetworkGraph from "../app-components/project-network-graph";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Table, Network, Container } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import CreateProjectActions from "./create-project-actions";
+import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
 
 interface ProjectOverviewProps {
@@ -29,7 +29,7 @@ function tabStorageKey(projectId: string) {
     return `quickstack:project-overview-tab:${projectId}`;
 }
 
-export default function ProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
+export default function AppProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');

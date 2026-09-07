@@ -1,4 +1,5 @@
-import { buildProjectNetworkGraph, graphEdgeHandles } from './project-network-graph';
+import { buildProjectNetworkGraph } from '@/frontend/network-graph/project-network-graph-projection';
+import { graphEdgePresentation } from '@/frontend/network-graph/project-network-graph-visual-semantics';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 
 function app(overrides: Record<string, unknown> = {}): AppExtendedModel {
@@ -52,17 +53,17 @@ describe('buildProjectNetworkGraph', () => {
         ]));
         const internetEgress = graph.edges.find(edge => edge.direction === 'INTERNET_EGRESS');
         const internetIngress = graph.edges.find(edge => edge.direction === 'INTERNET_INGRESS');
-        expect(graphEdgeHandles(internetEgress!)).toEqual({ sourceHandle: 'source-egress', targetHandle: 'target' });
-        expect(graphEdgeHandles(internetIngress!)).toEqual({ sourceHandle: 'source', targetHandle: 'target-ingress' });
+        expect(graphEdgePresentation(internetEgress!)).toMatchObject({ sourceHandle: 'source-egress', targetHandle: 'target', dashed: true });
+        expect(graphEdgePresentation(internetIngress!)).toMatchObject({ sourceHandle: 'source', targetHandle: 'target-ingress', dashed: true });
     });
 
-    test('omits rules, domains, and internet access when the policy is disabled', () => {
+    test('omits policy rules and egress but retains effective App Domain ingress when the policy is disabled', () => {
         const graph = buildProjectNetworkGraph([app({
             useNetworkPolicy: false,
             appDomains: [{ hostname: 'hidden.test', port: 3000 }],
             appNetworkPolicy: { allowInternetAccess: true, rules: [{ type: 'EGRESS', port: 80, protocol: 'TCP', targetApp: { id: 'app-b', name: 'App B', projectId: 'project-a' } }] },
         })]);
-        expect(graph.nodes).toEqual([expect.objectContaining({ id: 'APP:app-a' })]);
-        expect(graph.edges).toEqual([]);
+        expect(graph.nodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'APP:app-a' }), expect.objectContaining({ id: 'INTERNET' })]));
+        expect(graph.edges).toEqual([expect.objectContaining({ source: 'INTERNET', target: 'APP:app-a', direction: 'INTERNET_INGRESS', labels: ['hidden.test:3000'] })]);
     });
 });

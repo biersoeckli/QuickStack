@@ -17,9 +17,9 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-template.model";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { createAgentFromTemplate, getLlmGateways, getModelAliasesForGateway } from "./actions";
+import { createAgentFromTemplate, getLlmGateways, getModelAliasesForGateway } from "../actions";
 import { useDialogContext } from "@/frontend/states/dialog-context";
-import { TemplateDetailsPanel } from "./template-details-panel";
+import { TemplateDetailsPanel } from "../template-details-panel";
 
 interface LlmGatewayOption {
     id: string;

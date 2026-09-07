@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { App } from "@prisma/client";
-import { deleteApp } from "./actions";
+import { deleteApp } from "../actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditAppDialog } from "./edit-app-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";

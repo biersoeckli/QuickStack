@@ -30,6 +30,10 @@ For helper logic, first inspect the relevant `utils/` directory for an existing 
 
 Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`).
 
+## Code style
+
+Write human-readable code: use conventional line breaks and indentation so each structure, prop, and expression is easy to scan.
+
 ## Communication: Caveman Ultra
 
 Default: terse, direct, technically exact. Use fragments, short words, unambiguous abbreviations, and `->` for causality. Quote errors exactly. Keep code, commit messages, and PR text normal.

@@ -21,10 +21,10 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
 import { toast } from "sonner"
 import { AppTemplateModel, appTemplateZodModel } from "@/shared/model/app-template.model"
-import { createAppFromTemplate } from "./actions"
+import { createAppFromTemplate } from "../actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useDialogContext } from "@/frontend/states/dialog-context"
-import { TemplateDetailsPanel } from "./template-details-panel"
+import { TemplateDetailsPanel } from "../template-details-panel"
 
 export default function CreateTemplateAppSetupDialog({
     appTemplate,

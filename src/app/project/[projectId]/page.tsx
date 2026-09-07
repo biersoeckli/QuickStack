@@ -2,14 +2,14 @@
 
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import projectService from "@/server/services/project.service";
-import ProjectOverview from "./project-overview";
+import AppProjectOverview from "./app-components/project-overview";
 import appService from "@/server/services/app.service";
 import agentService from "@/server/services/agent.service";
 import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
 import CreateProjectActions from "./create-project-actions";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import AgentListClient from "./agent-list-client";
+import AgentListClient from "./agent-components/agent-table";
 
 export default async function AppsPage({
     params
@@ -51,7 +51,7 @@ export default async function AppsPage({
 
     return (
         <div className="flex-1 space-y-4 pt-6">
-            <ProjectOverview session={session} apps={relevantApps} projectId={project.id} projectName={project.name} />
+            <AppProjectOverview session={session} apps={relevantApps} projectId={project.id} projectName={project.name} />
             <ProjectBreadcrumbs project={project} />
         </div>
     )

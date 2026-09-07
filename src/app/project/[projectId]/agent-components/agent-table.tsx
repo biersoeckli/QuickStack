@@ -5,13 +5,13 @@ import { UserSession } from "@/shared/model/sim-session.model";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Bot, Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import CreateProjectActions from "./create-project-actions";
+import CreateProjectActions from "../create-project-actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { deleteAgent } from "./actions";
+import { deleteAgent } from "../actions";
 import { RenameAgentDialog } from "./rename-agent-dialog";
 import {
     Empty,

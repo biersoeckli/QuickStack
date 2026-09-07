@@ -20,7 +20,7 @@ import {
 import SelectBox from "@/components/custom/multiselect-field";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
-import { createAgent, getLlmGateways, getModelAliasesForGateway } from "./actions";
+import { createAgent, getLlmGateways, getModelAliasesForGateway } from "../actions";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useDialog } from "@/frontend/states/zustand.states";

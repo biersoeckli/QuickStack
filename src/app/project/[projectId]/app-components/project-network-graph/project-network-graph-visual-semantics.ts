@@ -1,0 +1,35 @@
+import type { NetworkGraphEdge, NetworkGraphEdgeDirection } from './project-network-graph-projection';
+
+export const NETWORK_GRAPH_COLORS = { connection: '#0ea5e9', internet: '#8b5cf6' } as const;
+
+export type NetworkGraphEdgePresentation = {
+    sourceHandle: string;
+    targetHandle: string;
+    color: string;
+    dashed: boolean;
+    label?: string;
+};
+
+const handles: Record<NetworkGraphEdgeDirection, Pick<NetworkGraphEdgePresentation, 'sourceHandle' | 'targetHandle'>> = {
+    CONNECTION: { sourceHandle: 'source-egress', targetHandle: 'target-ingress' },
+    INTERNET_EGRESS: { sourceHandle: 'source-egress', targetHandle: 'target' },
+    INTERNET_INGRESS: { sourceHandle: 'source', targetHandle: 'target-ingress' },
+    INGRESS: { sourceHandle: 'source-ingress', targetHandle: 'target-ingress' },
+    EGRESS: { sourceHandle: 'source-egress', targetHandle: 'target-egress' },
+};
+
+export function graphEdgePresentation(edge: NetworkGraphEdge): NetworkGraphEdgePresentation {
+    const internet = edge.direction.startsWith('INTERNET');
+    return {
+        ...handles[edge.direction],
+        color: internet ? NETWORK_GRAPH_COLORS.internet : NETWORK_GRAPH_COLORS.connection,
+        dashed: internet || edge.complete === false,
+        label: edge.labels.join(' · ') || undefined,
+    };
+}
+
+export const graphLegendItems = [
+    { kind: 'complete', label: 'Complete connection' },
+    { kind: 'incomplete', label: 'Incomplete connection' },
+    { kind: 'internet', label: 'Internet access' },
+] as const;
