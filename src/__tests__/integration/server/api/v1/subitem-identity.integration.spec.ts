@@ -174,7 +174,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
         });
     });
 
-    it('reports the current API error when an App network policy configuration is omitted', async () => {
+    it('rejects an App write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const project = await createProject(apiKey, 'APP');
         const { appNetworkPolicy: _appNetworkPolicy, ...payload } = createAppPayload(undefined, project.id, 'Missing Policy App');
@@ -182,9 +182,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: payload,
-        }), 500);
+        }), 422);
 
-        expect(problem.detail).toBe('An unknown error occurred.');
+        expect(problem.detail).toBe('Request validation failed.');
     });
 
     it('removes an App network policy configuration when the API receives null', async () => {
@@ -356,7 +356,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
             .resolves.toMatchObject({ agentId: clonedAgent.id, hostname: 'clone.agent.example.com' });
     });
 
-    it('reports the current API error when an Agent network policy configuration is omitted', async () => {
+    it('rejects an Agent write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const agentProject = await createProject(apiKey, 'AGENT');
         const appProject = await createProject(apiKey, 'APP');
@@ -369,9 +369,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/agents', apiKey, {
             method: 'POST',
             body: payload,
-        }), 500);
+        }), 422);
 
-        expect(problem.detail).toBe('An unknown error occurred.');
+        expect(problem.detail).toBe('Request validation failed.');
     });
 
     it('removes an Agent network policy configuration when the API receives null', async () => {

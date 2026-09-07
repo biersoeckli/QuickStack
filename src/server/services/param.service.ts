@@ -26,15 +26,15 @@ export class ParamService {
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
     static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
 
-    async initializeDefaults() {
+    async initializeDefaults(revalidateParam = true) {
         const [instanceId, registryLocation] = await Promise.all([
-            this.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID()),
-            this.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false'),
-            this.getOrCreate(ParamService.USE_CANARY_CHANNEL, 'false'),
-            this.getOrCreate(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION),
-            this.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED),
-            this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS)),
-            this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false'),
+            this.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID(), revalidateParam),
+            this.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false', revalidateParam),
+            this.getOrCreate(ParamService.USE_CANARY_CHANNEL, 'false', revalidateParam),
+            this.getOrCreate(ParamService.REGISTRY_SOTRAGE_LOCATION, Constants.INTERNAL_REGISTRY_LOCATION, revalidateParam),
+            this.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED, revalidateParam),
+            this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS), revalidateParam),
+            this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false', revalidateParam),
         ]);
 
         return { instanceId, registryLocation };
@@ -64,7 +64,7 @@ export class ParamService {
         });
     }
 
-    async getOrCreate(name: string, defaultValue: string) {
+    async getOrCreate(name: string, defaultValue: string, revalidateParam = true) {
         let param: Parameter;
         try {
             param = await dataAccess.client.parameter.upsert({
@@ -78,7 +78,9 @@ export class ParamService {
                 update: {}
             });
         } finally {
-            revalidateTag(Tags.parameter());
+            if (revalidateParam) {
+                revalidateTag(Tags.parameter());
+            }
         }
         return param;
     }

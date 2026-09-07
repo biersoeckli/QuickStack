@@ -81,7 +81,7 @@ export function createPrismaTestContext(label: string) {
         await dataAccess.client.user.deleteMany();
         await dataAccess.client.userGroup.deleteMany();
         await dataAccess.client.parameter.deleteMany();
-        await paramService.initializeDefaults();
+        await paramService.initializeDefaults(false);
     });
 
     afterAll(async () => {
