@@ -17,9 +17,13 @@ const sourceCodePro = Source_Code_Pro({
 
 export default function BuildLogsStreamed({
     deploymentId,
+    workloadId,
+    workloadType,
     fullHeight = false,
 }: {
     deploymentId?: string;
+    workloadId?: string;
+    workloadType?: string;
     fullHeight?: boolean;
 }) {
     const [isConnected, setIsConnected] = useState(false);
@@ -37,7 +41,7 @@ export default function BuildLogsStreamed({
             headers: {
                 "Content-Type": "text/event-stream",
             },
-            body: JSON.stringify({ deploymentId }),
+            body: JSON.stringify({ deploymentId, workloadId, workloadType }),
             signal: signal,
         });
 
@@ -61,10 +65,10 @@ export default function BuildLogsStreamed({
                 setLogs((prevLogs) => prevLogs + value);
             }
         }
-    }, [deploymentId])
+    }, [deploymentId, workloadId, workloadType])
 
     useEffect(() => {
-        if (!deploymentId) {
+        if (!deploymentId || !workloadId || !workloadType) {
             return;
         }
         const controller = new AbortController();
@@ -75,7 +79,7 @@ export default function BuildLogsStreamed({
             setLogs('');
             controller.abort();
         };
-    }, [deploymentId, initializeConnection]);
+    }, [deploymentId, workloadId, workloadType, initializeConnection]);
 
     useEffect(() => {
         if (textAreaRef.current) {

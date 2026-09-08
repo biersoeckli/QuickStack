@@ -10,10 +10,10 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import ShortCommitHash from "@/components/custom/short-commit-hash";
 import BuildStatusBadge from "@/app/builds/build-status-badge";
-import { BuildLogsDialog } from "@/app/project/app/[appId]/overview/build-logs-overlay";
+import { BuildLogsDialogContent } from "@/app/project/app/[appId]/overview/build-logs-overlay";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { BuildJobModel } from "@/shared/model/build-job";
 import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { GlobalBuildJobModel } from "@/shared/model/global-build-job.model";
@@ -40,8 +40,8 @@ export default function WorkloadBuildsTable({
     hideSearchBar?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
+    const { openDialog } = useDialog();
     const [builds, setBuilds] = useState<WorkloadBuildRow[] | undefined>(initialBuilds);
-    const [selectedBuildForLogs, setSelectedBuildForLogs] = useState<DeploymentInfoModel | undefined>(undefined);
     const isGlobalView = !workloadId;
 
     const fetchBuilds = useCallback(async () => {
@@ -137,7 +137,7 @@ export default function WorkloadBuildsTable({
                 <div className="flex gap-4">
                     <div className="flex-1" />
                     {item.deploymentId && (
-                        <Button variant="secondary" onClick={() => setSelectedBuildForLogs(toDeploymentInfo(item))}>
+                        <Button variant="secondary" onClick={() => openDialog(<BuildLogsDialogContent deploymentInfo={toDeploymentInfo(item)} workloadId={item.workloadId} workloadType={item.workloadType} />, { maxWidth: '1300px' })}>
                             Show Logs
                         </Button>
                     )}
@@ -164,7 +164,6 @@ export default function WorkloadBuildsTable({
                     </CardContent>
                 </Card>
             ) : table}
-            <BuildLogsDialog deploymentInfo={selectedBuildForLogs} onClose={() => setSelectedBuildForLogs(undefined)} />
         </>
     );
 }

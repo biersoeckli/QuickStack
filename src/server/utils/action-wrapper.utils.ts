@@ -287,18 +287,23 @@ export async function simpleRoute<ReturnType>(
             return NextResponse.json({
                 status: 'error',
                 message: ex.message
-            });
+            }, { status: 400 });
         } else if (ex instanceof ServiceException) {
             return NextResponse.json({
                 status: 'error',
                 message: ex.message
-            });
+            }, { status: 403 });
+        } else if (ex instanceof z.ZodError) {
+            return NextResponse.json({
+                status: 'error',
+                message: 'Invalid request.'
+            }, { status: 400 });
         } else {
             console.error(ex)
             return NextResponse.json({
                 status: 'error',
                 message: 'An unknown error occurred.'
-            });
+            }, { status: 500 });
         }
     }
     return funcResult;

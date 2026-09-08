@@ -27,6 +27,10 @@ class PodService {
         } as PodsInfoModel;
     }
 
+    async getPodByName(projectId: string, podName: string) {
+        return await k3s.core.readNamespacedPod({ name: podName, namespace: projectId });
+    }
+
     async getPodsForApp(projectId: string, appId: string): Promise<PodsInfoModel[]> {
         return standalonePodService.getPodsForApp(projectId, appId);
     }
