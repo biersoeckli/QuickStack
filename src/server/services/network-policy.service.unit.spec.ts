@@ -30,8 +30,6 @@ describe('network-policy.service', () => {
             id: 'demo-app',
             projectId: 'demo-project',
             useNetworkPolicy: true,
-            ingressNetworkPolicy: 'DENY_ALL',
-            egressNetworkPolicy: 'DENY_ALL',
             appNodePorts: [
                 {
                     id: 'node-port-1',
@@ -81,14 +79,11 @@ describe('network-policy.service', () => {
         }]);
     });
 
-    it('always allows ingress from replicas of the same App in Extended mode', async () => {
+    it('always allows ingress from replicas of the same App', async () => {
         const app = {
             id: 'demo-app',
             projectId: 'app-project',
             useNetworkPolicy: true,
-            networkPolicyMode: 'EXTENDED',
-            ingressNetworkPolicy: 'DENY_ALL',
-            egressNetworkPolicy: 'DENY_ALL',
             appDomains: [],
             appNodePorts: [],
             appNetworkPolicy: null,
@@ -102,14 +97,11 @@ describe('network-policy.service', () => {
         })]));
     });
 
-    it('always allows egress to replicas of the same App in Extended mode', async () => {
+    it('always allows egress to replicas of the same App', async () => {
         const app = {
             id: 'demo-app',
             projectId: 'app-project',
             useNetworkPolicy: true,
-            networkPolicyMode: 'EXTENDED',
-            ingressNetworkPolicy: 'DENY_ALL',
-            egressNetworkPolicy: 'DENY_ALL',
             appDomains: [],
             appNodePorts: [],
             appNetworkPolicy: null,
@@ -128,9 +120,6 @@ describe('network-policy.service', () => {
             id: 'demo-app',
             projectId: 'app-project',
             useNetworkPolicy: true,
-            networkPolicyMode: 'EXTENDED',
-            ingressNetworkPolicy: 'DENY_ALL',
-            egressNetworkPolicy: 'DENY_ALL',
             appDomains: [],
             appNodePorts: [],
             appNetworkPolicy: {

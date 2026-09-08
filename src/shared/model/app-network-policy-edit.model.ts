@@ -2,7 +2,6 @@ import { stringToBoolean } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const appNetworkPolicySettingsZodModel = z.object({
-    mode: z.enum(['SIMPLE', 'EXTENDED']),
     useNetworkPolicy: stringToBoolean,
     allowInternetAccess: stringToBoolean.optional().default(true),
 });

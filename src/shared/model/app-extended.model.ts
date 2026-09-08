@@ -13,8 +13,11 @@ const AppNetworkPolicyWithRulesZodModel = AppNetworkPolicyModel.extend({
     rules: z.array(AppNetworkPolicyRuleWithTargetZodModel),
 });
 
-export const AppExtendedZodModel = z.lazy(() => AppModel.extend({
-    networkPolicyMode: z.string().optional(),
+export const AppExtendedZodModel = z.lazy(() => AppModel.omit({
+    ingressNetworkPolicy: true,
+    egressNetworkPolicy: true,
+    networkPolicyMode: true,
+}).extend({
     project: ProjectModel,
     appDomains: AppDomainModel.array(),
     appNodePorts: AppNodePortModel.array(),
@@ -50,10 +53,12 @@ const appNetworkPolicyWriteZodModel = AppNetworkPolicyModel.omit({
 
 /** Write schema for POST upsert: id optional (absent = create), server meta fields stripped. */
 export const AppExtendedWriteZodModel = AppModel
-    .omit({ ...omitFields, networkPolicyMode: true })
+    .omit({ ...omitFields, ingressNetworkPolicy: true, egressNetworkPolicy: true, networkPolicyMode: true })
     .extend({
         id: z.string().optional(),
-        networkPolicyMode: z.string().optional(),
+        ingressNetworkPolicy: z.never().optional(),
+        egressNetworkPolicy: z.never().optional(),
+        networkPolicyMode: z.never().optional(),
         appPorts: z.never().optional(),
         appDomains: AppDomainModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appNodePorts: AppNodePortModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),

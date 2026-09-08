@@ -90,8 +90,6 @@ appModel: {
     replicas: 1,                              // Number of replicas
 
     // Network policies
-    ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-    egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
     useNetworkPolicy: true,
 
     // Environment variables (string with KEY=VALUE pairs, one per line)
@@ -108,7 +106,7 @@ POSTGRES_USER=admin`,
 **Important:**
 - `envVars` is a multi-line string with KEY=VALUE format
 - Values from `inputSettings` with `isEnvVar: true` will be automatically appended
-- Use `Constants.DEFAULT_*` values for network policies and health checks
+- Use `Constants.DEFAULT_*` values for health checks
 
 #### `appDomains` (array)
 Domain configurations (usually empty for templates, users configure later):
@@ -461,8 +459,6 @@ export const mydatabaseAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `DB_USER=admin`,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
@@ -511,8 +507,6 @@ export const myappAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `NODE_ENV=production`,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
@@ -549,12 +543,6 @@ export const myappAppTemplate: AppTemplateModel = {
 ## Constants Reference
 
 ```typescript
-// Network Policies
-Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS
-Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS
-Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES
-Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES
-
 // Health Checks
 Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS
 Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS

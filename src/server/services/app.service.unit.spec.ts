@@ -256,8 +256,6 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         cpuReservation: null,
         cpuLimit: null,
         webhookId: null,
-        ingressNetworkPolicy: 'ALLOW_ALL',
-        egressNetworkPolicy: 'ALLOW_ALL',
         useNetworkPolicy: true,
         healthChechHttpGetPath: null,
         healthCheckHttpScheme: null,

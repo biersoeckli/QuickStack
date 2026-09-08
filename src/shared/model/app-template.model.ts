@@ -3,7 +3,11 @@ import { AppDomainModel, AppFileMountModel, AppModel, AppVolumeModel } from "./g
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appStorageClassNameZodModel, appVolumeTypeZodModel } from "./volume-edit.model";
 
-const appModelWithRelations = z.lazy(() => AppModel.extend({
+const appModelWithRelations = z.lazy(() => AppModel.omit({
+    ingressNetworkPolicy: true,
+    egressNetworkPolicy: true,
+    networkPolicyMode: true,
+}).extend({
     projectId: z.undefined().optional(),
     buildMethod: z.undefined().optional(),
     dockerfilePath: z.undefined().optional(),

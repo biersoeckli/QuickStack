@@ -225,8 +225,6 @@ function createAppPayload(projectId: string, name: string, hostname: string): Ap
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
-        ingressNetworkPolicy: 'ALLOW_ALL',
-        egressNetworkPolicy: 'ALLOW_ALL',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,

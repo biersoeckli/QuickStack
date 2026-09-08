@@ -161,7 +161,6 @@ class AppNetworkPolicyService {
             await db.app.update({
                 where: { id: input.appId },
                 data: {
-                    networkPolicyMode: input.mode,
                     useNetworkPolicy: input.useNetworkPolicy,
                 },
             });

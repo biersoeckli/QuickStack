@@ -275,7 +275,11 @@ class AppService {
                 updatedAt: z.date().optional(),
             });
 
-            const parsedAppModel = AppModel.extend(optionalParam.shape).parse({ ...app, networkPolicyMode: app.networkPolicyMode ?? 'SIMPLE' });
+            const parsedAppModel = AppModel.extend(optionalParam.shape).omit({
+                ingressNetworkPolicy: true,
+                egressNetworkPolicy: true,
+                networkPolicyMode: true,
+            }).parse(app);
             const savedApp = await this.save({
                 ...parsedAppModel,
                 id: app.id

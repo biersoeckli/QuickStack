@@ -4,7 +4,6 @@ import { SuccessActionResult } from "@/shared/model/server-action-error-return.m
 import appService from "@/server/services/app.service";
 import { isAuthorizedWriteForApp, isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model";
-import { appNetworkPolicy } from "@/shared/model/network-policy.model";
 import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
 import appNetworkPolicyService from "@/server/services/app-network-policy.service";
 import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel, AppNetworkPolicySettingsModel, appNetworkPolicySettingsZodModel } from "@/shared/model/app-network-policy-edit.model";
@@ -29,25 +28,6 @@ export const deleteBasicAuth = async (basicAuthId: string) =>
         await isAuthorizedWriteForApp(await appService.getBasicAuthById(basicAuthId).then(b => b.appId));
         await appService.deleteBasicAuthById(basicAuthId);
         return new SuccessActionResult(undefined, 'Successfully deleted item');
-    });
-
-export const saveNetworkPolicy = async (appId: string, ingressPolicy: string, egressPolicy: string, useNetworkPolicy: boolean) =>
-    simpleAction(async () => {
-        await isAuthorizedWriteForApp(appId);
-
-        // validate policies
-        appNetworkPolicy.parse(ingressPolicy);
-        appNetworkPolicy.parse(egressPolicy);
-
-        const app = await appService.getById(appId);
-        await appService.save({
-            ...app,
-            ingressNetworkPolicy: ingressPolicy,
-            egressNetworkPolicy: egressPolicy,
-            useNetworkPolicy: useNetworkPolicy,
-            networkPolicyMode: 'SIMPLE',
-        });
-        return new SuccessActionResult(undefined, 'Network policy saved');
     });
 
 export const saveAppNetworkPolicySettings = async (prevState: any, input: AppNetworkPolicySettingsModel, appId: string) =>

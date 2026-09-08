@@ -21,7 +21,8 @@ export default async function RootLayout({
   const session = await isAuthorizedReadForApp(appId);
   const app = await appService.getExtendedById(appId);
 
-  const showIngressWarning = app.networkPolicyMode !== 'EXTENDED' && app.appDomains.length > 0 && app.ingressNetworkPolicy !== 'ALLOW_ALL' && app.ingressNetworkPolicy !== 'INTERNET_ONLY';
+  const hasIngressRule = (app.appNetworkPolicy?.rules ?? []).some(rule => rule.type === 'INGRESS');
+  const showIngressWarning = app.useNetworkPolicy && app.appDomains.length === 0 && !hasIngressRule;
 
   return (
     <div className="flex-1 space-y-6 pt-6">
@@ -32,10 +33,10 @@ export default async function RootLayout({
       {showIngressWarning && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Warning</AlertTitle>
+          <AlertTitle>No inbound traffic configured</AlertTitle>
           <AlertDescription>
-            You have configured domains for this app, but the Ingress Network Policy is not set to &quot;Allow All&quot; or &quot;Internet Only&quot;.
-            External traffic via the domain might be blocked.
+            This app has no domain and no ingress network policy rule. It accepts no incoming traffic and cannot be reached
+            from other apps. Configure network policies to allow inbound connections.
           </AlertDescription>
         </Alert>
       )}

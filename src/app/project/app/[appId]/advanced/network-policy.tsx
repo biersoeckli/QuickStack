@@ -35,7 +35,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
     }, [app.id]);
 
     const saveSettings = (nextEnabled: boolean, nextInternet: boolean) =>
-        Toast.fromAction(() => saveAppNetworkPolicySettings(undefined, { mode: 'EXTENDED', useNetworkPolicy: nextEnabled, allowInternetAccess: nextInternet }, app.id), 'Network policy saved.');
+        Toast.fromAction(() => saveAppNetworkPolicySettings(undefined, { useNetworkPolicy: nextEnabled, allowInternetAccess: nextInternet }, app.id), 'Network policy saved.');
 
     const saveChanges = async () => {
         await saveSettings(enabled, internet);

@@ -22,13 +22,10 @@ export const mattermostAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `TZ=Europe/Zurich
 MM_SQLSETTINGS_DRIVERNAME=postgres
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,

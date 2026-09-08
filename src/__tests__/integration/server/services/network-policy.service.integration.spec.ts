@@ -8,12 +8,6 @@ import networkPolicyService from '@/server/services/network-policy.service';
 import svcService from '@/server/services/svc.service';
 import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
-import { AppNetworkPolicyType } from '@/shared/model/network-policy.model';
-import { Constants } from '@/shared/utils/constants';
-
-const networkPolicyTypes: AppNetworkPolicyType[] = ['ALLOW_ALL', 'INTERNET_ONLY', 'NAMESPACE_ONLY', 'DENY_ALL'];
-const networkPolicyCombinations = networkPolicyTypes.flatMap(ingressPolicy =>
-    networkPolicyTypes.map(egressPolicy => [ingressPolicy, egressPolicy] as const));
 
 describe('network-policy.service integration', () => {
     const ctx = createK3sTestContext();
@@ -33,8 +27,6 @@ describe('network-policy.service integration', () => {
             id: 'demo-app',
             projectId: namespace,
             useNetworkPolicy: true,
-            ingressNetworkPolicy: 'DENY_ALL',
-            egressNetworkPolicy: 'DENY_ALL',
             appNodePorts: [
                 {
                     id: 'node-port-1',
@@ -76,8 +68,6 @@ describe('network-policy.service integration', () => {
             id: appId,
             projectId: namespace,
             useNetworkPolicy: true,
-            ingressNetworkPolicy: 'ALLOW_ALL',
-            egressNetworkPolicy: 'ALLOW_ALL',
             appNodePorts: [],
         }));
 
@@ -89,12 +79,19 @@ describe('network-policy.service integration', () => {
             },
         });
         expect(policy.spec?.policyTypes).toEqual(['Ingress', 'Egress']);
+        // an App can always be reached from its own replicas
         expect(policy.spec?.ingress).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    _from: expect.arrayContaining([
-                        { podSelector: {} },
-                    ]),
+                    _from: [{ podSelector: { matchLabels: { app: appId } } }],
+                }),
+            ])
+        );
+        // traffic from the whole namespace is not allowed by default
+        expect(policy.spec?.ingress).not.toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    _from: [{ podSelector: {} }],
                 }),
             ])
         );
@@ -103,6 +100,17 @@ describe('network-policy.service integration', () => {
                 expect.objectContaining({
                     _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }],
                 }),
+            ])
+        );
+        // egress allows DNS and internet access by default
+        const egressDestinations = (policy.spec?.egress ?? []).flatMap(rule => rule.to ?? []);
+        expect(egressDestinations).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } },
+                    podSelector: { matchLabels: { 'k8s-app': 'kube-dns' } },
+                }),
+                expect.objectContaining({ ipBlock: expect.objectContaining({ cidr: '0.0.0.0/0' }) }),
             ])
         );
     });
@@ -123,8 +131,6 @@ describe('network-policy.service integration', () => {
             id: appId,
             projectId: namespace,
             useNetworkPolicy: true,
-            ingressNetworkPolicy: 'ALLOW_ALL',
-            egressNetworkPolicy: 'ALLOW_ALL',
             appNodePorts: [],
         });
         await networkPolicyService.reconcileNetworkPolicy(enabledApp);
@@ -143,36 +149,6 @@ describe('network-policy.service integration', () => {
             .not
             .toContain(KubeObjectNameUtils.toNetworkPolicyName(appId));
     });
-
-    it.each(networkPolicyCombinations)(
-        'creates expected rules for ingress %s and egress %s',
-        async (ingressPolicy, egressPolicy) => {
-            const namespace = toKubeName(`policy-matrix-${ingressPolicy}-${egressPolicy}`);
-            const appId = 'matrix-app';
-            const { core, network } = ctx.getClients();
-            await core.createNamespace({
-                body: {
-                    metadata: {
-                        name: namespace,
-                    },
-                },
-            });
-
-            await networkPolicyService.reconcileNetworkPolicy(createNetworkPolicyApp({
-                id: appId,
-                projectId: namespace,
-                useNetworkPolicy: true,
-                ingressNetworkPolicy: ingressPolicy,
-                egressNetworkPolicy: egressPolicy,
-                appNodePorts: [],
-            }));
-
-            const policy = await network.readNamespacedNetworkPolicy({ name: KubeObjectNameUtils.toNetworkPolicyName(appId), namespace: namespace });
-
-            expectIngressRules(policy.spec?.ingress ?? [], ingressPolicy);
-            expectEgressRules(policy.spec?.egress ?? [], egressPolicy);
-        }
-    );
 
     it('exposes an nginx Deployment through NodePort 30081', async () => {
         const app = createNginxApp();
@@ -253,8 +229,6 @@ function createNetworkPolicyApp(overrides: Pick<AppExtendedModel,
     'id' |
     'projectId' |
     'useNetworkPolicy' |
-    'ingressNetworkPolicy' |
-    'egressNetworkPolicy' |
     'appNodePorts'
 >): AppExtendedModel {
     return {
@@ -313,8 +287,6 @@ function createNginxApp(): AppExtendedModel {
         cpuReservation: null,
         cpuLimit: null,
         webhookId: null,
-        ingressNetworkPolicy: 'DENY_ALL',
-        egressNetworkPolicy: 'DENY_ALL',
         useNetworkPolicy: true,
         healthChechHttpGetPath: null,
         healthCheckHttpScheme: null,
@@ -342,136 +314,6 @@ function createNginxApp(): AppExtendedModel {
         createdAt: new Date(),
         updatedAt: new Date(),
     };
-}
-
-function expectIngressRules(rules: k8s.V1NetworkPolicyIngressRule[], policyType: AppNetworkPolicyType) {
-    const peers = rules.flatMap(rule => rule._from ?? []);
-    const expectedPeers: Record<AppNetworkPolicyType, {
-        traefik: boolean;
-        namespace: boolean;
-        backupJob: boolean;
-        dbTool: boolean;
-    }> = {
-        ALLOW_ALL: {
-            traefik: false,
-            namespace: true,
-            backupJob: false,
-            dbTool: false,
-        },
-        INTERNET_ONLY: {
-            traefik: false,
-            namespace: false,
-            backupJob: true,
-            dbTool: true,
-        },
-        NAMESPACE_ONLY: {
-            traefik: false,
-            namespace: true,
-            backupJob: false,
-            dbTool: false,
-        },
-        DENY_ALL: {
-            traefik: false,
-            namespace: false,
-            backupJob: true,
-            dbTool: true,
-        },
-    };
-
-    expect(hasTraefikIngressPeer(peers)).toBe(expectedPeers[policyType].traefik);
-    expect(hasSameNamespacePeer(peers)).toBe(expectedPeers[policyType].namespace);
-    expect(hasContainerTypePeer(peers, Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB))
-        .toBe(expectedPeers[policyType].backupJob);
-    expect(hasContainerTypePeer(peers, Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL))
-        .toBe(expectedPeers[policyType].dbTool);
-}
-
-function expectEgressRules(rules: k8s.V1NetworkPolicyEgressRule[], policyType: AppNetworkPolicyType) {
-    const expectedRules: Record<AppNetworkPolicyType, {
-        dns: boolean;
-        internet: boolean;
-        namespace: boolean;
-    }> = {
-        ALLOW_ALL: {
-            dns: true,
-            internet: true,
-            namespace: true,
-        },
-        INTERNET_ONLY: {
-            dns: true,
-            internet: true,
-            namespace: false,
-        },
-        NAMESPACE_ONLY: {
-            dns: true,
-            internet: false,
-            namespace: true,
-        },
-        DENY_ALL: {
-            dns: false,
-            internet: false,
-            namespace: false,
-        },
-    };
-
-    expect(hasDnsEgressRule(rules)).toBe(expectedRules[policyType].dns);
-    expect(hasInternetEgressPeer(rules)).toBe(expectedRules[policyType].internet);
-    expect(hasSameNamespaceEgressPeer(rules)).toBe(expectedRules[policyType].namespace);
-}
-
-function hasTraefikIngressPeer(peers: k8s.V1NetworkPolicyPeer[]) {
-    return peers.some(peer =>
-        peer.namespaceSelector?.matchLabels?.['kubernetes.io/metadata.name'] === 'kube-system' &&
-        peer.podSelector?.matchLabels?.['app.kubernetes.io/name'] === 'traefik');
-}
-
-function hasSameNamespacePeer(peers: k8s.V1NetworkPolicyPeer[]) {
-    return peers.some(peer => isEmptySelector(peer.podSelector));
-}
-
-function hasContainerTypePeer(peers: k8s.V1NetworkPolicyPeer[], containerType: string) {
-    return peers.some(peer =>
-        peer.podSelector?.matchLabels?.[Constants.QS_ANNOTATION_CONTAINER_TYPE] === containerType);
-}
-
-function hasDnsEgressRule(rules: k8s.V1NetworkPolicyEgressRule[]) {
-    return rules.some(rule => {
-        const ports = rule.ports ?? [];
-        const destinations = rule.to ?? [];
-        return ports.some(port => port.protocol === 'UDP' && port.port === 53) &&
-            ports.some(port => port.protocol === 'TCP' && port.port === 53) &&
-            destinations.some(destination =>
-                destination.namespaceSelector?.matchLabels?.['kubernetes.io/metadata.name'] === 'kube-system' &&
-                destination.podSelector?.matchLabels?.['k8s-app'] === 'kube-dns') &&
-            destinations.some(destination =>
-                destination.namespaceSelector?.matchLabels?.['kubernetes.io/metadata.name'] === 'kube-system' &&
-                destination.podSelector?.matchLabels?.['k8s-app'] === 'coredns');
-    });
-}
-
-function hasInternetEgressPeer(rules: k8s.V1NetworkPolicyEgressRule[]) {
-    return rules.some(rule =>
-        (rule.to ?? []).some(destination =>
-            destination.ipBlock?.cidr === '0.0.0.0/0' &&
-            destination.ipBlock?.except?.includes('10.0.0.0/8') &&
-            destination.ipBlock?.except?.includes('172.16.0.0/12') &&
-            destination.ipBlock?.except?.includes('192.168.0.0/16')));
-}
-
-function hasSameNamespaceEgressPeer(rules: k8s.V1NetworkPolicyEgressRule[]) {
-    return rules.some(rule =>
-        (rule.to ?? []).some(destination =>
-            isEmptySelector(destination.podSelector)));
-}
-
-function isEmptySelector(selector: k8s.V1LabelSelector | undefined) {
-    return !!selector &&
-        Object.keys(selector.matchLabels ?? {}).length === 0 &&
-        (selector.matchExpressions ?? []).length === 0;
-}
-
-function toKubeName(value: string) {
-    return value.toLowerCase().replace(/_/g, '-');
 }
 
 async function waitForDeploymentAvailable(
