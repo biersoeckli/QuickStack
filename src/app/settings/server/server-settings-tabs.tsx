@@ -1,8 +1,9 @@
 "use client"
 
 import { Tabs } from "@/components/ui/tabs"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { ReactNode } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { ReactNode, useEffect, useState } from "react"
+import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils"
 
 interface ServerSettingsTabsProps {
     children: ReactNode
@@ -10,18 +11,23 @@ interface ServerSettingsTabsProps {
 }
 
 export function ServerSettingsTabs({ children, defaultTab }: ServerSettingsTabsProps) {
-    const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
+    const [activeTab, setActiveTab] = useState(defaultTab)
+
+    useEffect(() => {
+        setActiveTab(defaultTab)
+    }, [defaultTab])
 
     const onTabChange = (value: string) => {
+        setActiveTab(value)
         const params = new URLSearchParams(searchParams.toString())
         params.set("tab", value)
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+        TabNavigationUtils.replaceQuery(params, pathname)
     }
 
     return (
-        <Tabs defaultValue={defaultTab} onValueChange={onTabChange} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
             {children}
         </Tabs>
     )

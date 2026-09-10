@@ -5,12 +5,13 @@ import AppTable from "./apps-table";
 import ProjectNetworkGraph from "../app-components/project-network-graph";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Table, Network, Container } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
+import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 
 interface ProjectOverviewProps {
     apps: any[]; // Using any to avoid complex type imports, as we know the data structure is correct
@@ -30,7 +31,6 @@ function tabStorageKey() {
 }
 
 export default function AppProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
@@ -48,7 +48,9 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
         if (!isProjectOverviewTab(value)) return;
         setCurrentTab(value);
         window.localStorage.setItem(tabStorageKey(), value);
-        router.push(`?tab=${value}`, { scroll: false });
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', value);
+        TabNavigationUtils.replaceQuery(params);
     };
 
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
