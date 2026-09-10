@@ -29,6 +29,23 @@ export const AppExtendedZodModel = z.lazy(() => AppModel.omit({
 
 export type AppExtendedModel = z.infer<typeof AppExtendedZodModel>;
 
+/** Display/navigation fields only — used for app lists and breadcrumbs. */
+export const AppBasicZodModel = AppModel.pick({
+    id: true,
+    name: true,
+    projectId: true,
+    sourceType: true,
+    replicas: true,
+    memoryReservation: true,
+    memoryLimit: true,
+    cpuReservation: true,
+    cpuLimit: true,
+    createdAt: true,
+    updatedAt: true,
+});
+
+export type AppBasicModel = z.infer<typeof AppBasicZodModel>;
+
 const subItemWriteMeta = z.object({
     id: z.string().optional(),
     appId: z.string().optional(),

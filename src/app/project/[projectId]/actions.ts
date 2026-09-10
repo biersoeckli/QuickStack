@@ -14,6 +14,7 @@ import pgAdminService from "@/server/services/db-tool-services/pgadmin.service";
 import {
     ensureCreateProjectWorkloadInProject,
     ensureDeleteProjectWorkloadInProject,
+    ensureReadProject,
     RequesterIdentity,
 } from "@/server/utils/shared-authorization.utils";
 import agentService from "@/server/services/agent.service";
@@ -21,6 +22,7 @@ import llmGatewayService from "@/server/services/llm-gateway.service";
 import agentTemplateService from "@/server/services/agent-template.service";
 import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-template.model";
 import { RenameAgentModel, renameAgentZodModel } from "@/shared/model/rename-agent.model";
+import { UserGroupUtils } from "@/shared/utils/role.utils";
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -113,6 +115,15 @@ export const getModelAliasesForGateway = async (gatewayId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
         return await llmGatewayService.getModelAliasesById(gatewayId);
+    });
+
+export const getProjectNetworkGraphApps = async (projectId: string) =>
+    simpleAction(async () => {
+        const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureReadProject(identity, projectId);
+        const apps = await appService.getAllAppsByProjectID(projectId);
+        return apps.filter((app) => UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
     });
 
 export const deleteApp = async (appId: string) =>

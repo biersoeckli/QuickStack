@@ -12,7 +12,7 @@ vi.mock('@/server/adapter/db.client', () => ({
         client: (() => {
             const client = {
             project: { findUnique: vi.fn() },
-            app: { create: vi.fn(), update: vi.fn() },
+            app: { create: vi.fn(), update: vi.fn(), findMany: vi.fn() },
             appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
             appVolume: { deleteMany: vi.fn() },
             appFileMount: { deleteMany: vi.fn() },
@@ -217,6 +217,57 @@ describe('app.service', () => {
         expect(registryService.doesImageExist).not.toHaveBeenCalled();
         expect(buildService.buildAppAtCommit).not.toHaveBeenCalled();
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
+    });
+
+    it('loads only list fields without relations for the basic app list query', async () => {
+        vi.mocked(dataAccess.client.app.findMany).mockResolvedValue([] as never);
+
+        await appService.getAllAppsByProjectIdBasic('demo-project');
+
+        const query = vi.mocked(dataAccess.client.app.findMany).mock.calls[0][0] as unknown as {
+            where: unknown;
+            include?: unknown;
+            select: Record<string, unknown>;
+        };
+        expect(query.where).toEqual({ projectId: 'demo-project' });
+        expect(query.include).toBeUndefined();
+        expect(query.select).toEqual({
+            id: true,
+            name: true,
+            projectId: true,
+            sourceType: true,
+            replicas: true,
+            memoryReservation: true,
+            memoryLimit: true,
+            cpuReservation: true,
+            cpuLimit: true,
+            createdAt: true,
+            updatedAt: true,
+        });
+        for (const relation of ['appDomains', 'appNodePorts', 'appFileMounts', 'appVolumes', 'appBasicAuths', 'appNetworkPolicy', 'project']) {
+            expect(query.select[relation]).toBeUndefined();
+        }
+    });
+
+    it('includes relations for the full app list query', async () => {
+        vi.mocked(dataAccess.client.app.findMany).mockResolvedValue([] as never);
+
+        await appService.getAllAppsByProjectID('demo-project');
+
+        const query = vi.mocked(dataAccess.client.app.findMany).mock.calls[0][0] as unknown as {
+            select?: unknown;
+            include: Record<string, unknown>;
+        };
+        expect(query.select).toBeUndefined();
+        expect(query.include).toEqual(expect.objectContaining({
+            appDomains: true,
+            appNodePorts: true,
+            appFileMounts: true,
+            appVolumes: true,
+            appBasicAuths: true,
+            project: true,
+        }));
+        expect(query.include.appNetworkPolicy).toBeDefined();
     });
 });
 
