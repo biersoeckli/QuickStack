@@ -5,7 +5,7 @@ export const navidiomeAppTemplate: AppTemplateModel = {
     name: "Navidrome",
     description: 'A self-hosted music server for streaming and managing personal music collections.',
     websiteUrl: 'https://github.com/navidrome/navidrome',
-    iconName: 'https://raw.githubusercontent.com/navidrome/navidrome/master/resources/logo-192x192.png',
+    iconName: 'navidrome.png',
     templates: [{
         inputSettings: [
             {

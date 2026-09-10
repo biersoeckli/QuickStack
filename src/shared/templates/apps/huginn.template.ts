@@ -5,7 +5,7 @@ export const huginnAppTemplate: AppTemplateModel = {
     name: "Huginn",
     description: 'A self-hosted automation system for monitoring events and running workflows from web data.',
     websiteUrl: 'https://github.com/huginn/huginn',
-    iconName: 'https://raw.githubusercontent.com/huginn/huginn/master/public/favicon.ico',
+    iconName: 'huginn.ico',
     templates: [{
         inputSettings: [
             {

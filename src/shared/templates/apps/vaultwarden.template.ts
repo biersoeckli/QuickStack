@@ -5,7 +5,7 @@ export const vaultwardenAppTemplate: AppTemplateModel = {
     name: "Vaultwarden",
     description: 'A lightweight, self-hosted Bitwarden-compatible password manager server.',
     websiteUrl: 'https://github.com/dani-garcia/vaultwarden',
-    iconName: 'https://raw.githubusercontent.com/dani-garcia/vaultwarden/main/resources/vaultwarden-icon.svg',
+    iconName: 'vaultwarden.svg',
     templates: [{
         inputSettings: [
             {

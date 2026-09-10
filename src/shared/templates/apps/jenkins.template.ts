@@ -5,7 +5,7 @@ export const jenkinsAppTemplate: AppTemplateModel = {
     name: "Jenkins",
     description: 'A widely used automation server for building, testing, and deploying software.',
     websiteUrl: 'https://github.com/jenkinsci/jenkins',
-    iconName: 'https://www.jenkins.io/images/logos/jenkins/jenkins.svg',
+    iconName: 'jenkins.svg',
     templates: [{
         inputSettings: [
             {

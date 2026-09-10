@@ -5,7 +5,7 @@ export const nextcloudAppTemplate: AppTemplateModel = {
     name: "Nextcloud",
     description: 'A self-hosted collaboration suite for file sync, sharing, calendars, contacts, and office work.',
     websiteUrl: 'https://github.com/nextcloud/server',
-    iconName: 'https://avatars.githubusercontent.com/u/19211038',
+    iconName: 'nextcloud.png',
     templates: [{
         inputSettings: [
             {

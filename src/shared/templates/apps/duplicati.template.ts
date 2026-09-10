@@ -7,7 +7,7 @@ export const duplicatiAppTemplate: AppTemplateModel = {
     name: "Duplicati",
     description: 'An encrypted backup solution with scheduling, retention, and support for local and cloud storage.',
     websiteUrl: 'https://github.com/duplicati/duplicati',
-    iconName: 'https://avatars.githubusercontent.com/u/2245683?s=200&v=4',
+    iconName: 'duplicati.jpg',
     templates: [{
         inputSettings: [
             {

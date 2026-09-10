@@ -5,7 +5,7 @@ export const wikijsAppTemplate: AppTemplateModel = {
     name: "Wiki.js",
     description: 'A modern, extensible wiki for writing, organizing, and sharing documentation.',
     websiteUrl: 'https://github.com/requarks/wiki',
-    iconName: 'https://cdn.simpleicons.org/wiki.js',
+    iconName: 'wikijs.svg',
     templates: [{
         inputSettings: [
             {

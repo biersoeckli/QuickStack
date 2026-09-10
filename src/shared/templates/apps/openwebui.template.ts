@@ -8,7 +8,7 @@ export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
     description: 'A self-hosted chat interface for working with language models and OpenAI-compatible APIs.',
     websiteUrl: 'https://github.com/open-webui/open-webui',
-    iconName: 'https://avatars.githubusercontent.com/u/158137808',
+    iconName: 'openwebui.png',
     templates: [{
         // Ollama Backend
         inputSettings: [

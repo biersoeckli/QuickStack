@@ -5,7 +5,7 @@ export const nginxAppTemplate: AppTemplateModel = {
     name: "NGINX",
     description: 'A high-performance web server, reverse proxy, and load balancer.',
     websiteUrl: 'https://github.com/nginx/nginx',
-    iconName: 'https://cdn.simpleicons.org/nginx',
+    iconName: 'nginx.svg',
     templates: [{
         inputSettings: [
             {

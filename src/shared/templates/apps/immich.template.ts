@@ -5,7 +5,7 @@ export const immichAppTemplate: AppTemplateModel = {
     name: "Immich",
     description: 'A self-hosted photo and video backup service with search, albums, and sharing.',
     websiteUrl: 'https://github.com/immich-app/immich',
-    iconName: 'https://raw.githubusercontent.com/immich-app/immich/main/design/immich-logo.svg',
+    iconName: 'immich.svg',
     templates: [{
         inputSettings: [
             {

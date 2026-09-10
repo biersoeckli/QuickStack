@@ -5,7 +5,7 @@ export const homeassistantAppTemplate: AppTemplateModel = {
     name: "Home Assistant",
     description: 'An open-source home automation platform for integrating and controlling smart devices.',
     websiteUrl: 'https://github.com/home-assistant/core',
-    iconName: 'https://cdn.simpleicons.org/homeassistant',
+    iconName: 'homeassistant.svg',
     templates: [{
         inputSettings: [
             {

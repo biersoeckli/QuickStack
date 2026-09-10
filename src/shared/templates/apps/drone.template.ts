@@ -5,7 +5,7 @@ export const droneAppTemplate: AppTemplateModel = {
     name: "Drone CI",
     description: 'A container-native continuous integration platform that runs pipelines from your Git repositories.',
     websiteUrl: 'https://github.com/drone/drone',
-    iconName: 'https://cdn.simpleicons.org/drone',
+    iconName: 'drone.svg',
     templates: [{
         inputSettings: [
             {

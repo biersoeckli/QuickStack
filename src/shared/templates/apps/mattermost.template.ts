@@ -5,7 +5,7 @@ export const mattermostAppTemplate: AppTemplateModel = {
     name: "Mattermost",
     description: 'A self-hosted team messaging platform for secure collaboration and workflow integrations.',
     websiteUrl: 'https://github.com/mattermost/mattermost',
-    iconName: 'https://raw.githubusercontent.com/mattermost/mattermost/master/webapp/channels/src/images/logo.png',
+    iconName: 'mattermost.png',
     templates: [{
         inputSettings: [
             {

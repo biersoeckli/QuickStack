@@ -45,7 +45,7 @@ export const redisAppTemplate: AppTemplateModel = {
     name: "Redis",
     description: 'An in-memory data store used for caching, queues, sessions, and real-time workloads.',
     websiteUrl: 'https://github.com/redis/redis',
-    iconName: 'https://cdn.simpleicons.org/redis',
+    iconName: 'redis.svg',
     templates: [
         getRedisAppTemplate()
     ],

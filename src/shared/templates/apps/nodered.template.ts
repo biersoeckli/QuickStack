@@ -5,7 +5,7 @@ export const noderedAppTemplate: AppTemplateModel = {
     name: "Node-RED",
     description: 'A flow-based programming tool for wiring APIs, services, devices, and automations.',
     websiteUrl: 'https://github.com/node-red/node-red',
-    iconName: 'https://nodered.org/about/resources/media/node-red-icon-2.svg',
+    iconName: 'nodered.svg',
     templates: [{
         inputSettings: [
             {

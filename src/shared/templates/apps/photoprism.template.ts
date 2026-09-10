@@ -5,7 +5,7 @@ export const photoprismAppTemplate: AppTemplateModel = {
     name: "PhotoPrism",
     description: 'An AI-powered photo management application for organizing, searching, and sharing pictures.',
     websiteUrl: 'https://github.com/photoprism/photoprism',
-    iconName: 'https://raw.githubusercontent.com/photoprism/photoprism/develop/assets/static/icons/logo.svg',
+    iconName: 'photoprism.svg',
     templates: [{
         inputSettings: [
             {
