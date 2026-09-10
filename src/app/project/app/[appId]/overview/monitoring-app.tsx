@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { getRessourceDataApp } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
+import { usePolling } from "@/frontend/hooks/use-polling";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,11 +38,7 @@ export default function MonitoringTab({
         }
     }, [app.id, app.projectId])
 
-    useEffect(() => {
-        updateValues();
-        const intervalId = setInterval(updateValues, 10000);
-        return () => clearInterval(intervalId);
-    }, [app, updateValues]);
+    usePolling(updateValues, { intervalMs: 10000, runImmediately: true });
 
     const ContentWrapper = hideCard ? Fragment : Card;
     return <>

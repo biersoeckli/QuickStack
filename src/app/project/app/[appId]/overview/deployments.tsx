@@ -2,9 +2,10 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { deleteBuild, getDeploymentsAndBuildsForApp, rollbackToDeployment } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
+import { usePolling } from "@/frontend/hooks/use-polling";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -74,14 +75,11 @@ export default function BuildsTab({
         }
     }
 
-    useEffect(() => {
-        if (app.sourceType === 'container') {
-            return;
-        }
-        updateBuilds();
-        const intervalId = setInterval(updateBuilds, 10000);
-        return () => clearInterval(intervalId);
-    }, [app, updateBuilds]);
+    usePolling(updateBuilds, {
+        intervalMs: 10000,
+        enabled: app.sourceType !== 'container',
+        runImmediately: true,
+    });
 
 
     if (app.sourceType === 'container') {
