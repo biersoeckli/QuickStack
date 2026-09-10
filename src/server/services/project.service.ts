@@ -5,7 +5,7 @@ import { Project } from "@prisma/client";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import namespaceService from "./namespace.service";
 import buildService from "./build.service";
-import { ProjectExtendedModel } from "@/shared/model/project-extended.model";
+import { ProjectExtendedModel, ProjectNavigationModel, ProjectWithCountsModel } from "@/shared/model/project-extended.model";
 import { ProjectType, ProjectTypeModel } from "@/shared/model/project-type.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 
@@ -48,6 +48,60 @@ class ProjectService {
             }
         }),
             [Tags.projects()], {
+            tags: [Tags.projects()]
+        })();
+    }
+
+    async getAllForNavigation(): Promise<ProjectNavigationModel[]> {
+        return await unstable_cache(() => dataAccess.client.project.findMany({
+            select: {
+                id: true,
+                name: true,
+                projectType: true,
+                createdAt: true,
+                updatedAt: true,
+                apps: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                },
+                agents: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                },
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        }),
+            [Tags.projects(), 'navigation'], {
+            tags: [Tags.projects()]
+        })();
+    }
+
+    async getAllWithCounts(): Promise<ProjectWithCountsModel[]> {
+        return await unstable_cache(() => dataAccess.client.project.findMany({
+            select: {
+                id: true,
+                name: true,
+                projectType: true,
+                createdAt: true,
+                updatedAt: true,
+                _count: {
+                    select: {
+                        apps: true,
+                        agents: true,
+                    }
+                },
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        }),
+            [Tags.projects(), 'counts'], {
             tags: [Tags.projects()]
         })();
     }

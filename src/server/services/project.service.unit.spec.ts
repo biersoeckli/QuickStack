@@ -9,6 +9,7 @@ vi.mock('@/server/adapter/db.client', () => ({
                 create: vi.fn(),
                 update: vi.fn(),
                 findFirstOrThrow: vi.fn(),
+                findMany: vi.fn(),
             },
         },
     },
@@ -76,5 +77,55 @@ describe('project.service Project Type', () => {
         })).rejects.toThrow('Project Type cannot be changed.');
 
         expect(dataAccess.client.project.update).not.toHaveBeenCalled();
+    });
+});
+
+describe('project.service lean read queries', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('loads only workload id and name for sidebar navigation', async () => {
+        vi.mocked(dataAccess.client.project.findMany).mockResolvedValue([] as never);
+
+        await projectService.getAllForNavigation();
+
+        const query = vi.mocked(dataAccess.client.project.findMany).mock.calls[0][0] as unknown as {
+            include?: unknown;
+            select: Record<string, unknown>;
+        };
+        expect(query.include).toBeUndefined();
+        expect(query.select).toEqual(expect.objectContaining({
+            id: true,
+            name: true,
+            projectType: true,
+            createdAt: true,
+            updatedAt: true,
+            apps: { select: { id: true, name: true } },
+            agents: { select: { id: true, name: true } },
+        }));
+        expect(query.select._count).toBeUndefined();
+    });
+
+    it('loads agent counts instead of agent records for the projects table', async () => {
+        vi.mocked(dataAccess.client.project.findMany).mockResolvedValue([] as never);
+
+        await projectService.getAllWithCounts();
+
+        const query = vi.mocked(dataAccess.client.project.findMany).mock.calls[0][0] as unknown as {
+            include?: unknown;
+            select: Record<string, unknown>;
+        };
+        expect(query.include).toBeUndefined();
+        expect(query.select).toEqual(expect.objectContaining({
+            id: true,
+            name: true,
+            projectType: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: { select: { apps: true, agents: true } },
+        }));
+        expect(query.select.apps).toBeUndefined();
+        expect(query.select.agents).toBeUndefined();
     });
 });

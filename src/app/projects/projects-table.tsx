@@ -14,12 +14,12 @@ import { EditProjectDialog } from "./edit-project-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import ProjectStatusIndicator from "@/components/custom/project-status-indicator";
-import { ProjectExtendedModel } from "@/shared/model/project-extended.model";
+import { ProjectWithCountsModel } from "@/shared/model/project-extended.model";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 
 export default function ProjectsTable({ data, session, agentsAvailable }: {
-    data: ProjectExtendedModel[];
+    data: ProjectWithCountsModel[];
     session: UserSession;
     agentsAvailable: boolean;
 }) {
@@ -88,7 +88,7 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
             ['projectType', 'Type', true, (item) => item.projectType === 'AGENT' ? 'Agent' : 'App'],
             ['status', 'Status', true, (item) => item.projectType === 'APP'
                 ? <ProjectStatusIndicator projectId={item.id} />
-                : <span className="text-muted-foreground">{item.agents.length === 0 ? 'No Agents' : item.agents.length + ' Agents'}</span>],
+                : <span className="text-muted-foreground">{item._count.agents === 0 ? 'No Agents' : item._count.agents + ' Agents'}</span>],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}
