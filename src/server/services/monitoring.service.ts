@@ -34,17 +34,19 @@ class MonitorService {
 
         const appVolumesWithUsage: AppVolumeMonitoringUsageModel[] = [];
         const volumeMap = new Map(appVolumes.map(volume => [volume.id, volume]));
+        const pvcByName = new Map(pvcs.map(pvc => [pvc.metadata?.name, pvc]));
+        const longhornVolumeByName = new Map(longhornData.map(volume => [volume.name, volume]));
 
         for (const appVolume of appVolumes) {
             const sharedVolumeId = (appVolume as { sharedVolumeId?: string | null }).sharedVolumeId;
             const baseVolumeId = sharedVolumeId ?? appVolume.id;
             const baseVolume = volumeMap.get(baseVolumeId);
-            const pvc = pvcs.find(pvc => pvc.metadata?.name === KubeObjectNameUtils.toPvcName(baseVolumeId));
+            const pvc = pvcByName.get(KubeObjectNameUtils.toPvcName(baseVolumeId));
             if (!pvc) {
                 continue;
             }
             const volumeName = pvc.spec?.volumeName;
-            const longhornVolume = longhornData.find(volume => volume.name === volumeName);
+            const longhornVolume = volumeName ? longhornVolumeByName.get(volumeName) : undefined;
             if (!longhornVolume) {
                 continue;
             }
@@ -78,14 +80,12 @@ class MonitorService {
             projectService.getAll()
         ]);
 
+        const topPodsByApp = this.groupTopPodsByApp(topPods);
         const appStats: AppMonitoringUsageModel[] = [];
 
         for (let project of projects) {
             for (let app of project.apps) {
-                const podsFromApp = await standalonePodService.getPodsForApp(project.id, app.id);
-                const filteredTopPods = topPods.filter((topPod) =>
-                    podsFromApp.some((pod) => pod.podName === topPod.Pod.metadata?.name)
-                );
+                const filteredTopPods = topPodsByApp.get(MonitorService.appPodKey(project.id, app.id)) ?? [];
                 const totalResourcesApp = this.calulateTotalRessourceUsageOfApp(filteredTopPods);
                 const cpuUsagePercent = (totalResourcesApp.cpu / totalResourcesNodes.cpu) * 100;
                 appStats.push({
@@ -106,6 +106,33 @@ class MonitorService {
             return a.projectName.localeCompare(b.projectName);
         });
         return appStats;
+    }
+
+    /**
+     * Groups the cluster-wide pod metrics by the namespace and the `app` label,
+     * so each app's pods can be looked up in constant time without listing pods per app.
+     */
+    private groupTopPodsByApp(topPods: k8s.PodStatus[]): Map<string, k8s.PodStatus[]> {
+        const topPodsByApp = new Map<string, k8s.PodStatus[]>();
+        for (const topPod of topPods) {
+            const namespace = topPod.Pod.metadata?.namespace;
+            const appId = topPod.Pod.metadata?.labels?.['app'];
+            if (!namespace || !appId) {
+                continue;
+            }
+            const key = MonitorService.appPodKey(namespace, appId);
+            const pods = topPodsByApp.get(key);
+            if (pods) {
+                pods.push(topPod);
+            } else {
+                topPodsByApp.set(key, [topPod]);
+            }
+        }
+        return topPodsByApp;
+    }
+
+    private static appPodKey(namespace: string, appId: string): string {
+        return `${namespace}/${appId}`;
     }
 
     async getMonitoringForApp(projectId: string, appId: string): Promise<PodsResourceInfoModel> {

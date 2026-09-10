@@ -7,10 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useCallback, useEffect, useState } from 'react';
-import { Actions } from '@/frontend/utils/nextjs-actions.utils';
-import { getVolumeMonitoringUsage } from './actions';
-import { toast } from 'sonner';
+import { useMemo } from 'react';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitoring-usage.model';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,55 +21,33 @@ type AppVolumeMonitoringUsageExtendedModel = AppVolumeMonitoringUsageModel & {
     usedPercentage: number;
 };
 
+function convertToExtendedModel(input?: AppVolumeMonitoringUsageModel[]): AppVolumeMonitoringUsageExtendedModel[] | undefined {
+    if (input) {
+        return input.map(item => ({
+            ...item,
+            usedPercentage: Math.round(item.usedBytes / item.capacityBytes * 100)
+        }));
+    }
+    return undefined;
+}
+
 export default function AppVolumeMonitoring({
     volumesUsage
 }: {
     volumesUsage?: AppVolumeMonitoringUsageModel[]
 }) {
 
-    const convertToExtendedModel = useCallback((input?: AppVolumeMonitoringUsageModel[]): AppVolumeMonitoringUsageExtendedModel[] | undefined => {
-        if (input) {
-            return input.map(item => ({
-                ...item,
-                usedPercentage: Math.round(item.usedBytes / item.capacityBytes * 100)
-            }));
+    const updatedVolumeUsage = useMemo(() => convertToExtendedModel(volumesUsage), [volumesUsage]);
+
+    const { totalUsedBytes, totalCapacityBytes } = useMemo(() => {
+        if (!updatedVolumeUsage) {
+            return { totalUsedBytes: undefined, totalCapacityBytes: undefined };
         }
-        return undefined;
-    }, []);
-
-    const [totalUsedBytes, setTotalUsedBytes] = useState<number | undefined>(undefined);
-    const [totalCapacityBytes, setTotalCapacityBytes] = useState<number | undefined>(undefined);
-
-    const [updatedVolumeUsage, setUpdatedVolumeUsage] = useState<AppVolumeMonitoringUsageExtendedModel[] | undefined>(convertToExtendedModel(volumesUsage));
-
-    const setUsedAndCapacityBytes = useCallback((input?: AppVolumeMonitoringUsageExtendedModel[]) => {
-        if (input) {
-            const totalUsed = input.reduce((acc, item) => acc + item.usedBytes, 0);
-            const totalCapacity = input.reduce((acc, item) => acc + item.capacityBytes, 0);
-            setTotalUsedBytes(totalUsed);
-            setTotalCapacityBytes(totalCapacity);
-        }
-    }, []);
-
-    const fetchVolumeMonitoringUsage = useCallback(async () => {
-        try {
-            let data = await Actions.run(() => getVolumeMonitoringUsage());
-            data  = data?.filter((volume) => !!volume.isBaseVolume);
-            setUpdatedVolumeUsage(convertToExtendedModel(data));
-            setUsedAndCapacityBytes(convertToExtendedModel(data));
-        } catch (ex) {
-            toast.error('An error occurred while fetching current volume usage');
-            console.error('An error occurred while fetching volume nodes', ex);
-        }
-    }, [convertToExtendedModel, setUsedAndCapacityBytes])
-
-    useEffect(() => {
-        const volumeUsageId = setInterval(() => fetchVolumeMonitoringUsage(), 10000);
-        setUsedAndCapacityBytes(convertToExtendedModel(volumesUsage));
-        return () => {
-            clearInterval(volumeUsageId);
-        }
-    }, [convertToExtendedModel, fetchVolumeMonitoringUsage, setUsedAndCapacityBytes, volumesUsage]);
+        return {
+            totalUsedBytes: updatedVolumeUsage.reduce((acc, item) => acc + item.usedBytes, 0),
+            totalCapacityBytes: updatedVolumeUsage.reduce((acc, item) => acc + item.capacityBytes, 0),
+        };
+    }, [updatedVolumeUsage]);
 
     if (!updatedVolumeUsage) {
         return <Card>
