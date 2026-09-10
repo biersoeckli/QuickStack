@@ -1,6 +1,6 @@
 
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
-import { buildProjectNetworkGraph } from './project-network-graph/project-network-graph-projection';
+import { buildProjectNetworkGraph, connectionDeletionProvenance } from './project-network-graph/project-network-graph-projection';
 import { graphEdgePresentation } from './project-network-graph/project-network-graph-visual-semantics';
 
 function app(overrides: Record<string, unknown> = {}): AppExtendedModel {
@@ -34,6 +34,32 @@ describe('buildProjectNetworkGraph', () => {
         expect(graph.edges).toEqual([expect.objectContaining({ source: 'APP:app-a', target: 'APP:app-b', direction: 'CONNECTION', labels: ['3306/TCP'], complete: true })]);
     });
 
+    test('retains the owning App and rule id through connection consolidation', () => {
+        const graph = buildProjectNetworkGraph([
+            app({ appNetworkPolicy: { allowInternetAccess: false, rules: [{ id: 'egress-a', type: 'EGRESS', port: 443, protocol: 'TCP', targetApp: { id: 'app-b', name: 'App B', projectId: 'project-a' } }] } }),
+            app({ id: 'app-b', name: 'App B', appNetworkPolicy: { allowInternetAccess: false, rules: [{ id: 'ingress-b', type: 'INGRESS', port: 443, protocol: 'TCP', targetApp: { id: 'app-a', name: 'App A', projectId: 'project-a' } }] } }),
+        ]);
+
+        expect(graph.edges[0].ruleProvenance).toEqual([
+            { ownerAppId: 'app-b', ruleKey: 'ingress-b' },
+            { ownerAppId: 'app-a', ruleKey: 'egress-a' },
+        ]);
+        expect(connectionDeletionProvenance(graph.edges[0], new Set(['app-a']))).toBeUndefined();
+        expect(connectionDeletionProvenance(graph.edges[0], new Set(['app-a', 'app-b'])))
+            .toEqual(graph.edges[0].ruleProvenance);
+    });
+
+    test('uses the rule owner rather than the traffic source for ingress-only deletion rights', () => {
+        const graph = buildProjectNetworkGraph([
+            app(),
+            app({ id: 'app-b', name: 'App B', appNetworkPolicy: { allowInternetAccess: false, rules: [{ id: 'ingress-b', type: 'INGRESS', port: 443, protocol: 'TCP', targetApp: { id: 'app-a', name: 'App A', projectId: 'project-a' } }] } }),
+        ]);
+
+        expect(connectionDeletionProvenance(graph.edges[0], new Set(['app-a']))).toBeUndefined();
+        expect(connectionDeletionProvenance(graph.edges[0], new Set(['app-b'])))
+            .toEqual([{ ownerAppId: 'app-b', ruleKey: 'ingress-b' }]);
+    });
+
     test('adds internet and external App and Agent targets', () => {
         const graph = buildProjectNetworkGraph([app({
             appDomains: [{ hostname: 'example.test', port: 3000 }],
@@ -49,13 +75,13 @@ describe('buildProjectNetworkGraph', () => {
             expect.objectContaining({ id: 'AGENT:agent-a', external: true, caption: 'Other project' }),
         ]));
         expect(graph.edges).toEqual(expect.arrayContaining([
-            expect.objectContaining({ source: 'APP:app-a', target: 'INTERNET', direction: 'INTERNET_EGRESS' }),
-            expect.objectContaining({ source: 'INTERNET', target: 'APP:app-a', direction: 'INTERNET_INGRESS', labels: ['example.test:3000'] }),
+            expect.objectContaining({
+                source: 'APP:app-a', target: 'INTERNET', direction: 'INTERNET_CONNECTION',
+                labels: ['example.test:3000'], internetIngress: true, internetEgress: true,
+            }),
         ]));
-        const internetEgress = graph.edges.find(edge => edge.direction === 'INTERNET_EGRESS');
-        const internetIngress = graph.edges.find(edge => edge.direction === 'INTERNET_INGRESS');
-        expect(graphEdgePresentation(internetEgress!)).toMatchObject({ sourceHandle: 'source-egress', targetHandle: 'target', dashed: true });
-        expect(graphEdgePresentation(internetIngress!)).toMatchObject({ sourceHandle: 'source', targetHandle: 'target-ingress', dashed: true });
+        const internetConnection = graph.edges.find(edge => edge.direction === 'INTERNET_CONNECTION');
+        expect(graphEdgePresentation(internetConnection!)).toMatchObject({ sourceHandle: 'source-internet', targetHandle: 'target', dashed: false });
     });
 
     test('omits policy rules and egress but retains effective App Domain ingress when the policy is disabled', () => {
@@ -65,6 +91,9 @@ describe('buildProjectNetworkGraph', () => {
             appNetworkPolicy: { allowInternetAccess: true, rules: [{ type: 'EGRESS', port: 80, protocol: 'TCP', targetApp: { id: 'app-b', name: 'App B', projectId: 'project-a' } }] },
         })]);
         expect(graph.nodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'APP:app-a' }), expect.objectContaining({ id: 'INTERNET' })]));
-        expect(graph.edges).toEqual([expect.objectContaining({ source: 'INTERNET', target: 'APP:app-a', direction: 'INTERNET_INGRESS', labels: ['hidden.test:3000'] })]);
+        expect(graph.edges).toEqual([expect.objectContaining({
+            source: 'APP:app-a', target: 'INTERNET', direction: 'INTERNET_CONNECTION', labels: ['hidden.test:3000'],
+            internetIngress: true, internetEgress: false,
+        })]);
     });
 });

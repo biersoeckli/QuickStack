@@ -21,17 +21,25 @@ type AppNetworkPolicyRuleDialogProps = {
     direction: NetworkPolicyDirection;
     targets: NetworkPolicySelectableTarget[];
     currentProject: NetworkPolicyTargetProject;
+    initialTarget?: NetworkPolicySelectableTarget;
     isDuplicate: (rule: AppNetworkPolicyRuleEditModel) => boolean;
     onAdd: (rule: AppNetworkPolicyRuleEditModel) => void;
 };
 
-export default function AppNetworkPolicyRuleDialog({ direction, targets, currentProject, isDuplicate, onAdd }: AppNetworkPolicyRuleDialogProps) {
+export default function AppNetworkPolicyRuleDialog({ direction, targets, currentProject, initialTarget, isDuplicate, onAdd }: AppNetworkPolicyRuleDialogProps) {
     const { closeDialog } = useDialogContext();
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const ingress = direction === 'INGRESS';
     const form = useForm<z.input<typeof appNetworkPolicyRuleFormZodModel>, unknown, z.output<typeof appNetworkPolicyRuleFormZodModel>>({
         resolver: zodResolver(appNetworkPolicyRuleFormZodModel),
-        defaultValues: { type: direction, projectId: currentProject.id, targetType: 'APP', targetId: '', port: '', protocol: 'TCP' },
+        defaultValues: {
+            type: direction,
+            projectId: initialTarget?.project.id ?? currentProject.id,
+            targetType: initialTarget?.type ?? 'APP',
+            targetId: initialTarget?.id ?? '',
+            port: '',
+            protocol: 'TCP',
+        },
     });
 
     const submit = (data: z.output<typeof appNetworkPolicyRuleFormZodModel>) => {

@@ -12,6 +12,7 @@ export type NetworkGraphEdgePresentation = {
 
 const handles: Record<NetworkGraphEdgeDirection, Pick<NetworkGraphEdgePresentation, 'sourceHandle' | 'targetHandle'>> = {
     CONNECTION: { sourceHandle: 'source-egress', targetHandle: 'target-ingress' },
+    INTERNET_CONNECTION: { sourceHandle: 'source-internet', targetHandle: 'target' },
     INTERNET_EGRESS: { sourceHandle: 'source-egress', targetHandle: 'target' },
     INTERNET_INGRESS: { sourceHandle: 'source', targetHandle: 'target-ingress' },
     INGRESS: { sourceHandle: 'source-ingress', targetHandle: 'target-ingress' },
@@ -23,14 +24,14 @@ export function graphEdgePresentation(edge: NetworkGraphEdge): NetworkGraphEdgeP
     return {
         ...handles[edge.direction],
         color: internet ? NETWORK_GRAPH_COLORS.internet : edge.external ? NETWORK_GRAPH_COLORS.external : NETWORK_GRAPH_COLORS.connection,
-        dashed: internet || edge.external || edge.complete === false,
+        dashed: internet ? !(edge.internetIngress && edge.internetEgress) : edge.external || edge.complete === false,
         label: edge.labels.join(' · ') || undefined,
     };
 }
 
 export const graphLegendItems = [
-    { kind: 'complete', label: 'Complete connection' },
-    { kind: 'incomplete', label: 'Incomplete connection' },
+    { kind: 'complete', label: 'Complete' },
+    { kind: 'incomplete', label: 'Incomplete' },
     { kind: 'external', label: 'Other project' },
-    { kind: 'internet', label: 'Internet access' },
+    { kind: 'internet', label: 'Internet' },
 ] as const;

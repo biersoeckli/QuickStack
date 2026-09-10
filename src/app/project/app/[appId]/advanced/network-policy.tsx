@@ -9,46 +9,25 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AppExtendedModel, AppNetworkPolicyRuleWithTargetAppModel, AppNetworkPolicyRuleWithTargetModel } from '@/shared/model/app-extended.model';
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { AppNetworkPolicyRuleEditModel, NetworkPolicySelectableTarget } from '@/shared/model/app-network-policy-edit.model';
 import { NetworkPolicyRuleUtils } from '@/shared/utils/network-policy-rule.utils';
+import { AppNetworkPolicyDraftUtils } from '@/shared/utils/app-network-policy-draft.utils';
 import { getTargetsForAppNetworkPolicy, saveAppNetworkPolicyConfiguration } from './actions';
 import { useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
 import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
-import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection, AppNetworkPolicyRuleDraft } from './app-network-policy-rule-section';
+import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
 import NetworkPolicyGraph from './network-policy-graph';
 
 type Project = { id: string; name: string; apps: { id: string; name: string }[]; agents: { id: string; name: string }[] };
 
-function ruleToDraft(rule: AppNetworkPolicyRuleWithTargetModel): AppNetworkPolicyRuleDraft {
-    const target = rule.targetAgent ?? rule.targetApp;
-    return {
-        key: rule.id,
-        persistedId: rule.id,
-        type: rule.type as AppNetworkPolicyDirection,
-        targetType: rule.targetAgentId ? 'AGENT' : 'APP',
-        targetId: rule.targetAgentId ?? rule.targetAppId ?? '',
-        targetName: target?.name ?? 'Unknown target',
-        targetProjectId: target?.projectId ?? '',
-        port: rule.port,
-        protocol: rule.protocol as 'TCP' | 'UDP',
-    };
-}
-
 export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel; readonly: boolean }) {
     const router = useRouter();
-    const [enabled, setEnabled] = useState(app.useNetworkPolicy);
-    const [internet, setInternet] = useState(app.appNetworkPolicy?.allowInternetAccess !== false);
+    const [draft, setDraft] = useState(() => AppNetworkPolicyDraftUtils.fromApp(app));
+    const [baseline, setBaseline] = useState(() => AppNetworkPolicyDraftUtils.fromApp(app));
     const [projects, setProjects] = useState<Project[]>([]);
     const [view, setView] = useState<'rules' | 'graph'>('rules');
-    const [drafts, setDrafts] = useState<AppNetworkPolicyRuleDraft[]>(() => (app.appNetworkPolicy?.rules ?? []).map(ruleToDraft));
-    const [baseline, setBaseline] = useState(() => ({
-        enabled: app.useNetworkPolicy,
-        internet: app.appNetworkPolicy?.allowInternetAccess !== false,
-        signatures: (app.appNetworkPolicy?.rules ?? []).map(ruleToDraft)
-            .map(draft => NetworkPolicyRuleUtils.contentSignature(NetworkPolicyRuleUtils.fromEditRule(draft))).sort(),
-    }));
     const [saving, setSaving] = useState(false);
     const { openDialog } = useDialog();
     const { openConfirmDialog } = useConfirmDialog();
@@ -62,22 +41,8 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         getTargetsForAppNetworkPolicy(app.id).then(result => result.status === 'success' && setProjects(result.data ?? []));
     }, [app.id]);
 
-    const currentSignatures = drafts
-        .map(draft => NetworkPolicyRuleUtils.contentSignature(NetworkPolicyRuleUtils.fromEditRule(draft))).sort();
-    const dirty = enabled !== baseline.enabled
-        || internet !== baseline.internet
-        || currentSignatures.join('|') !== baseline.signatures.join('|');
-
-    const graphRules: AppNetworkPolicyRuleWithTargetAppModel[] = useMemo(() => drafts.map(draft => ({
-        id: draft.key,
-        type: draft.type,
-        port: draft.port,
-        protocol: draft.protocol,
-        targetAppId: draft.targetType === 'APP' ? draft.targetId : null,
-        targetAgentId: draft.targetType === 'AGENT' ? draft.targetId : null,
-        targetApp: draft.targetType === 'APP' ? { id: draft.targetId, name: draft.targetName, projectId: draft.targetProjectId } : null,
-        targetAgent: draft.targetType === 'AGENT' ? { id: draft.targetId, name: draft.targetName, projectId: draft.targetProjectId } : null,
-    }) as AppNetworkPolicyRuleWithTargetAppModel), [drafts]);
+    const dirty = !AppNetworkPolicyDraftUtils.equals(draft, baseline);
+    const graphRules = useMemo(() => AppNetworkPolicyDraftUtils.toGraphRules(draft), [draft]);
 
     const saveChanges = async () => {
         const confirmed = await openConfirmDialog({
@@ -92,20 +57,12 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
 
         setSaving(true);
         try {
-            await Toast.fromAction(() => saveAppNetworkPolicyConfiguration(undefined, {
-                appId: app.id,
-                useNetworkPolicy: enabled,
-                allowInternetAccess: internet,
-                rules: drafts.map(draft => ({
-                    ...(draft.persistedId ? { id: draft.persistedId } : {}),
-                    type: draft.type,
-                    targetType: draft.targetType,
-                    targetId: draft.targetId,
-                    port: draft.port,
-                    protocol: draft.protocol,
-                })),
-            }), 'Network policies saved and applied.', 'Applying network policies...');
-            setBaseline({ enabled, internet, signatures: currentSignatures });
+            await Toast.fromAction(
+                () => saveAppNetworkPolicyConfiguration(undefined, AppNetworkPolicyDraftUtils.toConfiguration(draft)),
+                'Network policies saved and applied.',
+                'Applying network policies...',
+            );
+            setBaseline(draft);
             router.refresh();
         } catch {
             // error toast is shown by Toast.fromAction; draft state stays intact for retry
@@ -116,32 +73,23 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
 
     const addRule = (rule: AppNetworkPolicyRuleEditModel) => {
         const target = targets.find(item => item.type === rule.targetType && item.id === rule.targetId);
-        setDrafts(prev => [...prev, {
-            key: crypto.randomUUID(),
-            type: rule.type,
-            targetType: rule.targetType,
-            targetId: rule.targetId,
-            targetName: target?.name ?? 'Unknown target',
-            targetProjectId: target?.project.id ?? '',
-            port: rule.port,
-            protocol: rule.protocol,
-        }]);
+        setDraft(current => AppNetworkPolicyDraftUtils.addRule(current, rule, target));
     };
 
     const deleteRule = (key: string) => {
-        setDrafts(prev => prev.filter(draft => draft.key !== key));
+        setDraft(current => AppNetworkPolicyDraftUtils.removeRule(current, key));
     };
 
     const changeInternetAccess = (nextInternet: boolean) => {
-        setInternet(nextInternet);
+        setDraft(current => ({ ...current, allowInternetAccess: nextInternet }));
     };
 
     const openRuleDialog = (direction: AppNetworkPolicyDirection) => openDialog(<AppNetworkPolicyRuleDialog
         direction={direction}
         targets={targets}
         currentProject={app.project}
-        isDuplicate={(rule) => drafts.some(draft => NetworkPolicyRuleUtils.hasSameContent(
-            NetworkPolicyRuleUtils.fromEditRule(draft),
+        isDuplicate={(rule) => draft.rules.some(existing => NetworkPolicyRuleUtils.hasSameContent(
+            NetworkPolicyRuleUtils.fromEditRule(existing),
             NetworkPolicyRuleUtils.fromEditRule(rule),
         ))}
         onAdd={addRule}
@@ -152,21 +100,21 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         <CardContent className="space-y-6">
             <Card>
                 <CardContent className="space-y-4 p-4">
-                    <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={enabled} disabled={readonly} onChange={setEnabled} />
+                    <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
                 </CardContent>
             </Card>
 
-            {enabled && <Tabs value={view} onValueChange={(value) => setView(value as 'rules' | 'graph')}>
+            {draft.useNetworkPolicy && <Tabs value={view} onValueChange={(value) => setView(value as 'rules' | 'graph')}>
                 <TabsList>
                     <TabsTrigger value="rules"><List className="mr-2 h-4 w-4" />Rules</TabsTrigger>
                     <TabsTrigger value="graph"><Waypoints className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
                 </TabsList>
                 <TabsContent value="rules" className="mt-5 space-y-8">
-                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={drafts.filter(draft => draft.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} />
-                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={drafts.filter(draft => draft.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={internet} onInternetAccessChange={changeInternetAccess} />
+                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={draft.rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} />
+                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={draft.rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={draft.allowInternetAccess} onInternetAccessChange={changeInternetAccess} />
                 </TabsContent>
                 <TabsContent value="graph" className="mt-5">
-                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={graphRules} allowInternetAccess={internet} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />
+                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={graphRules} allowInternetAccess={draft.allowInternetAccess} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />
                 </TabsContent>
             </Tabs>}
         </CardContent>

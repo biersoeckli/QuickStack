@@ -3,7 +3,7 @@
 import { Toast } from "@/frontend/utils/toast.utils";
 import { createApp } from "../actions";
 import { useRouter } from "next/navigation";
-import { App } from "@prisma/client";
+import type { App } from "@prisma/client";
 import { useInputDialog } from "@/frontend/states/zustand.states";
 
 export function EditAppDialog({
@@ -13,7 +13,7 @@ export function EditAppDialog({
 }: {
     children?: React.ReactNode,
     projectId: string;
-    existingItem?: App;
+    existingItem?: Pick<App, 'id' | 'name'>;
 }) {
 
     const router = useRouter();

@@ -28,7 +28,7 @@ async function layoutGraph(graph: ProjectNetworkGraphData): Promise<PositionedPr
             'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
             'elk.spacing.nodeNode': '70', 'elk.layered.spacing.nodeNodeBetweenLayers': '150',
         },
-        children: graph.nodes.map(node => ({ id: node.id, width: node.kind === 'INTERNET' ? 96 : 190, height: node.kind === 'INTERNET' ? 96 : 64 })),
+        children: graph.nodes.map(node => ({ id: node.id, width: node.kind === 'INTERNET' ? 96 : 240, height: node.kind === 'INTERNET' ? 96 : 68 })),
         edges: graph.edges.map(edge => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
     });
     const positions = new Map(layout.children?.map(node => [node.id, node]) ?? []);
@@ -61,5 +61,5 @@ export function useProjectNetworkGraph(apps: AppExtendedModel[], projectId: stri
         void loadLayout(false);
     }, [loadLayout, projectId]);
 
-    return { layout, updateNodePosition, saveNodePosition, resetLayout };
+    return { layout, saveNodePosition, resetLayout };
 }
