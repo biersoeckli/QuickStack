@@ -3,6 +3,7 @@ import stream from "stream";
 import k3s from "@/server/adapter/kubernetes-api.adapter";
 import { simpleRoute } from "@/server/utils/action-wrapper.utils";
 import podService from "@/server/services/pod.service";
+import { StreamUtils } from "@/shared/utils/stream.utils";
 
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
             start(controller) {
                 const innerFunc = async () => {
                     console.log(`[CONNECT] Client joined log stream for ${streamKey}`);
-                    controller.enqueue(encoder.encode('Stream opened, loading pod logs...\n'));
+                    controller.enqueue(encoder.encode(StreamUtils.encodeSseData('Stream opened, loading pod logs...\n')));
 
                     await podService.waitUntilPodIsRunningFailedOrSucceded(namespace, pod.podName); // has timeout configured
 
@@ -54,18 +55,18 @@ export async function POST(request: Request) {
                     });
 
                     logStream.on('data', (chunk) => {
-                        controller.enqueue(encoder.encode(chunk.toString()));
+                        controller.enqueue(encoder.encode(StreamUtils.encodeSseData(chunk.toString())));
                     });
 
                     logStream.on('error', (error) => {
-                        controller.enqueue(encoder.encode('[ERROR] An unexpected error occurred while streaming logs.\n'));
+                        controller.enqueue(encoder.encode(StreamUtils.encodeSseData('[ERROR] An unexpected error occurred while streaming logs.\n')));
                         console.error("Error in log stream:", error);
                     });
 
                     logStream.on('end', () => {
                         console.log(`[END] Log stream ended for ${streamKey} by ${streamEndedByClient ? 'client' : 'server'}`);
                         if (!streamEndedByClient) {
-                            controller.enqueue(encoder.encode('[INFO] Log stream closed by Pod.'));
+                            controller.enqueue(encoder.encode(StreamUtils.encodeSseData('[INFO] Log stream closed by Pod.')));
                             controller.close();
                         }
                     });

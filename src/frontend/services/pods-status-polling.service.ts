@@ -1,4 +1,5 @@
 import { AppPodsStatusModel } from '@/shared/model/app-pod-status.model';
+import { StreamUtils } from '@/shared/utils/stream.utils';
 import { usePodsStatus } from '../states/zustand.states';
 
 /**
@@ -9,6 +10,7 @@ class PodsStatusPollingService {
     private static instance: PodsStatusPollingService;
     private controller: AbortController | null = null;
     private isConnected = false;
+    private buffer = '';
 
     private constructor() { }
 
@@ -35,6 +37,7 @@ class PodsStatusPollingService {
             this.controller.abort();
             this.controller = null;
             this.isConnected = false;
+            this.buffer = '';
         }
     }
 
@@ -42,6 +45,7 @@ class PodsStatusPollingService {
         this.controller = new AbortController();
         const signal = this.controller.signal;
         this.isConnected = true;
+        this.buffer = '';
 
         try {
             const response = await fetch('/api/deployment-status', {
@@ -86,24 +90,23 @@ class PodsStatusPollingService {
     }
 
     private processChunk(chunk: string) {
-        // SSE format: data: ...\n\n
-        // There might be multiple messages in one chunk
-        const lines = chunk.split('\n\n');
-        for (const line of lines) {
-            if (line.startsWith('data: ')) {
-                const jsonStr = line.substring(6);
-                try {
-                    const data = JSON.parse(jsonStr);
-                    const { setPodsStatus, updatePodStatus } = usePodsStatus.getState();
+        // Frames are buffered so an incomplete frame split across chunks is
+        // carried into the next read instead of being dropped.
+        const { frames, buffer } = StreamUtils.parseSseFrames(this.buffer, chunk);
+        this.buffer = buffer;
 
-                    if (Array.isArray(data)) {
-                        setPodsStatus(data as AppPodsStatusModel[]);
-                    } else {
-                        updatePodStatus(data as AppPodsStatusModel);
-                    }
-                } catch (e) {
-                    console.error('[PodsStatusService] Error parsing JSON:', e);
+        for (const frame of frames) {
+            try {
+                const data = JSON.parse(frame);
+                const { setPodsStatus, updatePodStatus } = usePodsStatus.getState();
+
+                if (Array.isArray(data)) {
+                    setPodsStatus(data as AppPodsStatusModel[]);
+                } else {
+                    updatePodStatus(data as AppPodsStatusModel);
                 }
+            } catch (e) {
+                console.error('[PodsStatusService] Error parsing JSON:', e);
             }
         }
     }

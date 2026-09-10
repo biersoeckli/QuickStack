@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { simpleRoute } from "@/server/utils/action-wrapper.utils";
 import deploymentLogService from "@/server/services/deployment-logs.service";
+import { StreamUtils } from "@/shared/utils/stream.utils";
 
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
@@ -23,10 +24,10 @@ export async function POST(request: Request) {
             start(controller) {
                 const innerFunc = async () => {
                     console.log(`[CONNECT] Client joined build log stream for deployment ${deploymentId}`);
-                    controller.enqueue(encoder.encode('Stream opened, loading build logs...\n'));
+                    controller.enqueue(encoder.encode(StreamUtils.encodeSseData('Stream opened, loading build logs...\n')));
 
                     closeListenerFunc = await deploymentLogService.getLogsStream(deploymentId, (chunk) => {
-                        controller.enqueue(encoder.encode(chunk));
+                        controller.enqueue(encoder.encode(StreamUtils.encodeSseData(chunk)));
                     });
                 };
                 innerFunc();

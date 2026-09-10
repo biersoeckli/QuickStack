@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+'use client';
+
 import React from "react";
+import { Textarea } from "@/components/ui/textarea";
 import {
     HoverCard,
     HoverCardContent,
@@ -8,6 +9,8 @@ import {
 } from "@/components/ui/hover-card"
 import { Source_Code_Pro } from "next/font/google";
 import { cn } from "@/frontend/utils/utils";
+import { useLogStream } from "@/frontend/hooks/use-log-stream";
+import { Constants } from "@/shared/utils/constants";
 
 const sourceCodePro = Source_Code_Pro({
     subsets: ["latin"],
@@ -18,71 +21,18 @@ const sourceCodePro = Source_Code_Pro({
 export default function BuildLogsStreamed({
     deploymentId,
     fullHeight = false,
+    maxLines = Constants.DEFAULT_MAX_LOG_LINES,
 }: {
     deploymentId?: string;
     fullHeight?: boolean;
+    maxLines?: number;
 }) {
-    const [isConnected, setIsConnected] = useState(false);
-    const [logs, setLogs] = useState<string>('');
-    const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-    const initializeConnection = useCallback(async (controller: AbortController) => {
-        // Initiate the first call to connect to SSE API
-
-        setLogs('Loading...');
-
-        const signal = controller.signal;
-        const apiResponse = await fetch('/api/build-logs', {
-            method: "POST",
-            headers: {
-                "Content-Type": "text/event-stream",
-            },
-            body: JSON.stringify({ deploymentId }),
-            signal: signal,
-        });
-
-        if (!apiResponse.ok) return;
-        if (!apiResponse.body) return;
-        setIsConnected(true);
-
-        // To decode incoming data as a string
-        const reader = apiResponse.body
-            .pipeThrough(new TextDecoderStream())
-            .getReader();
-
-        setLogs('');
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-                setIsConnected(false);
-                break;
-            }
-            if (value) {
-                setLogs((prevLogs) => prevLogs + value);
-            }
-        }
-    }, [deploymentId])
-
-    useEffect(() => {
-        if (!deploymentId) {
-            return;
-        }
-        const controller = new AbortController();
-        initializeConnection(controller);
-
-        return () => {
-            console.log('Disconnecting from logs');
-            setLogs('');
-            controller.abort();
-        };
-    }, [deploymentId, initializeConnection]);
-
-    useEffect(() => {
-        if (textAreaRef.current) {
-            // Scroll to the bottom every time logs change
-            textAreaRef.current.scrollTop = textAreaRef.current.scrollHeight;
-        }
-    }, [logs]);
+    const { logs, isConnected, textAreaRef } = useLogStream(
+        '/api/build-logs',
+        JSON.stringify({ deploymentId }),
+        Boolean(deploymentId),
+        maxLines,
+    );
 
     return <>
         <div className="space-y-4">

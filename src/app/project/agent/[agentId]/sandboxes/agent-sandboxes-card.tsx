@@ -11,6 +11,7 @@ import { Bot, ExternalLink, Files, Logs, Play, Square, Terminal } from "lucide-r
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { startSandbox, stopSandbox } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
+import { StreamUtils } from "@/shared/utils/stream.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import {
@@ -95,38 +96,30 @@ export default function AgentSandboxesCard({
                         const { value, done } = await reader.read();
                         if (done) break;
 
-                        buffer += value;
+                        const parsed = StreamUtils.parseSseFrames(buffer, value);
+                        buffer = parsed.buffer;
 
-                        // Parse SSE frames: split by double newline
-                        const frames = buffer.split('\n\n');
-                        buffer = frames.pop() || ''; // keep incomplete frame in buffer
-
-                        for (const frame of frames) {
-                            const lines = frame.split('\n');
-                            for (const line of lines) {
-                                if (line.startsWith('data: ')) {
-                                    try {
-                                        const msg = JSON.parse(line.slice(6));
-                                        if (msg.type === 'FULL' && Array.isArray(msg.data)) {
-                                            setSandboxes(ListUtils.dedupByName(msg.data, 'name'));
-                                        } else if (msg.type === 'ADDED' && msg.sandbox) {
-                                            setSandboxes(prev => {
-                                                if (prev.some(i => i.name === msg.sandbox.name)) return prev;
-                                                return [...prev, msg.sandbox];
-                                            });
-                                        } else if (msg.type === 'MODIFIED' && msg.sandbox) {
-                                            setSandboxes(prev => prev.map(i =>
-                                                i.name === msg.sandbox.name ? msg.sandbox : i
-                                            ));
-                                        } else if (msg.type === 'DELETED' && msg.sandbox?.name) {
-                                            setSandboxes(prev => prev.filter(i =>
-                                                i.name !== msg.sandbox.name
-                                            ));
-                                        }
-                                    } catch {
-                                        // Ignore malformed SSE payloads and keep the stream alive.
-                                    }
+                        for (const frame of parsed.frames) {
+                            try {
+                                const msg = JSON.parse(frame);
+                                if (msg.type === 'FULL' && Array.isArray(msg.data)) {
+                                    setSandboxes(ListUtils.dedupByName(msg.data, 'name'));
+                                } else if (msg.type === 'ADDED' && msg.sandbox) {
+                                    setSandboxes(prev => {
+                                        if (prev.some(i => i.name === msg.sandbox.name)) return prev;
+                                        return [...prev, msg.sandbox];
+                                    });
+                                } else if (msg.type === 'MODIFIED' && msg.sandbox) {
+                                    setSandboxes(prev => prev.map(i =>
+                                        i.name === msg.sandbox.name ? msg.sandbox : i
+                                    ));
+                                } else if (msg.type === 'DELETED' && msg.sandbox?.name) {
+                                    setSandboxes(prev => prev.filter(i =>
+                                        i.name !== msg.sandbox.name
+                                    ));
                                 }
+                            } catch {
+                                // Ignore malformed SSE payloads and keep the stream alive.
                             }
                         }
                     }
