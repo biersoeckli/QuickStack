@@ -1,6 +1,6 @@
 import type { NetworkGraphEdge, NetworkGraphEdgeDirection } from './project-network-graph-projection';
 
-export const NETWORK_GRAPH_COLORS = { connection: '#0ea5e9', internet: '#8b5cf6' } as const;
+export const NETWORK_GRAPH_COLORS = { connection: '#0ea5e9', external: '#f59e0b', internet: '#8b5cf6' } as const;
 
 export type NetworkGraphEdgePresentation = {
     sourceHandle: string;
@@ -22,8 +22,8 @@ export function graphEdgePresentation(edge: NetworkGraphEdge): NetworkGraphEdgeP
     const internet = edge.direction.startsWith('INTERNET');
     return {
         ...handles[edge.direction],
-        color: internet ? NETWORK_GRAPH_COLORS.internet : NETWORK_GRAPH_COLORS.connection,
-        dashed: internet || edge.complete === false,
+        color: internet ? NETWORK_GRAPH_COLORS.internet : edge.external ? NETWORK_GRAPH_COLORS.external : NETWORK_GRAPH_COLORS.connection,
+        dashed: internet || edge.external || edge.complete === false,
         label: edge.labels.join(' · ') || undefined,
     };
 }
@@ -31,5 +31,6 @@ export function graphEdgePresentation(edge: NetworkGraphEdge): NetworkGraphEdgeP
 export const graphLegendItems = [
     { kind: 'complete', label: 'Complete connection' },
     { kind: 'incomplete', label: 'Incomplete connection' },
+    { kind: 'external', label: 'Other project' },
     { kind: 'internet', label: 'Internet access' },
 ] as const;

@@ -1,4 +1,4 @@
-import { AppExtendedModel } from '../model/app-extended.model';
+import { AppExtendedModel, AppExtendedWriteModel } from '../model/app-extended.model';
 
 type RuleType = 'INGRESS' | 'EGRESS';
 
@@ -10,21 +10,18 @@ export class NetworkPolicyTemplateUtils {
     }
 
     private static addRule(app: AppExtendedModel, type: RuleType, target: AppExtendedModel, port: number) {
-        const policy = app.appNetworkPolicy ?? {
-            appId: app.id,
-            allowInternetAccess: true,
-            rules: [],
-        } as unknown as NonNullable<AppExtendedModel['appNetworkPolicy']>;
+        const existingRules = app.appNetworkPolicy?.rules ?? [];
+        const allowInternetAccess = app.appNetworkPolicy?.allowInternetAccess ?? true;
 
-        policy.rules.push({
-            type,
-            targetAppId: target.id,
-            targetAgentId: null,
-            port,
-            protocol: 'TCP',
-            targetApp: { id: target.id, name: target.name, projectId: target.projectId },
-            targetAgent: null,
-        } as NonNullable<AppExtendedModel['appNetworkPolicy']>['rules'][number]);
-        app.appNetworkPolicy = policy;
+        const configuration: NonNullable<AppExtendedWriteModel['appNetworkPolicy']> = {
+            allowInternetAccess,
+            rules: [
+                ...existingRules,
+                { type, targetAppId: target.id, targetAgentId: null, port, protocol: 'TCP' },
+            ],
+        };
+
+        // The read model carries server-assigned rule metadata; persist assigns it.
+        app.appNetworkPolicy = configuration as unknown as AppExtendedModel['appNetworkPolicy'];
     }
 }

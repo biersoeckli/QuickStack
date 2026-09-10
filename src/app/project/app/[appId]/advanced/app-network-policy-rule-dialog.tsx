@@ -1,10 +1,9 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { toast } from 'sonner';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,39 +11,38 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SubmitButton } from '@/components/custom/submit-button';
 import { useDialogContext } from '@/frontend/states/dialog-context';
-import { FormUtils } from '@/frontend/utils/form.utilts';
-import { ServerActionResult } from '@/shared/model/server-action-error-return.model';
-import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel } from '@/shared/model/app-network-policy-edit.model';
-import { saveAppNetworkPolicyRule } from './actions';
+import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel, NetworkPolicyDirection, NetworkPolicySelectableTarget, NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
 
-type Direction = 'INGRESS' | 'EGRESS';
-type Project = { id: string; name: string };
-type SelectableTarget = { id: string; name: string; type: 'APP' | 'AGENT'; project: Project };
 const appNetworkPolicyRuleFormZodModel = appNetworkPolicyRuleEditZodModel.extend({
     projectId: z.string().optional(),
 });
 
-export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, currentProject }: { appId: string; direction: Direction; targets: SelectableTarget[]; currentProject: Project }) {
+type AppNetworkPolicyRuleDialogProps = {
+    direction: NetworkPolicyDirection;
+    targets: NetworkPolicySelectableTarget[];
+    currentProject: NetworkPolicyTargetProject;
+    isDuplicate: (rule: AppNetworkPolicyRuleEditModel) => boolean;
+    onAdd: (rule: AppNetworkPolicyRuleEditModel) => void;
+};
+
+export default function AppNetworkPolicyRuleDialog({ direction, targets, currentProject, isDuplicate, onAdd }: AppNetworkPolicyRuleDialogProps) {
     const { closeDialog } = useDialogContext();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const ingress = direction === 'INGRESS';
     const form = useForm<z.input<typeof appNetworkPolicyRuleFormZodModel>, unknown, z.output<typeof appNetworkPolicyRuleFormZodModel>>({
         resolver: zodResolver(appNetworkPolicyRuleFormZodModel),
         defaultValues: { type: direction, projectId: currentProject.id, targetType: 'APP', targetId: '', port: '', protocol: 'TCP' },
     });
-    const [state, formAction] = useActionState(
-        (state: ServerActionResult<any, any>, payload: AppNetworkPolicyRuleEditModel) =>
-            saveAppNetworkPolicyRule(state, payload, appId),
-        FormUtils.getInitialFormState<typeof appNetworkPolicyRuleEditZodModel>(),
-    );
 
-    useEffect(() => {
-        if (state.status === 'success') {
-            form.reset();
-            toast.success('Rule saved.');
-            closeDialog();
+    const submit = (data: z.output<typeof appNetworkPolicyRuleFormZodModel>) => {
+        const { projectId: _projectId, ...rule } = data;
+        if (isDuplicate(rule)) {
+            setErrorMessage('A matching network policy rule already exists.');
+            return;
         }
-        FormUtils.mapValidationErrorsToForm<typeof appNetworkPolicyRuleFormZodModel>(state, form);
-    }, [closeDialog, form, state]);
+        onAdd(rule);
+        closeDialog();
+    };
 
     const projects = Array.from(new Map([
         [currentProject.id, currentProject],
@@ -59,7 +57,7 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, 
             <DialogDescription>{ingress ? 'Allow a source app or agent sandbox to access this app.' : 'Allow this app to access a target app or agent sandbox.'}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-            <form action={() => form.handleSubmit(data => formAction(data))()} className="space-y-5 py-6">
+            <form onSubmit={form.handleSubmit(submit)} className="space-y-5 py-6">
                 <FormField
                     control={form.control}
                     name="projectId"
@@ -69,6 +67,7 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, 
                             field.onChange(projectId);
                             form.setValue('targetId', '');
                             form.setValue('targetType', 'APP');
+                            setErrorMessage(null);
                         }}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger></FormControl>
                             <SelectContent>
@@ -87,6 +86,7 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, 
                             const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
                             form.setValue('targetType', targetType);
                             field.onChange(targetId);
+                            setErrorMessage(null);
                         }}>
                             <FormControl><SelectTrigger><SelectValue placeholder={selectedProjectId ? 'Select app or agent sandbox' : 'Select project first'} /></SelectTrigger></FormControl>
                             <SelectContent>
@@ -101,7 +101,10 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, 
                     name="port"
                     render={({ field }) => <FormItem>
                         <FormLabel>Port</FormLabel>
-                        <FormControl><Input type="number" min="1" max="65535" placeholder="e.g. 443" {...field} value={field.value ?? ''} /></FormControl>
+                        <FormControl><Input type="number" min="1" max="65535" placeholder="e.g. 443" {...field} value={field.value ?? ''} onChange={(event) => {
+                            field.onChange(event);
+                            setErrorMessage(null);
+                        }} /></FormControl>
                         <FormMessage />
                     </FormItem>}
                 />
@@ -110,14 +113,17 @@ export default function AppNetworkPolicyRuleDialog({ appId, direction, targets, 
                     name="protocol"
                     render={({ field }) => <FormItem>
                         <FormLabel>Protocol</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select value={field.value} onValueChange={(protocol) => {
+                            field.onChange(protocol);
+                            setErrorMessage(null);
+                        }}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="TCP">TCP</SelectItem><SelectItem value="UDP">UDP</SelectItem></SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>}
                 />
-                {state.message && <p className="text-sm text-destructive">{state.message}</p>}
+                {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                 <div className="flex justify-end gap-2">
                     <SubmitButton>Add rule</SubmitButton>
                     <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>

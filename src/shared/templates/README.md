@@ -18,7 +18,7 @@ import { Constants } from "@/shared/utils/constants";
 
 export const myAppTemplate: AppTemplateModel = {
     name: "My Application",
-    iconName: "myapp.svg",  // or URL: "https://example.com/icon.png"
+    iconName: "myapp.svg",
     templates: [
         {
             inputSettings: [ /* user inputs */ ],
@@ -37,9 +37,9 @@ export const myAppTemplate: AppTemplateModel = {
 The display name of the template shown in the UI.
 
 #### 2. `iconName` (string)
-Either:
-- A filename from `/public/template-icons/` (e.g., `"mysql.svg"`)
-- A full URL to an icon (e.g., `"https://avatars.githubusercontent.com/u/158137808"`)
+A filename from `/public/template-icons/` (e.g., `"mysql.svg"`).
+
+Run `yarn template-icons:download` to refresh the locally stored icons from their configured sources.
 
 #### 3. `templates` (array)
 An array of template configurations. Use multiple templates when your application requires multiple services (e.g., frontend + backend, app + database).
@@ -146,7 +146,7 @@ When an application requires multiple services (e.g., Ollama + Open WebUI), defi
 ```typescript
 export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
-    iconName: 'https://avatars.githubusercontent.com/u/158137808',
+    iconName: 'openwebui.png',
     templates: [
         {
             // First service: Ollama backend

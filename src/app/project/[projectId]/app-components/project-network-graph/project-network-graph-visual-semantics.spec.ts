@@ -16,4 +16,11 @@ describe('graphEdgePresentation', () => {
     ] as const)('%s resolves renderer-neutral traffic facts', (direction, complete, sourceHandle, targetHandle, dashed) => {
         expect(graphEdgePresentation(edge(direction, complete))).toMatchObject({ sourceHandle, targetHandle, dashed, label: '443/TCP' });
     });
+
+    test('renders cross-project connections amber and dashed', () => {
+        expect(graphEdgePresentation({ ...edge('CONNECTION', true), external: true })).toMatchObject({
+            color: '#f59e0b',
+            dashed: true,
+        });
+    });
 });

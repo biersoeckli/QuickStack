@@ -19,10 +19,9 @@ import '@xyflow/react/dist/style.css';
 import { Bot, Boxes, Cloud, MoveRight } from 'lucide-react';
 import { cn } from '@/frontend/utils/utils';
 import { AppNetworkPolicyRuleWithTargetAppModel } from '@/shared/model/app-extended.model';
+import { NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
 
 type WorkloadType = 'APP' | 'AGENT';
-
-type ProjectBrief = { id: string; name: string };
 
 type Neighbor = {
     type: WorkloadType;
@@ -171,7 +170,7 @@ function Legend() {
             {getLegendItem('Ingress rule', <span className="inline-block h-0.5 w-6 rounded-full" style={{ background: EDGE_COLORS.ingress }} />)}
             {getLegendItem('Egress rule', <span className="inline-block h-0.5 w-6 rounded-full" style={{ background: EDGE_COLORS.egress }} />)}
             {getLegendItem('Internet access', <span className="inline-block h-0 w-6 border-t-2 border-dashed" style={{ borderColor: EDGE_COLORS.internet }} />)}
-            {getLegendItem('Cross-project connection', <span className="inline-block h-0 w-6 border-t-2 border-dashed border-amber-500" />)}
+            {getLegendItem('Other project', <span className="inline-block h-4 w-6 rounded border border-dashed border-amber-500 bg-amber-500/5" />)}
             {getLegendItem('App', <Boxes className="size-3.5 text-qs-600" />)}
             {getLegendItem('Agent sandbox', <Bot className="size-3.5 text-violet-500" />)}
             <span className="flex items-center gap-1.5"><MoveRight className="size-3.5" />Arrows point in the direction of allowed traffic</span>
@@ -203,7 +202,7 @@ export default function NetworkPolicyGraph({
     rules: AppNetworkPolicyRuleWithTargetAppModel[];
     allowInternetAccess: boolean;
     domainLabels: string[];
-    projects: ProjectBrief[];
+    projects: NetworkPolicyTargetProject[];
 }) {
     const router = useRouter();
 
@@ -260,7 +259,7 @@ export default function NetworkPolicyGraph({
                 targetHandle: 'in-left',
                 label: aggregateLabels(neighbor.ingress),
                 markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.ingress, width: 16, height: 16 },
-                style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
+                style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5 },
             });
         });
 
@@ -282,7 +281,7 @@ export default function NetworkPolicyGraph({
                 targetHandle: 'egress-in',
                 label: aggregateLabels(neighbor.egress),
                 markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.egress, width: 16, height: 16 },
-                style: { stroke: EDGE_COLORS.egress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
+                style: { stroke: EDGE_COLORS.egress, strokeWidth: 1.5 },
             });
             if (hasIngress) {
                 edges.push({
@@ -294,7 +293,7 @@ export default function NetworkPolicyGraph({
                     targetHandle: 'in-right',
                     label: aggregateLabels(neighbor.ingress),
                     markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.ingress, width: 16, height: 16 },
-                    style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5, strokeDasharray: neighbor.projectId !== appProjectId ? '5 4' : undefined },
+                    style: { stroke: EDGE_COLORS.ingress, strokeWidth: 1.5 },
                 });
             }
         });

@@ -6,9 +6,12 @@ import { isAuthorizedWriteForApp, isAuthorizedWriteForWorkload, saveFormAction, 
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model";
 import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
 import appNetworkPolicyService from "@/server/services/app-network-policy.service";
-import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel, AppNetworkPolicySettingsModel, appNetworkPolicySettingsZodModel } from "@/shared/model/app-network-policy-edit.model";
+import networkPolicyService from "@/server/services/network-policy.service";
+import namespaceService from "@/server/services/namespace.service";
+import { AppNetworkPolicyConfigurationModel, appNetworkPolicyConfigurationZodModel } from "@/shared/model/app-network-policy-edit.model";
 import projectService from "@/server/services/project.service";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import { ServiceException } from "@/shared/model/service.exception.model";
 
 
 export const saveBasicAuth = async (prevState: any, inputData: BasicAuthEditModel) =>
@@ -30,27 +33,35 @@ export const deleteBasicAuth = async (basicAuthId: string) =>
         return new SuccessActionResult(undefined, 'Successfully deleted item');
     });
 
-export const saveAppNetworkPolicySettings = async (prevState: any, input: AppNetworkPolicySettingsModel, appId: string) =>
-    saveFormAction(input, appNetworkPolicySettingsZodModel, async (validated) => {
-        await isAuthorizedWriteForWorkload(appId);
-        await appNetworkPolicyService.saveSettings({ ...validated, appId });
-        return new SuccessActionResult();
-    });
+export const saveAppNetworkPolicyConfiguration = async (prevState: any, input: AppNetworkPolicyConfigurationModel) =>
+    saveFormAction(input, appNetworkPolicyConfigurationZodModel, async (validated) => {
+        const session = await isAuthorizedWriteForWorkload(validated.appId);
+        for (const rule of validated.rules) {
+            if (!rule.id && !UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, rule.targetId)) {
+                throw new ServiceException('You are not authorized to reference this target.');
+            }
+        }
+        const touches = await appNetworkPolicyService.savePolicyConfiguration(validated, session);
 
-export const saveAppNetworkPolicyRule = async (prevState: any, input: AppNetworkPolicyRuleEditModel, appId: string) =>
-    saveFormAction(input, appNetworkPolicyRuleEditZodModel, async (validated) => {
-        const session = await isAuthorizedWriteForWorkload(appId);
-        if (!UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, validated.targetId)) throw new Error('You are not authorized to reference this target.');
-        await appNetworkPolicyService.saveRule({ ...validated, appId });
-        return new SuccessActionResult();
-    });
-
-export const deleteAppNetworkPolicyRule = async (ruleId: string) =>
-    simpleAction(async () => {
-        const rule = await appNetworkPolicyService.getRuleById(ruleId);
-        await isAuthorizedWriteForWorkload(rule.appNetworkPolicy.appId);
-        await appNetworkPolicyService.deleteRule(ruleId);
-        return new SuccessActionResult();
+        // Network policies are applied immediately: the changed App and every
+        // related App referenced by its rules are reconciled in Kubernetes.
+        // Peers whose mirrored counterpart was removed are reconciled too, so a
+        // deleted connection is dropped from their network policy as well.
+        // Agent counterparts are stored in the database only; agent sandbox
+        // templates are not updated.
+        const appIdsToReconcile = [validated.appId, ...validated.rules
+            .filter(rule => rule.targetType === 'APP')
+            .map(rule => rule.targetId)];
+        for (const touch of touches) {
+            if (touch.workloadType === 'APP') {
+                appIdsToReconcile.push(touch.workloadId);
+            }
+        }
+        for (const appId of new Set(appIdsToReconcile)) {
+            const app = await appService.getExtendedById(appId, false);
+            await namespaceService.createNamespaceIfNotExists(app.projectId);
+            await networkPolicyService.reconcileNetworkPolicy(app);
+        }
     });
 
 export const getTargetsForAppNetworkPolicy = async (appId: string) =>

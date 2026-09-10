@@ -1,31 +1,41 @@
 'use client';
 
 import { ArrowDown, ArrowUp, CopyIcon, MoreHorizontal, Plus, TrashIcon } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AppNetworkPolicyRuleWithTargetAppModel } from '@/shared/model/app-extended.model';
-import { Toast } from '@/frontend/utils/toast.utils';
 import { toast } from 'sonner';
+import { NetworkPolicyDirection, NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
 import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
-import { deleteAppNetworkPolicyRule } from './actions';
 
-export type AppNetworkPolicyDirection = 'INGRESS' | 'EGRESS';
-type ProjectBrief = { id: string; name: string };
+export type AppNetworkPolicyDirection = NetworkPolicyDirection;
+
+export type AppNetworkPolicyRuleDraft = {
+    key: string;
+    persistedId?: string;
+    type: AppNetworkPolicyDirection;
+    targetType: 'APP' | 'AGENT';
+    targetId: string;
+    targetName: string;
+    targetProjectId: string;
+    port: number;
+    protocol: 'TCP' | 'UDP';
+};
 
 type AppNetworkPolicyRuleSectionProps = {
     direction: AppNetworkPolicyDirection;
-    rules: AppNetworkPolicyRuleWithTargetAppModel[];
+    rules: AppNetworkPolicyRuleDraft[];
     readonly: boolean;
     onAdd: () => void;
+    onDeleteRule: (key: string) => void;
     currentProjectId: string;
-    projects: ProjectBrief[];
+    projects: NetworkPolicyTargetProject[];
     internetAccess?: boolean;
     onInternetAccessChange?: (checked: boolean) => void;
-    networkPoliciesEnabled?: boolean;
 };
 
 export default function AppNetworkPolicyRuleSection({
@@ -33,11 +43,11 @@ export default function AppNetworkPolicyRuleSection({
     rules,
     readonly,
     onAdd,
+    onDeleteRule,
     currentProjectId,
     projects,
     internetAccess,
     onInternetAccessChange,
-    networkPoliciesEnabled,
 }: AppNetworkPolicyRuleSectionProps) {
     const ingress = direction === 'INGRESS';
     const title = ingress ? 'Ingress rules' : 'Egress rules';
@@ -66,7 +76,7 @@ export default function AppNetworkPolicyRuleSection({
                                 </div>
                                 <Switch
                                     checked={internetAccess}
-                                    disabled={readonly || !networkPoliciesEnabled}
+                                    disabled={readonly}
                                     onCheckedChange={onInternetAccessChange}
                                 />
                             </CardContent>
@@ -83,7 +93,7 @@ export default function AppNetworkPolicyRuleSection({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {rules.length > 0 ? rules.map(rule => <RuleRow key={rule.id} rule={rule} readonly={readonly} currentProjectId={currentProjectId} projects={projects} />) : (
+                            {rules.length > 0 ? rules.map(rule => <RuleRow key={rule.key} rule={rule} readonly={readonly} onDelete={onDeleteRule} currentProjectId={currentProjectId} projects={projects} />) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">No rules configured.</TableCell>
                                 </TableRow>
@@ -98,22 +108,33 @@ export default function AppNetworkPolicyRuleSection({
     );
 }
 
-function RuleRow({ rule, readonly, currentProjectId, projects }: { rule: AppNetworkPolicyRuleWithTargetAppModel; readonly: boolean; currentProjectId: string; projects: ProjectBrief[] }) {
-    const target = rule.targetAgent ?? rule.targetApp;
-    const targetType = rule.targetAgent ? 'Agent sandbox' : 'App';
-    const projectName = target?.projectId === currentProjectId
+function RuleRow({ rule, readonly, onDelete, currentProjectId, projects }: {
+    rule: AppNetworkPolicyRuleDraft;
+    readonly: boolean;
+    onDelete: (key: string) => void;
+    currentProjectId: string;
+    projects: NetworkPolicyTargetProject[];
+}) {
+    const projectName = rule.targetProjectId === currentProjectId
         ? 'This project'
-        : projects.find(project => project.id === target?.projectId)?.name ?? 'Unknown project';
+        : projects.find(project => project.id === rule.targetProjectId)?.name ?? 'Unknown project';
+    const targetTypeLabel = rule.targetType === 'AGENT' ? 'Agent sandbox' : 'App';
     const copyInternalHostname = () => {
-        if (rule.targetApp) navigator.clipboard.writeText(InternalHostnameUtils.getInternalBaseUrlForApp(rule.targetApp, rule.port));
+        if (rule.targetType !== 'APP') return;
+        navigator.clipboard.writeText(InternalHostnameUtils.getInternalBaseUrlForApp({ id: rule.targetId, projectId: rule.targetProjectId }, rule.port));
         toast.success('Copied internal hostname to clipboard');
     };
 
     return (
         <TableRow>
             <TableCell>
-                {target?.name ?? 'Unknown target'}
-                <span className="ml-2 text-muted-foreground">{projectName} · {targetType}</span>
+
+                {rule.targetType === 'APP'
+                    ? <Link href={`/project/app/${rule.targetId}`} className="underline-offset-4 hover:underline">{rule.targetName}</Link>
+                    : rule.targetName}
+                <span className="ml-2 text-muted-foreground">
+                    {projectName} · {targetTypeLabel}
+                </span>
             </TableCell>
             <TableCell>{rule.port}</TableCell>
             <TableCell>{rule.protocol}</TableCell>
@@ -127,10 +148,10 @@ function RuleRow({ rule, readonly, currentProjectId, projects }: { rule: AppNetw
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            {rule.targetApp && <DropdownMenuItem onClick={copyInternalHostname}>
+                            {rule.targetType === 'APP' && <DropdownMenuItem onClick={copyInternalHostname}>
                                 <CopyIcon /> Copy internal hostname
                             </DropdownMenuItem>}
-                            <DropdownMenuItem className="text-destructive" onClick={() => Toast.fromAction(() => deleteAppNetworkPolicyRule(rule.id), 'Rule deleted.')}>
+                            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(rule.key)}>
                                 <TrashIcon /> Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>

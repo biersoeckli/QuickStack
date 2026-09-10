@@ -74,7 +74,7 @@ function Legend() {
                     <span
                         className={cn('inline-block w-6 border-t-2', item.kind === 'complete' && 'h-0.5 rounded-full border-0', item.kind !== 'complete' && 'h-0 border-dashed')}
                         style={{
-                            borderColor: item.kind === 'internet' ? NETWORK_GRAPH_COLORS.internet : NETWORK_GRAPH_COLORS.connection,
+                            borderColor: item.kind === 'internet' ? NETWORK_GRAPH_COLORS.internet : item.kind === 'external' ? NETWORK_GRAPH_COLORS.external : NETWORK_GRAPH_COLORS.connection,
                             background: item.kind === 'complete' ? NETWORK_GRAPH_COLORS.connection : undefined,
                         }}
                     />

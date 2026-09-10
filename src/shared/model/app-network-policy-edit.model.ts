@@ -1,11 +1,19 @@
 import { stringToBoolean } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
-export const appNetworkPolicySettingsZodModel = z.object({
-    useNetworkPolicy: stringToBoolean,
-    allowInternetAccess: stringToBoolean.optional().default(true),
-});
-export type AppNetworkPolicySettingsModel = z.infer<typeof appNetworkPolicySettingsZodModel>;
+export type NetworkPolicyDirection = 'INGRESS' | 'EGRESS';
+
+export type NetworkPolicyTargetProject = {
+    id: string;
+    name: string;
+};
+
+export type NetworkPolicySelectableTarget = {
+    id: string;
+    name: string;
+    type: 'APP' | 'AGENT';
+    project: NetworkPolicyTargetProject;
+};
 
 export const appNetworkPolicyRuleEditZodModel = z.object({
     id: z.string().optional(),
@@ -17,3 +25,11 @@ export const appNetworkPolicyRuleEditZodModel = z.object({
     protocol: z.enum(['TCP', 'UDP']).default('TCP'),
 });
 export type AppNetworkPolicyRuleEditModel = z.infer<typeof appNetworkPolicyRuleEditZodModel>;
+
+export const appNetworkPolicyConfigurationZodModel = z.object({
+    appId: z.string(),
+    useNetworkPolicy: stringToBoolean,
+    allowInternetAccess: stringToBoolean.optional().default(true),
+    rules: z.array(appNetworkPolicyRuleEditZodModel).default([]),
+});
+export type AppNetworkPolicyConfigurationModel = z.infer<typeof appNetworkPolicyConfigurationZodModel>;
