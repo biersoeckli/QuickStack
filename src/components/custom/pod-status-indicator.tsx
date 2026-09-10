@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { Spinner } from "@/components/ui/spinner"
@@ -14,9 +15,9 @@ interface PodStatusIndicatorProps {
     showLabel?: boolean;
 }
 
-export default function PodStatusIndicator({ appId, showLabel }: PodStatusIndicatorProps) {
-    const { getPodsForApp, isLoading } = usePodsStatus();
-    const appPods = getPodsForApp(appId);
+function PodStatusIndicator({ appId, showLabel }: PodStatusIndicatorProps) {
+    const appPods = usePodsStatus(state => state.podsStatus.get(appId));
+    const isLoading = usePodsStatus(state => state.isLoading);
 
     if (isLoading) {
         return (
@@ -95,3 +96,5 @@ export default function PodStatusIndicator({ appId, showLabel }: PodStatusIndica
         </Tooltip>
     );
 }
+
+export default memo(PodStatusIndicator);

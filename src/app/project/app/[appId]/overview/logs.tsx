@@ -28,7 +28,7 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
-    const { subscribeToStatusChanges } = usePodsStatus();
+    const subscribeToStatusChanges = usePodsStatus(state => state.subscribeToStatusChanges);
     const { openDialog } = useDialog();
 
     const updateBuilds = useCallback(async () => {
