@@ -18,6 +18,10 @@ Self-hosted PaaS: Next.js App Router UI manages k3s deployments. `src/server.ts`
 - Triage task: read `docs/agents/triage-labels.md`.
 - Codebase exploration or domain-modeling task: read `docs/agents/domain.md`.
 
+## Utility methods
+
+For helper logic, first inspect the relevant `utils/` directory for an existing utility class and extend it. Create a new utility class only when no suitable class exists. Utility classes expose static methods. Place them in `src/frontend/utils/`, `src/server/utils/`, or `src/shared/utils/` when both frontend and backend use them.
+
 ## Commands
 
 `package.json` is authoritative for development, build, test, lint, and Prisma commands. Use `yarn`; use the project’s `prisma-generate` and `prisma-migrate` scripts for generation and development migrations. Kubernetes work requires root `kube-config.config` credentials.
@@ -25,6 +29,10 @@ Self-hosted PaaS: Next.js App Router UI manages k3s deployments. `src/server.ts`
 ## Commits
 
 Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `style:`).
+
+## Code style
+
+Write human-readable code: use conventional line breaks and indentation so each structure, prop, and expression is easy to scan.
 
 ## Communication: Caveman Ultra
 

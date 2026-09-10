@@ -5,7 +5,7 @@ export const uptimekumaAppTemplate: AppTemplateModel = {
     name: "Uptime Kuma",
     description: 'A self-hosted monitoring service for uptime checks, status pages, and notifications.',
     websiteUrl: 'https://github.com/louislam/uptime-kuma',
-    iconName: 'https://raw.githubusercontent.com/louislam/uptime-kuma/master/public/icon.svg',
+    iconName: 'uptimekuma.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const uptimekumaAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -40,8 +37,5 @@ export const uptimekumaAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3001,
-        }]
     }],
 };

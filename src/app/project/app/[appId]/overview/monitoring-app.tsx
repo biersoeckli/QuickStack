@@ -1,17 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { getRessourceDataApp } from "./actions";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
+import { cn } from "@/frontend/utils/utils";
 
 export default function MonitoringTab({
-    app
+    app,
+    hideCard = false,
 }: {
     app: AppExtendedModel;
+    hideCard?: boolean;
 }) {
 
     const [selectedPod, setSelectedPod] = useState<PodsResourceInfoModel | undefined>(undefined);
@@ -40,9 +43,10 @@ export default function MonitoringTab({
         return () => clearInterval(intervalId);
     }, [app, updateValues]);
 
+    const ContentWrapper = hideCard ? Fragment : Card;
     return <>
-        <Card>
-            <CardContent className="pb-0">
+        <ContentWrapper>
+            <CardContent className={cn('space-y-4', hideCard ? 'p-0' : 'pb-0')}>
                 {!selectedPod ? <FullLoadingSpinner /> :
                     <Table>
                         <TableHeader>
@@ -71,6 +75,6 @@ export default function MonitoringTab({
                     </Table>
                 }
             </CardContent>
-        </Card >
+        </ContentWrapper>
     </>;
 }

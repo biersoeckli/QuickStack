@@ -5,7 +5,7 @@ export const outlineAppTemplate: AppTemplateModel = {
     name: "Outline",
     description: 'A collaborative knowledge base for team documentation, collections, and publishing.',
     websiteUrl: 'https://github.com/outline/outline',
-    iconName: 'https://cdn.simpleicons.org/outline',
+    iconName: 'outline.svg',
     templates: [{
         inputSettings: [
             {
@@ -36,13 +36,10 @@ export const outlineAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `NODE_ENV=production
 FORCE_HTTPS=false
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -56,8 +53,5 @@ FORCE_HTTPS=false
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

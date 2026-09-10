@@ -5,7 +5,7 @@ export const adminerAppTemplate: AppTemplateModel = {
     name: "Adminer",
     description: 'A compact web interface for managing MySQL, PostgreSQL, SQLite, MongoDB, and other databases.',
     websiteUrl: 'https://github.com/vrana/adminer',
-    iconName: 'https://cdn.simpleicons.org/adminer',
+    iconName: 'adminer.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,12 +22,9 @@ export const adminerAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `ADMINER_DEFAULT_SERVER=db
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -35,8 +32,5 @@ export const adminerAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

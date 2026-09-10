@@ -5,7 +5,7 @@ export const wikijsAppTemplate: AppTemplateModel = {
     name: "Wiki.js",
     description: 'A modern, extensible wiki for writing, organizing, and sharing documentation.',
     websiteUrl: 'https://github.com/requarks/wiki',
-    iconName: 'https://cdn.simpleicons.org/wiki.js',
+    iconName: 'wikijs.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,13 +22,10 @@ export const wikijsAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `DB_TYPE=sqlite
 DB_FILEPATH=/wiki/data/database.sqlite
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -42,8 +39,5 @@ DB_FILEPATH=/wiki/data/database.sqlite
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

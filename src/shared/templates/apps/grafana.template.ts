@@ -5,7 +5,7 @@ export const grafanaAppTemplate: AppTemplateModel = {
     name: "Grafana",
     description: 'An observability platform for dashboards, metrics, logs, traces, and alerting.',
     websiteUrl: 'https://github.com/grafana/grafana',
-    iconName: 'https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg',
+    iconName: 'grafana.svg',
     templates: [{
         inputSettings: [
             {
@@ -36,11 +36,8 @@ export const grafanaAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -54,8 +51,5 @@ export const grafanaAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

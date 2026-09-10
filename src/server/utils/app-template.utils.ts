@@ -102,7 +102,8 @@ export class AppTemplateUtils {
         }
         let returnVal: DatabaseTemplateInfoModel;
         const envVars = EnvVarUtils.parseEnvVariables(app);
-        const port = app.appPorts.find(x => !!x.port)?.port!;
+        const port = app.appNetworkPolicy?.rules.find((rule) => rule.type === 'INGRESS')?.port
+            ?? this.getTemplateDatabasePort(app.appType);
         const hostname = KubeObjectNameUtils.toServiceName(app.id);
         if (app.appType === 'MONGODB') {
             returnVal = {
@@ -171,5 +172,18 @@ export class AppTemplateUtils {
             throw new ServiceException('Error parsing database info');
         }
         return returnVal;
+    }
+
+    static getTemplateDatabasePort(appType: AppExtendedModel['appType']): number {
+        const ports = {
+            MARIADB: 3306,
+            MONGODB: 27017,
+            MYSQL: 3306,
+            POSTGRES: 5432,
+            REDIS: 6379,
+        } as const;
+        const port = ports[appType as keyof typeof ports];
+        if (!port) throw new ServiceException(`No default database port is defined for ${appType}.`);
+        return port;
     }
 }

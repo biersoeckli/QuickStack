@@ -51,12 +51,9 @@ export function getMariadbAppTemplate(config?: {
             appType: 'MARIADB',
             sourceType: 'CONTAINER',
             containerImageSource: "",
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             replicas: 1,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -70,9 +67,6 @@ export function getMariadbAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     };
 }
 

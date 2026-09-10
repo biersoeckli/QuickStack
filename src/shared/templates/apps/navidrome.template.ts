@@ -5,7 +5,7 @@ export const navidiomeAppTemplate: AppTemplateModel = {
     name: "Navidrome",
     description: 'A self-hosted music server for streaming and managing personal music collections.',
     websiteUrl: 'https://github.com/navidrome/navidrome',
-    iconName: 'https://raw.githubusercontent.com/navidrome/navidrome/master/resources/logo-192x192.png',
+    iconName: 'navidrome.png',
     templates: [{
         inputSettings: [
             {
@@ -22,14 +22,11 @@ export const navidiomeAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `ND_SCANSCHEDULE=1h
 ND_LOGLEVEL=info
 ND_SESSIONTIMEOUT=24h
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -49,8 +46,5 @@ ND_SESSIONTIMEOUT=24h
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 4533,
-        }]
     }],
 };

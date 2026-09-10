@@ -5,7 +5,7 @@ export const elementAppTemplate: AppTemplateModel = {
     name: "Element Web",
     description: 'A secure web client for Matrix chat, rooms, and collaboration.',
     websiteUrl: 'https://github.com/element-hq/element-web',
-    iconName: 'https://raw.githubusercontent.com/element-hq/element-web/develop/res/vector-icons/1024.png',
+    iconName: 'element.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const elementAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -34,8 +31,5 @@ export const elementAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

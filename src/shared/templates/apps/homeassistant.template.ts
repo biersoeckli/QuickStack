@@ -5,7 +5,7 @@ export const homeassistantAppTemplate: AppTemplateModel = {
     name: "Home Assistant",
     description: 'An open-source home automation platform for integrating and controlling smart devices.',
     websiteUrl: 'https://github.com/home-assistant/core',
-    iconName: 'https://cdn.simpleicons.org/homeassistant',
+    iconName: 'homeassistant.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,12 +22,9 @@ export const homeassistantAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `TZ=Europe/Zurich
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -41,8 +38,5 @@ export const homeassistantAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8123,
-        }]
     }],
 };

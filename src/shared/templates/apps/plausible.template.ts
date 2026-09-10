@@ -5,7 +5,7 @@ export const plausibleAppTemplate: AppTemplateModel = {
     name: "Plausible Analytics",
     description: 'A lightweight, privacy-friendly web analytics platform.',
     websiteUrl: 'https://github.com/plausible/analytics',
-    iconName: 'https://plausible.io/assets/images/icon/plausible_logo.svg',
+    iconName: 'plausible.svg',
     templates: [{
         inputSettings: [
             {
@@ -36,12 +36,9 @@ export const plausibleAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `DISABLE_REGISTRATION=invite_only
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -55,8 +52,5 @@ export const plausibleAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8000,
-        }]
     }],
 };

@@ -17,6 +17,8 @@ export function SimpleDataTable<TData>({
     onItemClick,
     onItemClickLink,
     hideSearchBar = false,
+    hideViewOptions = false,
+    hidePagination = false,
     showSelectCheckbox = false,
     onRowSelectionUpdate,
     columnFilters,
@@ -25,6 +27,8 @@ export function SimpleDataTable<TData>({
     columns: ([string, string, boolean, (item: TData) => ReactNode] | [string, string, boolean])[],
     data: TData[],
     hideSearchBar?: boolean,
+    hideViewOptions?: boolean,
+    hidePagination?: boolean,
     showSelectCheckbox?: boolean,
     onItemClick?: (selectedItem: TData) => void,
     onItemClickLink?: (selectedItem: TData) => string,
@@ -220,5 +224,7 @@ export function SimpleDataTable<TData>({
         columns={finalCols}
         data={columnInputData}
         hideSearchBar={hideSearchBar}
+        hideViewOptions={hideViewOptions}
+        hidePagination={hidePagination}
         onRowSelectionUpdate={onRowSelectionUpdate} />
 }

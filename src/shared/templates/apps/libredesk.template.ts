@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate } from "../databases/redis.template";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const libredeskAppTemplate: AppTemplateModel = {
     name: "Libredesk",
@@ -42,11 +43,8 @@ export const libredeskAppTemplate: AppTemplateModel = {
                 containerCommand: 'sh',
                 containerArgs: '["-c", "./libredesk --install --idempotent-install --yes --config /libredesk/config.toml && ./libredesk --upgrade --yes --config /libredesk/config.toml && ./libredesk --config /libredesk/config.toml"]',
                 replicas: 1,
-                ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-                egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
                 envVars: ``,
                 useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
                 healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
                 healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
                 healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -60,9 +58,6 @@ export const libredeskAppTemplate: AppTemplateModel = {
                 shareWithOtherApps: false,
             }],
             appFileMounts: [],
-            appPorts: [{
-                port: 9000,
-            }]
         }
     ]
 };
@@ -220,5 +215,7 @@ evaluation_interval = "5m"`;
     const systemUserPassword = AppTemplateUtils.generateStrongPasswort(52);
     libredeskApp.envVars += `LIBREDESK_SYSTEM_USER_PASSWORD=${systemUserPassword}
 `;
+    NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, postgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, redisApp, 6379);
     return [postgresApp, redisApp, libredeskApp];
 };

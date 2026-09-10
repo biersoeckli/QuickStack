@@ -294,19 +294,19 @@ const actionAgentNetworkPolicyEgressRuleEditZodModel = agentNetworkPolicyEgressR
 
 export const saveAgentNetworkPolicyEgressRule = async (prevState: any, inputData: AgentNetworkPolicyEgressRuleEditModel & { id?: string }, agentId: string) =>
     saveFormAction(inputData, actionAgentNetworkPolicyEgressRuleEditZodModel, async (validatedData) => {
-        await isAuthorizedWriteForWorkload(agentId);
+        const session = await isAuthorizedWriteForWorkload(agentId);
         await agentNetworkPolicyService.saveEgressRule({
             ...validatedData,
             agentId,
             id: validatedData.id ?? undefined,
-        });
+        }, session);
     });
 
 export const deleteAgentNetworkPolicyEgressRule = async (ruleId: string) =>
     simpleAction(async () => {
         const rule = await agentNetworkPolicyService.getEgressRuleById(ruleId);
-        await isAuthorizedWriteForWorkload(rule.agentNetworkPolicy.agentId);
-        await agentNetworkPolicyService.deleteEgressRule(ruleId);
+        const session = await isAuthorizedWriteForWorkload(rule.agentNetworkPolicy.agentId);
+        await agentNetworkPolicyService.deleteEgressRule(ruleId, session);
     });
 
 export const getAppsForAgentNetworkPolicy = async (agentId: string) =>

@@ -5,7 +5,7 @@ export const vaultwardenAppTemplate: AppTemplateModel = {
     name: "Vaultwarden",
     description: 'A lightweight, self-hosted Bitwarden-compatible password manager server.',
     websiteUrl: 'https://github.com/dani-garcia/vaultwarden',
-    iconName: 'https://raw.githubusercontent.com/dani-garcia/vaultwarden/main/resources/vaultwarden-icon.svg',
+    iconName: 'vaultwarden.svg',
     templates: [{
         inputSettings: [
             {
@@ -29,13 +29,10 @@ export const vaultwardenAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `SIGNUPS_ALLOWED=true
 WEBSOCKET_ENABLED=true
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -49,8 +46,5 @@ WEBSOCKET_ENABLED=true
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

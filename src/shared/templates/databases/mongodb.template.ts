@@ -43,13 +43,10 @@ export function getMongodbAppTemplate(config?: {
             appType: 'MONGODB',
             sourceType: 'CONTAINER',
             containerImageSource: "",
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
             replicas: 1,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
         },
@@ -62,9 +59,6 @@ export function getMongodbAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 27017,
-        }]
     };
 }
 

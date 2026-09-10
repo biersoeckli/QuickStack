@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ValidationError } from 'elysia';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { stringToDate } from '@/shared/utils/zod.utils';
 import { getIdentityFromApiKeyHeader } from './requester-identity.utils';
@@ -128,6 +129,9 @@ export class ApiUtils {
     }
 
     static mapError(error: unknown): Response {
+        if (error instanceof ValidationError) {
+            return ApiUtils.problem(422, 'Unprocessable Entity', 'Request validation failed.');
+        }
         if (error instanceof z.ZodError) {
             return ApiUtils.problem(400, 'Bad Request', 'Request validation failed. ' + error.issues.map(e => `${e.path.join('.')} - ${e.message}`).join('; '));
         }
@@ -148,6 +152,7 @@ export class ApiUtils {
         return {
             200: ApiUtils.mapDateSchemaToStringDate(schema) as z.ZodType<T>,
             401: problemResponseSchema,
+            422: problemResponseSchema,
             404: problemResponseSchema,
             500: problemResponseSchema,
         };

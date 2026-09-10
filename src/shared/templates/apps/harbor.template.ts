@@ -5,7 +5,7 @@ export const harborAppTemplate: AppTemplateModel = {
     name: "Harbor Registry",
     description: 'A secure cloud-native registry for container images, Helm charts, vulnerability scanning, and access control.',
     websiteUrl: 'https://github.com/goharbor/harbor',
-    iconName: 'https://raw.githubusercontent.com/goharbor/harbor/main/src/portal/src/images/harbor-logo.svg',
+    iconName: 'harbor.svg',
     templates: [{
         inputSettings: [
             {
@@ -29,11 +29,8 @@ export const harborAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -47,8 +44,5 @@ export const harborAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

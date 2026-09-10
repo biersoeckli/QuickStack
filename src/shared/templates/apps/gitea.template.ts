@@ -5,7 +5,7 @@ export const giteaAppTemplate: AppTemplateModel = {
     name: "Gitea",
     description: 'A lightweight self-hosted Git service with repository hosting, issues, pull requests, and packages.',
     websiteUrl: 'https://github.com/go-gitea/gitea',
-    iconName: 'https://raw.githubusercontent.com/go-gitea/gitea/main/assets/logo.svg',
+    iconName: 'gitea.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,14 +22,11 @@ export const giteaAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `USER_UID=1000
 USER_GID=1000
 GITEA__database__DB_TYPE=sqlite3
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -43,10 +40,5 @@ GITEA__database__DB_TYPE=sqlite3
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }, {
-            port: 22,
-        }]
     }],
 };

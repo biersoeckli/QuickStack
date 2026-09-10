@@ -1,5 +1,5 @@
 import { AppTemplateModel } from "../model/app-template.model";
-import { wordpressAppTemplate } from "./apps/wordpress.template";
+import { postCreateWordpressAppTemplate, wordpressAppTemplate } from "./apps/wordpress.template";
 import { mariadbAppTemplate } from "./databases/mariadb.template";
 import { mongodbAppTemplate } from "./databases/mongodb.template";
 import { mysqlAppTemplate } from "./databases/mysql.template";
@@ -78,6 +78,7 @@ export const appTemplates: AppTemplateModel[] = [
 ];
 
 export const postCreateTemplateFunctions: Map<string, (createdApps: AppExtendedModel[]) => Promise<AppExtendedModel[]>> = new Map([
+    [wordpressAppTemplate.name, postCreateWordpressAppTemplate],
     [openwebuiAppTemplate.name, postCreateOpenwebuiAppTemplate],
     [libredeskAppTemplate.name, postCreateLibredeskAppTemplate],
     [redisAppTemplate.name, postCreateRedisAppTemplate],

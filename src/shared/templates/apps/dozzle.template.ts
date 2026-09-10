@@ -5,7 +5,7 @@ export const dozzleAppTemplate: AppTemplateModel = {
     name: "Dozzle",
     description: 'A lightweight web UI for viewing live container logs.',
     websiteUrl: 'https://github.com/amir20/dozzle',
-    iconName: 'https://raw.githubusercontent.com/amir20/dozzle/master/assets/logo.svg',
+    iconName: 'dozzle.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const dozzleAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -34,8 +31,5 @@ export const dozzleAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

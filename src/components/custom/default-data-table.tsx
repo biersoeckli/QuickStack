@@ -42,11 +42,15 @@ export function DefaultDataTable<TData, TValue>({
     data,
     globalFilterFn,
     hideSearchBar = false,
+    hideViewOptions = false,
+    hidePagination = false,
     initialTableState,
     onRowSelectionUpdate,
     onTableStateChanged
 }: DataTableProps<TData, TValue> & {
     hideSearchBar?: boolean;
+    hideViewOptions?: boolean;
+    hidePagination?: boolean;
     onRowSelectionUpdate?: (selectedItems: TData[]) => void;
     onTableStateChanged?: (state: Partial<TableState>) => void;
     initialTableState?: Partial<TableState>;
@@ -119,7 +123,7 @@ export function DefaultDataTable<TData, TValue>({
 
     return (
         <div>
-            <div className="flex items-center py-4">
+            {(!hideSearchBar || !hideViewOptions) && <div className="flex items-center py-4">
                 {!hideSearchBar && <Input
                     placeholder="Search..."
                     value={globalFilter ?? ""}
@@ -128,9 +132,9 @@ export function DefaultDataTable<TData, TValue>({
                     }
                     className="max-w-sm"
                 />}
-                <DataTableViewOptions table={table} />
+                {!hideViewOptions && <DataTableViewOptions table={table} />}
 
-            </div>
+            </div>}
             <div className="rounded-md border">
                 <Table>
                     <TableHeader>
@@ -175,9 +179,9 @@ export function DefaultDataTable<TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <div className="mt-4">
+            {!hidePagination && <div className="mt-4">
                 <DataTablePagination table={table}/>
-            </div>
+            </div>}
         </div>
     )
 }

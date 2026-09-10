@@ -5,7 +5,7 @@ export const nginxAppTemplate: AppTemplateModel = {
     name: "NGINX",
     description: 'A high-performance web server, reverse proxy, and load balancer.',
     websiteUrl: 'https://github.com/nginx/nginx',
-    iconName: 'https://cdn.simpleicons.org/nginx',
+    iconName: 'nginx.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const nginxAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -34,8 +31,5 @@ export const nginxAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

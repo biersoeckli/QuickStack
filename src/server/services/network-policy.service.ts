@@ -3,7 +3,6 @@ import k3s from "../adapter/kubernetes-api.adapter";
 import { V1NetworkPolicy, V1NetworkPolicyEgressRule, V1NetworkPolicyIngressRule, V1NetworkPolicyPeer } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
-import { appNetworkPolicy, AppNetworkPolicyType } from "@/shared/model/network-policy.model";
 import type { SandboxTemplateNetworkPolicy } from "../adapter/api-clients/types/agents.models";
 import type { AgentNetworkPolicyRuleWithTargetAppModel } from "@/shared/model/agent-extended.model";
 import { QS_AUTH_PROXY_SERVICE_NAME } from "./qs-auth-proxy.service";
@@ -38,10 +37,6 @@ class NetworkPolicyService {
             return;
         }
 
-        const isExtended = app.networkPolicyMode === 'EXTENDED';
-        const ingressPolicy = this.normalizePolicy(app.ingressNetworkPolicy);
-        const egressPolicy = this.normalizePolicy(app.egressNetworkPolicy);
-
         const policy: V1NetworkPolicy = {
             apiVersion: "networking.k8s.io/v1",
             kind: "NetworkPolicy",
@@ -63,19 +58,17 @@ class NetworkPolicyService {
                     }
                 },
                 policyTypes: ["Ingress", "Egress"],
-                ingress: isExtended
-                    ? this.getExtendedIngressRules(app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts)
-                    : this.getIngressRules(ingressPolicy, app.appNodePorts, (app.appDomains?.length ?? 0) > 0),
-                egress: isExtended
-                    ? this.getExtendedEgressRules(app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
-                    : this.getEgressRules(egressPolicy)
+                ingress: this.getExtendedIngressRules(app.id, app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts),
+                egress: this.getExtendedEgressRules(app.id, app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
     }
 
-    private getExtendedIngressRules(rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
+    private getExtendedIngressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
         const result: V1NetworkPolicyIngressRule[] = [];
+        // Traffic between replicas of the same App is always allowed on all ports.
+        result.push({ _from: [this.getSelfPeer(appId)] });
         const backupAndTools: V1NetworkPolicyPeer[] = [
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL } } },
@@ -89,11 +82,16 @@ class NetworkPolicyService {
         return [...result, ...this.getNodePortIngressRules(nodePorts)];
     }
 
-    private getExtendedEgressRules(rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
-        const result: V1NetworkPolicyEgressRule[] = [this.getDnsEgressRule()];
+    private getExtendedEgressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
+        // Traffic between replicas of the same App is always allowed on all ports.
+        const result: V1NetworkPolicyEgressRule[] = [{ to: [this.getSelfPeer(appId)] }, this.getDnsEgressRule()];
         if (allowInternetAccess) result.push(this.getInternetEgressRule());
         for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetEgressRule(rule));
         return result;
+    }
+
+    private getSelfPeer(appId: string): V1NetworkPolicyPeer {
+        return { podSelector: { matchLabels: { app: appId } } };
     }
 
     private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {
@@ -179,205 +177,6 @@ class NetworkPolicyService {
             }],
             egress,
         };
-    }
-
-    private normalizePolicy(raw: string): AppNetworkPolicyType {
-        const parsed = appNetworkPolicy.safeParse(raw);
-        return parsed.success ? parsed.data : 'ALLOW_ALL';
-    }
-
-    private getIngressRules(policyType: AppNetworkPolicyType, nodePorts: { port: number; protocol?: string }[] = [], hasDomains = false): V1NetworkPolicyIngressRule[] {
-        const rules: V1NetworkPolicyIngressRule[] = [];
-
-        const traefikFrom: V1NetworkPolicyPeer[] = [
-            {
-                namespaceSelector: {
-                    matchLabels: {
-                        'kubernetes.io/metadata.name': 'kube-system'
-                    }
-                },
-                podSelector: {
-                    matchLabels: {
-                        'app.kubernetes.io/name': 'traefik'
-                    }
-                }
-            },
-            /* // Fallback label used in some clusters/charts
-             {
-                 namespaceSelector: {
-                     matchLabels: {
-                         'kubernetes.io/metadata.name': 'kube-system'
-                     }
-                 },
-                 podSelector: {
-                     matchLabels: {
-                         app: 'traefik'
-                     }
-                 }
-             }*/
-        ];
-
-        const backupPodFrom: V1NetworkPolicyPeer[] = [{
-            podSelector: {
-                matchLabels: {
-                    [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB
-                }
-            }
-        }];
-
-        const dbToolPod: V1NetworkPolicyPeer[] = [{
-            podSelector: {
-                matchLabels: {
-                    [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL
-                }
-            }
-        }];
-
-        if (policyType === 'ALLOW_ALL') {
-            // Allow from same namespace and from Traefik (internet traffic comes through Traefik)
-            rules.push({
-                _from: [
-                    ...(hasDomains ? traefikFrom : []),
-                    {
-                        podSelector: {} // Selects all pods in the same namespace
-                    }
-                ]
-            });
-        } else if (policyType === 'INTERNET_ONLY') {
-            // Allow from Traefik (internet traffic comes through Traefik) and from DB-backup jobs.
-            // Block other internal pod traffic.
-            rules.push({
-                _from: [
-                    ...(hasDomains ? traefikFrom : []),
-                    ...backupPodFrom,
-                    ...dbToolPod
-                ]
-            });
-        } else if (policyType === 'NAMESPACE_ONLY') {
-            // Allow only from same namespace
-            rules.push({
-                _from: [{
-                    podSelector: {} // Selects all pods in the same namespace
-                }]
-            });
-        } else if (policyType === 'DENY_ALL') {
-            // No rules means deny all --> except the separate container for database backups
-            rules.push({
-                _from: [
-                    ...backupPodFrom,
-                    ...dbToolPod
-                ]
-            });
-        }
-
-        if (nodePorts.length > 0) {
-            const exposedPorts = nodePorts
-                .filter((nodePort, index, self) =>
-                    index === self.findIndex(item =>
-                        item.port === nodePort.port && (item.protocol || 'TCP') === (nodePort.protocol || 'TCP')))
-                .map(nodePort => ({
-                    protocol: (nodePort.protocol || 'TCP'),
-                    port: nodePort.port
-                }));
-
-            rules.push({
-                _from: [{
-                    ipBlock: {
-                        cidr: '0.0.0.0/0'
-                    }
-                }],
-                ports: exposedPorts
-            });
-        }
-
-        return rules;
-    }
-
-    private getEgressRules(policyType: AppNetworkPolicyType): V1NetworkPolicyEgressRule[] {
-        const rules: V1NetworkPolicyEgressRule[] = [];
-
-        // allow DNS (kube-dns/coredns) on UDP/TCP 53
-        const dnsRuleAllow: V1NetworkPolicyEgressRule = {
-            to: [
-                {
-                    namespaceSelector: {
-                        matchLabels: {
-                            "kubernetes.io/metadata.name": "kube-system"
-                        }
-                    },
-                    podSelector: {
-                        matchLabels: {
-                            "k8s-app": "kube-dns"
-                        }
-                    }
-                },
-                {
-                    namespaceSelector: {
-                        matchLabels: {
-                            "kubernetes.io/metadata.name": "kube-system"
-                        }
-                    },
-                    podSelector: {
-                        matchLabels: {
-                            "k8s-app": "coredns"
-                        }
-                    }
-                }
-            ],
-            ports: [
-                { protocol: 'UDP', port: 53 },
-                { protocol: 'TCP', port: 53 }
-            ]
-        };
-
-        if (policyType === 'ALLOW_ALL') {
-            // Allow Internet + Local Namespace, Block other namespaces (Private IPs)
-            rules.push(dnsRuleAllow);
-            rules.push({
-                to: [
-                    {
-                        ipBlock: {
-                            cidr: '0.0.0.0/0',
-                            except: [
-                                '10.0.0.0/8',
-                                '172.16.0.0/12',
-                                '192.168.0.0/16'
-                            ]
-                        }
-                    },
-                    {
-                        podSelector: {} // Allow all in same namespace
-                    }
-                ]
-            });
-        } else if (policyType === 'INTERNET_ONLY') {
-            // Allow only to internet, block internal cluster traffic
-            rules.push(dnsRuleAllow);
-            rules.push({
-                to: [{
-                    ipBlock: {
-                        cidr: '0.0.0.0/0',
-                        except: [
-                            '10.0.0.0/8',
-                            '172.16.0.0/12',
-                            '192.168.0.0/16'
-                        ]
-                    }
-                }]
-            });
-        } else if (policyType === 'NAMESPACE_ONLY') {
-            // Allow only to same namespace
-            rules.push(dnsRuleAllow);
-            rules.push({
-                to: [{
-                    podSelector: {}
-                }]
-            });
-        } else if (policyType === 'DENY_ALL') {
-            // Allow completely nothing
-        }
-
-        return rules;
     }
 
     async deleteNetworkPolicy(appId: string, projectId: string) {

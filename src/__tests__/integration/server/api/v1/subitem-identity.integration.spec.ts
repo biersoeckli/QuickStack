@@ -91,7 +91,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
         expect(clonedApp.id).not.toBe(sourceApp.id);
         expect(clonedApp.appDomains[0].id).not.toBe(sourceApp.appDomains[0].id);
-        expect(clonedApp.appPorts[0].id).not.toBe(sourceApp.appPorts[0].id);
         expect(clonedApp.appNodePorts[0].id).not.toBe(sourceApp.appNodePorts[0].id);
         expect(clonedApp.appFileMounts[0].id).not.toBe(sourceApp.appFileMounts[0].id);
         expect(clonedApp.appVolumes[0].id).not.toBe(sourceApp.appVolumes[0].id);
@@ -116,7 +115,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
             body: {
                 ...app,
                 appDomains: [],
-                appPorts: [],
                 appNodePorts: [],
                 appFileMounts: [],
                 appVolumes: [],
@@ -126,7 +124,6 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
         expect(updated).toMatchObject({
             appDomains: [],
-            appPorts: [],
             appNodePorts: [],
             appFileMounts: [],
             appVolumes: [],
@@ -177,7 +174,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
         });
     });
 
-    it('reports the current API error when an App network policy configuration is omitted', async () => {
+    it('rejects an App write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const project = await createProject(apiKey, 'APP');
         const { appNetworkPolicy: _appNetworkPolicy, ...payload } = createAppPayload(undefined, project.id, 'Missing Policy App');
@@ -185,9 +182,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: payload,
-        }), 500);
+        }), 422);
 
-        expect(problem.detail).toBe('An unknown error occurred.');
+        expect(problem.detail).toBe('Request validation failed.');
     });
 
     it('removes an App network policy configuration when the API receives null', async () => {
@@ -359,7 +356,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
             .resolves.toMatchObject({ agentId: clonedAgent.id, hostname: 'clone.agent.example.com' });
     });
 
-    it('reports the current API error when an Agent network policy configuration is omitted', async () => {
+    it('rejects an Agent write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
         const agentProject = await createProject(apiKey, 'AGENT');
         const appProject = await createProject(apiKey, 'APP');
@@ -372,9 +369,9 @@ describe('REST API v1 integration - nested subitem identity', () => {
         const problem = await expectApiProblem(await apiFetch('/api/v1/agents', apiKey, {
             method: 'POST',
             body: payload,
-        }), 500);
+        }), 422);
 
-        expect(problem.detail).toBe('An unknown error occurred.');
+        expect(problem.detail).toBe('Request validation failed.');
     });
 
     it('removes an Agent network policy configuration when the API receives null', async () => {
@@ -454,14 +451,11 @@ function createAppPayload(id: string | undefined, projectId: string, name: strin
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
-        ingressNetworkPolicy: 'ALLOW_ALL',
-        egressNetworkPolicy: 'ALLOW_ALL',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,
         healthCheckFailureThreshold: 3,
         appDomains: [{ hostname: 'source.example.com', port: 8080, useSsl: true, redirectHttps: true }],
-        appPorts: [{ port: 8080 }],
         appNodePorts: [{ port: 8080, nodePort: 30080, protocol: 'TCP' }],
         appFileMounts: [{ containerMountPath: '/etc/app/config.json', content: '{}' }],
         appVolumes: [{ containerMountPath: '/data', size: 1, accessMode: 'rwo', storageClassName: 'longhorn', shareWithOtherApps: false }],

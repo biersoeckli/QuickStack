@@ -27,14 +27,10 @@ export class Constants {
     static readonly TRAEFIK_ME_SECRET_NAME = 'traefik-me-tls';
     static readonly QS_SYSTEM_BACKUP_DEACTIVATED = 'deactivated';
     static readonly QS_SYSTEM_BACKUP_LOCATION_PARAM_KEY = 'qsSystemBackupLocation';
-    static readonly DEFAULT_INGRESS_NETWORK_POLICY_APPS = 'ALLOW_ALL';
-    static readonly DEFAULT_EGRESS_NETWORK_POLICY_APPS = 'ALLOW_ALL';
-    static readonly DEFAULT_INGRESS_NETWORK_POLICY_DATABASES = 'NAMESPACE_ONLY';
-    static readonly DEFAULT_EGRESS_NETWORK_POLICY_DATABASES = 'DENY_ALL';
-    static readonly DEFAULT_NETWORK_POLICY_MODE_APPS = 'SIMPLE';
     static readonly DEFAULT_HEALTH_CHECK_PERIOD_SECONDS = 15;
     static readonly DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 10;
     static readonly DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD = 3;
+    static readonly DEFAULT_LITELLM_PORT = 4000;
     static readonly TOLERATION_FOR_EXECUTED_CRON_BACKUPS_MS = 60 * 60 * 1000; // 60 minutes;
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';

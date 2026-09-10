@@ -81,7 +81,6 @@ describe('AppTemplateService', () => {
                 const app: AppExtendedModel = {
                     envVars: 'DB_NAME={databaseName} {username} {password} {port} {hostname}',
                     appType: 'MYSQL',
-                    appPorts: [{ port: 3306 }],
                     id: 'app-id'
                 } as AppExtendedModel;
                 const databaseInfo: DatabaseTemplateInfoModel = {
@@ -104,7 +103,7 @@ describe('AppTemplateService', () => {
                 const app: AppExtendedModel = {
                     appType: 'MONGODB',
                     envVars: 'MONGO_INITDB_DATABASE=testDB\nMONGO_INITDB_ROOT_USERNAME=testUser\nMONGO_INITDB_ROOT_PASSWORD=testPass\n',
-                    appPorts: [{ port: 27017 }],
+                    appNetworkPolicy: { rules: [{ type: 'INGRESS', port: 27017 }] },
                     id: 'app-id'
                 } as AppExtendedModel;
 
@@ -117,11 +116,23 @@ describe('AppTemplateService', () => {
                 expect(databaseModel.hostname).toBe(KubeObjectNameUtils.toServiceName('app-id'));
             });
 
+            it('uses the template default port when no ingress rule exists', () => {
+                const app = {
+                    appType: 'POSTGRES',
+                    envVars: 'POSTGRES_DB=testdb\nPOSTGRES_USER=testuser\nPOSTGRES_PASSWORD=testpass\n',
+                    id: 'app-id',
+                } as AppExtendedModel;
+
+                expect(AppTemplateUtils.getDatabaseModelFromApp(app)).toMatchObject({
+                    port: 5432,
+                    internalConnectionUrl: 'postgresql://testuser:testpass@svc-app-id:5432/testdb',
+                });
+            });
+
             it('should throw ServiceException for unknown app type', () => {
                 const app: AppExtendedModel = {
                     appType: 'UNKNOWN',
                     envVars: '',
-                    appPorts: [],
                     id: 'app-id'
                 } as any;
 

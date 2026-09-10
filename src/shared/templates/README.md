@@ -18,15 +18,14 @@ import { Constants } from "@/shared/utils/constants";
 
 export const myAppTemplate: AppTemplateModel = {
     name: "My Application",
-    iconName: "myapp.svg",  // or URL: "https://example.com/icon.png"
+    iconName: "myapp.svg",
     templates: [
         {
             inputSettings: [ /* user inputs */ ],
             appModel: { /* app configuration */ },
             appDomains: [ /* domain configuration */ ],
             appVolumes: [ /* volume configuration */ ],
-            appFileMounts: [ /* file mounts */ ],
-            appPorts: [ /* port configuration */ ]
+            appFileMounts: [ /* file mounts */ ]
         }
     ]
 };
@@ -38,9 +37,9 @@ export const myAppTemplate: AppTemplateModel = {
 The display name of the template shown in the UI.
 
 #### 2. `iconName` (string)
-Either:
-- A filename from `/public/template-icons/` (e.g., `"mysql.svg"`)
-- A full URL to an icon (e.g., `"https://avatars.githubusercontent.com/u/158137808"`)
+A filename from `/public/template-icons/` (e.g., `"mysql.svg"`).
+
+Run `yarn template-icons:download` to refresh the locally stored icons from their configured sources.
 
 #### 3. `templates` (array)
 An array of template configurations. Use multiple templates when your application requires multiple services (e.g., frontend + backend, app + database).
@@ -91,8 +90,6 @@ appModel: {
     replicas: 1,                              // Number of replicas
 
     // Network policies
-    ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-    egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
     useNetworkPolicy: true,
 
     // Environment variables (string with KEY=VALUE pairs, one per line)
@@ -109,7 +106,7 @@ POSTGRES_USER=admin`,
 **Important:**
 - `envVars` is a multi-line string with KEY=VALUE format
 - Values from `inputSettings` with `isEnvVar: true` will be automatically appended
-- Use `Constants.DEFAULT_*` values for network policies and health checks
+- Use `Constants.DEFAULT_*` values for health checks
 
 #### `appDomains` (array)
 Domain configurations (usually empty for templates, users configure later):
@@ -140,17 +137,6 @@ File mount configurations (usually empty unless specific files need to be mounte
 appFileMounts: []
 ```
 
-#### `appPorts` (array)
-Port configurations:
-
-```typescript
-appPorts: [
-    {
-        port: 5432,                           // Container port to expose
-    }
-]
-```
-
 ## Multi-Service Templates
 
 When an application requires multiple services (e.g., Ollama + Open WebUI), define multiple objects in the `templates` array.
@@ -160,7 +146,7 @@ When an application requires multiple services (e.g., Ollama + Open WebUI), defi
 ```typescript
 export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
-    iconName: 'https://avatars.githubusercontent.com/u/158137808',
+    iconName: 'openwebui.png',
     templates: [
         {
             // First service: Ollama backend
@@ -190,9 +176,6 @@ OLLAMA_ORIGINS=*`,
                 storageClassName: 'longhorn',
                 shareWithOtherApps: false,
             }],
-            appPorts: [{
-                port: 11434,
-            }]
         },
         {
             // Second service: Open WebUI frontend
@@ -228,9 +211,6 @@ OLLAMA_ORIGINS=*`,
                 storageClassName: 'longhorn',
                 shareWithOtherApps: false,
             }],
-            appPorts: [{
-                port: 8080,
-            }]
         }
     ]
 };
@@ -479,8 +459,6 @@ export const mydatabaseAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `DB_USER=admin`,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
@@ -496,9 +474,6 @@ export const mydatabaseAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     }]
 };
 ```
@@ -532,8 +507,6 @@ export const myappAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `NODE_ENV=production`,
             useNetworkPolicy: true,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
@@ -549,9 +522,6 @@ export const myappAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }]
 };
 ```
@@ -573,12 +543,6 @@ export const myappAppTemplate: AppTemplateModel = {
 ## Constants Reference
 
 ```typescript
-// Network Policies
-Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS
-Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS
-Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES
-Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES
-
 // Health Checks
 Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS
 Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS

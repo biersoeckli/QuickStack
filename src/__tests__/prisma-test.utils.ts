@@ -6,6 +6,7 @@ import { beforeAll, beforeEach, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import dataAccess from '@/server/adapter/db.client';
+import paramService from '@/server/services/param.service';
 
 /**
  * Creates an isolated Prisma/SQLite test context for integration tests.
@@ -37,6 +38,7 @@ export function createPrismaTestContext(label: string) {
 
     beforeAll(async () => {
         process.env.DATABASE_URL = `file:${dbFile}`;
+        await fs.writeFile(dbFile, '');
         execSync('npx prisma db push', { stdio: 'pipe', env: { ...process.env } });
         const adapter = new PrismaBetterSqlite3({ url: `file:${dbFile}` });
         testClient = new PrismaClient({ adapter });
@@ -79,6 +81,7 @@ export function createPrismaTestContext(label: string) {
         await dataAccess.client.user.deleteMany();
         await dataAccess.client.userGroup.deleteMany();
         await dataAccess.client.parameter.deleteMany();
+        await paramService.initializeDefaults(false);
     });
 
     afterAll(async () => {

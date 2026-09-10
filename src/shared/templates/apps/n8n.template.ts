@@ -8,7 +8,7 @@ export const n8nAppTemplate: AppTemplateModel = {
     name: "n8n",
     description: 'A workflow automation platform for connecting apps, APIs, and custom business processes.',
     websiteUrl: 'https://github.com/n8n-io/n8n',
-    iconName: 'https://avatars.githubusercontent.com/u/45487711',
+    iconName: 'n8n.png',
     templates: [{
         inputSettings: [
             {
@@ -32,11 +32,8 @@ export const n8nAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -51,9 +48,6 @@ export const n8nAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 5678,
-        }]
     }],
 };
 

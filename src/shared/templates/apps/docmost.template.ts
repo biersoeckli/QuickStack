@@ -4,12 +4,13 @@ import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate } from "../databases/redis.template";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppTemplateUtils } from "@/server/utils/app-template.utils";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const docmostAppTemplate: AppTemplateModel = {
     name: "Docmost",
     description: 'An open-source collaborative wiki and documentation workspace for teams.',
     websiteUrl: 'https://github.com/docmost/docmost',
-    iconName: 'https://cdn-1.webcatalog.io/catalog/docmost/docmost-icon-filled-256.webp',
+    iconName: 'docmost.webp',
     templates: [
         // PostgreSQL
         getPostgresAppTemplate({
@@ -45,11 +46,8 @@ export const docmostAppTemplate: AppTemplateModel = {
                 sourceType: 'CONTAINER',
                 containerImageSource: "",
                 replicas: 1,
-                ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-                egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
                 envVars: ``,
                 useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
                 healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
                 healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
                 healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -64,9 +62,6 @@ export const docmostAppTemplate: AppTemplateModel = {
                 shareWithOtherApps: false,
             }],
             appFileMounts: [],
-            appPorts: [{
-                port: 3000,
-            }]
         }],
 };
 
@@ -93,6 +88,8 @@ ${createdDocmostApp.envVars.split('\n').filter(line =>
         !line.startsWith('DATABASE_URL=') &&
         !line.startsWith('REDIS_URL=')
     ).join('\n')}`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdPostgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdRedisApp, 6379);
 
     return [createdPostgresApp, createdRedisApp, createdDocmostApp];
 };

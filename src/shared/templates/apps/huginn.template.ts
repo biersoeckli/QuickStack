@@ -5,7 +5,7 @@ export const huginnAppTemplate: AppTemplateModel = {
     name: "Huginn",
     description: 'A self-hosted automation system for monitoring events and running workflows from web data.',
     websiteUrl: 'https://github.com/huginn/huginn',
-    iconName: 'https://raw.githubusercontent.com/huginn/huginn/master/public/favicon.ico',
+    iconName: 'huginn.ico',
     templates: [{
         inputSettings: [
             {
@@ -36,12 +36,9 @@ export const huginnAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `TIMEZONE=Europe/Zurich
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -55,8 +52,5 @@ export const huginnAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }]
     }],
 };

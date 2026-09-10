@@ -5,7 +5,7 @@ export const drawioAppTemplate: AppTemplateModel = {
     name: "draw.io",
     description: 'A browser-based diagram editor for flowcharts, architecture diagrams, and visual documentation.',
     websiteUrl: 'https://github.com/jgraph/drawio',
-    iconName: 'https://raw.githubusercontent.com/jgraph/drawio/dev/src/main/webapp/images/drawlogo.svg',
+    iconName: 'drawio.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const drawioAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -34,8 +31,5 @@ export const drawioAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }],
 };

@@ -5,7 +5,7 @@ export const droneAppTemplate: AppTemplateModel = {
     name: "Drone CI",
     description: 'A container-native continuous integration platform that runs pipelines from your Git repositories.',
     websiteUrl: 'https://github.com/drone/drone',
-    iconName: 'https://cdn.simpleicons.org/drone',
+    iconName: 'drone.svg',
     templates: [{
         inputSettings: [
             {
@@ -36,12 +36,9 @@ export const droneAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `DRONE_SERVER_PROTO=https
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -55,10 +52,5 @@ export const droneAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }, {
-            port: 443,
-        }]
     }],
 };

@@ -5,7 +5,7 @@ export const filebrowserAppTemplate: AppTemplateModel = {
     name: "File Browser",
     description: 'A web-based file manager for browsing, uploading, downloading, and sharing files.',
     websiteUrl: 'https://github.com/filebrowser/filebrowser',
-    iconName: 'https://raw.githubusercontent.com/filebrowser/logo/master/banner.svg',
+    iconName: 'filebrowser.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const filebrowserAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -46,8 +43,5 @@ export const filebrowserAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 80,
-        }]
     }],
 };

@@ -2,12 +2,13 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const openwebuiAppTemplate: AppTemplateModel = {
     name: "Open WebUI",
     description: 'A self-hosted chat interface for working with language models and OpenAI-compatible APIs.',
     websiteUrl: 'https://github.com/open-webui/open-webui',
-    iconName: 'https://avatars.githubusercontent.com/u/158137808',
+    iconName: 'openwebui.png',
     templates: [{
         // Ollama Backend
         inputSettings: [
@@ -25,13 +26,10 @@ export const openwebuiAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `OLLAMA_HOST=0.0.0.0
 OLLAMA_ORIGINS=*
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -45,9 +43,6 @@ OLLAMA_ORIGINS=*
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 11434,
-        }]
     },
     // Open WebUI Frontend
     {
@@ -73,11 +68,8 @@ OLLAMA_ORIGINS=*
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -91,9 +83,6 @@ OLLAMA_ORIGINS=*
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }]
     }]
 }
 
@@ -110,6 +99,7 @@ export const postCreateOpenwebuiAppTemplate = async (createdApps: AppExtendedMod
     const ollamaAppInternalHostname = KubeObjectNameUtils.toServiceName(createdOllamaApp.id);
 
     createdWebuiApp.envVars += `OLLAMA_BASE_URLS=http://${ollamaAppInternalHostname}:11434`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdWebuiApp, createdOllamaApp, 11434);
 
     return [createdOllamaApp, createdWebuiApp]
 };

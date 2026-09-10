@@ -5,7 +5,7 @@ export const forgejopAppTemplate: AppTemplateModel = {
     name: "Forgejo",
     description: 'A lightweight, self-hosted Git forge for repositories, issues, pull requests, and CI integrations.',
     websiteUrl: 'https://codeberg.org/forgejo/forgejo',
-    iconName: 'https://codeberg.org/forgejo/forgejo/raw/branch/forgejo/assets/logo.svg',
+    iconName: 'forgejo.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,14 +22,11 @@ export const forgejopAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `USER_UID=1000
 USER_GID=1000
 FORGEJO__database__DB_TYPE=sqlite3
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -43,10 +40,5 @@ FORGEJO__database__DB_TYPE=sqlite3
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3000,
-        }, {
-            port: 22,
-        }]
     }],
 };

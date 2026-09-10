@@ -1,9 +1,13 @@
 import { z } from "zod";
-import { AppDomainModel, AppFileMountModel, AppModel, AppPortModel, AppVolumeModel } from "./generated-zod";
+import { AppDomainModel, AppFileMountModel, AppModel, AppVolumeModel } from "./generated-zod";
 import { appSourceTypeZodModel, appTypeZodModel } from "./app-source-info.model";
 import { appStorageClassNameZodModel, appVolumeTypeZodModel } from "./volume-edit.model";
 
-const appModelWithRelations = z.lazy(() => AppModel.extend({
+const appModelWithRelations = z.lazy(() => AppModel.omit({
+    ingressNetworkPolicy: true,
+    egressNetworkPolicy: true,
+    networkPolicyMode: true,
+}).extend({
     projectId: z.undefined().optional(),
     buildMethod: z.undefined().optional(),
     dockerfilePath: z.undefined().optional(),
@@ -41,12 +45,6 @@ export const appTemplateContentZodModel = z.object({
         updatedAt: z.undefined().optional(),
     }).array(),
     appFileMounts: AppFileMountModel.extend({
-        id: z.undefined().optional(),
-        appId: z.undefined().optional(),
-        createdAt: z.undefined().optional(),
-        updatedAt: z.undefined().optional(),
-    }).array(),
-    appPorts: AppPortModel.extend({
         id: z.undefined().optional(),
         appId: z.undefined().optional(),
         createdAt: z.undefined().optional(),

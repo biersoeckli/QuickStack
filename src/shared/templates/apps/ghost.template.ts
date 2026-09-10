@@ -5,7 +5,7 @@ export const ghostAppTemplate: AppTemplateModel = {
     name: "Ghost",
     description: 'A publishing platform for independent blogs, newsletters, and membership sites.',
     websiteUrl: 'https://github.com/TryGhost/Ghost',
-    iconName: 'https://cdn.simpleicons.org/ghost',
+    iconName: 'ghost.svg',
     templates: [{
         inputSettings: [
             {
@@ -29,13 +29,10 @@ export const ghostAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `database__client=sqlite3
 database__connection__filename=/var/lib/ghost/content/data/ghost.db
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -49,8 +46,5 @@ database__connection__filename=/var/lib/ghost/content/data/ghost.db
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 2368,
-        }]
     }],
 };

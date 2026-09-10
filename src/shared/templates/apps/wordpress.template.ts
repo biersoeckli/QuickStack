@@ -1,5 +1,7 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const wordpressAppTemplate: AppTemplateModel = {
     name: "WordPress",
@@ -37,13 +39,10 @@ export const wordpressAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: `MYSQL_DATABASE=wordpress
 MYSQL_USER=wordpress
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -57,9 +56,6 @@ MYSQL_USER=wordpress
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 3306,
-        }]
     },
     // WordPress Backend
     {
@@ -78,8 +74,6 @@ MYSQL_USER=wordpress
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `WORDPRESS_DB_HOST={hostname}:{port}
 WORDPRESS_DB_NAME={databaseName}
 WORDPRESS_DB_USER={username}
@@ -87,7 +81,6 @@ WORDPRESS_DB_PASSWORD={password}
 WORDPRESS_TABLE_PREFIX=wp_
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -106,8 +99,17 @@ WORDPRESS_TABLE_PREFIX=wp_
 post_max_size = 100M
 `
         }],
-        appPorts: [{
-            port: 80,
-        }]
     }]
 }
+
+export const postCreateWordpressAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+    const mariadbApp = createdApps[0];
+    const wordpressApp = createdApps[1];
+
+    if (!mariadbApp || !wordpressApp) {
+        throw new Error('Created templates for MariaDB or WordPress not found.');
+    }
+
+    NetworkPolicyTemplateUtils.allowAppConnection(wordpressApp, mariadbApp, 3306);
+    return [mariadbApp, wordpressApp];
+};

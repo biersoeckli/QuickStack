@@ -4,8 +4,8 @@ import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/di
 import { useEffect, useState } from "react";
 import { AppTemplateModel } from "@/shared/model/app-template.model"
 import { appTemplates, databaseTemplates } from "@/shared/templates/all.templates"
-import CreateTemplateAppSetupDialog from "./create-template-app-setup-dialog"
-import CreateTemplateAgentSetupDialog from "./create-template-agent-setup-dialog"
+import CreateTemplateAppSetupDialog from "./app-components/create-template-app-setup-dialog"
+import CreateTemplateAgentSetupDialog from "./agent-components/create-template-agent-setup-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";

@@ -5,7 +5,7 @@ export const jellyfinAppTemplate: AppTemplateModel = {
     name: "Jellyfin",
     description: 'A free media server for organizing and streaming movies, shows, music, and live TV.',
     websiteUrl: 'https://github.com/jellyfin/jellyfin',
-    iconName: 'https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg',
+    iconName: 'jellyfin.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const jellyfinAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -46,8 +43,5 @@ export const jellyfinAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8096,
-        }]
     }],
 };

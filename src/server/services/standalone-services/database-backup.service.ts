@@ -20,11 +20,20 @@ class DatabaseBackupService {
                             include: {
                                 project: true,
                                 appDomains: true,
-                                appPorts: true,
                                 appNodePorts: true,
                                 appBasicAuths: true,
                                 appVolumes: true,
-                                appFileMounts: true
+                                appFileMounts: true,
+                                appNetworkPolicy: {
+                                    include: {
+                                        rules: {
+                                            include: {
+                                                targetApp: { select: { id: true, name: true, projectId: true } },
+                                                targetAgent: { select: { id: true, name: true, projectId: true } },
+                                            },
+                                        },
+                                    },
+                                },
                             }
                         }
                     }

@@ -5,7 +5,7 @@ export const tikaAppTemplate: AppTemplateModel = {
     name: "Apache Tika",
     description: 'A content-detection and extraction service for documents, images, archives, and metadata.',
     websiteUrl: 'https://github.com/apache/tika',
-    iconName: 'https://tika.apache.org/tika.png',
+    iconName: 'tika.png',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const tikaAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -34,8 +31,5 @@ export const tikaAppTemplate: AppTemplateModel = {
         appDomains: [],
         appVolumes: [],
         appFileMounts: [],
-        appPorts: [{
-            port: 9998,
-        }]
     }],
 };

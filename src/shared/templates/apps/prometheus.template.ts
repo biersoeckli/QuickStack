@@ -5,7 +5,7 @@ export const prometheusAppTemplate: AppTemplateModel = {
     name: "Prometheus",
     description: 'A monitoring and alerting toolkit for collecting and querying time-series metrics.',
     websiteUrl: 'https://github.com/prometheus/prometheus',
-    iconName: 'https://raw.githubusercontent.com/prometheus/prometheus/main/documentation/images/prometheus-logo.svg',
+    iconName: 'prometheus.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,11 +22,8 @@ export const prometheusAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -40,8 +37,5 @@ export const prometheusAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 9090,
-        }]
     }],
 };

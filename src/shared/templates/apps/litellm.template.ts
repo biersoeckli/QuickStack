@@ -4,6 +4,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateModel } from "../../model/app-template.model";
 import { getPostgresAppTemplate } from "../databases/postgres.template";
 import { getRedisAppTemplate, postCreateRedisAppTemplate } from "../databases/redis.template";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export const litellmAppTemplate: AppTemplateModel = {
     name: "LiteLLM",
@@ -36,11 +37,8 @@ export const litellmAppTemplate: AppTemplateModel = {
                 containerImageSource: "",
                 containerArgs: '["--config", "/app/config.yaml", "--port", "4000"]',
                 replicas: 1,
-                ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-                egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
                 envVars: ``,
                 useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
                 healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
                 healthCheckTimeoutSeconds: Constants.DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
                 healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -71,9 +69,6 @@ litellm_settings:
     password: os.environ/REDIS_PASSWORD
 `
             }],
-            appPorts: [{
-                port: 4000,
-            }]
         }
     ],
 };
@@ -110,6 +105,8 @@ ${createdLiteLLMApp.envVars.split('\n').filter(line =>
         !line.startsWith('REDIS_PORT=') &&
         !line.startsWith('REDIS_PASSWORD=')
     ).join('\n')}`;
+    NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdPostgresApp, 5432);
+    NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdRedisApp, 6379);
 
     return [createdPostgresApp, createdRedisApp, createdLiteLLMApp];
 };

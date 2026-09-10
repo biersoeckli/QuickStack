@@ -19,7 +19,6 @@ function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtended
     return {
         ...body,
         appDomains: body.appDomains.map(({ id: _id, ...domain }) => domain),
-        appPorts: body.appPorts.map(({ id: _id, ...port }) => port),
         appNodePorts: body.appNodePorts.map(({ id: _id, ...nodePort }) => nodePort),
         appFileMounts: body.appFileMounts.map(({ id: _id, ...fileMount }) => fileMount),
         appVolumes: body.appVolumes.map(({ id: _id, ...volume }) => volume),

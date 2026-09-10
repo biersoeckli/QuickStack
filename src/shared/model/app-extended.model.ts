@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNetworkPolicyModel, AppNetworkPolicyRuleModel, AppNodePortModel, AppPortModel, AppVolumeModel, ProjectModel } from "./generated-zod";
+import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNetworkPolicyModel, AppNetworkPolicyRuleModel, AppNodePortModel, AppVolumeModel, ProjectModel } from "./generated-zod";
 import { App, Project } from "@prisma/client";
 
 export const AppNetworkPolicyRuleWithTargetZodModel = AppNetworkPolicyRuleModel.extend({
@@ -13,11 +13,13 @@ const AppNetworkPolicyWithRulesZodModel = AppNetworkPolicyModel.extend({
     rules: z.array(AppNetworkPolicyRuleWithTargetZodModel),
 });
 
-export const AppExtendedZodModel = z.lazy(() => AppModel.extend({
-    networkPolicyMode: z.string().optional(),
+export const AppExtendedZodModel = z.lazy(() => AppModel.omit({
+    ingressNetworkPolicy: true,
+    egressNetworkPolicy: true,
+    networkPolicyMode: true,
+}).extend({
     project: ProjectModel,
     appDomains: AppDomainModel.array(),
-    appPorts: AppPortModel.array(),
     appNodePorts: AppNodePortModel.array(),
     appFileMounts: AppFileMountModel.array(),
     appVolumes: AppVolumeModel.array(),
@@ -51,12 +53,14 @@ const appNetworkPolicyWriteZodModel = AppNetworkPolicyModel.omit({
 
 /** Write schema for POST upsert: id optional (absent = create), server meta fields stripped. */
 export const AppExtendedWriteZodModel = AppModel
-    .omit({ ...omitFields, networkPolicyMode: true })
+    .omit({ ...omitFields, ingressNetworkPolicy: true, egressNetworkPolicy: true, networkPolicyMode: true })
     .extend({
         id: z.string().optional(),
-        networkPolicyMode: z.string().optional(),
+        ingressNetworkPolicy: z.never().optional(),
+        egressNetworkPolicy: z.never().optional(),
+        networkPolicyMode: z.never().optional(),
+        appPorts: z.never().optional(),
         appDomains: AppDomainModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
-        appPorts: AppPortModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appNodePorts: AppNodePortModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appFileMounts: AppFileMountModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),
         appVolumes: AppVolumeModel.merge(subItemWriteMeta).omit(omitFieldsSubObjects).array(),

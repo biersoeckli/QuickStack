@@ -5,6 +5,8 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { AgentNetworkPolicyEgressRuleEditModel, AgentNetworkPolicySettingsModel } from "@/shared/model/agent-network-policy-edit.model";
 import { AgentExtendedWriteModel } from "@/shared/model/agent-extended.model";
+import { UserSession } from "@/shared/model/sim-session.model";
+import networkPolicyRuleMirrorService, { NetworkPolicyMirrorTouch } from "./network-policy-rule-mirror.service";
 
 type AgentNetworkPolicyConfigurationWriteModel = NonNullable<AgentExtendedWriteModel['agentNetworkPolicy']>;
 
@@ -24,6 +26,20 @@ class AgentNetworkPolicyService {
             data: { agentId },
         });
         return { policy: createdPolicy, projectId: existingAgent.projectId };
+    }
+
+    private invalidateMirrorTouches(touches: NetworkPolicyMirrorTouch[]) {
+        for (const touch of touches) {
+            revalidateTag(Tags.app(touch.workloadId));
+            revalidateTag(Tags.apps(touch.projectId));
+        }
+    }
+
+    private invalidateCounterpartApps(apps: { id: string; projectId: string }[]) {
+        for (const app of apps) {
+            revalidateTag(Tags.app(app.id));
+            revalidateTag(Tags.apps(app.projectId));
+        }
     }
 
     async saveSettings(input: AgentNetworkPolicySettingsModel & { agentId: string }, tx?: Prisma.TransactionClient) {
@@ -145,44 +161,92 @@ class AgentNetworkPolicyService {
         })));
     }
 
-    async saveEgressRule(input: AgentNetworkPolicyEgressRuleEditModel & { agentId: string }, tx?: Prisma.TransactionClient) {
+    async saveEgressRule(input: AgentNetworkPolicyEgressRuleEditModel & { agentId: string }, session?: UserSession) {
         const run = async (db: Prisma.TransactionClient) => {
             let projectId: string;
+            const touches: NetworkPolicyMirrorTouch[] = [];
             try {
                 const { policy, projectId: pid } = await this.ensurePolicyForAgent(db, input.agentId);
                 projectId = pid;
+
+                // When an existing rule changes target, port or protocol, remove
+                // the mirrored counterpart of the old rule before saving and
+                // mirroring the new one.
+                const existingRule = input.id
+                    ? await db.agentNetworkPolicyRule.findUnique({
+                        where: { id: input.id },
+                        select: { targetAppId: true, port: true, protocol: true },
+                    })
+                    : null;
+                const ruleChanged = existingRule && (
+                    existingRule.targetAppId !== input.targetAppId
+                    || existingRule.port !== input.port
+                    || existingRule.protocol !== input.protocol
+                );
+                if (session && existingRule && ruleChanged) {
+                    touches.push(...await networkPolicyRuleMirrorService.unmirrorAgentEgressRule(
+                        db, session, input.agentId, existingRule.targetAppId, existingRule.port, existingRule.protocol,
+                    ));
+                }
+
                 await this.saveEgressRuleInTransaction(db, policy.id, input);
+                if (session) {
+                    touches.push(...await networkPolicyRuleMirrorService.mirrorAgentEgressRuleSave(
+                        db, session, input.targetAppId, input.agentId, input.port, input.protocol,
+                    ));
+                }
+                const counterpartAppIds = new Set([
+                    input.targetAppId,
+                    ...(existingRule ? [existingRule.targetAppId] : []),
+                ]);
+                const counterpartApps = await db.app.findMany({
+                    where: { id: { in: Array.from(counterpartAppIds) } },
+                    select: { id: true, projectId: true },
+                });
+                return { counterpartApps, touches };
             } finally {
                 revalidateTag(Tags.agent(input.agentId));
                 revalidateTag(Tags.agents(projectId!));
             }
-        }
-        if (tx) {
-            return await run(tx);
-        }
-        return await dataAccess.client.$transaction(async (innerTx) => {
+        };
+        const { counterpartApps, touches } = await dataAccess.client.$transaction(async (innerTx) => {
             return await run(innerTx);
         });
+        this.invalidateCounterpartApps(counterpartApps);
+        this.invalidateMirrorTouches(touches);
     }
 
-    async deleteEgressRule(ruleId: string, tx?: Prisma.TransactionClient) {
-        const db = tx ?? dataAccess.client;
-        const rule = await db.agentNetworkPolicyRule.findUnique({
+    async deleteEgressRule(ruleId: string, session?: UserSession) {
+        const rule = await dataAccess.client.agentNetworkPolicyRule.findUnique({
             where: { id: ruleId },
             include: { agentNetworkPolicy: { include: { agent: true } } },
         });
         if (!rule) {
             return;
         }
+        let touches: NetworkPolicyMirrorTouch[] = [];
         try {
-            await db.agentNetworkPolicyRule.delete({
-                where: { id: ruleId },
+            touches = await dataAccess.client.$transaction(async (db) => {
+                await db.agentNetworkPolicyRule.delete({
+                    where: { id: ruleId },
+                });
+                return session
+                    ? networkPolicyRuleMirrorService.unmirrorAgentEgressRule(
+                        db, session, rule.agentNetworkPolicy.agentId, rule.targetAppId, rule.port, rule.protocol,
+                    )
+                    : [];
             });
         } finally {
-            if (!tx) {
-                revalidateTag(Tags.agent(rule.agentNetworkPolicy.agentId));
-                revalidateTag(Tags.agents(rule.agentNetworkPolicy.agent.projectId));
-            }
+            revalidateTag(Tags.agent(rule.agentNetworkPolicy.agentId));
+            revalidateTag(Tags.agents(rule.agentNetworkPolicy.agent.projectId));
+        }
+        this.invalidateMirrorTouches(touches);
+        const counterpartApp = await dataAccess.client.app.findFirst({
+            where: { id: rule.targetAppId },
+            select: { id: true, projectId: true },
+        });
+        if (counterpartApp) {
+            this.invalidateCounterpartApps([counterpartApp]);
         }
     }
 

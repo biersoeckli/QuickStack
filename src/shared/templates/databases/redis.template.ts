@@ -22,11 +22,8 @@ export function getRedisAppTemplate(config?: {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_DATABASES,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_DATABASES,
             envVars: ``,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: Constants.DEFAULT_HEALTH_CHECK_PERIOD_SECONDS,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -41,9 +38,6 @@ export function getRedisAppTemplate(config?: {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 6379,
-        }]
     };
 }
 
@@ -51,7 +45,7 @@ export const redisAppTemplate: AppTemplateModel = {
     name: "Redis",
     description: 'An in-memory data store used for caching, queues, sessions, and real-time workloads.',
     websiteUrl: 'https://github.com/redis/redis',
-    iconName: 'https://cdn.simpleicons.org/redis',
+    iconName: 'redis.svg',
     templates: [
         getRedisAppTemplate()
     ],

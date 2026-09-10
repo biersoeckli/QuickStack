@@ -5,7 +5,7 @@ export const jenkinsAppTemplate: AppTemplateModel = {
     name: "Jenkins",
     description: 'A widely used automation server for building, testing, and deploying software.',
     websiteUrl: 'https://github.com/jenkinsci/jenkins',
-    iconName: 'https://www.jenkins.io/images/logos/jenkins/jenkins.svg',
+    iconName: 'jenkins.svg',
     templates: [{
         inputSettings: [
             {
@@ -22,12 +22,9 @@ export const jenkinsAppTemplate: AppTemplateModel = {
             sourceType: 'CONTAINER',
             containerImageSource: "",
             replicas: 1,
-            ingressNetworkPolicy: Constants.DEFAULT_INGRESS_NETWORK_POLICY_APPS,
-            egressNetworkPolicy: Constants.DEFAULT_EGRESS_NETWORK_POLICY_APPS,
             envVars: `JAVA_OPTS=-Djenkins.install.runSetupWizard=true
 `,
             useNetworkPolicy: true,
-            networkPolicyMode: Constants.DEFAULT_NETWORK_POLICY_MODE_APPS,
             healthCheckPeriodSeconds: 60,
             healthCheckTimeoutSeconds: 30,
             healthCheckFailureThreshold: Constants.DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD,
@@ -41,10 +38,5 @@ export const jenkinsAppTemplate: AppTemplateModel = {
             shareWithOtherApps: false,
         }],
         appFileMounts: [],
-        appPorts: [{
-            port: 8080,
-        }, {
-            port: 50000,
-        }]
     }],
 };
