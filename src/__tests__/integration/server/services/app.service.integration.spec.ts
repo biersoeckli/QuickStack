@@ -225,6 +225,7 @@ function createAppPayload(projectId: string, name: string, hostname: string): Ap
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,

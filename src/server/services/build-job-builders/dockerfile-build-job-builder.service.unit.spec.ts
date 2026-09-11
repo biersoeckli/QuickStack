@@ -82,6 +82,32 @@ describe('DockerfileBuildJobBuilder', () => {
         expect(imageOutputArg).not.toContain(':latest');
     });
 
+    it('passes build arguments to BuildKit as build-arg options', async () => {
+        const job = await dockerfileBuildJobBuilder.buildJobDefinition({
+            workload: {
+                id: 'app-1',
+                projectId: 'project-1',
+                gitUrl: 'https://github.com/example/repo.git',
+                gitBranch: 'main',
+                dockerfilePath: './Dockerfile',
+                buildArgs: 'FOO=bar\nBAZ=qux=quux',
+            } as any,
+            workloadType: 'app',
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'feat: test',
+            queuedAt: '123',
+            maxParallelBuilds: 2,
+        });
+
+        expect(job.spec?.template?.spec?.containers[0]?.args).toEqual(expect.arrayContaining([
+            '--opt',
+            'build-arg:FOO=bar',
+            'build-arg:BAZ=qux=quux',
+        ]));
+    });
+
     it('adds an SSH key secret volume when provided', async () => {
         const job = await dockerfileBuildJobBuilder.buildJobDefinition({
             workload: {
