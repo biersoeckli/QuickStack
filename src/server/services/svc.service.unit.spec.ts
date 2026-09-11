@@ -99,7 +99,7 @@ describe('svc.service', () => {
             type: 'NodePort',
             ports: [
                 {
-                    name: 'ingress-port-UDP-300',
+                    name: 'ingress-port-udp-300',
                     port: 300,
                     targetPort: 300,
                     nodePort: 30080,
@@ -107,6 +107,26 @@ describe('svc.service', () => {
                 },
             ],
         });
+    });
+
+    it('uses a Kubernetes-safe lowercase name for an ingress service port', async () => {
+        const app = createApp({
+            appNetworkPolicy: {
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true,
+                createdAt: new Date(), updatedAt: new Date(),
+                rules: [{
+                    id: 'rule-1', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 3306, protocol: 'TCP',
+                    targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null,
+                    createdAt: new Date(), updatedAt: new Date(),
+                }],
+            },
+        });
+
+        await svcService.createOrUpdateServiceForApp('deployment-1', app);
+
+        expect(k3sMocks.createNamespacedService.mock.calls[0][0].body.spec.ports).toEqual([
+            expect.objectContaining({ name: 'ingress-port-tcp-3306', port: 3306, protocol: 'TCP' }),
+        ]);
     });
 
     it('deduplicates domain and ingress ports by port and protocol', async () => {
@@ -125,7 +145,7 @@ describe('svc.service', () => {
 
         expect(k3sMocks.createNamespacedService.mock.calls[0][0].body.spec.ports).toEqual([
             expect.objectContaining({ name: 'domain-port-domain-1', port: 443, protocol: 'TCP' }),
-            expect.objectContaining({ name: 'ingress-port-UDP-443', port: 443, protocol: 'UDP' }),
+            expect.objectContaining({ name: 'ingress-port-udp-443', port: 443, protocol: 'UDP' }),
         ]);
     });
 
