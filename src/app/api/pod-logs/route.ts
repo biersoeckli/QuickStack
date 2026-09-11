@@ -6,7 +6,7 @@ import { Constants } from "@/shared/utils/constants";
 import podService from "@/server/services/pod.service";
 import { StreamUtils } from "@/shared/utils/stream.utils";
 import { getUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
-import { ensureReadProjectWorkload, RequesterIdentity } from "@/server/utils/shared-authorization.utils";
+import { ensureAdmin, ensureReadProjectWorkload, RequesterIdentity } from "@/server/utils/shared-authorization.utils";
 
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
@@ -59,6 +59,13 @@ export async function POST(request: Request) {
         }
 
         let authorized = false;
+        const isQuickStackSystemPod = namespace === Constants.QS_NAMESPACE
+            && labels.app === Constants.QS_APP_NAME;
+        if (isQuickStackSystemPod) {
+            ensureAdmin(identity);
+            authorized = true;
+        }
+
         for (const workloadId of workloadCandidates) {
             try {
                 ensureReadProjectWorkload(identity, workloadId);
