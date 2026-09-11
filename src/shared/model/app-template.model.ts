@@ -11,6 +11,7 @@ const appModelWithRelations = z.lazy(() => AppModel.omit({
     projectId: z.undefined().optional(),
     buildMethod: z.undefined().optional(),
     dockerfilePath: z.undefined().optional(),
+    buildArgs: z.string().optional(),
     appType: appTypeZodModel,
     sourceType: appSourceTypeZodModel,
     id: z.undefined().optional(),

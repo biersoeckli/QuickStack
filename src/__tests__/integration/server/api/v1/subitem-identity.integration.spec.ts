@@ -165,10 +165,12 @@ describe('REST API v1 integration - nested subitem identity', () => {
             body: {
                 ...savedWithRule,
                 envVars: 'UPDATED=true',
+                buildArgs: 'BUILD_FLAG=1',
             },
         })) as AppExtendedModel;
 
         expect(updated.envVars).toBe('UPDATED=true');
+        expect(updated.buildArgs).toBe('BUILD_FLAG=1');
         expect(updated.appNetworkPolicy).toMatchObject({
             rules: [expect.objectContaining({ id: ruleId, targetAppId: targetApp.id, port: 443 })],
         });
@@ -451,6 +453,7 @@ function createAppPayload(id: string | undefined, projectId: string, name: strin
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,

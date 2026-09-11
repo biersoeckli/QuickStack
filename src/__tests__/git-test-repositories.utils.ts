@@ -28,6 +28,7 @@ export function createGitApp(input: Pick<AppExtendedModel, 'id' | 'sourceType' |
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,

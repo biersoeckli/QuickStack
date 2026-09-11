@@ -449,6 +449,7 @@ function createGitAppPayload(id: string | undefined, projectId: string, name: st
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,
