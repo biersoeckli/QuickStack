@@ -5,6 +5,7 @@ import buildQueueInitContainer from "./build-init-container.service";
 import buildGitInitContainerService, { BUILD_GIT_SSH_KEY_VOLUME_NAME } from "./build-git-init-container.service";
 import registryService, { BUILD_NAMESPACE } from "../registry.service";
 import { PathUtils } from "@/server/utils/path.utils";
+import { EnvVarUtils } from "@/server/utils/env-var.utils";
 import { BUILD_SOURCE_PATH, BUILD_WORKSPACE_MOUNT_PATH, BUILD_WORKSPACE_VOLUME_NAME } from "./build-workspace.constants";
 import { BuildJobAnnotationsUtils } from "./build-job-annotations.utils";
 
@@ -31,6 +32,11 @@ class DockerfileBuildJobBuilder implements BuildJobBuilder {
             "--output",
             `type=image,"name=${imageNames}",push=true,registry.insecure=true`
         ];
+
+        const buildArgs = 'buildArgs' in ctx.workload ? EnvVarUtils.parseBuildArgs(ctx.workload) : [];
+        for (const buildArg of buildArgs) {
+            buildkitArgs.push("--opt", `build-arg:${buildArg.name}=${buildArg.value}`);
+        }
 
         return {
             apiVersion: "batch/v1",

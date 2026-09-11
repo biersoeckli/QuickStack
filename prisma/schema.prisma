@@ -430,8 +430,9 @@ model App {
   outputDirectory String?
   nodeVersion     String?
 
-  replicas Int    @default(1)
-  envVars  String @default("")
+  replicas  Int    @default(1)
+  envVars   String @default("")
+  buildArgs String @default("")
 
   memoryReservation Int?
   memoryLimit       Int?
