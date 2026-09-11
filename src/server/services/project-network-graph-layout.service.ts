@@ -10,22 +10,25 @@ import { Tags } from '@/server/utils/cache-tag-generator.utils';
 class ProjectNetworkGraphLayoutService {
     async getPositions(projectId: string): Promise<ProjectNetworkGraphPositions> {
         const positions = await unstable_cache(
-            async (innerProjectId: string) => dataAccess.client.projectNetworkGraphPosition.findMany({
-                where: { projectId: innerProjectId },
-                select: { nodeId: true, x: true, y: true },
-            }),
+            async (innerProjectId: string) =>
+                dataAccess.client.projectNetworkGraphPosition.findMany({
+                    where: { projectId: innerProjectId },
+                    select: { nodeId: true, x: true, y: true },
+                }),
             [Tags.projectNetworkGraphLayout(projectId)],
             { tags: [Tags.projectNetworkGraphLayout(projectId)] },
         )(projectId);
 
-        return Object.fromEntries(positions.map(({ nodeId, x, y }) => [nodeId, { x, y }]));
+        return Object.fromEntries(
+            positions.map(({ nodeId, x, y }) => [nodeId, { x, y }]),
+        );
     }
 
     async savePosition(projectId: string, position: ProjectNetworkGraphPositionInput) {
         if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) {
             throw new ServiceException('Invalid network graph position.');
         }
-        if (!await this.nodeExistsInProjectGraph(projectId, position.nodeId)) {
+        if (!(await this.nodeExistsInProjectGraph(projectId, position.nodeId))) {
             throw new ServiceException('Network graph node does not belong to this project.');
         }
 
@@ -57,7 +60,10 @@ class ProjectNetworkGraphLayoutService {
                     projectId,
                     OR: [
                         { appDomains: { some: {} } },
-                        { useNetworkPolicy: true, appNetworkPolicy: { allowInternetAccess: true } },
+                        {
+                            useNetworkPolicy: true,
+                            appNetworkPolicy: { allowInternetAccess: true },
+                        },
                     ],
                 },
                 select: { id: true },
@@ -78,7 +84,15 @@ class ProjectNetworkGraphLayoutService {
                     id: workloadId,
                     OR: [
                         { projectId },
-                        { appNetworkPolicyRules: { some: { appNetworkPolicy: { app: { projectId, useNetworkPolicy: true } } } } },
+                        {
+                            appNetworkPolicyRules: {
+                                some: {
+                                    appNetworkPolicy: {
+                                        app: { projectId, useNetworkPolicy: true },
+                                    },
+                                },
+                            },
+                        },
                     ],
                 },
                 select: { id: true },
@@ -89,7 +103,13 @@ class ProjectNetworkGraphLayoutService {
         const agent = await dataAccess.client.agent.findFirst({
             where: {
                 id: workloadId,
-                appNetworkPolicyRules: { some: { appNetworkPolicy: { app: { projectId, useNetworkPolicy: true } } } },
+                appNetworkPolicyRules: {
+                    some: {
+                        appNetworkPolicy: {
+                            app: { projectId, useNetworkPolicy: true },
+                        },
+                    },
+                },
             },
             select: { id: true },
         });
