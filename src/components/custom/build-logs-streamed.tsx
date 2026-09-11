@@ -20,17 +20,21 @@ const sourceCodePro = Source_Code_Pro({
 
 export default function BuildLogsStreamed({
     deploymentId,
+    workloadId,
+    workloadType,
     fullHeight = false,
     maxLines = Constants.DEFAULT_MAX_LOG_LINES,
 }: {
     deploymentId?: string;
+    workloadId?: string;
+    workloadType?: string;
     fullHeight?: boolean;
     maxLines?: number;
 }) {
     const { logs, isConnected, textAreaRef } = useLogStream(
         '/api/build-logs',
-        JSON.stringify({ deploymentId }),
-        Boolean(deploymentId),
+        JSON.stringify({ deploymentId, workloadId, workloadType }),
+        Boolean(deploymentId && workloadId && workloadType),
         maxLines,
     );
 

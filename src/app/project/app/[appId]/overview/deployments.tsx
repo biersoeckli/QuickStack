@@ -7,11 +7,11 @@ import { deleteBuild, getDeploymentsAndBuildsForApp, rollbackToDeployment } from
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { usePolling } from "@/frontend/hooks/use-polling";
 import { Button } from "@/components/ui/button";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
 import DeploymentStatusBadge from "./deployment-status-badge";
-import { BuildLogsDialog } from "./build-logs-overlay";
+import { BuildLogsDialogContent } from "./build-logs-overlay";
 import ShortCommitHash from "@/components/custom/short-commit-hash";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -31,9 +31,9 @@ export default function BuildsTab({
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openDialog: openGenericDialog } = useDialog();
     const [appBuilds, setAppBuilds] = useState<DeploymentInfoModel[] | undefined>(undefined);
     const [, setError] = useState<string | undefined>(undefined);
-    const [selectedDeploymentForLogs, setSelectedDeploymentForLogs] = useState<DeploymentInfoModel | undefined>(undefined);
 
     const updateBuilds = useCallback(async () => {
         setError(undefined);
@@ -127,7 +127,7 @@ export default function BuildsTab({
                             return <>
                                 <div className="flex gap-4">
                                     <div className="flex-1"></div>
-                                    {item.deploymentId && <Button variant="secondary" onClick={() => setSelectedDeploymentForLogs(item)}>Show Logs</Button>}
+                                    {item.deploymentId && <Button variant="secondary" onClick={() => openGenericDialog(<BuildLogsDialogContent deploymentInfo={item} workloadId={app.id} workloadType="app" />, { maxWidth: '1300px' })}>Show Logs</Button>}
                                     {role === RolePermissionEnum.READWRITE && item.buildJobName && item.status === 'BUILDING' && <Button variant="destructive" onClick={() => deleteBuildClick(item.buildJobName!)}>Stop Build</Button>}
                                     {isRollbackTarget && (
                                         <DropdownMenu>
@@ -151,6 +151,5 @@ export default function BuildsTab({
                 }
             </CardContent>
         </ContentWrapper>
-        <BuildLogsDialog deploymentInfo={selectedDeploymentForLogs} onClose={() => setSelectedDeploymentForLogs(undefined)} />
     </>;
 }
