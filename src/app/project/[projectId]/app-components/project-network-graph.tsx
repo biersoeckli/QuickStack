@@ -157,6 +157,7 @@ function ProjectNetworkGraphEditor({
         id: app.id,
         name: app.name,
         type: 'APP',
+        appType: app.appType,
         project: { id: app.projectId, name: app.project.name },
     }));
 

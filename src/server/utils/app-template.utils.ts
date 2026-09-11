@@ -2,6 +2,7 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppTemplateContentModel, AppTemplateInputSettingsModel } from "@/shared/model/app-template.model";
 import { DatabaseTemplateInfoModel, databaseTemplateInfoZodModel } from "@/shared/model/database-template-info.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { Constants } from "@/shared/utils/constants";
 import crypto from "crypto";
 import { EnvVarUtils } from "./env-var.utils";
 import { KubeObjectNameUtils } from "./kube-object-name.utils";
@@ -175,14 +176,7 @@ export class AppTemplateUtils {
     }
 
     static getTemplateDatabasePort(appType: AppExtendedModel['appType']): number {
-        const ports = {
-            MARIADB: 3306,
-            MONGODB: 27017,
-            MYSQL: 3306,
-            POSTGRES: 5432,
-            REDIS: 6379,
-        } as const;
-        const port = ports[appType as keyof typeof ports];
+        const port = Constants.DATABASE_TEMPLATE_PORTS[appType as keyof typeof Constants.DATABASE_TEMPLATE_PORTS];
         if (!port) throw new ServiceException(`No default database port is defined for ${appType}.`);
         return port;
     }

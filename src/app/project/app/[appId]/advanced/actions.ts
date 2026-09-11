@@ -70,7 +70,7 @@ export const getTargetsForAppNetworkPolicy = async (appId: string) =>
         const projects = await projectService.getAll();
         return projects.map(project => ({
             id: project.id, name: project.name,
-            apps: project.apps.filter(app => app.id !== appId && UserGroupUtils.sessionHasReadAccessForApp(session, app.id)).map(app => ({ id: app.id, name: app.name })),
+            apps: project.apps.filter(app => app.id !== appId && UserGroupUtils.sessionHasReadAccessForApp(session, app.id)).map(app => ({ id: app.id, name: app.name, appType: app.appType })),
             agents: project.agents.filter(agent => UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id)).map(agent => ({ id: agent.id, name: agent.name })),
         })).filter(project => project.apps.length > 0 || project.agents.length > 0);
     });

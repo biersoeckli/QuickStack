@@ -31,6 +31,13 @@ export class Constants {
     static readonly DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 10;
     static readonly DEFAULT_HEALTH_CHECK_FAILURE_THRESHOLD = 3;
     static readonly DEFAULT_LITELLM_PORT = 4000;
+    static readonly DATABASE_TEMPLATE_PORTS = {
+        MARIADB: 3306,
+        MONGODB: 27017,
+        MYSQL: 3306,
+        POSTGRES: 5432,
+        REDIS: 6379,
+    } as const;
     static readonly TOLERATION_FOR_EXECUTED_CRON_BACKUPS_MS = 60 * 60 * 1000; // 60 minutes;
     static readonly BUILD_NODE_K3S_NATIVE_VALUE = 'k3s-native';
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';

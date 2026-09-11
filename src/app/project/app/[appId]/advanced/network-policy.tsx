@@ -20,7 +20,7 @@ import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
 import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
 import NetworkPolicyGraph from './network-policy-graph';
 
-type Project = { id: string; name: string; apps: { id: string; name: string }[]; agents: { id: string; name: string }[] };
+type Project = { id: string; name: string; apps: { id: string; name: string; appType: AppExtendedModel['appType'] }[]; agents: { id: string; name: string }[] };
 
 export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel; readonly: boolean }) {
     const router = useRouter();
