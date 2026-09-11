@@ -52,6 +52,7 @@ export function createPrismaTestContext(label: string) {
      * Self-referential AppVolume.sharedVolumeId is nulled before deletion.
      */
     beforeEach(async () => {
+        await dataAccess.client.projectNetworkGraphPosition.deleteMany();
         await dataAccess.client.volumeBackup.deleteMany();
         await dataAccess.client.appBasicAuth.deleteMany();
         await dataAccess.client.appFileMount.deleteMany();

@@ -63,6 +63,15 @@ export function ensureReadProject(identity: RequesterIdentity, projectId: string
     }
 }
 
+export function ensureWriteProject(identity: RequesterIdentity, projectId: string) {
+    if (UserGroupUtils.isAdmin(identity.session)) {
+        return;
+    }
+    if (!identity.session.userGroup || !UserGroupUtils.sessionHasWriteAccessToProject(identity.session, projectId)) {
+        throw new ServiceException('User is not authorized for this action.');
+    }
+}
+
 export function ensureCreateAppInProject(identity: RequesterIdentity, projectId: string) {
     ensureCreateProjectWorkloadInProject(identity, projectId);
 }

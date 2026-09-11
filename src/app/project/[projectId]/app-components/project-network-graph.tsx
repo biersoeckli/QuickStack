@@ -41,6 +41,7 @@ import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-n
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
 import { EditAppDialog } from './edit-app-dialog';
+import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 
 const hiddenHandleClassName = '!size-1.5 !border-0 !bg-transparent !opacity-0 pointer-events-none';
 const connectionSourceHandleClassName = '!size-3 !border-2 !border-background !bg-qs-500 !opacity-0 !shadow-md transition-all duration-150 group-hover:!opacity-100 [&.connectingfrom]:!opacity-0 hover:!bg-qs-600';
@@ -53,6 +54,7 @@ type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
     projectId: string;
     session: UserSession;
+    savedPositions: ProjectNetworkGraphPositions;
 };
 
 const WorkloadNode = memo(function WorkloadNode({
@@ -124,6 +126,7 @@ function ProjectNetworkGraphEditor({
     apps,
     projectId,
     session,
+    savedPositions,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
     const { state: sidebarState } = useSidebar();
@@ -139,7 +142,8 @@ function ProjectNetworkGraphEditor({
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
     const connectionTargetLeaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const graphApps = useMemo(() => apps.map(app => AppNetworkPolicyDraftUtils.applyToApp(app, drafts[app.id])), [apps, drafts]);
-    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId);
+    const canEditLayout = UserGroupUtils.sessionHasWriteAccessToProject(session, projectId);
+    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
     const writable = (appId: string) => UserGroupUtils.sessionHasWriteAccessForApp(session, appId);
@@ -289,12 +293,12 @@ function ProjectNetworkGraphEditor({
             <div className="flex min-h-8 flex-wrap items-center gap-3">
                 <Legend />
                 <div className="flex-1"></div>
-                <div className="flex shrink-0 divide-x overflow-hidden rounded-md border bg-background">
+                {canEditLayout && <div className="flex shrink-0 divide-x overflow-hidden rounded-md border bg-background">
                     <Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground" onClick={resetLayout}>
                         <RotateCcw className="mr-1.5 size-3.5" />
                         Reset
                     </Button>
-                </div>
+                </div>}
                 {dirty && <>
                     <div className="flex shrink-0 divide-x overflow-hidden rounded-md border bg-background">
                         <Button
@@ -341,7 +345,7 @@ function ProjectNetworkGraphEditor({
                     zoomOnPinch={false}
                     zoomOnDoubleClick={false}
                     preventScrolling={false}
-                    nodesDraggable
+                    nodesDraggable={canEditLayout}
                     nodesConnectable
                     elementsSelectable={false}
                     isValidConnection={(connection: Connection) => {
@@ -409,7 +413,7 @@ function ProjectNetworkGraphEditor({
                             setConnectionTargetNodeId(current => current === node.id ? undefined : current);
                         }, 100);
                     }}
-                    onNodeDragStop={(_event, node) => saveNodePosition(node.id, node.position)}
+                    onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
                     style={{
                         '--xy-controls-button-background-color': 'hsl(var(--secondary))',
                         '--xy-controls-button-background-color-hover': 'hsl(var(--accent))',

@@ -1,9 +1,8 @@
 'use client';
 
-import { BarChart3, Bot, Boxes, ChevronDown, CircleAlert, Copy, ExternalLink, Globe2, Hammer, LayoutDashboard, Network, Play, Rocket, ScrollText, Square } from 'lucide-react';
+import { BarChart3, Bot, Boxes, ChevronDown, Copy, ExternalLink, Globe2, Hammer, LayoutDashboard, Network, Play, Rocket, ScrollText, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';

@@ -10,6 +10,8 @@ import ProjectBreadcrumbs from "./project-breadcrumbs";
 import CreateProjectActions from "./create-project-actions";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import AgentListClient from "./agent-components/agent-table";
+import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
+import { ensureReadProject, RequesterIdentity } from '@/server/utils/shared-authorization.utils';
 
 export default async function AppsPage({
     params
@@ -24,6 +26,8 @@ export default async function AppsPage({
     if (!projectId) {
         return <p>Could not find project with id {projectId}</p>
     }
+    const identity: RequesterIdentity = { type: 'session', session };
+    ensureReadProject(identity, projectId);
     const project = await projectService.getById(projectId);
     const isAgentProject = project.projectType === 'AGENT';
 
@@ -48,10 +52,17 @@ export default async function AppsPage({
     const data = await appService.getAllAppsByProjectId(projectId);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
+    const networkGraphPositions = await projectNetworkGraphLayoutService.getPositions(projectId);
 
     return (
         <div className="flex-1 space-y-4 pt-6">
-            <AppProjectOverview session={session} apps={relevantApps} projectId={project.id} projectName={project.name} />
+            <AppProjectOverview
+                session={session}
+                apps={relevantApps}
+                projectId={project.id}
+                projectName={project.name}
+                networkGraphPositions={networkGraphPositions}
+            />
             <ProjectBreadcrumbs project={project} />
         </div>
     )

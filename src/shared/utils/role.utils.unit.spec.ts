@@ -91,6 +91,20 @@ describe(UserGroupUtils.name, () => {
         expect(UserGroupUtils.sessionHasReadAccessForProjectWorkload(regularSession, workloadId)).toBe(false);
     });
 
+    test("project layout write access requires the project-level write flag", () => {
+        setProjectPermission({
+            workloadPermissions: [{ workloadId, permission: RolePermissionEnum.READWRITE }],
+            createWorkloads: true,
+            deleteWorkloads: true,
+        });
+
+        expect(UserGroupUtils.sessionHasWriteAccessToProject(regularSession, projectId)).toBe(false);
+
+        setProjectPermission({ writeWorkloads: true });
+        expect(UserGroupUtils.sessionHasWriteAccessToProject(regularSession, projectId)).toBe(true);
+        expect(UserGroupUtils.sessionHasWriteAccessToProject(adminSession, projectId)).toBe(true);
+    });
+
     test("project-level create and delete workload permissions stay unchanged", () => {
         setProjectPermission({
             createWorkloads: true,

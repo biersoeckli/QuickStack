@@ -13,12 +13,14 @@ import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 
 interface ProjectOverviewProps {
     apps: AppExtendedModel[];
     session: UserSession;
     projectId: string;
     projectName: string;
+    networkGraphPositions: ProjectNetworkGraphPositions;
 }
 
 type ProjectOverviewTab = 'table' | 'graph';
@@ -31,7 +33,7 @@ function tabStorageKey() {
     return `quickstack:project-overview-tab`;
 }
 
-export default function AppProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
+export default function AppProjectOverview({ apps, session, projectId, projectName, networkGraphPositions }: ProjectOverviewProps) {
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
@@ -115,7 +117,12 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
                 <AppTable session={session} app={apps} projectId={projectId} />
             </TabsContent>
             <TabsContent value="graph">
-                <ProjectNetworkGraph apps={apps} projectId={projectId} session={session} />
+                <ProjectNetworkGraph
+                    apps={apps}
+                    projectId={projectId}
+                    session={session}
+                    savedPositions={networkGraphPositions}
+                />
             </TabsContent>
         </Tabs>
     );
