@@ -28,7 +28,7 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
-import { NodeDetailsSheet, type PanelConnection } from './project-network-graph/node-details-sheet';
+import { NodeDetailsDrawer, type PanelConnection } from './project-network-graph/node-details-drawer';
 import { connectionDeletionProvenance, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
@@ -461,7 +461,7 @@ function ProjectNetworkGraphEditor({
                     );
                 })()}
                 {edges.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p></div>}
-                {selectedNode && <NodeDetailsSheet
+                {selectedNode && <NodeDetailsDrawer
                     node={selectedNode}
                     app={selectedApp}
                     role={selectedAppRole}
