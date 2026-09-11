@@ -8,6 +8,7 @@ import standalonePodService from "./standalone-services/standalone-pod.service";
 import ingressSetupService from "./setup-services/ingress-setup.service";
 import dataAccess from "../adapter/db.client";
 import { Constants } from "@/shared/utils/constants";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 class QuickStackService {
 
@@ -261,11 +262,13 @@ class QuickStackService {
     async createOrUpdateDeployment(inputNextAuthSecret?: string, imageTag = 'latest') {
         const generatedNextAuthSecret = crypto.randomBytes(32).toString('base64');
         const existingDeployment = await this.getExistingDeployment();
-        const hostnameParam = await dataAccess.client.parameter.findUnique({
-            where: { name: Constants.QS_PARAM_SERVER_HOSTNAME },
-            select: { value: true },
-        });
-        const nextAuthUrl = hostnameParam?.value ? `https://${hostnameParam.value}` : undefined;
+        const nextAuthUrl = await CatchUtils.resultOrUndefined(async () => {
+            const hostnameParam = await dataAccess.client.parameter.findUnique({
+                where: { name: Constants.QS_PARAM_SERVER_HOSTNAME },
+                select: { value: true },
+            });
+            return hostnameParam?.value ? `https://${hostnameParam.value}` : undefined;
+        }, 'get parameter QS_PARAM_SERVER_HOSTNAME from databbase to create deployment');
         const body: V1Deployment = {
             metadata: {
                 name: this.QUICKSTACK_DEPLOYMENT_NAME,
