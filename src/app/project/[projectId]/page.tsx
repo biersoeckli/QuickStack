@@ -45,7 +45,7 @@ export default async function AppsPage({
         );
     }
 
-    const data = await appService.getAllAppsByProjectIdBasic(projectId);
+    const data = await appService.getAllAppsByProjectId(projectId);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
 

@@ -8,7 +8,7 @@ import { formatDateTime } from "@/frontend/utils/format.utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Edit2, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
-import { AppBasicModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { deleteApp } from "../actions";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditAppDialog } from "./edit-app-dialog";
@@ -22,7 +22,7 @@ export default function AppTable({
     projectId,
     session
 }: {
-    app: AppBasicModel[],
+    app: AppExtendedModel[],
     projectId: string,
     session: UserSession
 }) {

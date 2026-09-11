@@ -19,9 +19,11 @@ import { useDialog } from "@/frontend/states/zustand.states";
 export default function CreateProjectActions({
     projectId,
     projectType = 'app',
+    currentlyOpenedTab = 'table'
 }: {
     projectId: string;
     projectType?: WorkloadType;
+    currentlyOpenedTab?: 'table' | 'graph';
 }) {
 
     const { openDialog } = useDialog();
@@ -47,7 +49,7 @@ export default function CreateProjectActions({
                         </>
                     ) : (
                         <>
-                            <EditAppDialog projectId={projectId}>
+                            <EditAppDialog openAppAfterCreate={currentlyOpenedTab === 'table'} projectId={projectId}>
                                 <DropdownMenuItem><File /> Empty App</DropdownMenuItem>
                             </EditAppDialog>
                             <DropdownMenuItem onClick={() => openTemplateDialog('database')}><Database /> Database</DropdownMenuItem>

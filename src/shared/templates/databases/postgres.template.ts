@@ -1,5 +1,7 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export function getPostgresAppTemplate(config?: {
     appName?: string,
@@ -71,4 +73,12 @@ export const postgreAppTemplate: AppTemplateModel = {
     templates: [
         getPostgresAppTemplate()
     ]
+};
+
+export const postCreatePostgresAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+    const postgresApp = createdApps[0];
+
+    NetworkPolicyTemplateUtils.denyInternetAccess(postgresApp);
+
+    return [postgresApp];
 };

@@ -2,7 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { App, AppBasicAuth, AppDomain, AppFileMount, AppNodePort, AppVolume, Prisma } from "@prisma/client";
-import { AppBasicModel, AppExtendedModel, AppExtendedWriteModel } from "@/shared/model/app-extended.model";
+import { AppExtendedModel, AppExtendedWriteModel } from "@/shared/model/app-extended.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import deploymentService from "./deployment.service";
@@ -124,7 +124,7 @@ class AppService {
         }
     }
 
-    async getAllAppsByProjectID(projectId: string): Promise<AppExtendedModel[]> {
+    async getAllAppsByProjectId(projectId: string): Promise<AppExtendedModel[]> {
         return await unstable_cache(async (projectId: string) => await dataAccess.client.app.findMany({
             where: {
                 projectId
@@ -164,33 +164,6 @@ class AppService {
             }
         }),
             [Tags.apps(projectId)], {
-            tags: [Tags.apps(projectId)]
-        })(projectId as string);
-    }
-
-    async getAllAppsByProjectIdBasic(projectId: string): Promise<AppBasicModel[]> {
-        return await unstable_cache(async (projectId: string) => await dataAccess.client.app.findMany({
-            where: {
-                projectId
-            },
-            select: {
-                id: true,
-                name: true,
-                projectId: true,
-                sourceType: true,
-                replicas: true,
-                memoryReservation: true,
-                memoryLimit: true,
-                cpuReservation: true,
-                cpuLimit: true,
-                createdAt: true,
-                updatedAt: true,
-            },
-            orderBy: {
-                name: 'asc'
-            }
-        }),
-            [Tags.apps(projectId), 'basic'], {
             tags: [Tags.apps(projectId)]
         })(projectId as string);
     }

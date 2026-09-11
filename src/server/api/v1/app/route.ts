@@ -38,7 +38,7 @@ export const appRoutes = new Elysia()
     .get('/apps', async ({ query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
-        const apps = query.projectId ? await appService.getAllAppsByProjectID(query.projectId) : await appService.getAll();
+        const apps = query.projectId ? await appService.getAllAppsByProjectId(query.projectId) : await appService.getAll();
 
         if (UserGroupUtils.isAdmin(identity.session)) {
             return apps;

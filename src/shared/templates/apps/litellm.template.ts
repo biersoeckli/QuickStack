@@ -107,6 +107,8 @@ ${createdLiteLLMApp.envVars.split('\n').filter(line =>
     ).join('\n')}`;
     NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdPostgresApp, 5432);
     NetworkPolicyTemplateUtils.allowAppConnection(createdLiteLLMApp, createdRedisApp, 6379);
+    NetworkPolicyTemplateUtils.denyInternetAccess(createdPostgresApp);
+    NetworkPolicyTemplateUtils.denyInternetAccess(createdRedisApp);
 
     return [createdPostgresApp, createdRedisApp, createdLiteLLMApp];
 };

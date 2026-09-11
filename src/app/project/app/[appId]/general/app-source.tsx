@@ -12,10 +12,16 @@ import { ReadonlyInfo } from "./app-source-wizard/readonly-info";
 import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from "./app-source-wizard/types";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
 
-export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
+export default function GeneralAppSource({
+    app,
+    readonly,
+    gitSshPublicKey,
+    hideCard = false
+}: {
     app: AppExtendedModel;
     readonly: boolean;
     gitSshPublicKey?: string;
+    hideCard?: boolean
 }) {
     const { openDialog } = useDialog();
     const configured = AppSourceUtils.isConfiguredSource(app);
@@ -31,6 +37,18 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
         );
     };
 
+    const cardContent = (
+        !configured ? (
+            <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
+        ) : (
+            <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} />
+        )
+    );
+
+    if (hideCard) {
+        return cardContent;
+    }
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -45,11 +63,7 @@ export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: {
                 )}
             </CardHeader>
             <CardContent>
-                {!configured ? (
-                    <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
-                ) : (
-                    <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} />
-                )}
+                {cardContent}
             </CardContent>
         </Card>
     );

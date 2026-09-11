@@ -90,6 +90,8 @@ ${createdDocmostApp.envVars.split('\n').filter(line =>
     ).join('\n')}`;
     NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdPostgresApp, 5432);
     NetworkPolicyTemplateUtils.allowAppConnection(createdDocmostApp, createdRedisApp, 6379);
+    NetworkPolicyTemplateUtils.denyInternetAccess(createdPostgresApp);
+    NetworkPolicyTemplateUtils.denyInternetAccess(createdRedisApp);
 
     return [createdPostgresApp, createdRedisApp, createdDocmostApp];
 };

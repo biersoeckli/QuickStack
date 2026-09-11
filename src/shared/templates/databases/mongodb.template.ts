@@ -1,5 +1,7 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export function getMongodbAppTemplate(config?: {
     appName?: string,
@@ -70,4 +72,12 @@ export const mongodbAppTemplate: AppTemplateModel = {
     templates: [
         getMongodbAppTemplate()
     ],
+};
+
+export const postCreateMongodbAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+    const mongodbApp = createdApps[0];
+
+    NetworkPolicyTemplateUtils.denyInternetAccess(mongodbApp);
+
+    return [mongodbApp];
 };

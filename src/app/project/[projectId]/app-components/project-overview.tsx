@@ -12,13 +12,10 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
-import { Actions } from "@/frontend/utils/nextjs-actions.utils";
-import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
-import { AppBasicModel, AppExtendedModel } from "@/shared/model/app-extended.model";
-import { getProjectNetworkGraphApps } from "../actions";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
 interface ProjectOverviewProps {
-    apps: AppBasicModel[];
+    apps: AppExtendedModel[];
     session: UserSession;
     projectId: string;
     projectName: string;
@@ -38,7 +35,6 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
-    const [graphApps, setGraphApps] = useState<AppExtendedModel[]>();
 
     useEffect(() => {
         if (isProjectOverviewTab(requestedTab)) {
@@ -48,23 +44,6 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
         const savedTab = window.localStorage.getItem(tabStorageKey());
         setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'table');
     }, [projectId, requestedTab]);
-
-    useEffect(() => {
-        if (currentTab !== 'graph' || graphApps) {
-            return;
-        }
-        let cancelled = false;
-        Actions.run(() => getProjectNetworkGraphApps(projectId))
-            .then((extendedApps) => {
-                if (!cancelled) {
-                    setGraphApps(extendedApps);
-                }
-            })
-            .catch(() => undefined);
-        return () => {
-            cancelled = true;
-        };
-    }, [currentTab, graphApps, projectId]);
 
     const handleTabChange = (value: string) => {
         if (!isProjectOverviewTab(value)) return;
@@ -129,18 +108,14 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
                             <Network className="size-4" />
                         </TabsTrigger>
                     </TabsList>
-                    {canCreate && <CreateProjectActions projectId={projectId} projectType="app" />}
+                    {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}
                 </div>
             </PageTitle>
             <TabsContent value="table">
                 <AppTable session={session} app={apps} projectId={projectId} />
             </TabsContent>
             <TabsContent value="graph">
-                {graphApps
-                    ? <ProjectNetworkGraph apps={graphApps} projectId={projectId} session={session} />
-                    : <div className="flex min-h-80 items-center justify-center">
-                        <FullLoadingSpinner />
-                    </div>}
+                <ProjectNetworkGraph apps={apps} projectId={projectId} session={session} />
             </TabsContent>
         </Tabs>
     );

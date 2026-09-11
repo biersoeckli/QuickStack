@@ -9,11 +9,13 @@ import { useInputDialog } from "@/frontend/states/zustand.states";
 export function EditAppDialog({
     children,
     projectId,
-    existingItem
+    existingItem,
+    openAppAfterCreate = true
 }: {
     children?: React.ReactNode,
     projectId: string;
     existingItem?: Pick<App, 'id' | 'name'>;
+    openAppAfterCreate?: boolean;
 }) {
 
     const router = useRouter();
@@ -28,7 +30,7 @@ export function EditAppDialog({
         })
         if (!name) { return; }
         const result = await Toast.fromAction(() => createApp(name, projectId, existingItem?.id));
-        if (result.status === "success" && !existingItem) {
+        if (result.status === "success" && !existingItem && openAppAfterCreate) {
             router.push(existingItem ? `/project/app/${result!.data!.id}` : `/project/app/${result!.data!.id}?tabName=general`);
         }
     };

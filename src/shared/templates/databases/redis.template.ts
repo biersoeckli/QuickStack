@@ -2,6 +2,7 @@ import { Constants } from "@/shared/utils/constants";
 import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppTemplateUtils } from "@/server/utils/app-template.utils";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export function getRedisAppTemplate(config?: {
     appName?: string
@@ -57,6 +58,7 @@ export const postCreateRedisAppTemplate = async (createdApps: AppExtendedModel[]
 
     const createdPassword = AppTemplateUtils.generateStrongPasswort(25);
     redisApp.containerArgs = `["--requirepass", "${createdPassword}"]`;
+    NetworkPolicyTemplateUtils.denyInternetAccess(redisApp);
 
     return [redisApp];
 };

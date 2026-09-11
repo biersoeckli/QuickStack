@@ -28,7 +28,7 @@ export default async function AppPage({
         s3TargetService.getAll(),
         volumeBackupService.getForApp(appId),
         clusterService.getStorageClasses(),
-        appService.getAllAppsByProjectIdBasic(app.projectId),
+        appService.getAllAppsByProjectId(app.projectId),
         appGitSshKeyService.getPublicKey(appId),
     ]);
 
