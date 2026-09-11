@@ -36,6 +36,7 @@ export class Constants {
     static readonly BUILD_AUTO_NODE_VALUE = '__auto__';
     static readonly DEFAULT_MAX_PARALLEL_BUILDS = 1;
     static readonly MAX_PARALLEL_BUILDS_LIMIT = 20;
+    static readonly DEFAULT_MAX_LOG_LINES = 1000;
     static readonly QS_BUILD_INIT_CONTAINER_NAME = 'build-queue-init';
     static readonly QS_AGENT_ROUTER_NAMESPACE = Constants.QS_NAMESPACE;
     static readonly QS_AUTH_PROXY_IMAGE = 'quickstack/auth-proxy:canary';

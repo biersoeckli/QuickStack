@@ -14,7 +14,7 @@ import agentSandboxAddonService from "@/server/services/addons/agent-sandbox-add
 export default async function ProjectPage() {
 
     const session = await getAuthUserSession();
-    const data = await projectService.getAll();
+    const data = await projectService.getAllWithCounts();
     const agentsAvailable = await agentSandboxAddonService.isAvailable();
     const relevantProjectsForUser = data.filter((project) =>
         UserGroupUtils.sessionHasReadAccessToProject(session, project.id));

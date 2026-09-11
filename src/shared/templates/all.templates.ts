@@ -1,9 +1,9 @@
 import { AppTemplateModel } from "../model/app-template.model";
 import { postCreateWordpressAppTemplate, wordpressAppTemplate } from "./apps/wordpress.template";
-import { mariadbAppTemplate } from "./databases/mariadb.template";
-import { mongodbAppTemplate } from "./databases/mongodb.template";
-import { mysqlAppTemplate } from "./databases/mysql.template";
-import { postgreAppTemplate } from "./databases/postgres.template";
+import { mariadbAppTemplate, postCreateMariadbAppTemplate } from "./databases/mariadb.template";
+import { mongodbAppTemplate, postCreateMongodbAppTemplate } from "./databases/mongodb.template";
+import { mysqlAppTemplate, postCreateMysqlAppTemplate } from "./databases/mysql.template";
+import { postCreatePostgresAppTemplate, postgreAppTemplate } from "./databases/postgres.template";
 import { postCreateRedisAppTemplate, redisAppTemplate } from "./databases/redis.template";
 import { n8nAppTemplate, postCreateN8NAppTemplate } from "./apps/n8n.template";
 import { nextcloudAppTemplate } from "./apps/nextcloud.template";
@@ -81,6 +81,10 @@ export const postCreateTemplateFunctions: Map<string, (createdApps: AppExtendedM
     [wordpressAppTemplate.name, postCreateWordpressAppTemplate],
     [openwebuiAppTemplate.name, postCreateOpenwebuiAppTemplate],
     [libredeskAppTemplate.name, postCreateLibredeskAppTemplate],
+    [postgreAppTemplate.name, postCreatePostgresAppTemplate],
+    [mongodbAppTemplate.name, postCreateMongodbAppTemplate],
+    [mariadbAppTemplate.name, postCreateMariadbAppTemplate],
+    [mysqlAppTemplate.name, postCreateMysqlAppTemplate],
     [redisAppTemplate.name, postCreateRedisAppTemplate],
     [docmostAppTemplate.name, postCreateDocmostAppTemplate],
     [duplicatiAppTemplate.name, postCreateDuplicatiAppTemplate],

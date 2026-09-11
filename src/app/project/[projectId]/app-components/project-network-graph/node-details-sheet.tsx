@@ -21,6 +21,7 @@ import BuildsTab from '@/app/project/app/[appId]/overview/deployments';
 import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { NetworkGraphNode } from './project-network-graph-projection';
+import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
 
 export type PanelConnection = {
     id: string;
@@ -71,6 +72,9 @@ export function NodeDetailsSheet({
     onOpen: () => void;
 }) {
     const isApp = node.kind === 'APP';
+    const needsSourceConfiguration = app
+        && role === RolePermissionEnum.READWRITE
+        && !AppSourceUtils.isConfiguredSource(app);
     const connectionsContent = (
         <div className="space-y-2">
             {connections.length === 0 ? (
@@ -99,43 +103,45 @@ export function NodeDetailsSheet({
                                 <SheetTitle className="truncate text-base">{node.name}</SheetTitle>
                                 <SheetDescription className="text-xs">{node.caption ?? (isApp ? 'App' : 'Agent sandbox')}</SheetDescription>
                             </div>
-                            {app && <AppStatusActions app={app} role={role} />}
+                            {app && !needsSourceConfiguration && <AppStatusActions app={app} role={role} />}
                         </div>
-                        {app && role && <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0">
-                                <TabsTrigger value="overview" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><LayoutDashboard className="mr-1.5 size-3.5" />Overview</TabsTrigger>
-                                <TabsTrigger value="logs" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><ScrollText className="mr-1.5 size-3.5" />Logs</TabsTrigger>
-                                <TabsTrigger value="deployments" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Rocket className="mr-1.5 size-3.5" />Deployments</TabsTrigger>
-                                <TabsTrigger value="stats" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><BarChart3 className="mr-1.5 size-3.5" />Stats</TabsTrigger>
-                        </TabsList>}
+                        {app && role && !needsSourceConfiguration ? <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0">
+                            <TabsTrigger value="overview" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><LayoutDashboard className="mr-1.5 size-3.5" />Overview</TabsTrigger>
+                            <TabsTrigger value="logs" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><ScrollText className="mr-1.5 size-3.5" />Logs</TabsTrigger>
+                            <TabsTrigger value="deployments" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Rocket className="mr-1.5 size-3.5" />Deployments</TabsTrigger>
+                            <TabsTrigger value="stats" className="flex-1 rounded-none border-b-2 border-transparent px-1 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><BarChart3 className="mr-1.5 size-3.5" />Stats</TabsTrigger>
+                        </TabsList> : <div className="h-2"></div>}
                     </SheetHeader>
                     <div className="min-h-0 flex-1 overflow-y-auto px-4">
-                    {app && role ? (
-                        <>
-                            <TabsContent value="overview" className="mt-4 space-y-6">
-                                <ItemGroup className="gap-0">
-                                    <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Image</ItemTitle></ItemContent><ItemActions className="max-w-[65%] truncate">{app.sourceType === 'CONTAINER' ? app.containerImageSource ?? 'Not configured' : app.gitUrl ?? 'Not configured'}</ItemActions></Item>
-                                    <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Replicas</ItemTitle></ItemContent><ItemActions>{app.replicas}</ItemActions></Item>
-                                    <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Project</ItemTitle></ItemContent><ItemActions>{app.project.name}</ItemActions></Item>
-                                    {externalUrl && <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">External URL</ItemTitle></ItemContent><ItemActions className="max-w-[65%] truncate"><a href={externalUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 truncate text-primary underline"><span className="truncate">{externalUrl}</span><ExternalLink className="size-3 shrink-0" /></a></ItemActions></Item>}
-                                    <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Created</ItemTitle></ItemContent><ItemActions>{formatDateTime(app.createdAt)}</ItemActions></Item>
-                                    <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Last updated</ItemTitle></ItemContent><ItemActions>{formatDateTime(app.updatedAt)}</ItemActions></Item>
-                                </ItemGroup>
-                                <Separator className="my-8" />
-                                <div className="space-y-3"><h3 className="text-sm font-semibold">Network Policies</h3>{connectionsContent}</div>
-                            </TabsContent>
-                            <TabsContent value="logs" className="mt-4"><Logs app={app} role={role} hideCard /></TabsContent>
-                            <TabsContent value="deployments" className="mt-4"><BuildsTab app={app} role={role} hideCard /></TabsContent>
-                            <TabsContent value="stats" className="mt-4">
-                                <MonitoringTab app={app} />
-                            </TabsContent>
-                        </>
-                    ) : (
-                        <div>
-                            <div className="mb-3 flex items-center gap-2 text-sm font-medium"><Network className="size-4" />Network Policies ({connections.length})</div>
-                            {connectionsContent}
-                        </div>
-                    )}
-                </div>
+                        {needsSourceConfiguration ? (<>
+                            <GeneralAppSource app={app} readonly={role !== RolePermissionEnum.READWRITE} />
+                        </>) : app && role ? (
+                            <>
+                                <TabsContent value="overview" className="mt-4 space-y-6">
+                                    <ItemGroup className="gap-0">
+                                        <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Image</ItemTitle></ItemContent><ItemActions className="max-w-[65%] truncate">{app.sourceType === 'CONTAINER' ? app.containerImageSource ?? 'Not configured' : app.gitUrl ?? 'Not configured'}</ItemActions></Item>
+                                        <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Replicas</ItemTitle></ItemContent><ItemActions>{app.replicas}</ItemActions></Item>
+                                        <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Project</ItemTitle></ItemContent><ItemActions>{app.project.name}</ItemActions></Item>
+                                        {externalUrl && <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">External URL</ItemTitle></ItemContent><ItemActions className="max-w-[65%] truncate"><a href={externalUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 truncate text-primary underline"><span className="truncate">{externalUrl}</span><ExternalLink className="size-3 shrink-0" /></a></ItemActions></Item>}
+                                        <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Created</ItemTitle></ItemContent><ItemActions>{formatDateTime(app.createdAt)}</ItemActions></Item>
+                                        <Item size="xs"><ItemContent><ItemTitle className="font-normal text-muted-foreground">Last updated</ItemTitle></ItemContent><ItemActions>{formatDateTime(app.updatedAt)}</ItemActions></Item>
+                                    </ItemGroup>
+                                    <Separator className="my-8" />
+                                    <div className="space-y-3"><h3 className="text-sm font-semibold">Network Policies</h3>{connectionsContent}</div>
+                                </TabsContent>
+                                <TabsContent value="logs" className="mt-4"><Logs app={app} role={role} hideCard /></TabsContent>
+                                <TabsContent value="deployments" className="mt-4"><BuildsTab app={app} role={role} hideCard /></TabsContent>
+                                <TabsContent value="stats" className="mt-4">
+                                    <MonitoringTab app={app} />
+                                </TabsContent>
+                            </>
+                        ) : (
+                            <div>
+                                <div className="mb-3 flex items-center gap-2 text-sm font-medium"><Network className="size-4" />Network Policies ({connections.length})</div>
+                                {connectionsContent}
+                            </div>
+                        )}
+                    </div>
                 </Tabs>
                 {isApp && <SheetFooter className="border-t p-4">
                     <Button variant="secondary" className="w-full" onClick={onOpen}>Open app <ExternalLink className="ml-2 size-4" /></Button>

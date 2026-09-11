@@ -12,7 +12,7 @@ vi.mock('@/server/adapter/db.client', () => ({
         client: (() => {
             const client = {
             project: { findUnique: vi.fn() },
-            app: { create: vi.fn(), update: vi.fn() },
+            app: { create: vi.fn(), update: vi.fn(), findMany: vi.fn() },
             appDomain: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
             appVolume: { deleteMany: vi.fn() },
             appFileMount: { deleteMany: vi.fn() },
@@ -217,6 +217,27 @@ describe('app.service', () => {
         expect(registryService.doesImageExist).not.toHaveBeenCalled();
         expect(buildService.buildAppAtCommit).not.toHaveBeenCalled();
         expect(deploymentService.createDeployment).not.toHaveBeenCalled();
+    });
+
+    it('includes relations for the full app list query', async () => {
+        vi.mocked(dataAccess.client.app.findMany).mockResolvedValue([] as never);
+
+        await appService.getAllAppsByProjectId('demo-project');
+
+        const query = vi.mocked(dataAccess.client.app.findMany).mock.calls[0][0] as unknown as {
+            select?: unknown;
+            include: Record<string, unknown>;
+        };
+        expect(query.select).toBeUndefined();
+        expect(query.include).toEqual(expect.objectContaining({
+            appDomains: true,
+            appNodePorts: true,
+            appFileMounts: true,
+            appVolumes: true,
+            appBasicAuths: true,
+            project: true,
+        }));
+        expect(query.include.appNetworkPolicy).toBeDefined();
     });
 });
 

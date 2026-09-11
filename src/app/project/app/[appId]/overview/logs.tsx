@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import LogsStreamed from "../../../../../components/custom/logs-streamed";
 import { getPodsForApp as getPodsForAppAction } from "./actions";
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
@@ -28,39 +28,74 @@ export default function Logs({
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
-    const { subscribeToStatusChanges } = usePodsStatus();
+    const subscribeToStatusChanges = usePodsStatus(state => state.subscribeToStatusChanges);
     const { openDialog } = useDialog();
 
-    const updateBuilds = useCallback(async () => {
-        try {
-            const response = await getPodsForAppAction(app.id);
-            if (response.status === 'success' && response.data) {
-                setAppPods(response.data);
-            } else {
-                console.error(response);
-                toast.error(response.message ?? 'An unknown error occurred while loading pods.');
-            }
-        } catch (ex) {
-            console.error(ex);
-            toast.error('An unknown error occurred while loading pods.');
-        }
-    }, [app.id])
-
     useEffect(() => {
-        updateBuilds();
-        const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
-            if (changedAppIds.includes(app.id)) {
-                setTimeout(() =>
-                    updateBuilds(), 500); // slight delay to ensure data is updated
+        let isActive = true;
+        const scheduledRefreshes: ReturnType<typeof setTimeout>[] = [];
 
-                // Update also after 10 Seconds --> for examaple when app stopped or redeployed to get final state of old container
-                setTimeout(() =>
-                    updateBuilds(), 10000);
-
+        const refreshPods = async () => {
+            if (!isActive) {
+                return;
             }
+            try {
+                const response = await getPodsForAppAction(app.id);
+                if (!isActive) {
+                    return;
+                }
+                if (response.status === 'success' && response.data) {
+                    setAppPods(response.data);
+                } else {
+                    console.error(response);
+                    toast.error(response.message ?? 'An unknown error occurred while loading pods.');
+                }
+            } catch (ex) {
+                if (!isActive) {
+                    return;
+                }
+                console.error(ex);
+                toast.error('An unknown error occurred while loading pods.');
+            }
+        };
+
+        void refreshPods();
+
+        const clearScheduledRefreshes = () => {
+            scheduledRefreshes.forEach(clearTimeout);
+            scheduledRefreshes.length = 0;
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                clearScheduledRefreshes();
+            } else {
+                void refreshPods();
+            }
+        };
+
+        const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
+            if (!changedAppIds.includes(app.id)) {
+                return;
+            }
+            if (typeof document !== 'undefined' && document.hidden) {
+                return;
+            }
+            // slight delay to ensure data is updated
+            scheduledRefreshes.push(setTimeout(() => void refreshPods(), 500));
+            // Update also after 10 seconds for the final state of the old container
+            scheduledRefreshes.push(setTimeout(() => void refreshPods(), 10000));
         });
-        return () => unsubscribe();
-    }, [app.id, subscribeToStatusChanges, updateBuilds]);
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            isActive = false;
+            clearScheduledRefreshes();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            unsubscribe();
+        };
+    }, [app.id, subscribeToStatusChanges]);
 
     useEffect(() => {
         if (appPods && selectedPod && !appPods.find(p => p.podName === selectedPod.podName)) {

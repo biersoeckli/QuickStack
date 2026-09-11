@@ -13,7 +13,7 @@ export async function AppSidebar() {
     return <></>
   }
 
-  const projects = await projectService.getAll();
+  const projects = await projectService.getAllForNavigation();
   const newVersionInfo = await quickStackUpdateService.getNewVersionInfo();
   const agentsAvailable = await agentSandboxAddonService.isAvailable();
   const relevantProjectsForUser = projects.filter((project) =>

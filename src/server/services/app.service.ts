@@ -124,7 +124,7 @@ class AppService {
         }
     }
 
-    async getAllAppsByProjectID(projectId: string): Promise<AppExtendedModel[]> {
+    async getAllAppsByProjectId(projectId: string): Promise<AppExtendedModel[]> {
         return await unstable_cache(async (projectId: string) => await dataAccess.client.app.findMany({
             where: {
                 projectId

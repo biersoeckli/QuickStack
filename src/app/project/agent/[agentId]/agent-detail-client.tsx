@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
@@ -25,8 +25,10 @@ import WorkloadBuildsTable from "@/components/custom/workload-builds-table";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/frontend/utils/utils";
+import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 
 type ConfigurationSection = "source" | "prompt" | "container" | "storage" | "networking" | "secrets";
+type AgentTab = "sandboxes" | "builds" | "configuration";
 
 const configurationSections: {
     value: ConfigurationSection;
@@ -44,55 +46,73 @@ const configurationSections: {
 const isConfigurationSection = (section: string | null): section is ConfigurationSection =>
     configurationSections.some((item) => item.value === section);
 
+const isAgentTabAllowed = (tab: string, readonly: boolean, hasBuildsTab: boolean) =>
+    tab === 'sandboxes'
+    || (!readonly && tab === 'configuration')
+    || (hasBuildsTab && tab === 'builds');
+
+const buildAgentTabParams = (tab: string, section: ConfigurationSection) => {
+    const params = new URLSearchParams();
+    params.set('tabName', tab);
+
+    if (tab === 'configuration') {
+        params.set('section', section);
+    }
+
+    return params;
+};
+
 export default function AgentDetailClient({ agent, role, templateInfo, storageClasses }: {
     agent: AgentExtendedModel;
     templateInfo?: AgentSandboxTemplateInfo;
     role: RolePermissionEnum | null;
     storageClasses: string[];
 }) {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const rawTabName = searchParams.get('tabName') || 'sandboxes';
-    const tabName = rawTabName === 'general' ? 'configuration' : rawTabName;
+    const mappedTabName = rawTabName === 'general' ? 'configuration' : rawTabName;
     const sectionName = searchParams.get('section');
     const readonly = role !== RolePermissionEnum.READWRITE;
     const hasGitSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH';
     const hasBuildsTab = !readonly && hasGitSource;
-    const requestedTabAllowed = tabName === 'sandboxes'
-        || (!readonly && tabName === 'configuration')
-        || (hasBuildsTab && tabName === 'builds');
-    const activeTab = requestedTabAllowed ? tabName : 'sandboxes';
-    const activeSection = isConfigurationSection(sectionName) ? sectionName : 'source';
+    const initialTabAllowed = isAgentTabAllowed(mappedTabName, readonly, hasBuildsTab);
+    const [activeTab, setActiveTab] = useState<AgentTab>(initialTabAllowed ? mappedTabName as AgentTab : 'sandboxes');
+    const [activeSection, setActiveSection] = useState<ConfigurationSection>(
+        isConfigurationSection(sectionName) ? sectionName : 'source'
+    );
 
     useEffect(() => {
+        const requestedTabAllowed = isAgentTabAllowed(mappedTabName, readonly, hasBuildsTab);
+        const normalizedTab: AgentTab = requestedTabAllowed ? mappedTabName as AgentTab : 'sandboxes';
+        const normalizedSection = isConfigurationSection(sectionName) ? sectionName : 'source';
+
+        setActiveTab(normalizedTab);
+        setActiveSection(normalizedSection);
+
         if (!requestedTabAllowed || rawTabName === 'general') {
-            const params = new URLSearchParams();
-            params.set('tabName', activeTab);
-
-            if (activeTab === 'configuration') {
-                params.set('section', activeSection);
-            }
-
-            router.replace(`/project/agent/${agent.id}?${params.toString()}`);
+            TabNavigationUtils.replaceQuery(
+                buildAgentTabParams(normalizedTab, normalizedSection),
+                `/project/agent/${agent.id}`
+            );
         }
-    }, [activeSection, activeTab, agent.id, rawTabName, requestedTabAllowed, router]);
+    }, [agent.id, hasBuildsTab, mappedTabName, rawTabName, readonly, sectionName]);
 
     const openTab = (tab: string) => {
-        const params = new URLSearchParams();
-        params.set('tabName', tab);
-
-        if (tab === 'configuration') {
-            params.set('section', activeSection);
-        }
-
-        router.push(`/project/agent/${agent.id}?${params.toString()}`);
+        const nextTab = isAgentTabAllowed(tab, readonly, hasBuildsTab) ? tab as AgentTab : 'sandboxes';
+        setActiveTab(nextTab);
+        TabNavigationUtils.replaceQuery(
+            buildAgentTabParams(nextTab, activeSection),
+            `/project/agent/${agent.id}`
+        );
     };
 
     const openSection = (section: ConfigurationSection) => {
-        const params = new URLSearchParams();
-        params.set('tabName', 'configuration');
-        params.set('section', section);
-        router.push(`/project/agent/${agent.id}?${params.toString()}`);
+        setActiveTab('configuration');
+        setActiveSection(section);
+        TabNavigationUtils.replaceQuery(
+            buildAgentTabParams('configuration', section),
+            `/project/agent/${agent.id}`
+        );
     };
 
     const renderConfigurationSection = () => {

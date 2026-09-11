@@ -20,6 +20,15 @@ export class UserGroupUtils {
         return projectPermission.readWorkloads;
     }
 
+    static sessionHasWriteAccessToProject(session: UserSession, projectId: string) {
+        if (this.isAdmin(session)) {
+            return true;
+        }
+
+        const projectPermission = UserGroupUtils.getProjectPermissionForProjectId(session, projectId);
+        return !!projectPermission?.writeWorkloads;
+    }
+
     private static getProjectPermissionForProjectId(session: UserSession, projectId: string) {
         return session.userGroup?.roleProjectPermissions?.find((projectPermission) => projectPermission.projectId === projectId);
     }

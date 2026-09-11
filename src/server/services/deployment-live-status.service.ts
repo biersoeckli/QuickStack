@@ -36,14 +36,27 @@ class DeploymentLiveStatusService {
 
     async getInitialStatus(appLookup: Map<string, AppLookupInfo>): Promise<AppPodsStatusModel[]> {
         const allDeployments = await deploymentService.getAllDeployments();
+        const deploymentLookup = new Map<string, V1Deployment>();
+
+        for (const deployment of allDeployments) {
+            const name = deployment.metadata?.name;
+            const namespace = deployment.metadata?.namespace;
+            if (!name || !namespace) { continue; }
+            deploymentLookup.set(this.deploymentKey(namespace, name), deployment);
+        }
+
         const initialStatus: AppPodsStatusModel[] = [];
 
         // Iterate over all known apps to ensure we send status for everything (even SHUTDOWN)
-        for (const [appId, info] of Array.from(appLookup.entries())) {
-            const deployment = allDeployments.find(d => d.metadata?.name === appId && d.metadata?.namespace === info.projectId);
+        for (const [appId, info] of appLookup.entries()) {
+            const deployment = deploymentLookup.get(this.deploymentKey(info.projectId, appId));
             initialStatus.push(this.mapDeploymentToStatus(appId, info, deployment));
         }
         return initialStatus;
+    }
+
+    private deploymentKey(namespace: string, name: string): string {
+        return `${namespace}/${name}`;
     }
 
     mapDeploymentToStatus(appId: string, appInfo: AppLookupInfo, deployment?: V1Deployment): AppPodsStatusModel {

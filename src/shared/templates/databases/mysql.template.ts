@@ -1,5 +1,7 @@
 import { Constants } from "@/shared/utils/constants";
 import { AppTemplateContentModel, AppTemplateModel } from "../../model/app-template.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { NetworkPolicyTemplateUtils } from "../network-policy-template.utils";
 
 export function getMysqlAppTemplate(config?: {
     appName?: string,
@@ -78,4 +80,12 @@ export const mysqlAppTemplate: AppTemplateModel = {
     templates: [
         getMysqlAppTemplate()
     ]
+};
+
+export const postCreateMysqlAppTemplate = async (createdApps: AppExtendedModel[]): Promise<AppExtendedModel[]> => {
+    const mysqlApp = createdApps[0];
+
+    NetworkPolicyTemplateUtils.denyInternetAccess(mysqlApp);
+
+    return [mysqlApp];
 };

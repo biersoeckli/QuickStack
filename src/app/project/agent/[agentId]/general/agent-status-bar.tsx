@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Hammer, Rocket, Trash2 } from "lucide-react";
+import { usePolling } from "@/frontend/hooks/use-polling";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
@@ -39,11 +40,7 @@ export default function AgentStatusBar({
         }
     }, [agent]);
 
-    useEffect(() => {
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 5000);
-        return () => clearInterval(interval);
-    }, [fetchStatus]);
+    usePolling(fetchStatus, { intervalMs: 5000, runImmediately: true });
 
     const handleDeploy = async (forceBuild = false) => {
         try {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import GeneralAppRateLimits from "./general/app-rate-limits";
 import GeneralAppSource from "./general/app-source";
@@ -27,6 +27,7 @@ import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 import { saveHealthCheck } from "./advanced/actions";
 
 export default function AppTabs({
@@ -46,12 +47,17 @@ export default function AppTabs({
     storageClasses: string[];
     gitSshPublicKey?: string;
 }) {
-    const router = useRouter();
     const readonly = role !== RolePermissionEnum.READWRITE;
     const appSourceIsConfigured = AppSourceUtils.isConfiguredSource(app);
-    const openTab = (tabName: string) => {
-        router.push(`/project/app/${app.id}?tabName=${tabName}`);
+    const [activeTab, setActiveTab] = useState(tabName);
+    const openTab = (newTab: string) => {
+        setActiveTab(newTab);
+        TabNavigationUtils.replaceQuery(new URLSearchParams({ tabName: newTab }), `/project/app/${app.id}`);
     }
+
+    useEffect(() => {
+        setActiveTab(tabName);
+    }, [tabName]);
 
     if (!appSourceIsConfigured) {
         return (
@@ -60,7 +66,7 @@ export default function AppTabs({
     }
 
     return (
-        <Tabs defaultValue="general" value={tabName} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
+        <Tabs defaultValue="general" value={activeTab} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
             <ScrollArea>
                 <TabsList>
                     <TabsTrigger value="overview"><Eye className="mr-2 h-4 w-4" />Overview</TabsTrigger>

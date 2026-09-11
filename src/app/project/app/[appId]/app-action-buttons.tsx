@@ -12,8 +12,6 @@ import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import PodStatusIndicator from "@/components/custom/pod-status-indicator";
 import { usePodsStatus } from "@/frontend/states/zustand.states";
-import { useEffect, useState } from "react";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
 
 export default function AppActionButtons({
@@ -23,23 +21,9 @@ export default function AppActionButtons({
     app: AppExtendedModel;
     session: UserSession;
 }) {
-    const [deploymentStatus, setDeploaymentStatus] = useState<DeploymentStatus>('UNKNOWN');
     const hasWriteAccess = UserGroupUtils.sessionHasWriteAccessForApp(session, app.id);
     const appSourceIsConfigured = AppSourceUtils.isConfiguredSource(app);
-    const { subscribeToStatusChanges, getPodsForApp } = usePodsStatus();
-
-    useEffect(() => {
-        const pods = getPodsForApp(app.id);
-        setDeploaymentStatus(pods?.deploymentStatus ?? 'UNKNOWN');
-
-        const unsubscribe = subscribeToStatusChanges((changedAppIds) => {
-            if (changedAppIds.includes(app.id)) {
-                const pods = getPodsForApp(app.id);
-                setDeploaymentStatus(pods?.deploymentStatus ?? 'UNKNOWN');
-            }
-        });
-        return () => unsubscribe();
-    }, [app.id, getPodsForApp, subscribeToStatusChanges]);
+    const deploymentStatus = usePodsStatus(state => state.podsStatus.get(app.id)?.deploymentStatus ?? 'UNKNOWN');
 
     return <Card>
         <CardContent className="p-4 ">

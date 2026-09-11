@@ -12,6 +12,10 @@ export class Tags {
         return `projects`;
     }
 
+    static projectNetworkGraphLayout(projectId: string) {
+        return `project-network-graph-layout-${projectId}`;
+    }
+
     static s3Targets() {
         return `targets`;
     }

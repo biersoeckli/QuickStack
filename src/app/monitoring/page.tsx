@@ -3,10 +3,8 @@
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import PageTitle from "@/components/custom/page-title";
 import clusterService from "@/server/services/cluster.service";
-import ResourceNodes from "./monitoring-nodes";
+import MonitoringClient from "./monitoring-client";
 import monitoringService from "@/server/services/monitoring.service";
-import AppRessourceMonitoring from "./app-monitoring";
-import AppVolumeMonitoring from "./app-volumes-monitoring";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import { CatchUtils } from "@/shared/utils/catch.utils";
 
@@ -33,9 +31,11 @@ export default async function ResourceNodesInfoPage() {
                 subtitle={`View all resources of the nodes which belong to the QuickStack Cluster.`}>
             </PageTitle>
             <div className="space-y-6">
-                <ResourceNodes resourcesNodes={resourcesNode} />
-                <AppRessourceMonitoring appsRessourceUsage={updatedNodeRessources} />
-                <AppVolumeMonitoring volumesUsage={volumesUsage} />
+                <MonitoringClient
+                    resourcesNodes={resourcesNode}
+                    appsRessourceUsage={updatedNodeRessources}
+                    volumesUsage={volumesUsage}
+                />
             </div>
         </div>
     )

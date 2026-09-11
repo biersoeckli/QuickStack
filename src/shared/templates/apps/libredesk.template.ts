@@ -217,5 +217,8 @@ evaluation_interval = "5m"`;
 `;
     NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, postgresApp, 5432);
     NetworkPolicyTemplateUtils.allowAppConnection(libredeskApp, redisApp, 6379);
+    NetworkPolicyTemplateUtils.denyInternetAccess(postgresApp);
+    NetworkPolicyTemplateUtils.denyInternetAccess(redisApp);
+
     return [postgresApp, redisApp, libredeskApp];
 };

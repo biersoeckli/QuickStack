@@ -111,5 +111,7 @@ export const postCreateWordpressAppTemplate = async (createdApps: AppExtendedMod
     }
 
     NetworkPolicyTemplateUtils.allowAppConnection(wordpressApp, mariadbApp, 3306);
+    NetworkPolicyTemplateUtils.denyInternetAccess(mariadbApp);
+
     return [mariadbApp, wordpressApp];
 };

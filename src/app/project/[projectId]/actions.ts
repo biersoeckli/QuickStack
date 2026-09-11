@@ -14,6 +14,7 @@ import pgAdminService from "@/server/services/db-tool-services/pgadmin.service";
 import {
     ensureCreateProjectWorkloadInProject,
     ensureDeleteProjectWorkloadInProject,
+    ensureWriteProject,
     RequesterIdentity,
 } from "@/server/utils/shared-authorization.utils";
 import agentService from "@/server/services/agent.service";
@@ -21,6 +22,8 @@ import llmGatewayService from "@/server/services/llm-gateway.service";
 import agentTemplateService from "@/server/services/agent-template.service";
 import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-template.model";
 import { RenameAgentModel, renameAgentZodModel } from "@/shared/model/rename-agent.model";
+import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
+import { projectNetworkGraphPositionSchema } from '@/shared/model/project-network-graph-layout.model';
 
 const createAppSchema = z.object({
     appName: z.string().min(1)
@@ -113,6 +116,26 @@ export const getModelAliasesForGateway = async (gatewayId: string) =>
     simpleAction(async () => {
         await getAuthUserSession();
         return await llmGatewayService.getModelAliasesById(gatewayId);
+    });
+
+export const saveProjectNetworkGraphPosition = async (projectId: string, input: unknown) =>
+    simpleAction(async () => {
+        const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureWriteProject(identity, projectId);
+        const position = projectNetworkGraphPositionSchema.safeParse(input);
+        if (!position.success) {
+            throw new ServiceException('Invalid network graph position.');
+        }
+        await projectNetworkGraphLayoutService.savePosition(projectId, position.data);
+    });
+
+export const resetProjectNetworkGraphLayout = async (projectId: string) =>
+    simpleAction(async () => {
+        const session = await getAuthUserSession();
+        const identity: RequesterIdentity = { type: 'session', session };
+        ensureWriteProject(identity, projectId);
+        await projectNetworkGraphLayoutService.resetPositions(projectId);
     });
 
 export const deleteApp = async (appId: string) =>

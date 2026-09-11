@@ -10,6 +10,7 @@ import {
     ensureReadProjectWorkload,
     ensureWriteProjectWorkload,
     ensureReadProject,
+    ensureWriteProject,
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
     ensureCreateAgentInProject,
@@ -27,6 +28,7 @@ vi.mock("@/shared/utils/role.utils", () => ({
         sessionHasReadAccessForProjectWorkload: vi.fn(),
         sessionHasWriteAccessForProjectWorkload: vi.fn(),
         sessionHasReadAccessToProject: vi.fn(),
+        sessionHasWriteAccessToProject: vi.fn(),
         sessionCanCreateNewAppsForProject: vi.fn(),
         sessionCanDeleteAppsForProject: vi.fn(),
         sessionCanCreateProjectWorkloadsForProject: vi.fn(),
@@ -153,6 +155,25 @@ describe("shared-authorization.utils", () => {
             mockUserGroupUtils.isAdmin.mockReturnValue(false);
             mockUserGroupUtils.sessionHasReadAccessToProject.mockReturnValue(false);
             expect(() => ensureReadProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
+        });
+    });
+
+    describe("ensureWriteProject", () => {
+        it("allows admins", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(true);
+            expect(() => ensureWriteProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("allows project-level writers", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessToProject.mockReturnValue(true);
+            expect(() => ensureWriteProject(makeIdentity(), "proj-1")).not.toThrow();
+        });
+
+        it("rejects users without project-level write access", () => {
+            mockUserGroupUtils.isAdmin.mockReturnValue(false);
+            mockUserGroupUtils.sessionHasWriteAccessToProject.mockReturnValue(false);
+            expect(() => ensureWriteProject(makeIdentity(), "proj-1")).toThrow(ServiceException);
         });
     });
 

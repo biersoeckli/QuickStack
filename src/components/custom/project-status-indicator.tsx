@@ -1,40 +1,39 @@
 'use client'
 
+import { memo, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { Spinner } from "@/components/ui/spinner"
-import { useMemo } from 'react';
 import { MultiStateProgress } from './multi-state-progress';
 
 interface ProjectStatusIndicatorProps {
     projectId: string;
 }
 
-export default function ProjectStatusIndicator({ projectId }: ProjectStatusIndicatorProps) {
-    const { podsStatus, isLoading } = usePodsStatus();
+function ProjectStatusIndicator({ projectId }: ProjectStatusIndicatorProps) {
+    const projectAppStatus = usePodsStatus(useShallow(state => Array.from(state.podsStatus.values()).filter(status => status.projectId === projectId)));
+    const isLoading = usePodsStatus(state => state.isLoading);
 
     const projectStatus = useMemo(() => {
-        if (podsStatus) {
-            const projectAppStatus = Array.from(podsStatus.values()).filter(status => status.projectId === projectId);
-            if (projectAppStatus.length > 0) {
-                const totalApps = projectAppStatus.length;
-                const runningApps = projectAppStatus.filter(status => status.deploymentStatus === 'DEPLOYED').length;
-                const shutdownApps = projectAppStatus.filter(status => status.deploymentStatus === 'SHUTDOWN').length;
-                const errorAndDeployingApps = projectAppStatus.filter(status => ['UNKNOWN', 'ERROR', 'DEPLOYING', 'BUILDING', 'SHUTTING_DOWN'].includes(status.deploymentStatus)).length;
-                return {
-                    runningAppsPercent: (runningApps / totalApps) * 100,
-                    shutdownAppsPercent: (shutdownApps / totalApps) * 100,
-                    errorAndDeployingAppsPercent: (errorAndDeployingApps / totalApps) * 100,
-                    runningAppsCount: runningApps,
-                    appCount: totalApps,
-                };
-            }
+        if (projectAppStatus.length > 0) {
+            const totalApps = projectAppStatus.length;
+            const runningApps = projectAppStatus.filter(status => status.deploymentStatus === 'DEPLOYED').length;
+            const shutdownApps = projectAppStatus.filter(status => status.deploymentStatus === 'SHUTDOWN').length;
+            const errorAndDeployingApps = projectAppStatus.filter(status => ['UNKNOWN', 'ERROR', 'DEPLOYING', 'BUILDING', 'SHUTTING_DOWN'].includes(status.deploymentStatus)).length;
             return {
-                runningAppsPercent: 0,
-                shutdownAppsPercent: 100,
-                errorAndDeployingAppsPercent: 0
+                runningAppsPercent: (runningApps / totalApps) * 100,
+                shutdownAppsPercent: (shutdownApps / totalApps) * 100,
+                errorAndDeployingAppsPercent: (errorAndDeployingApps / totalApps) * 100,
+                runningAppsCount: runningApps,
+                appCount: totalApps,
             };
         }
-    }, [podsStatus, projectId]);
+        return {
+            runningAppsPercent: 0,
+            shutdownAppsPercent: 100,
+            errorAndDeployingAppsPercent: 0
+        };
+    }, [projectAppStatus]);
 
     if (isLoading || !projectStatus) {
         return (
@@ -61,3 +60,5 @@ export default function ProjectStatusIndicator({ projectId }: ProjectStatusIndic
         </div>
     );
 }
+
+export default memo(ProjectStatusIndicator);

@@ -25,7 +25,7 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar"
-import { Agent, App, Project } from "@prisma/client"
+import { ProjectNavigationModel } from "@/shared/model/project-extended.model"
 import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
 import { JSX, useEffect, useState } from "react"
@@ -39,7 +39,7 @@ export function SidebarCient({
   newVersionInfo,
   agentsAvailable
 }: {
-  projects: (Project & { apps: App[]; agents: Agent[] })[];
+  projects: ProjectNavigationModel[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
   agentsAvailable: boolean;

@@ -5,18 +5,22 @@ import AppTable from "./apps-table";
 import ProjectNetworkGraph from "../app-components/project-network-graph";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Table, Network, Container } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
+import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 
 interface ProjectOverviewProps {
-    apps: any[]; // Using any to avoid complex type imports, as we know the data structure is correct
+    apps: AppExtendedModel[];
     session: UserSession;
     projectId: string;
     projectName: string;
+    networkGraphPositions: ProjectNetworkGraphPositions;
 }
 
 type ProjectOverviewTab = 'table' | 'graph';
@@ -29,8 +33,7 @@ function tabStorageKey() {
     return `quickstack:project-overview-tab`;
 }
 
-export default function AppProjectOverview({ apps, session, projectId, projectName }: ProjectOverviewProps) {
-    const router = useRouter();
+export default function AppProjectOverview({ apps, session, projectId, projectName, networkGraphPositions }: ProjectOverviewProps) {
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
@@ -48,7 +51,9 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
         if (!isProjectOverviewTab(value)) return;
         setCurrentTab(value);
         window.localStorage.setItem(tabStorageKey(), value);
-        router.push(`?tab=${value}`, { scroll: false });
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', value);
+        TabNavigationUtils.replaceQuery(params);
     };
 
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
@@ -105,14 +110,19 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
                             <Network className="size-4" />
                         </TabsTrigger>
                     </TabsList>
-                    {canCreate && <CreateProjectActions projectId={projectId} projectType="app" />}
+                    {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}
                 </div>
             </PageTitle>
             <TabsContent value="table">
                 <AppTable session={session} app={apps} projectId={projectId} />
             </TabsContent>
             <TabsContent value="graph">
-                <ProjectNetworkGraph apps={apps} projectId={projectId} session={session} />
+                <ProjectNetworkGraph
+                    apps={apps}
+                    projectId={projectId}
+                    session={session}
+                    savedPositions={networkGraphPositions}
+                />
             </TabsContent>
         </Tabs>
     );

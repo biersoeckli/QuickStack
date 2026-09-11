@@ -7,10 +7,6 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
-import { Actions } from '@/frontend/utils/nextjs-actions.utils';
-import { getMonitoringForAllApps } from './actions';
-import { toast } from 'sonner';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
@@ -27,25 +23,7 @@ export default function AppRessourceMonitoring({
     appsRessourceUsage?: AppMonitoringUsageModel[]
 }) {
 
-
-    const [updatedAppUsage, setUpdatedAppUsage] = useState<AppMonitoringUsageModel[] | undefined>(appsRessourceUsage);
-
-    const fetchMonitoringData = async () => {
-        try {
-            const data = await Actions.run(() => getMonitoringForAllApps());
-            setUpdatedAppUsage(data);
-        } catch (ex) {
-            toast.error('An error occurred while fetching current volume usage');
-            console.error('An error occurred while fetching volume nodes', ex);
-        }
-    }
-
-    useEffect(() => {
-        const intervalId = setInterval(() => fetchMonitoringData(), 10000);
-        return () => {
-            clearInterval(intervalId);
-        }
-    }, [appsRessourceUsage]);
+    const updatedAppUsage = appsRessourceUsage;
 
     if (!updatedAppUsage) {
         return <Card>

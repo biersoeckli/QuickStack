@@ -220,15 +220,30 @@ model RoleAgentPermission {
 }
 
 model Project {
-  id                     String                  @id @default(uuid())
+  id                     String                        @id @default(uuid())
   name                   String
-  projectType            String                  @default("APP") // APP, AGENT
+  projectType            String                        @default("APP") // APP, AGENT
   apps                   App[]
   agents                 Agent[]
   roleProjectPermissions RoleProjectPermission[]
+  networkGraphPositions  ProjectNetworkGraphPosition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProjectNetworkGraphPosition {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nodeId    String
+  x         Float
+  y         Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, nodeId])
 }
 
 model LlmGateway {
@@ -252,8 +267,8 @@ model Agent {
   llmGateway   LlmGateway @relation(fields: [llmGatewayId], references: [id], onDelete: Restrict)
   modelAlias   String
 
-  sourceType       String @default("CONTAINER") // GIT, GIT_SSH, CONTAINER
-  buildMethod      String @default("DOCKERFILE") // DOCKERFILE
+  sourceType  String @default("CONTAINER") // GIT, GIT_SSH, CONTAINER
+  buildMethod String @default("DOCKERFILE") // DOCKERFILE
 
   containerImageSource      String?
   containerRegistryUsername String?
@@ -265,16 +280,16 @@ model Agent {
   gitToken       String?
   dockerfilePath String  @default("./Dockerfile")
 
-  cpuRequest       Int?
-  cpuLimit         Int?
-  memoryRequest    Int?
-  memoryLimit      Int?
-  systemPrompt     String?
-  encryptedEnvVars String?
-  containerCommand String?
-  containerArgs    String?
-  workingDir       String?
-  warmPoolReplicas Int     @default(0)
+  cpuRequest        Int?
+  cpuLimit          Int?
+  memoryRequest     Int?
+  memoryLimit       Int?
+  systemPrompt      String?
+  encryptedEnvVars  String?
+  containerCommand  String?
+  containerArgs     String?
+  workingDir        String?
+  warmPoolReplicas  Int     @default(0)
   deployFileBrowser Boolean @default(false)
 
   // healthCheck startupProbe, readinessProbe, livenessProbe
@@ -288,12 +303,12 @@ model Agent {
 
   healthCheckTcpPort Int?
 
-  roleAgentPermissions RoleAgentPermission[]
-  agentDomains         AgentDomain[]
-  agentVolumes         AgentVolume[]
-  agentFileMounts      AgentFileMount[]
-  agentGitSshKey       AgentGitSshKey?
-  agentNetworkPolicy   AgentNetworkPolicy?
+  roleAgentPermissions  RoleAgentPermission[]
+  agentDomains          AgentDomain[]
+  agentVolumes          AgentVolume[]
+  agentFileMounts       AgentFileMount[]
+  agentGitSshKey        AgentGitSshKey?
+  agentNetworkPolicy    AgentNetworkPolicy?
   appNetworkPolicyRules AppNetworkPolicyRule[]
 
   createdAt DateTime @default(now())
@@ -468,7 +483,7 @@ model AppNetworkPolicyRule {
   id                 String           @id @default(uuid())
   appNetworkPolicyId String
   appNetworkPolicy   AppNetworkPolicy @relation(fields: [appNetworkPolicyId], references: [id], onDelete: Cascade)
-  type               String           // INGRESS, EGRESS
+  type               String // INGRESS, EGRESS
   targetAppId        String?
   targetApp          App?             @relation(fields: [targetAppId], references: [id], onDelete: Cascade)
   targetAgentId      String?
@@ -575,15 +590,15 @@ model Parameter {
 }
 
 model S3Target {
-  id            String         @id @default(uuid())
-  name          String
-  bucketName    String
-  endpoint      String
-  region        String
+  id             String         @id @default(uuid())
+  name           String
+  bucketName     String
+  endpoint       String
+  region         String
   accessKeyId    String
   secretKey      String
-  v4Auth         Boolean  @default(true) // use AWS Signature Version 4 (registry storage `v4auth`)
-  forcePathStyle Boolean  @default(false) // use path-style S3 addressing (registry storage `forcepathstyle`)
+  v4Auth         Boolean        @default(true) // use AWS Signature Version 4 (registry storage `v4auth`)
+  forcePathStyle Boolean        @default(false) // use path-style S3 addressing (registry storage `forcepathstyle`)
   volumeBackups  VolumeBackup[]
 
   createdAt DateTime @default(now())

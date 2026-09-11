@@ -21,11 +21,8 @@ import { NodeResourceModel } from '@/shared/model/node-resource.model';
 import {
   useBreadcrumbs,
 } from '@/frontend/states/zustand.states';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import ChartDiskRessources from './disk-chart';
-import { Actions } from '@/frontend/utils/nextjs-actions.utils';
-import { getNodeResourceUsage } from './actions';
-import { toast } from 'sonner';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
@@ -45,24 +42,7 @@ export default function ResourcesNodes({
   const getDiskUsageCapacity = (node: NodeResourceModel) => node.diskUsageCapacity ?? 0;
   const toPercent = (used: number, capacity: number) => (capacity > 0 ? (used / capacity) * 100 : 0);
 
-  const [updatedNodeRessources, setUpdatedResourcesNodes] = useState<NodeResourceModel[] | undefined>(resourcesNodes);
-
-  const fetchResourcesNodes = async () => {
-    try {
-      const data = await Actions.run(() => getNodeResourceUsage());
-      setUpdatedResourcesNodes(data);
-    } catch (ex) {
-      toast.error('An error occurred while fetching current resource usage');
-      console.error('An error occurred while fetching resources nodes', ex);
-    }
-  }
-
-  useEffect(() => {
-    const intervalId = setInterval(() => fetchResourcesNodes(), 5000);
-    return () => {
-      clearInterval(intervalId);
-    }
-  }, [resourcesNodes]);
+  const updatedNodeRessources = resourcesNodes;
 
   const setBreadcrumbs = useBreadcrumbs((state) => state.setBreadcrumbs);
   useEffect(
