@@ -36,7 +36,7 @@ function tabStorageKey() {
 export default function AppProjectOverview({ apps, session, projectId, projectName, networkGraphPositions }: ProjectOverviewProps) {
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
-    const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
+    const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
 
     useEffect(() => {
         if (isProjectOverviewTab(requestedTab)) {
@@ -44,7 +44,7 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
             return;
         }
         const savedTab = window.localStorage.getItem(tabStorageKey());
-        setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'table');
+        setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'graph');
     }, [projectId, requestedTab]);
 
     const handleTabChange = (value: string) => {
@@ -103,11 +103,11 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
             <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
                 <div className="flex items-center gap-2">
                     <TabsList>
-                        <TabsTrigger value="table" aria-label="Table view" title="Table view">
-                            <Table className="size-4" />
-                        </TabsTrigger>
                         <TabsTrigger value="graph" aria-label="Network graph view" title="Network graph view">
                             <Network className="size-4" />
+                        </TabsTrigger>
+                        <TabsTrigger value="table" aria-label="Table view" title="Table view">
+                            <Table className="size-4" />
                         </TabsTrigger>
                     </TabsList>
                     {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}

@@ -1,6 +1,10 @@
 'use client';
 
+import type { Ref } from 'react';
+
 import {
+    ArrowDown,
+    ArrowUp,
     BarChart3,
     Bot,
     Boxes,
@@ -48,7 +52,6 @@ import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
-import { formatDateTime } from '@/frontend/utils/format.utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { toast } from 'sonner';
@@ -160,6 +163,7 @@ function AppStatusActions({
 }
 
 export function NodeDetailsDrawer({
+    contentRef,
     node,
     app,
     role,
@@ -168,6 +172,7 @@ export function NodeDetailsDrawer({
     onOpenChange,
     onOpen,
 }: {
+    contentRef?: Ref<HTMLDivElement>;
     node: NetworkGraphNode;
     app?: AppExtendedModel;
     role?: RolePermissionEnum;
@@ -189,53 +194,64 @@ export function NodeDetailsDrawer({
                 </p>
             ) : (
                 <ItemGroup>
-                    {connections.map((connection) => (
-                        <Item key={connection.id} variant="outline" size="sm">
-                            <ItemMedia
-                                variant="icon"
-                                className={
-                                    connection.name === 'Internet'
-                                        ? 'bg-violet-500/10 text-violet-600'
-                                        : 'bg-qs-500/10 text-qs-600'
-                                }
-                            >
-                                <Globe2 className="size-4" />
-                            </ItemMedia>
-                            <ItemContent>
-                                <ItemTitle>{connection.name}</ItemTitle>
-                                <ItemDescription>
-                                    {connection.direction}
-                                    {connection.label
-                                        ? ` · ${connection.label}`
-                                        : ''}
-                                </ItemDescription>
-                            </ItemContent>
-                            {connection.copyValue && (
-                                <ItemActions>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-7"
-                                        title="Copy internal hostname"
-                                        onClick={() => {
-                                            void navigator.clipboard.writeText(
-                                                connection.copyValue!,
-                                            );
-                                            toast.success(
-                                                'Copied internal hostname to clipboard',
-                                            );
-                                        }}
-                                    >
-                                        <Copy className="size-3.5" />
-                                        <span className="sr-only">
-                                            Copy internal hostname
-                                        </span>
-                                    </Button>
-                                </ItemActions>
-                            )}
-                        </Item>
-                    ))}
+                    {connections.map((connection) => {
+                        const isInternet = connection.name === 'Internet';
+                        const DirectionIcon = connection.direction === 'Ingress'
+                            ? ArrowDown
+                            : ArrowUp;
+
+                        return (
+                            <Item key={connection.id} variant="outline" size="sm">
+                                <ItemMedia
+                                    variant="icon"
+                                    className={
+                                        isInternet
+                                            ? 'bg-violet-500/10 text-violet-600'
+                                            : 'bg-qs-500/10 text-qs-600'
+                                    }
+                                >
+                                    {isInternet ? (
+                                        <Globe2 className="size-4" />
+                                    ) : (
+                                        <DirectionIcon className="size-4" />
+                                    )}
+                                </ItemMedia>
+                                <ItemContent>
+                                    <ItemTitle>{connection.name}</ItemTitle>
+                                    <ItemDescription>
+                                        {connection.direction}
+                                        {connection.label
+                                            ? ` · ${connection.label}`
+                                            : ''}
+                                    </ItemDescription>
+                                </ItemContent>
+                                {connection.copyValue && (
+                                    <ItemActions>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="size-7"
+                                            title="Copy internal hostname"
+                                            onClick={() => {
+                                                void navigator.clipboard.writeText(
+                                                    connection.copyValue!,
+                                                );
+                                                toast.success(
+                                                    'Copied internal hostname to clipboard',
+                                                );
+                                            }}
+                                        >
+                                            <Copy className="size-3.5" />
+                                            <span className="sr-only">
+                                                Copy internal hostname
+                                            </span>
+                                        </Button>
+                                    </ItemActions>
+                                )}
+                            </Item>
+                        );
+                    })}
                 </ItemGroup>
             )}
         </div>
@@ -252,7 +268,7 @@ export function NodeDetailsDrawer({
             open={open}
             onOpenChange={onOpenChange}
         >
-            <DrawerContent className="flex flex-col p-0 data-[vaul-drawer-direction=right]:w-[85vw] data-[vaul-drawer-direction=right]:sm:max-w-lg data-[vaul-drawer-direction=right]:lg:max-w-xl">
+            <DrawerContent ref={contentRef} className="flex flex-col p-0 data-[vaul-drawer-direction=right]:w-[85vw] data-[vaul-drawer-direction=right]:sm:max-w-lg data-[vaul-drawer-direction=right]:lg:max-w-xl">
                 <Button
                     type="button"
                     variant="ghost"
@@ -407,26 +423,6 @@ export function NodeDetailsDrawer({
                                                 </ItemActions>
                                             </Item>
                                         )}
-                                        <Item size="xs">
-                                            <ItemContent>
-                                                <ItemTitle className="font-normal text-muted-foreground">
-                                                    Created
-                                                </ItemTitle>
-                                            </ItemContent>
-                                            <ItemActions>
-                                                {formatDateTime(app.createdAt)}
-                                            </ItemActions>
-                                        </Item>
-                                        <Item size="xs">
-                                            <ItemContent>
-                                                <ItemTitle className="font-normal text-muted-foreground">
-                                                    Last updated
-                                                </ItemTitle>
-                                            </ItemContent>
-                                            <ItemActions>
-                                                {formatDateTime(app.updatedAt)}
-                                            </ItemActions>
-                                        </Item>
                                     </ItemGroup>
                                     <Separator className="my-8" />
                                     <div className="space-y-3">
@@ -437,16 +433,21 @@ export function NodeDetailsDrawer({
                                     </div>
                                 </TabsContent>
                                 <TabsContent value="logs" className="mt-4">
-                                    <Logs app={app} role={role} hideCard />
+                                    <Logs key={app.id} app={app} role={role} hideCard />
                                 </TabsContent>
                                 <TabsContent
                                     value="deployments"
                                     className="mt-4"
                                 >
-                                    <BuildsTab app={app} role={role} hideCard />
+                                    <BuildsTab
+                                        key={app.id}
+                                        app={app}
+                                        role={role}
+                                        view="grid"
+                                    />
                                 </TabsContent>
                                 <TabsContent value="stats" className="mt-4">
-                                    <MonitoringTab app={app} />
+                                    <MonitoringTab key={app.id} app={app} />
                                 </TabsContent>
                             </>
                         ) : (
@@ -467,7 +468,7 @@ export function NodeDetailsDrawer({
                             className="w-full"
                             onClick={onOpen}
                         >
-                            Open app <ExternalLink className="ml-2 size-4" />
+                            Open App Settings<ExternalLink className="ml-2 size-4" />
                         </Button>
                     </DrawerFooter>
                 )}

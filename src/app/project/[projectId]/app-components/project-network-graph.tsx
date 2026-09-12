@@ -17,10 +17,12 @@ import {
     type NodeProps,
     type NodeTypes,
     type Connection,
+    type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Bot, Boxes, Cloud, Database, Edit2, Globe2, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useSidebar } from '@/components/ui/sidebar';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { cn } from '@/frontend/utils/utils';
@@ -140,6 +142,9 @@ function ProjectNetworkGraphEditor({
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
+    const graphContainerRef = useRef<HTMLDivElement>(null);
+    const drawerContentRef = useRef<HTMLDivElement>(null);
+    const reactFlowRef = useRef<Pick<ReactFlowInstance, 'getNode' | 'getZoom' | 'setViewport'>>(null);
     const connectionTargetLeaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const graphApps = useMemo(() => apps.map(app => AppNetworkPolicyDraftUtils.applyToApp(app, drafts[app.id])), [apps, drafts]);
     const canEditLayout = UserGroupUtils.sessionHasWriteAccessToProject(session, projectId);
@@ -289,6 +294,35 @@ function ProjectNetworkGraphEditor({
             } satisfies PanelConnection;
         }), [layout, selectedNodeId]);
 
+    useEffect(() => {
+        if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
+
+        const animationFrame = requestAnimationFrame(() => {
+            const reactFlow = reactFlowRef.current;
+            const graphContainer = graphContainerRef.current;
+            const drawerContent = drawerContentRef.current;
+            const node = reactFlow?.getNode(selectedNodeId);
+            if (!reactFlow || !graphContainer || !drawerContent || !node) return;
+
+            const graphBounds = graphContainer.getBoundingClientRect();
+            const drawerWidth = drawerContent.getBoundingClientRect().width;
+            const zoom = reactFlow.getZoom();
+            const nodeWidth = node.measured?.width ?? 240;
+            const nodeHeight = node.measured?.height ?? 68;
+            const nodeCenterX = node.position.x + nodeWidth / 2;
+            const nodeCenterY = node.position.y + nodeHeight / 2;
+            const visibleGraphWidth = Math.max(0, graphBounds.width - drawerWidth);
+
+            void reactFlow.setViewport({
+                x: visibleGraphWidth / 2 - nodeCenterX * zoom,
+                y: graphBounds.height / 2 - nodeCenterY * zoom,
+                zoom,
+            }, { duration: 300 });
+        });
+
+        return () => cancelAnimationFrame(animationFrame);
+    }, [selectedNode, selectedNodeId]);
+
     return (
         <div className="space-y-2">
             <div className="flex min-h-8 flex-wrap items-center gap-3">
@@ -300,40 +334,15 @@ function ProjectNetworkGraphEditor({
                         Reset
                     </Button>
                 </div>}
-                {dirty && <>
-                    <div className="flex shrink-0 divide-x overflow-hidden rounded-md border bg-background">
-                        <Button
-                            size="sm"
-                            disabled={saving}
-                            className={cn(
-                                'rounded-none border-0 shadow-none',
-                                dirty
-                                    ? 'bg-qs-600 text-white hover:bg-qs-700 disabled:bg-qs-600 disabled:text-white'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted hover:text-muted-foreground',
-                            )}
-                            onClick={() => void saveChanges()}
-                        >
-                            Save & Apply
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={saving}
-                            className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground"
-                            onClick={discardChanges}
-                        >
-                            Cancel
-                        </Button>
-                    </div>
-                </>}
             </div>
-            <div className={cn(
+            <div ref={graphContainerRef} className={cn(
                 'relative left-1/2 h-[calc(100dvh-14rem)] min-h-80 w-screen -translate-x-1/2 overflow-hidden bg-background transition-[width] duration-200',
                 sidebarState === 'expanded'
                     ? 'md:w-[calc(100vw-var(--sidebar-width))]'
                     : 'md:w-[calc(100vw-var(--sidebar-width-icon))]',
             )}>
                 <ReactFlow
+                    onInit={instance => { reactFlowRef.current = instance; }}
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
@@ -430,6 +439,27 @@ function ProjectNetworkGraphEditor({
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="hsl(var(--muted-foreground) / 0.35)" />
                     <Controls showInteractive={false} />
                 </ReactFlow>
+                {dirty && (
+                    <Card className="absolute bottom-4 left-16 z-10 flex w-fit overflow-hidden p-1 shadow-md">
+                        <Button
+                            size="sm"
+                            disabled={saving}
+                            className="bg-qs-600 text-white hover:bg-qs-700 disabled:bg-qs-600 disabled:text-white"
+                            onClick={() => void saveChanges()}
+                        >
+                            Save & Apply
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={saving}
+                            className="text-muted-foreground hover:text-foreground ml-2"
+                            onClick={discardChanges}
+                        >
+                            Cancel
+                        </Button>
+                    </Card>
+                )}
                 {edgeMenu && createPortal(
                     <div className="fixed z-50 rounded-md border bg-popover p-1 shadow-md" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
                         <Button variant="ghost" size="sm" className="w-full justify-start text-destructive" onClick={() => deleteConnection(edgeMenu.edgeId)}>
@@ -462,6 +492,7 @@ function ProjectNetworkGraphEditor({
                 })()}
                 {edges.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p></div>}
                 {selectedNode && <NodeDetailsDrawer
+                    contentRef={drawerContentRef}
                     node={selectedNode}
                     app={selectedApp}
                     role={selectedAppRole}

@@ -31,7 +31,7 @@ class QuickStackService {
         await namespaceService.createNamespaceIfNotExists(this.QUICKSTACK_NAMESPACE)
         const nextAuthSecret = await this.deleteExistingDeployment();
         await this.createOrUpdatePvc();
-        await this.createOrUpdateDeployment(nextAuthSecret, process.env.QS_VERSION?.includes('canary') ? 'canary' : 'latest');
+        await this.createOrUpdateDeployment(nextAuthSecret, process.env.QS_VERSION?.includes('canary') ? 'canary' : 'latest', false);
         await this.createOrUpdateService(true);
         await this.waitUntilQuickstackIsRunning();
         console.log('QuickStack successfully initialized');
@@ -259,16 +259,16 @@ class QuickStackService {
         }
     }
 
-    async createOrUpdateDeployment(inputNextAuthSecret?: string, imageTag = 'latest') {
+    async createOrUpdateDeployment(inputNextAuthSecret?: string, imageTag = 'latest', makeDbCalls = true) {
         const generatedNextAuthSecret = crypto.randomBytes(32).toString('base64');
         const existingDeployment = await this.getExistingDeployment();
-        const nextAuthUrl = await CatchUtils.resultOrUndefined(async () => {
+        const nextAuthUrl = makeDbCalls ? await CatchUtils.resultOrUndefined(async () => {
             const hostnameParam = await dataAccess.client.parameter.findUnique({
                 where: { name: Constants.QS_PARAM_SERVER_HOSTNAME },
                 select: { value: true },
             });
             return hostnameParam?.value ? `https://${hostnameParam.value}` : undefined;
-        }, 'get parameter QS_PARAM_SERVER_HOSTNAME from databbase to create deployment');
+        }, 'get parameter QS_PARAM_SERVER_HOSTNAME from databbase to create deployment') : undefined;
         const body: V1Deployment = {
             metadata: {
                 name: this.QUICKSTACK_DEPLOYMENT_NAME,
