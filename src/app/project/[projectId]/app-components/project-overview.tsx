@@ -50,7 +50,9 @@ export default function AppProjectOverview({
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
 
     useEffect(() => {
-        if (!showNewNetworkPolicyExplanation) return;
+        if (!showNewNetworkPolicyExplanation || apps.length === 0) {
+            return;
+        }
 
         void openDialog(<NewNetworkPolicyExplanationDialog />, {
             width: 'min(720px, calc(100vw - 2rem))',
@@ -101,7 +103,7 @@ export default function AppProjectOverview({
         return (
             <>
                 <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
-                    <CreateProjectActions projectId={projectId} projectType="app" />
+                    <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />
                 </PageTitle>
                 <Empty className="border border-dashed">
                     <EmptyHeader>

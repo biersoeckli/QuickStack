@@ -1,6 +1,6 @@
 'use client';
 
-import type { Ref } from 'react';
+import { useEffect, type Ref } from 'react';
 
 import {
     ArrowDown,
@@ -50,7 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
-import { usePodsStatus } from '@/frontend/states/zustand.states';
+import { useDialog, usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
@@ -181,6 +181,7 @@ export function NodeDetailsDrawer({
     onOpenChange: (open: boolean) => void;
     onOpen: () => void;
 }) {
+    const isDialogOpen = useDialog((state) => state.isDialogOpen);
     const isApp = node.kind === 'APP';
     const needsSourceConfiguration =
         app &&
@@ -260,6 +261,13 @@ export function NodeDetailsDrawer({
     const externalUrl = externalDomain
         ? `${externalDomain.useSsl ? 'https' : 'http'}://${externalDomain.hostname}`
         : undefined;
+
+    useEffect(() => {
+        if (open && isDialogOpen) {
+            onOpenChange(false);
+        }
+    }, [isDialogOpen, onOpenChange, open]);
+
     return (
         <Drawer
             direction="right"

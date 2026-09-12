@@ -486,7 +486,9 @@ function ProjectNetworkGraphEditor({
                         document.body,
                     );
                 })()}
-                {edges.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p></div>}
+                {edges.length === 0 && nodes.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+                    <Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p>
+                </div>}
                 {selectedNode && <NodeDetailsDrawer
                     contentRef={drawerContentRef}
                     node={selectedNode}
