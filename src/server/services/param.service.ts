@@ -25,6 +25,7 @@ export class ParamService {
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
     static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
+    static readonly FEATURE_NEW_NETWORK_POLICY_EXPLENATION = 'featureNewNetworkPolicyExplenation';
 
     async initializeDefaults(revalidateParam = true) {
         const [instanceId, registryLocation] = await Promise.all([

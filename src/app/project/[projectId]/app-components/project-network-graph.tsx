@@ -23,7 +23,6 @@ import '@xyflow/react/dist/style.css';
 import { Bot, Boxes, Cloud, Database, Edit2, Globe2, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useSidebar } from '@/components/ui/sidebar';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
@@ -131,7 +130,6 @@ function ProjectNetworkGraphEditor({
     savedPositions,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
-    const { state: sidebarState } = useSidebar();
     const { openDialog } = useDialog();
     const { openConfirmDialog } = useConfirmDialog();
     const [drafts, setDrafts] = useState<Record<string, AppNetworkPolicyDraft>>(() => AppNetworkPolicyDraftUtils.collectionFromApps(apps));
@@ -335,12 +333,10 @@ function ProjectNetworkGraphEditor({
                     </Button>
                 </div>}
             </div>
-            <div ref={graphContainerRef} className={cn(
-                'relative left-1/2 h-[calc(100dvh-14rem)] min-h-80 w-screen -translate-x-1/2 overflow-hidden bg-background transition-[width] duration-200',
-                sidebarState === 'expanded'
-                    ? 'md:w-[calc(100vw-var(--sidebar-width))]'
-                    : 'md:w-[calc(100vw-var(--sidebar-width-icon))]',
-            )}>
+            <div
+                ref={graphContainerRef}
+                className="relative -mx-8 h-[calc(100dvh-14rem)] min-h-80 w-auto overflow-hidden bg-background lg:-mx-10"
+            >
                 <ReactFlow
                     onInit={instance => { reactFlowRef.current = instance; }}
                     nodes={nodes}

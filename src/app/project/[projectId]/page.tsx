@@ -12,6 +12,7 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 import AgentListClient from "./agent-components/agent-table";
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { ensureReadProject, RequesterIdentity } from '@/server/utils/shared-authorization.utils';
+import paramService, { ParamService } from '@/server/services/param.service';
 
 export default async function AppsPage({
     params
@@ -52,7 +53,10 @@ export default async function AppsPage({
     const data = await appService.getAllAppsByProjectId(projectId);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
-    const networkGraphPositions = await projectNetworkGraphLayoutService.getPositions(projectId);
+    const [networkGraphPositions, hasAcknowledgedNewNetworkPolicyExplanation] = await Promise.all([
+        projectNetworkGraphLayoutService.getPositions(projectId),
+        paramService.getBoolean(ParamService.FEATURE_NEW_NETWORK_POLICY_EXPLENATION),
+    ]);
 
     return (
         <div className="flex-1 space-y-4 pt-6">
@@ -62,6 +66,7 @@ export default async function AppsPage({
                 projectId={project.id}
                 projectName={project.name}
                 networkGraphPositions={networkGraphPositions}
+                showNewNetworkPolicyExplanation={!hasAcknowledgedNewNetworkPolicyExplanation}
             />
             <ProjectBreadcrumbs project={project} />
         </div>
