@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SubmitButton } from '@/components/custom/submit-button';
 import { useDialogContext } from '@/frontend/states/dialog-context';
 import { AppNetworkPolicyRuleEditModel, appNetworkPolicyRuleEditZodModel, NetworkPolicyDirection, NetworkPolicySelectableTarget, NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
+import { Constants } from '@/shared/utils/constants';
 
 const appNetworkPolicyRuleFormZodModel = appNetworkPolicyRuleEditZodModel.extend({
     projectId: z.string().optional(),
@@ -37,7 +38,7 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
             projectId: initialTarget?.project.id ?? currentProject.id,
             targetType: initialTarget?.type ?? 'APP',
             targetId: initialTarget?.id ?? '',
-            port: '',
+            port: getSuggestedPort(initialTarget) ?? '',
             protocol: 'TCP',
         },
     });
@@ -58,6 +59,10 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
     ]).values());
     const selectedProjectId = form.watch('projectId') ?? '';
     const targetsForSelectedProject = targets.filter(target => target.project.id === selectedProjectId);
+    const selectedTargetId = form.watch('targetId');
+    const selectedTargetType = form.watch('targetType');
+    const selectedTarget = targetsForSelectedProject.find(target => target.id === selectedTargetId && target.type === selectedTargetType);
+    const suggestedPort = getSuggestedPort(selectedTarget);
 
     return <>
         <DialogHeader>
@@ -75,6 +80,7 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                             field.onChange(projectId);
                             form.setValue('targetId', '');
                             form.setValue('targetType', 'APP');
+                            form.setValue('port', '');
                             setErrorMessage(null);
                         }}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger></FormControl>
@@ -92,8 +98,10 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                         <FormLabel>{ingress ? 'Source' : 'Target'}</FormLabel>
                         <Select disabled={!selectedProjectId} value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
                             const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
+                            const target = targetsForSelectedProject.find(item => item.type === targetType && item.id === targetId);
                             form.setValue('targetType', targetType);
                             field.onChange(targetId);
+                            form.setValue('port', getSuggestedPort(target) ?? '');
                             setErrorMessage(null);
                         }}>
                             <FormControl><SelectTrigger><SelectValue placeholder={selectedProjectId ? 'Select app or agent sandbox' : 'Select project first'} /></SelectTrigger></FormControl>
@@ -108,7 +116,10 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                     control={form.control}
                     name="port"
                     render={({ field }) => <FormItem>
-                        <FormLabel>Port</FormLabel>
+                        <div className="flex items-center gap-2">
+                            <FormLabel>Port</FormLabel>
+                            {suggestedPort !== undefined && <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">Recommended: {suggestedPort}</span>}
+                        </div>
                         <FormControl><Input type="number" min="1" max="65535" placeholder="e.g. 443" {...field} value={field.value ?? ''} onChange={(event) => {
                             field.onChange(event);
                             setErrorMessage(null);
@@ -139,4 +150,9 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
             </form>
         </Form>
     </>;
+}
+
+function getSuggestedPort(target?: NetworkPolicySelectableTarget): number | undefined {
+    if (!target?.appType || !(target.appType in Constants.DATABASE_TEMPLATE_PORTS)) return undefined;
+    return Constants.DATABASE_TEMPLATE_PORTS[target.appType as keyof typeof Constants.DATABASE_TEMPLATE_PORTS];
 }

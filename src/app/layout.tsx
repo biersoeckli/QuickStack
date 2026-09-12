@@ -49,9 +49,9 @@ export default async function RootLayout({
       )}>
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
-          <main className="flex w-full flex-col items-center">
-            <div className="w-full max-w-8xl px-2 lg:px-4">
-              <div className="flex-col md:flex p-6">
+          <main className="flex min-w-0 flex-1 flex-col items-center">
+            <div className="w-full min-w-0 max-w-8xl px-2 lg:px-4">
+              <div className="min-w-0 flex-col p-6 md:flex">
                 {userIsLoggedIn && <BreadcrumbsGenerator />}
                 <Suspense fallback={<FullLoadingSpinner />}>
                   {children}

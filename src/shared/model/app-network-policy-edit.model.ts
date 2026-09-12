@@ -12,6 +12,7 @@ export type NetworkPolicySelectableTarget = {
     id: string;
     name: string;
     type: 'APP' | 'AGENT';
+    appType?: string;
     project: NetworkPolicyTargetProject;
 };
 

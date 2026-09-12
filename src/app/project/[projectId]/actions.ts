@@ -24,6 +24,15 @@ import { AgentTemplateModel, agentTemplateZodModel } from "@/shared/model/agent-
 import { RenameAgentModel, renameAgentZodModel } from "@/shared/model/rename-agent.model";
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { projectNetworkGraphPositionSchema } from '@/shared/model/project-network-graph-layout.model';
+import paramService, { ParamService } from '@/server/services/param.service';
+
+export const acknowledgeNewNetworkPolicyExplanation = async () => simpleAction(async () => {
+    await getAuthUserSession();
+    await paramService.save({
+        name: ParamService.FEATURE_NEW_NETWORK_POLICY_EXPLENATION,
+        value: 'true',
+    });
+});
 
 const createAppSchema = z.object({
     appName: z.string().min(1)

@@ -14,6 +14,8 @@ import PageTitle from "@/components/custom/page-title";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
+import { useDialog } from '@/frontend/states/zustand.states';
+import NewNetworkPolicyExplanationDialog from './new-network-policy-explanation-dialog';
 
 interface ProjectOverviewProps {
     apps: AppExtendedModel[];
@@ -21,6 +23,7 @@ interface ProjectOverviewProps {
     projectId: string;
     projectName: string;
     networkGraphPositions: ProjectNetworkGraphPositions;
+    showNewNetworkPolicyExplanation: boolean;
 }
 
 type ProjectOverviewTab = 'table' | 'graph';
@@ -33,10 +36,29 @@ function tabStorageKey() {
     return `quickstack:project-overview-tab`;
 }
 
-export default function AppProjectOverview({ apps, session, projectId, projectName, networkGraphPositions }: ProjectOverviewProps) {
+export default function AppProjectOverview({
+    apps,
+    session,
+    projectId,
+    projectName,
+    networkGraphPositions,
+    showNewNetworkPolicyExplanation,
+}: ProjectOverviewProps) {
     const searchParams = useSearchParams();
+    const { openDialog } = useDialog();
     const requestedTab = searchParams.get('tab');
-    const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('table');
+    const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
+
+    useEffect(() => {
+        if (!showNewNetworkPolicyExplanation || apps.length === 0) {
+            return;
+        }
+
+        void openDialog(<NewNetworkPolicyExplanationDialog />, {
+            width: 'min(720px, calc(100vw - 2rem))',
+            maxWidth: '720px',
+        });
+    }, [openDialog, showNewNetworkPolicyExplanation]);
 
     useEffect(() => {
         if (isProjectOverviewTab(requestedTab)) {
@@ -44,7 +66,7 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
             return;
         }
         const savedTab = window.localStorage.getItem(tabStorageKey());
-        setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'table');
+        setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'graph');
     }, [projectId, requestedTab]);
 
     const handleTabChange = (value: string) => {
@@ -81,7 +103,7 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
         return (
             <>
                 <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
-                    <CreateProjectActions projectId={projectId} projectType="app" />
+                    <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />
                 </PageTitle>
                 <Empty className="border border-dashed">
                     <EmptyHeader>
@@ -103,11 +125,11 @@ export default function AppProjectOverview({ apps, session, projectId, projectNa
             <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
                 <div className="flex items-center gap-2">
                     <TabsList>
-                        <TabsTrigger value="table" aria-label="Table view" title="Table view">
-                            <Table className="size-4" />
-                        </TabsTrigger>
                         <TabsTrigger value="graph" aria-label="Network graph view" title="Network graph view">
                             <Network className="size-4" />
+                        </TabsTrigger>
+                        <TabsTrigger value="table" aria-label="Table view" title="Table view">
+                            <Table className="size-4" />
                         </TabsTrigger>
                     </TabsList>
                     {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}

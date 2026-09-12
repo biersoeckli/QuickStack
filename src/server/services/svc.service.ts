@@ -40,7 +40,7 @@ class SvcService {
             ...(app.appNetworkPolicy?.rules ?? [])
                 .filter((rule) => rule.type === 'INGRESS')
                 .map((rule) => ({
-                    name: `ingress-port-${rule.protocol || 'TCP'}-${rule.port}`,
+                    name: `ingress-port-${(rule.protocol || 'TCP').toLowerCase()}-${rule.port}`,
                     port: rule.port,
                     targetPort: rule.port,
                     protocol: rule.protocol || 'TCP',
