@@ -217,6 +217,14 @@ _Avoid_: SSH repo
 A container image reference QuickStack uses to run an **App** or **Agent** without building from Git.
 _Avoid_: Docker Container when referring to the domain concept
 
+**App Environment Variable**:
+A user-defined runtime environment value injected into an **App** container.
+_Avoid_: build argument, build-time variable, secret
+
+**App Build Argument**:
+A user-defined value made available to an **App**'s container image build as a Docker build argument, and never injected at runtime.
+_Avoid_: build environment variable, build-time env var, runtime environment variable
+
 **Deploy Key**:
 A public SSH key registered with a Git provider to grant repository access to a **Git SSH Source**.
 _Avoid_: SSH key when specifically referring to the provider-side access grant
@@ -325,6 +333,11 @@ _Avoid_: manual initial port requirement
 - QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
 - A **Project Workload** means an **App** inside an **App Project** or an **Agent** inside an **Agent Project**.
 - A **Workload Permission** belongs to exactly one **Project Workload**.
+- An **App** can have zero or more **App Environment Variables**.
+- An **App** can have zero or more **App Build Arguments**.
+- An **App Build Argument** is available only while building a Dockerfile-based **App**.
+- Runtime **App Environment Variables** are never passed as **App Build Arguments**, and **App Build Arguments** are never injected at runtime.
+- **App Build Argument** values are not secret and must not hold sensitive data.
 - An **App** can have zero or more **App Node Ports**.
 - An **App** has exactly one active **App Network Policy Configuration**.
 - Traffic between replicas of the same **App** is always permitted and cannot be disabled.
@@ -361,6 +374,7 @@ _Avoid_: manual initial port requirement
 - An **App Project Assignment** is set once on create and cannot be changed by update.
 - An **App** write via REST API uses **Full Schema Write** semantics: all required business fields must be present on every create and update, and all sub-collections are fully replaced.
 - An **App** update must include `projectId` and its value must equal the existing **App Project Assignment**.
+- An **App** write via REST API must include **App Build Arguments**; like `envVars`, the field is required on every create and update even when empty.
 - A **User** performs **API Key Self-Management** only for their own **REST API Keys**.
 - **API Key Self-Management** is implemented through profile UI and Next.js Server Actions, not REST API endpoints.
 - A successful **REST API** response uses **Direct Success Payload**.
@@ -398,6 +412,7 @@ _Avoid_: manual initial port requirement
 - "connect to a git https" means configuring a **Git HTTPS Source** for an **App**.
 - "no app source chosen" means the **App** has no **Configured Source**, even if storage contains a default source type.
 - "Docker Container Image" is the UI label for a **Container Image Source**.
+- "build env variable" / "build-time variable" means an **App Build Argument**, never an **App Environment Variable**.
 - "branch" means the selected **Git Branch**, not a build branch or deployment branch.
 - "node portforwarding" means an **App Node Port**, not an ad hoc developer port-forward session.
 - "CRUD REST API" for projects and apps means REST reads/deletes plus **POST Upsert** for create and update.

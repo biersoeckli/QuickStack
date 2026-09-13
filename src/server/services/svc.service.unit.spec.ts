@@ -190,6 +190,7 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         dockerfilePath: './Dockerfile',
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         memoryReservation: null,
         memoryLimit: null,
         cpuReservation: null,
