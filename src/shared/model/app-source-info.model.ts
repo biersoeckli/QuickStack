@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jsFrameworkZodModel } from "./js-framework.model";
 
 export const appSourceTypeZodModel = z.enum(["GIT", "GIT_SSH", "CONTAINER"]);
 export const appTypeZodModel = z.enum(["APP", "POSTGRES", "MYSQL", "MARIADB", "MONGODB", "REDIS"]);
@@ -12,7 +13,7 @@ export const appBuildMethodLabels: Record<AppBuildMethod, string> = {
 };
 
 const frameworkSourceFields = {
-  framework: z.string().trim().nullish(),
+  framework: jsFrameworkZodModel.nullish(),
   installCommand: z.string().nullish(),
   buildCommand: z.string().nullish(),
   runCommand: z.string().nullish(),

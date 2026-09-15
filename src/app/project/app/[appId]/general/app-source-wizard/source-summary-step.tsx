@@ -13,10 +13,11 @@ export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGi
 }) {
     const isGitSource = formData.sourceType === 'GIT' || formData.sourceType === 'GIT_SSH';
     return (
-        <div className="space-y-4 rounded-md border p-4">
-            <SummaryRow label="Source Type" value={sourceTypeLabels[formData.sourceType as SourceType]} />
-            {isGitSource && (
-                <>
+        <div className="max-h-[50vh] overflow-y-auto overscroll-contain rounded-md border">
+            <div className="space-y-4 p-4">
+                <SummaryRow label="Source Type" value={sourceTypeLabels[formData.sourceType as SourceType]} />
+                {isGitSource && (
+                    <>
                     <SummaryRow label="Git URL" value={formData.gitUrl ?? ''} mono />
                     <SummaryRow label="Git Branch" value={formData.gitBranch ?? ''} />
                     <SummaryRow label="Build Method" value={buildMethodLabels[(formData.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK']} />
@@ -32,24 +33,25 @@ export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGi
                             <SummaryRow label="Node Version" value={formData.nodeVersion || 'Default (lts)'} mono />
                         </>
                     )}
-                </>
-            )}
-            {formData.sourceType === 'GIT' && (
-                <>
+                    </>
+                )}
+                {formData.sourceType === 'GIT' && (
+                    <>
                     <SummaryRow label="Git Username" value={formData.gitUsername || 'Not configured'} />
                     <SecretSummaryRow label="Git Password or Token" value={formData.gitToken ?? ''} visible={showGitToken} onVisibleChange={setShowGitToken} />
-                </>
-            )}
-            {formData.sourceType === 'GIT_SSH' && (
-                <SummaryRow label="Deploy Key" value={publicKey ? 'Deploy key generated' : 'Not generated'} />
-            )}
-            {formData.sourceType === 'CONTAINER' && (
-                <>
+                    </>
+                )}
+                {formData.sourceType === 'GIT_SSH' && (
+                    <SummaryRow label="Deploy Key" value={publicKey ? 'Deploy key generated' : 'Not generated'} />
+                )}
+                {formData.sourceType === 'CONTAINER' && (
+                    <>
                     <SummaryRow label="Image Name" value={formData.containerImageSource ?? ''} mono />
                     <SummaryRow label="Registry Username" value={formData.containerRegistryUsername || 'Not configured'} />
                     <SecretSummaryRow label="Registry Password" value={formData.containerRegistryPassword ?? ''} visible={showRegistryPassword} onVisibleChange={setShowRegistryPassword} />
-                </>
-            )}
+                    </>
+                )}
+            </div>
         </div>
     );
 }

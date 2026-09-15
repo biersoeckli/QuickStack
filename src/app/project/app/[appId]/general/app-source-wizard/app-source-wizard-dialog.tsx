@@ -8,7 +8,7 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppBuildMethod, AppDockerfileDetectionModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
-import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
+import { JsFramework, jsFrameworkPresets, jsFrameworkZodModel } from "@/shared/model/js-framework.model";
 import { ChevronLeft, Loader2, Rocket, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ import { detectDockerfilePath, ensureGitSshPublicKey, generateOrRegenerateGitSsh
 import { BuildMethodStep } from "./build-method-step";
 import { ContainerImageStep } from "./container-image-step";
 import { DockerfilePathStep } from "./dockerfile-path-step";
+import { FrameworkConfigurationStep } from "./framework-configuration-step";
 import { FrameworkStep } from "./framework-step";
 import { GitBranchStep } from "./git-branch-step";
 import { GitHttpsUrlStep } from "./git-https-url-step";
@@ -196,7 +197,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             return;
         }
         if (buildMethod === 'FRAMEWORK') {
-            goTo('framework');
+            goTo('framework-selection');
             return;
         }
         goTo('summary');
@@ -212,6 +213,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             rootDirectory: preset.rootDirectory,
             outputDirectory: preset.outputDirectory,
         });
+        goTo('framework-configuration');
     };
 
     const next = async () => {
@@ -231,7 +233,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             }
             return;
         }
-        if (step === 'dockerfile' || step === 'framework' || step === 'container-image') {
+        if (step === 'dockerfile' || step === 'framework-configuration' || step === 'container-image') {
             goTo('summary');
         }
     };
@@ -317,12 +319,17 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                         onChange={(dockerfilePath) => updateFormData({ dockerfilePath })}
                     />
                 )}
-                {step === 'framework' && (
+                {step === 'framework-selection' && (
                     <FrameworkStep
-                        value={formData.framework as JsFramework | undefined}
+                        value={formData.framework ?? undefined}
+                        onSelect={selectFramework}
+                    />
+                )}
+                {step === 'framework-configuration' && formData.framework && (
+                    <FrameworkConfigurationStep
+                        framework={formData.framework}
                         formData={formData}
                         onChange={updateFormData}
-                        onSelect={selectFramework}
                     />
                 )}
                 {step === 'container-image' && (
@@ -368,7 +375,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                                     Save & Deploy
                                 </Button>
                             </>
-                        ) : step === 'branch' || step === 'build-method' ? (
+                        ) : step === 'branch' || step === 'build-method' || step === 'framework-selection' ? (
                             null
                         ) : (
                             <Button type="button" onClick={next} disabled={nextDisabled}>
@@ -390,7 +397,8 @@ function getStepTitle(step: StepId, sourceType: AppSourceInfoInputModel['sourceT
     if (step === 'branch') return 'Choose Git Branch';
     if (step === 'build-method') return 'Choose Build Method';
     if (step === 'dockerfile') return 'Confirm Dockerfile Path';
-    if (step === 'framework') return 'Configure Framework';
+    if (step === 'framework-selection') return 'Choose Framework';
+    if (step === 'framework-configuration') return 'Configure Framework';
     if (step === 'container-image') return 'Connect Docker Container Image';
     if (step === 'summary') return `${sourceTypeLabels[sourceType as SourceType]} Summary`;
     return 'Connect App Source';
@@ -402,7 +410,7 @@ function getNextDisabled(step: StepId, formData: AppSourceInfoInputModel, public
     if (step === 'ssh-url') return !formData.gitUrl?.trim() || !publicKey;
     if (step === 'branch') return !formData.gitBranch;
     if (step === 'dockerfile') return !formData.dockerfilePath?.trim();
-    if (step === 'framework') return !formData.framework || !formData.buildCommand?.trim();
+    if (step === 'framework-configuration') return !formData.framework || !formData.buildCommand?.trim();
     if (step === 'container-image') return !formData.containerImageSource?.trim();
     return false;
 }
@@ -446,7 +454,7 @@ function resetForSourceType(current: AppSourceInfoInputModel, sourceType: Source
 
 function emptyFrameworkFields() {
     return {
-        framework: '',
+        framework: null,
         installCommand: '',
         buildCommand: '',
         runCommand: '',
@@ -471,7 +479,7 @@ function toSourceInput(app: AppExtendedModel): AppSourceInfoInputModel {
         gitUsername: app.gitUsername ?? '',
         gitToken: app.gitToken ?? '',
         dockerfilePath: app.dockerfilePath ?? defaultDockerfilePath,
-        framework: app.framework ?? '',
+        framework: jsFrameworkZodModel.safeParse(app.framework).data ?? null,
         installCommand: app.installCommand ?? '',
         buildCommand: app.buildCommand ?? '',
         runCommand: app.runCommand ?? '',

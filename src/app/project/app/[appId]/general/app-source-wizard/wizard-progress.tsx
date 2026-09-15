@@ -20,6 +20,8 @@ function getProgressSteps(sourceType: SourceType, buildMethod?: string): Array<{
     if (sourceType === 'CONTAINER') {
         return [{ id: 'source' }, { id: 'container-image' }, { id: 'summary' }];
     }
-    const buildConfigStep: StepId = buildMethod === 'FRAMEWORK' ? 'framework' : 'dockerfile';
-    return [{ id: 'source' }, { id: sourceType === 'GIT' ? 'git-url' : 'ssh-url' }, { id: 'branch' }, { id: 'build-method' }, { id: buildConfigStep }, { id: 'summary' }];
+    const buildConfigSteps: StepId[] = buildMethod === 'FRAMEWORK'
+        ? ['framework-selection', 'framework-configuration']
+        : ['dockerfile'];
+    return [{ id: 'source' }, { id: sourceType === 'GIT' ? 'git-url' : 'ssh-url' }, { id: 'branch' }, { id: 'build-method' }, ...buildConfigSteps.map((id) => ({ id })), { id: 'summary' }];
 }

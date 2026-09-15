@@ -2,13 +2,13 @@ import { V1Job } from "@kubernetes/client-node";
 import { BuildJobBuilder, BuildJobBuilderContext } from "./build-job-builder.interface";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { createRailpackBuildJob, RailpackBuildOptions } from "./railpack-build-job-builder.utils";
+import { RailpackBuildJobBuilderUtils, RailpackBuildOptions } from "./railpack-build-job-builder.utils";
 
 class FrameworkBuildJobBuilder implements BuildJobBuilder {
     readonly buildMethod: AppBuildMethod = 'FRAMEWORK';
 
     async buildJobDefinition(ctx: BuildJobBuilderContext): Promise<V1Job> {
-        return createRailpackBuildJob(ctx, this.buildMethod, this.getFrameworkOptions(ctx));
+        return RailpackBuildJobBuilderUtils.createBuildJob(ctx, this.buildMethod, this.getFrameworkOptions(ctx));
     }
 
     private getFrameworkOptions(ctx: BuildJobBuilderContext): RailpackBuildOptions {

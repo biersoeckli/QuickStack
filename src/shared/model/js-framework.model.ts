@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-export const jsFrameworkZodModel = z.enum(["NEXTJS", "ANGULAR", "NUXT", "ASTRO", "SVELTEKIT"]);
+export const jsFrameworkZodModel = z.enum(["NEXTJS", "REACT", "ANGULAR", "NUXT", "ASTRO", "SVELTEKIT"]);
 export type JsFramework = z.infer<typeof jsFrameworkZodModel>;
 
 export type JsFrameworkPreset = {
     id: JsFramework;
     label: string;
     description: string;
+    logoSrc: string;
     installCommand: string;
     buildCommand: string;
     runCommand: string;
@@ -17,26 +18,39 @@ export type JsFrameworkPreset = {
 
 /**
  * Pre-filled build settings for the most used JavaScript frameworks.
- * Values mirror Vercel framework presets, except where Vercel still ships stale output directories.
  */
 export const jsFrameworkPresets: Record<JsFramework, JsFrameworkPreset> = {
     NEXTJS: {
         id: 'NEXTJS',
         label: 'Next.js',
         description: 'React framework with SSR, SSG and API routes.',
-        installCommand: '',
-        buildCommand: 'next build',
-        runCommand: 'next start',
+        logoSrc: '/framework-logos/nextjs.svg',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
+        runCommand: 'npm run start',
         rootDirectory: './',
         outputDirectory: '.next',
         defaultPort: 3000,
+    },
+    REACT: {
+        id: 'REACT',
+        label: 'React',
+        description: 'React single-page application, served as static files.',
+        logoSrc: '/framework-logos/react.svg',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
+        runCommand: '',
+        rootDirectory: './',
+        outputDirectory: 'dist',
+        defaultPort: 80,
     },
     ANGULAR: {
         id: 'ANGULAR',
         label: 'Angular',
         description: 'TypeScript SPA framework, served as static files.',
-        installCommand: '',
-        buildCommand: 'ng build',
+        logoSrc: '/framework-logos/angular.png',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
         runCommand: '',
         rootDirectory: './',
         outputDirectory: 'dist',
@@ -46,8 +60,9 @@ export const jsFrameworkPresets: Record<JsFramework, JsFrameworkPreset> = {
         id: 'NUXT',
         label: 'Nuxt',
         description: 'Vue framework with a Nitro Node server.',
-        installCommand: '',
-        buildCommand: 'nuxt build',
+        logoSrc: '/framework-logos/nuxt.svg',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
         runCommand: 'node .output/server/index.mjs',
         rootDirectory: './',
         outputDirectory: '.output',
@@ -57,8 +72,9 @@ export const jsFrameworkPresets: Record<JsFramework, JsFrameworkPreset> = {
         id: 'ASTRO',
         label: 'Astro',
         description: 'Content-focused framework, built as a static site.',
-        installCommand: '',
-        buildCommand: 'astro build',
+        logoSrc: '/framework-logos/astro.svg',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
         runCommand: '',
         rootDirectory: './',
         outputDirectory: 'dist',
@@ -68,8 +84,9 @@ export const jsFrameworkPresets: Record<JsFramework, JsFrameworkPreset> = {
         id: 'SVELTEKIT',
         label: 'SvelteKit',
         description: 'Svelte framework with an adapter-node server.',
-        installCommand: '',
-        buildCommand: 'vite build',
+        logoSrc: '/framework-logos/sveltekit.png',
+        installCommand: 'npm install --force',
+        buildCommand: 'npm run build',
         runCommand: 'node build',
         rootDirectory: './',
         outputDirectory: 'build',

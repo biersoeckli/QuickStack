@@ -107,6 +107,16 @@ describe('appSourceInfoInputZodModel framework build method', () => {
         expect(result.success).toBe(false);
     });
 
+    it('rejects an unknown framework', () => {
+        const result = appSourceInfoInputZodModel.safeParse({
+            ...gitInput,
+            framework: 'UNKNOWN',
+            buildCommand: 'npm run build',
+        });
+
+        expect(result.success).toBe(false);
+    });
+
     it('accepts a framework with commands and paths', () => {
         const result = appSourceInfoInputZodModel.safeParse({
             ...gitInput,

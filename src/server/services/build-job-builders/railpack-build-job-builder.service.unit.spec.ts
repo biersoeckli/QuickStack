@@ -48,7 +48,10 @@ describe('RailpackBuildJobBuilder', () => {
         ]));
 
         const prepareContainer = initContainers.find((container) => container.name === 'railpack-prepare-init')!;
-        expect(prepareContainer.env?.map((entry) => entry.name)).not.toContain('GIT_URL');
+        expect(RAILPACK_FRONTEND_IMAGE).toBe('ghcr.io/railwayapp/railpack-frontend:v0.39.0');
+        expect(prepareContainer.env).toContainEqual({ name: 'RAILPACK_VERSION', value: '0.39.0' });
+        expect(prepareContainer.args?.[0]).toContain('RAILPACK_VERSION="0.39.0"');
+        expect(prepareContainer.env ?? []).not.toContainEqual(expect.objectContaining({ name: 'GIT_URL' }));
         expect(prepareContainer.args?.[0]).not.toContain('git clone');
     });
 

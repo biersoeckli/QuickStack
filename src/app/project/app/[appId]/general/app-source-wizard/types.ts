@@ -1,7 +1,8 @@
 import { AppBuildMethod, appBuildMethodLabels } from "@/shared/model/app-source-info.model";
+import { JsFramework } from "@/shared/model/js-framework.model";
 
 export type SourceType = 'GIT' | 'GIT_SSH' | 'CONTAINER';
-export type StepId = 'source' | 'git-url' | 'ssh-url' | 'branch' | 'build-method' | 'dockerfile' | 'framework' | 'container-image' | 'summary';
+export type StepId = 'source' | 'git-url' | 'ssh-url' | 'branch' | 'build-method' | 'dockerfile' | 'framework-selection' | 'framework-configuration' | 'container-image' | 'summary';
 export type SourceWizardInput = {
     sourceType: SourceType;
     buildMethod?: AppBuildMethod;
@@ -13,7 +14,7 @@ export type SourceWizardInput = {
     gitUsername?: string | null;
     gitToken?: string | null;
     dockerfilePath?: string | null;
-    framework?: string | null;
+    framework?: JsFramework | null;
     installCommand?: string | null;
     buildCommand?: string | null;
     runCommand?: string | null;

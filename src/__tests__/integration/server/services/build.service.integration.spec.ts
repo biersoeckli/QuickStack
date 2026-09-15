@@ -18,6 +18,7 @@ import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { PathUtils } from '@/server/utils/path.utils';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
+import { JsFramework } from '@/shared/model/js-framework.model';
 import fs from 'node:fs/promises';
 
 
@@ -81,6 +82,25 @@ describe('build.service integration', () => {
             expectedLogLine: 'Railpack build will run queue wait, prepare step, and BuildKit build in sequence.',
         });
     }, 420_000);
+
+    it('builds and pushes the modern-beer-app Next.js repository with framework overrides', async () => {
+        await runBuildAndAssert({
+            appIdPrefix: 'framework-nextjs-modern-beer',
+            projectIdPrefix: 'proj-framework-nextjs-modern-beer',
+            sourceType: 'GIT',
+            buildMethod: 'FRAMEWORK',
+            gitUrl: 'https://github.com/biersoeckli/modern-beer-app.git',
+            gitBranch: 'main',
+            framework: 'NEXTJS',
+            installCommand: 'pnpm install --no-frozen-lockfile',
+            buildCommand: 'pnpm run build',
+            runCommand: 'pnpm run start',
+            rootDirectory: './',
+            outputDirectory: '.next',
+            nodeVersion: '22',
+            expectedLogLine: 'Framework build (NEXTJS) with Railpack prepare, build and start overrides.',
+        });
+    }, 420_000);
 });
 
 export type BuildIntegrationInput = {
@@ -89,8 +109,16 @@ export type BuildIntegrationInput = {
     buildMethod: AppBuildMethod;
     sourceType: 'GIT' | 'GIT_SSH';
     gitUrl: string;
+    gitBranch?: string;
     expectedLogLine: string;
     privateSshKey?: string;
+    framework?: JsFramework;
+    installCommand?: string;
+    buildCommand?: string;
+    runCommand?: string;
+    rootDirectory?: string;
+    outputDirectory?: string;
+    nodeVersion?: string;
 };
 
 export function setupBuildServiceIntegration(label: string) {
@@ -209,7 +237,14 @@ function createBuildApp(input: BuildIntegrationInput & { id: string; projectId: 
         buildMethod: input.buildMethod,
         dockerfilePath: './Dockerfile',
         gitUrl: input.gitUrl,
-        gitBranch: GitTestRepositories.branch,
+        gitBranch: input.gitBranch ?? GitTestRepositories.branch,
+        framework: input.framework,
+        installCommand: input.installCommand,
+        buildCommand: input.buildCommand,
+        runCommand: input.runCommand,
+        rootDirectory: input.rootDirectory,
+        outputDirectory: input.outputDirectory,
+        nodeVersion: input.nodeVersion,
         replicas: 1,
         envVars: '',
         useNetworkPolicy: true,
