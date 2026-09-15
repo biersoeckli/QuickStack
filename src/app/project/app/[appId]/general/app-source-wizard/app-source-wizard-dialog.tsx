@@ -45,6 +45,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     const [branchError, setBranchError] = useState<string | null>(null);
     const [isEnsuringKey, setIsEnsuringKey] = useState(false);
     const [isDetectingDockerfile, setIsDetectingDockerfile] = useState(false);
+    const [dockerfileDetectionResult, setDockerfileDetectionResult] = useState<'detected' | 'not-found' | null>(null);
     const [showGitToken, setShowGitToken] = useState(false);
     const [showRegistryPassword, setShowRegistryPassword] = useState(false);
 
@@ -75,6 +76,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     const chooseSourceType = (sourceType: SourceType) => {
         setBranches([]);
         setBranchError(null);
+        setDockerfileDetectionResult(null);
         setFormData((current) => resetForSourceType(current, sourceType));
     };
 
@@ -115,7 +117,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     };
 
     const ensureSshKey = async () => {
-        if (!formData.gitUrl?.trim() || publicKey || isEnsuringKey) {
+        if (publicKey || isEnsuringKey) {
             return;
         }
         setIsEnsuringKey(true);
@@ -179,6 +181,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
         try {
             const dockerfilePath = await Actions.run(() => detectDockerfilePath(app.id, inputData));
             updateFormData({ dockerfilePath: dockerfilePath || defaultDockerfilePath });
+            setDockerfileDetectionResult(dockerfilePath ? 'detected' : 'not-found');
         } finally {
             setIsDetectingDockerfile(false);
         }
@@ -186,6 +189,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
 
     const selectGitBranch = (gitBranch: string) => {
         updateFormData({ gitBranch });
+        setDockerfileDetectionResult(null);
         goTo('build-method');
     };
 
@@ -261,7 +265,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             <DialogHeader>
                 <DialogTitle>{currentTitle}</DialogTitle>
                 <DialogDescription>
-                    {step === 'summary' ? 'Review the app source before saving.' : 'Connect a source with the details QuickStack needs to deploy this app.'}
+                    {step === 'summary' ? 'Review the app source before saving.' : ''}
                 </DialogDescription>
             </DialogHeader>
 
@@ -316,7 +320,9 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                     <DockerfilePathStep
                         value={formData.dockerfilePath ?? defaultDockerfilePath}
                         isDetecting={isDetectingDockerfile}
+                        detectionResult={dockerfileDetectionResult}
                         onChange={(dockerfilePath) => updateFormData({ dockerfilePath })}
+                        onRetry={() => void runDockerfileDetection()}
                     />
                 )}
                 {step === 'framework-selection' && (
@@ -330,6 +336,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                         framework={formData.framework}
                         formData={formData}
                         onChange={updateFormData}
+                        onChangeFramework={goBack}
                     />
                 )}
                 {step === 'container-image' && (
