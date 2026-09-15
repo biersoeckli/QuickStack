@@ -45,7 +45,7 @@ const EDGE_COLORS = {
     internet: '#8b5cf6',
 } as const;
 
-const handleClassName = '!h-1.5 !w-1.5 !border-0 !bg-transparent !opacity-0';
+const handleClassName = 'h-1.5! w-1.5! border-0! bg-transparent! opacity-0!';
 
 function formatRuleLabel(port: number, protocol: string) {
     return `${port}/${protocol.toUpperCase()}`;
@@ -121,7 +121,7 @@ const PeerNode = ({ data }: NodeProps<Node<PeerNodeData, 'peer'>>) => {
         : 'bg-qs-500/10 text-qs-600 ring-qs-500/30';
     return (
         <div className={cn(
-            'group flex w-[200px] cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-colors hover:border-qs-500/50 hover:shadow-md',
+            'group flex w-[200px] cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 shadow-xs transition-colors hover:border-qs-500/50 hover:shadow-md',
             data.externalProject && 'border-dashed border-amber-500/70 bg-amber-500/5',
         )}>
             <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg ring-1', iconClasses)}>
@@ -144,7 +144,7 @@ const PeerNode = ({ data }: NodeProps<Node<PeerNodeData, 'peer'>>) => {
 
 const InternetNode = () => (
     <div className="flex flex-col items-center gap-1.5">
-        <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-sm">
+        <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-xs">
             <Cloud className="size-7" />
         </div>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Internet</span>

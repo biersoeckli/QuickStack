@@ -70,7 +70,7 @@ export default function CreateTemplateAppSetupDialog({
                 <form action={() => form.handleSubmit((data) => formAction(data))()}>
                     <ScrollArea className="-mx-6 h-[calc(70vh-4.5rem)] px-6">
                         <div className="grid gap-6 py-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                            <section className="rounded-lg border bg-card p-5 shadow-sm">
+                            <section className="rounded-lg border bg-card p-5 shadow-xs">
                                 <div className="mb-6 space-y-1">
                                     <h2 className="text-base font-semibold">Configuration</h2>
                                     <p className="text-sm text-muted-foreground">Adjust the names, images, and credentials required by this template.</p>

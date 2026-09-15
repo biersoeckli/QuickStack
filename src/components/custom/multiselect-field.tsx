@@ -80,7 +80,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
               className={cn(
                 'items-center gap-1 overflow-hidden text-sm',
                 multiple
-                  ? 'flex flex-grow flex-wrap '
+                  ? 'flex grow flex-wrap '
                   : 'inline-flex whitespace-nowrap'
               )}
             >
@@ -94,7 +94,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                     .map((option) => (
                       <span
                         key={option.value}
-                        className="inline-flex items-center gap-1 rounded-md border py-0.5 pl-2 pr-1 text-xs font-medium text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        className="inline-flex items-center gap-1 rounded-md border py-0.5 pl-2 pr-1 text-xs font-medium text-foreground transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       >
                         <span>{option.label}</span>
                         <span
@@ -102,7 +102,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                             e.preventDefault()
                             handleSelect(option.value)
                           }}
-                          className="flex items-center rounded-sm px-[1px] text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground"
+                          className="flex items-center rounded-sm px-px text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground"
                         >
                           <Cross2Icon />
                         </span>
@@ -136,7 +136,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
+          className="w-(--radix-popover-trigger-width) p-0"
           align="start"
         >
           <Command>

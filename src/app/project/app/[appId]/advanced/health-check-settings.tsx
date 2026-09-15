@@ -89,7 +89,7 @@ export default function HealthCheckSettings({ workload, readonly, saveHealthChec
                             control={form.control}
                             name="enabled"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-xs">
                                     <div className="space-y-0.5">
                                         <FormLabel>Enable Health Check</FormLabel>
                                     </div>

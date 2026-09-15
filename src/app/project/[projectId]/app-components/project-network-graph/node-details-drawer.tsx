@@ -276,7 +276,7 @@ export function NodeDetailsDrawer({
             open={open}
             onOpenChange={onOpenChange}
         >
-            <DrawerContent ref={contentRef} className="flex flex-col p-0 data-[vaul-drawer-direction=right]:w-[85vw] data-[vaul-drawer-direction=right]:sm:max-w-lg data-[vaul-drawer-direction=right]:lg:max-w-xl">
+            <DrawerContent ref={contentRef} className="flex flex-col p-0 data-[vaul-drawer-direction=right]:w-[85vw] sm:data-[vaul-drawer-direction=right]:max-w-lg lg:data-[vaul-drawer-direction=right]:max-w-xl">
                 <Button
                     type="button"
                     variant="ghost"

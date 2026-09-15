@@ -178,7 +178,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                 {!readonly && (
                     <TabsContent value="configuration" className="pt-4">
                         <div className="space-y-4">
-                            <div className="sticky top-0 z-10 bg-background/95 pb-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                            <div className="sticky top-0 z-10 bg-background/95 pb-4 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
                                 <AgentStatusBar agent={agent} readonly={readonly} templateInfo={templateInfo} />
                             </div>
 
