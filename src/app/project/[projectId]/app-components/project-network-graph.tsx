@@ -288,8 +288,8 @@ function ProjectNetworkGraphEditor({
                 opacity: selectedNodeId && edge.source !== selectedNodeId && edge.target !== selectedNodeId ? 0.2 : 1,
             },
             label: presentation.label,
-            labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600 },
-            labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.9, stroke: 'hsl(var(--border))', strokeWidth: 1 },
+            labelStyle: { fill: 'var(--muted-foreground)', fontSize: 10, fontWeight: 600 },
+            labelBgStyle: { fill: 'var(--card)', fillOpacity: 0.9, stroke: 'var(--border)', strokeWidth: 1 },
             labelBgPadding: [6, 3] as [number, number],
             labelBgBorderRadius: 6,
         };
@@ -475,10 +475,10 @@ function ProjectNetworkGraphEditor({
                     }}
                     onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
                     style={{
-                        '--xy-controls-button-background-color': 'hsl(var(--secondary))',
-                        '--xy-controls-button-background-color-hover': 'hsl(var(--accent))',
-                        '--xy-controls-button-color': 'hsl(var(--secondary-foreground))',
-                        '--xy-controls-button-border-color': 'hsl(var(--border))',
+                        '--xy-controls-button-background-color': 'var(--secondary)',
+                        '--xy-controls-button-background-color-hover': 'var(--accent)',
+                        '--xy-controls-button-color': 'var(--secondary-foreground)',
+                        '--xy-controls-button-border-color': 'var(--border)',
                         '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
@@ -486,7 +486,7 @@ function ProjectNetworkGraphEditor({
                         if (data.kind !== 'INTERNET') setSelectedNodeId(node.id);
                     }}
                 >
-                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="hsl(var(--muted-foreground) / 0.35)" />
+                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
                     <Controls showInteractive={false} />
                 </ReactFlow>
                 {dirty && (

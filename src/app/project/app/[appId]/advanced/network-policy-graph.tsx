@@ -180,8 +180,8 @@ function Legend() {
 
 function edgeLabelStyle() {
     return {
-        labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600 },
-        labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.9, stroke: 'hsl(var(--border))', strokeWidth: 1 },
+        labelStyle: { fill: 'var(--muted-foreground)', fontSize: 10, fontWeight: 600 },
+        labelBgStyle: { fill: 'var(--card)', fillOpacity: 0.9, stroke: 'var(--border)', strokeWidth: 1 },
         labelBgPadding: [6, 3] as [number, number],
         labelBgBorderRadius: 6,
     };
@@ -357,10 +357,10 @@ export default function NetworkPolicyGraph({
                     nodesConnectable={false}
                     elementsSelectable={false}
                     style={{
-                        '--xy-controls-button-background-color': 'hsl(var(--secondary))',
-                        '--xy-controls-button-background-color-hover': 'hsl(var(--accent))',
-                        '--xy-controls-button-color': 'hsl(var(--secondary-foreground))',
-                        '--xy-controls-button-border-color': 'hsl(var(--border))',
+                        '--xy-controls-button-background-color': 'var(--secondary)',
+                        '--xy-controls-button-background-color-hover': 'var(--accent)',
+                        '--xy-controls-button-color': 'var(--secondary-foreground)',
+                        '--xy-controls-button-border-color': 'var(--border)',
                         '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
@@ -369,7 +369,7 @@ export default function NetworkPolicyGraph({
                         router.push(workloadType === 'AGENT' ? `/project/agent/${workloadId}` : `/project/app/${workloadId}`);
                     }}
                 >
-                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="hsl(var(--border))" />
+                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--border)" />
                     <Controls showInteractive={false} />
                 </ReactFlow>
             </div>

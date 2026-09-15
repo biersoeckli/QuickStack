@@ -1,5 +1,8 @@
 # 04 — Theme auf OKLCH migrieren und Base-Color festlegen
 
+**Entscheidung:** Base-Color `neutral` auf dem offiziellen shadcn-Theme-Scaffold mit OKLCH
+(Quelle: https://ui.shadcn.com/docs/theming). Bewusst kein `zinc`.
+
 **What to build:** Die Theme-Tokens nutzen die aktuelle shadcn/OKLCH-Konvention; Hell- und
 Dunkelmodus sind konsistent, die Base-Color ist bewusst gewählt, und Charts lesen die
 Theme-Variablen direkt.
