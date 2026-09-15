@@ -81,6 +81,58 @@ describe('appSourceInfoGitSshZodModel', () => {
     });
 });
 
+describe('appSourceInfoInputZodModel framework build method', () => {
+    const gitInput = {
+        sourceType: 'GIT' as const,
+        gitUrl: 'https://github.com/example/repo.git',
+        gitBranch: 'main',
+        buildMethod: 'FRAMEWORK' as const,
+    };
+
+    it('requires a framework selection', () => {
+        const result = appSourceInfoInputZodModel.safeParse({
+            ...gitInput,
+            buildCommand: 'next build',
+        });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('requires a build command', () => {
+        const result = appSourceInfoInputZodModel.safeParse({
+            ...gitInput,
+            framework: 'NEXTJS',
+        });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('rejects an unknown framework', () => {
+        const result = appSourceInfoInputZodModel.safeParse({
+            ...gitInput,
+            framework: 'UNKNOWN',
+            buildCommand: 'npm run build',
+        });
+
+        expect(result.success).toBe(false);
+    });
+
+    it('accepts a framework with commands and paths', () => {
+        const result = appSourceInfoInputZodModel.safeParse({
+            ...gitInput,
+            framework: 'NEXTJS',
+            installCommand: 'npm install',
+            buildCommand: 'next build',
+            runCommand: 'next start',
+            rootDirectory: './',
+            outputDirectory: '.next',
+            nodeVersion: '22',
+        });
+
+        expect(result.success).toBe(true);
+    });
+});
+
 describe('appDockerfileDetectionZodModel', () => {
     it('requires a selected Git branch before Dockerfile detection', () => {
         const result = appDockerfileDetectionZodModel.safeParse({

@@ -2,6 +2,7 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
 export const GitTestRepositories = {
     publicHttpsUrl: 'https://github.com/biersoeckli/dummy-node-app.git',
+    dummyAppsHttpsUrl: 'https://github.com/biersoeckli/dummy-apps.git',
     publicSshUrl: 'git@github.com:biersoeckli/dummy-node-app.git',
     privateSshUrl: 'git@github.com:biersoeckli/dummy-node-app-private.git',
     branch: 'main',

@@ -1,7 +1,7 @@
 'use server'
 
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { appDockerfileDetectionZodModel, appGitBranchesLookupZodModel, appSourceInfoContainerZodModel, appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, AppDockerfileDetectionModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
+import { appDockerfileDetectionZodModel, appFrameworkConfigurationZodModel, appGitBranchesLookupZodModel, appSourceInfoContainerZodModel, appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, AppDockerfileDetectionModel, AppFrameworkConfigurationModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
@@ -31,6 +31,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                     dockerfilePath: ['Path to Dockerfile is required when using the Dockerfile build method.'],
                 });
             }
+            validateFrameworkSource(validatedData);
             await appService.save({
                 ...existingApp,
                 ...validatedData,
@@ -39,6 +40,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 dockerfilePath: validatedData.buildMethod === 'DOCKERFILE'
                     ? validatedData.dockerfilePath ?? existingApp.dockerfilePath
                     : existingApp.dockerfilePath,
+                ...mapFrameworkFields(validatedData),
                 containerImageSource: null,
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
@@ -59,6 +61,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                     dockerfilePath: ['Path to Dockerfile is required when using the Dockerfile build method.'],
                 });
             }
+            validateFrameworkSource(validatedData);
             const publicKey = await appGitSshKeyService.getPublicKey(appId);
             if (!publicKey) {
                 throw new ServiceException('Generate SSH keys before saving a Git SSH source.');
@@ -71,6 +74,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 dockerfilePath: validatedData.buildMethod === 'DOCKERFILE'
                     ? validatedData.dockerfilePath ?? existingApp.dockerfilePath
                     : existingApp.dockerfilePath,
+                ...mapFrameworkFields(validatedData),
                 containerImageSource: null,
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
@@ -95,6 +99,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 gitBranch: null,
                 gitUsername: null,
                 gitToken: null,
+                ...mapFrameworkFields({}),
                 sourceType: 'CONTAINER',
                 id: appId,
             });
@@ -104,6 +109,45 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
         throw new ServiceException('Invalid Source Type');
     });
 };
+
+function validateFrameworkSource(data: { buildMethod?: string; framework?: string | null; buildCommand?: string | null }) {
+    if (data.buildMethod !== 'FRAMEWORK') {
+        return;
+    }
+    const errors: Record<string, string[]> = {};
+    if (!data.framework) {
+        errors.framework = ['Select a framework.'];
+    }
+    if (!data.buildCommand?.trim()) {
+        errors.buildCommand = ['Build command is required when using the framework build method.'];
+    }
+    if (Object.keys(errors).length > 0) {
+        throw new FormValidationException('Please correct the errors in the form.', errors);
+    }
+}
+
+function mapFrameworkFields(data: Partial<Pick<AppSourceInfoInputModel, 'buildMethod' | 'framework' | 'installCommand' | 'buildCommand' | 'runCommand' | 'rootDirectory' | 'outputDirectory' | 'nodeVersion'>>) {
+    if (data.buildMethod !== 'FRAMEWORK') {
+        return {
+            framework: null,
+            installCommand: null,
+            buildCommand: null,
+            runCommand: null,
+            rootDirectory: null,
+            outputDirectory: null,
+            nodeVersion: null,
+        };
+    }
+    return {
+        framework: data.framework || null,
+        installCommand: data.installCommand || null,
+        buildCommand: data.buildCommand || null,
+        runCommand: data.runCommand || null,
+        rootDirectory: data.rootDirectory || './',
+        outputDirectory: data.outputDirectory || null,
+        nodeVersion: data.nodeVersion || null,
+    };
+}
 
 export const ensureGitSshPublicKey = async (appId: string) =>
     simpleAction(async () => {
@@ -183,6 +227,26 @@ export const saveGeneralAppContainerConfig = async (prevState: any, inputData: A
             securityContextRunAsGroup: validatedData.securityContextRunAsGroup ?? null,
             securityContextFsGroup: validatedData.securityContextFsGroup ?? null,
             securityContextPrivileged: validatedData.securityContextPrivileged ?? false,
+            id: appId,
+        });
+    });
+
+export const saveFrameworkConfiguration = async (prevState: any, inputData: AppFrameworkConfigurationModel, appId: string) =>
+    saveFormAction(inputData, appFrameworkConfigurationZodModel, async (validatedData) => {
+        await isAuthorizedWriteForApp(appId);
+        const existingApp = await appService.getById(appId);
+        if (existingApp.buildMethod !== 'FRAMEWORK') {
+            throw new ServiceException('Framework configuration is only available for framework builds.');
+        }
+
+        await appService.save({
+            ...existingApp,
+            installCommand: validatedData.installCommand || null,
+            buildCommand: validatedData.buildCommand,
+            runCommand: validatedData.runCommand || null,
+            rootDirectory: validatedData.rootDirectory || './',
+            outputDirectory: validatedData.outputDirectory || null,
+            nodeVersion: validatedData.nodeVersion || null,
             id: appId,
         });
     });

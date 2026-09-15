@@ -11,13 +11,16 @@ import { mockPathUtilsForTests } from '@/__tests__/path-test.utils';
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import dataAccess from '@/server/adapter/db.client';
 import buildService from '@/server/services/build.service';
+import deploymentService from '@/server/services/deployment.service';
 import deploymentLogService from '@/server/services/deployment-logs.service';
+import ingressService from '@/server/services/ingress.service';
 import podService from '@/server/services/pod.service';
 import { BUILD_NAMESPACE } from '@/server/services/registry.service';
 import { CryptoUtils } from '@/server/utils/crypto.utils';
 import { PathUtils } from '@/server/utils/path.utils';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
+import { JsFramework, jsFrameworkPresets } from '@/shared/model/js-framework.model';
 import fs from 'node:fs/promises';
 
 
@@ -81,6 +84,58 @@ describe('build.service integration', () => {
             expectedLogLine: 'Railpack build will run queue wait, prepare step, and BuildKit build in sequence.',
         });
     }, 420_000);
+
+    it('builds and pushes the modern-beer-app Next.js repository with framework overrides', async () => {
+        await runBuildAndAssert({
+            appIdPrefix: 'framework-nextjs-modern-beer',
+            projectIdPrefix: 'proj-framework-nextjs-modern-beer',
+            sourceType: 'GIT',
+            buildMethod: 'FRAMEWORK',
+            gitUrl: 'https://github.com/biersoeckli/modern-beer-app.git',
+            gitBranch: 'main',
+            framework: 'NEXTJS',
+            installCommand: 'pnpm install --no-frozen-lockfile',
+            buildCommand: 'pnpm run build',
+            runCommand: 'pnpm run start',
+            rootDirectory: './',
+            outputDirectory: '.next',
+            nodeVersion: '22',
+            expectedLogLine: 'Framework build (NEXTJS) with Railpack prepare, build and start overrides.',
+        });
+    }, 420_000);
+
+    describe('framework dummy apps', () => {
+        const frameworks: { framework: JsFramework; rootDirectory: string }[] = [
+            { framework: 'NEXTJS', rootDirectory: './nextjs' },
+            { framework: 'REACT', rootDirectory: './react' },
+            { framework: 'ANGULAR', rootDirectory: './angular' },
+            { framework: 'NUXT', rootDirectory: './nuxt' },
+            { framework: 'ASTRO', rootDirectory: './astro' },
+            { framework: 'SVELTEKIT', rootDirectory: './sveltekit' },
+        ];
+
+        it('builds and deploys one randomly selected framework dummy app', async () => {
+            const { framework, rootDirectory } = frameworks[Math.floor(Math.random() * frameworks.length)];
+            const preset = jsFrameworkPresets[framework];
+            console.info(`Selected framework integration test: ${framework}`);
+
+            await runBuildDeployAndAssert({
+                appIdPrefix: `framework-${framework.toLowerCase()}`,
+                projectIdPrefix: `proj-framework-${framework.toLowerCase()}`,
+                sourceType: 'GIT',
+                buildMethod: 'FRAMEWORK',
+                gitUrl: GitTestRepositories.dummyAppsHttpsUrl,
+                gitBranch: 'main',
+                framework,
+                installCommand: preset.installCommand,
+                buildCommand: preset.buildCommand,
+                runCommand: preset.runCommand,
+                rootDirectory,
+                outputDirectory: preset.outputDirectory,
+                expectedLogLine: `Framework build (${framework}) with Railpack prepare, build and start overrides.`,
+            });
+        }, 480_000);
+    });
 });
 
 export type BuildIntegrationInput = {
@@ -89,8 +144,16 @@ export type BuildIntegrationInput = {
     buildMethod: AppBuildMethod;
     sourceType: 'GIT' | 'GIT_SSH';
     gitUrl: string;
+    gitBranch?: string;
     expectedLogLine: string;
     privateSshKey?: string;
+    framework?: JsFramework;
+    installCommand?: string;
+    buildCommand?: string;
+    runCommand?: string;
+    rootDirectory?: string;
+    outputDirectory?: string;
+    nodeVersion?: string;
 };
 
 export function setupBuildServiceIntegration(label: string) {
@@ -170,6 +233,51 @@ export async function runBuildAndAssert(input: BuildIntegrationInput) {
     expect(logFile).toContain(`Selected build method: ${input.buildMethod}`);
     expect(logFile).toContain(input.expectedLogLine);
     expect(logFile).toContain(`Build job ${buildJobName} scheduled successfully`);
+
+    return { app, buildJobName, gitCommitHash, gitCommitMessage };
+}
+
+async function runBuildDeployAndAssert(input: BuildIntegrationInput) {
+    const { app, buildJobName, gitCommitHash, gitCommitMessage } = await runBuildAndAssert(input);
+    const deploymentId = `dep-deploy-${app.id}`;
+    const ingressSpy = vi.spyOn(ingressService, 'createOrUpdateIngressForApp').mockResolvedValue();
+
+    try {
+        await deploymentLogService.catchErrosAndLog(deploymentId, async () => {
+            await deploymentService.createDeployment(deploymentId, app, {
+                buildJobName,
+                gitCommitHash,
+                gitCommitMessage,
+                buildMethod: input.buildMethod,
+            });
+        });
+
+        await expect.poll(async () => {
+            return await deploymentService.getDeploymentStatus(app.projectId, app.id);
+        }, {
+            timeout: 180_000,
+            interval: 2_000,
+        }).toBe('DEPLOYED');
+
+        const deployment = await deploymentService.getDeployment(app.projectId, app.id);
+        expect(deployment).toMatchObject({
+            metadata: { name: app.id },
+            spec: {
+                replicas: 1,
+                template: {
+                    metadata: {
+                        annotations: expect.objectContaining({
+                            buildJobName,
+                            'qs-build-method': 'FRAMEWORK',
+                            'qs-git-commit': gitCommitHash,
+                        }),
+                    },
+                },
+            },
+        });
+    } finally {
+        ingressSpy.mockRestore();
+    }
 }
 
 export async function runBuildAndAssertGitFailure(input: BuildIntegrationInput) {
@@ -209,7 +317,14 @@ function createBuildApp(input: BuildIntegrationInput & { id: string; projectId: 
         buildMethod: input.buildMethod,
         dockerfilePath: './Dockerfile',
         gitUrl: input.gitUrl,
-        gitBranch: GitTestRepositories.branch,
+        gitBranch: input.gitBranch ?? GitTestRepositories.branch,
+        framework: input.framework,
+        installCommand: input.installCommand,
+        buildCommand: input.buildCommand,
+        runCommand: input.runCommand,
+        rootDirectory: input.rootDirectory,
+        outputDirectory: input.outputDirectory,
+        nodeVersion: input.nodeVersion,
         replicas: 1,
         envVars: '',
         useNetworkPolicy: true,

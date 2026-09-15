@@ -46,6 +46,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
     const [branchError, setBranchError] = useState<string | null>(null);
     const [isEnsuringKey, setIsEnsuringKey] = useState(false);
     const [isDetectingDockerfile, setIsDetectingDockerfile] = useState(false);
+    const [dockerfileDetectionResult, setDockerfileDetectionResult] = useState<'detected' | 'not-found' | null>(null);
     const [showGitToken, setShowGitToken] = useState(false);
     const [showRegistryPassword, setShowRegistryPassword] = useState(false);
 
@@ -73,6 +74,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
     const chooseSourceType = (sourceType: SourceType) => {
         setBranches([]);
         setBranchError(null);
+        setDockerfileDetectionResult(null);
         setFormData((current) => resetForSourceType(current, sourceType));
     };
 
@@ -113,7 +115,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
     };
 
     const ensureSshKey = async () => {
-        if (!formData.gitUrl?.trim() || publicKey || isEnsuringKey) return;
+        if (publicKey || isEnsuringKey) return;
         setIsEnsuringKey(true);
         try {
             const key = await Actions.run(() => ensureAgentGitSshPublicKey(agent.id));
@@ -169,6 +171,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
         try {
             const dockerfilePath = await Actions.run(() => detectAgentDockerfilePath(agent.id, inputData));
             updateFormData({ dockerfilePath: dockerfilePath || defaultDockerfilePath });
+            setDockerfileDetectionResult(dockerfilePath ? 'detected' : 'not-found');
         } finally {
             setIsDetectingDockerfile(false);
         }
@@ -176,6 +179,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
 
     const selectGitBranch = async (gitBranch: string) => {
         updateFormData({ gitBranch, buildMethod: 'DOCKERFILE' });
+        setDockerfileDetectionResult(null);
         goTo('dockerfile');
         await runDockerfileDetection(gitBranch);
     };
@@ -265,7 +269,9 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
                     <DockerfilePathStep
                         value={formData.dockerfilePath ?? defaultDockerfilePath}
                         isDetecting={isDetectingDockerfile}
+                        detectionResult={dockerfileDetectionResult}
                         onChange={(dockerfilePath) => updateFormData({ dockerfilePath })}
+                        onRetry={() => void runDockerfileDetection()}
                     />
                 )}
                 {step === 'container-image' && (

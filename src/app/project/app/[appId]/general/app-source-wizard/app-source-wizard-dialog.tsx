@@ -8,6 +8,7 @@ import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppBuildMethod, AppDockerfileDetectionModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
+import { JsFramework, jsFrameworkPresets, jsFrameworkZodModel } from "@/shared/model/js-framework.model";
 import { ChevronLeft, Loader2, Rocket, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,6 +17,8 @@ import { detectDockerfilePath, ensureGitSshPublicKey, generateOrRegenerateGitSsh
 import { BuildMethodStep } from "./build-method-step";
 import { ContainerImageStep } from "./container-image-step";
 import { DockerfilePathStep } from "./dockerfile-path-step";
+import { FrameworkConfigurationStep } from "./framework-configuration-step";
+import { FrameworkStep } from "./framework-step";
 import { GitBranchStep } from "./git-branch-step";
 import { GitHttpsUrlStep } from "./git-https-url-step";
 import { GitSshUrlStep } from "./git-ssh-url-step";
@@ -42,6 +45,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     const [branchError, setBranchError] = useState<string | null>(null);
     const [isEnsuringKey, setIsEnsuringKey] = useState(false);
     const [isDetectingDockerfile, setIsDetectingDockerfile] = useState(false);
+    const [dockerfileDetectionResult, setDockerfileDetectionResult] = useState<'detected' | 'not-found' | null>(null);
     const [showGitToken, setShowGitToken] = useState(false);
     const [showRegistryPassword, setShowRegistryPassword] = useState(false);
 
@@ -72,6 +76,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     const chooseSourceType = (sourceType: SourceType) => {
         setBranches([]);
         setBranchError(null);
+        setDockerfileDetectionResult(null);
         setFormData((current) => resetForSourceType(current, sourceType));
     };
 
@@ -112,7 +117,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     };
 
     const ensureSshKey = async () => {
-        if (!formData.gitUrl?.trim() || publicKey || isEnsuringKey) {
+        if (publicKey || isEnsuringKey) {
             return;
         }
         setIsEnsuringKey(true);
@@ -176,6 +181,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
         try {
             const dockerfilePath = await Actions.run(() => detectDockerfilePath(app.id, inputData));
             updateFormData({ dockerfilePath: dockerfilePath || defaultDockerfilePath });
+            setDockerfileDetectionResult(dockerfilePath ? 'detected' : 'not-found');
         } finally {
             setIsDetectingDockerfile(false);
         }
@@ -183,6 +189,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
 
     const selectGitBranch = (gitBranch: string) => {
         updateFormData({ gitBranch });
+        setDockerfileDetectionResult(null);
         goTo('build-method');
     };
 
@@ -193,7 +200,24 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             await runDockerfileDetection();
             return;
         }
+        if (buildMethod === 'FRAMEWORK') {
+            goTo('framework-selection');
+            return;
+        }
         goTo('summary');
+    };
+
+    const selectFramework = (framework: JsFramework) => {
+        const preset = jsFrameworkPresets[framework];
+        updateFormData({
+            framework,
+            installCommand: preset.installCommand,
+            buildCommand: preset.buildCommand,
+            runCommand: preset.runCommand,
+            rootDirectory: preset.rootDirectory,
+            outputDirectory: preset.outputDirectory,
+        });
+        goTo('framework-configuration');
     };
 
     const next = async () => {
@@ -213,7 +237,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             }
             return;
         }
-        if (step === 'dockerfile' || step === 'container-image') {
+        if (step === 'dockerfile' || step === 'framework-configuration' || step === 'container-image') {
             goTo('summary');
         }
     };
@@ -241,7 +265,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
             <DialogHeader>
                 <DialogTitle>{currentTitle}</DialogTitle>
                 <DialogDescription>
-                    {step === 'summary' ? 'Review the app source before saving.' : 'Connect a source with the details QuickStack needs to deploy this app.'}
+                    {step === 'summary' ? 'Review the app source before saving.' : ''}
                 </DialogDescription>
             </DialogHeader>
 
@@ -296,7 +320,23 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                     <DockerfilePathStep
                         value={formData.dockerfilePath ?? defaultDockerfilePath}
                         isDetecting={isDetectingDockerfile}
+                        detectionResult={dockerfileDetectionResult}
                         onChange={(dockerfilePath) => updateFormData({ dockerfilePath })}
+                        onRetry={() => void runDockerfileDetection()}
+                    />
+                )}
+                {step === 'framework-selection' && (
+                    <FrameworkStep
+                        value={formData.framework ?? undefined}
+                        onSelect={selectFramework}
+                    />
+                )}
+                {step === 'framework-configuration' && formData.framework && (
+                    <FrameworkConfigurationStep
+                        framework={formData.framework}
+                        formData={formData}
+                        onChange={updateFormData}
+                        onChangeFramework={goBack}
                     />
                 )}
                 {step === 'container-image' && (
@@ -342,7 +382,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                                     Save & Deploy
                                 </Button>
                             </>
-                        ) : step === 'branch' || step === 'build-method' ? (
+                        ) : step === 'branch' || step === 'build-method' || step === 'framework-selection' ? (
                             null
                         ) : (
                             <Button type="button" onClick={next} disabled={nextDisabled}>
@@ -364,6 +404,8 @@ function getStepTitle(step: StepId, sourceType: AppSourceInfoInputModel['sourceT
     if (step === 'branch') return 'Choose Git Branch';
     if (step === 'build-method') return 'Choose Build Method';
     if (step === 'dockerfile') return 'Confirm Dockerfile Path';
+    if (step === 'framework-selection') return 'Choose Framework';
+    if (step === 'framework-configuration') return 'Configure Framework';
     if (step === 'container-image') return 'Connect Docker Container Image';
     if (step === 'summary') return `${sourceTypeLabels[sourceType as SourceType]} Summary`;
     return 'Connect App Source';
@@ -375,6 +417,7 @@ function getNextDisabled(step: StepId, formData: AppSourceInfoInputModel, public
     if (step === 'ssh-url') return !formData.gitUrl?.trim() || !publicKey;
     if (step === 'branch') return !formData.gitBranch;
     if (step === 'dockerfile') return !formData.dockerfilePath?.trim();
+    if (step === 'framework-configuration') return !formData.framework || !formData.buildCommand?.trim();
     if (step === 'container-image') return !formData.containerImageSource?.trim();
     return false;
 }
@@ -392,6 +435,7 @@ function resetForSourceType(current: AppSourceInfoInputModel, sourceType: Source
             gitUsername: '',
             gitToken: '',
             dockerfilePath: defaultDockerfilePath,
+            ...emptyFrameworkFields(),
         };
     }
     if (sourceType === 'GIT_SSH') {
@@ -401,6 +445,7 @@ function resetForSourceType(current: AppSourceInfoInputModel, sourceType: Source
             gitUrl: '',
             gitBranch: '',
             dockerfilePath: defaultDockerfilePath,
+            ...emptyFrameworkFields(),
         };
     }
     return {
@@ -410,6 +455,19 @@ function resetForSourceType(current: AppSourceInfoInputModel, sourceType: Source
         containerRegistryUsername: '',
         containerRegistryPassword: '',
         dockerfilePath: defaultDockerfilePath,
+        ...emptyFrameworkFields(),
+    };
+}
+
+function emptyFrameworkFields() {
+    return {
+        framework: null,
+        installCommand: '',
+        buildCommand: '',
+        runCommand: '',
+        rootDirectory: './',
+        outputDirectory: '',
+        nodeVersion: '',
     };
 }
 
@@ -428,5 +486,12 @@ function toSourceInput(app: AppExtendedModel): AppSourceInfoInputModel {
         gitUsername: app.gitUsername ?? '',
         gitToken: app.gitToken ?? '',
         dockerfilePath: app.dockerfilePath ?? defaultDockerfilePath,
+        framework: jsFrameworkZodModel.safeParse(app.framework).data ?? null,
+        installCommand: app.installCommand ?? '',
+        buildCommand: app.buildCommand ?? '',
+        runCommand: app.runCommand ?? '',
+        rootDirectory: app.rootDirectory ?? './',
+        outputDirectory: app.outputDirectory ?? '',
+        nodeVersion: app.nodeVersion ?? '',
     };
 }
