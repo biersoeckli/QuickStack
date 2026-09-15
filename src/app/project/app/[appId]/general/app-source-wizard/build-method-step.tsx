@@ -1,14 +1,15 @@
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { Check, FileCode2, Package, type LucideIcon } from "lucide-react";
+import { Boxes, Check, FileCode2, Package, type LucideIcon } from "lucide-react";
 
 export function BuildMethodStep({ value, onChange }: {
     value: AppBuildMethod;
     onChange: (buildMethod: AppBuildMethod) => void;
 }) {
     const options: Array<{ value: AppBuildMethod; label: string; description: string; icon: LucideIcon }> = [
-        { value: 'DOCKERFILE', label: 'Dockerfile', description: 'Build with a Dockerfile from the repository.', icon: FileCode2 },
+        { value: 'FRAMEWORK', label: 'Framework', description: 'Pick a JavaScript framework with pre-filled install, build and run commands.', icon: Boxes },
         { value: 'RAILPACK', label: 'Railpack', description: 'Detect and build the app automatically.', icon: Package },
+        { value: 'DOCKERFILE', label: 'Dockerfile', description: 'Build with a Dockerfile from the repository.', icon: FileCode2 },
     ];
 
     return (<div>

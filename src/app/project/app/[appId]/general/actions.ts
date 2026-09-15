@@ -31,6 +31,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                     dockerfilePath: ['Path to Dockerfile is required when using the Dockerfile build method.'],
                 });
             }
+            validateFrameworkSource(validatedData);
             await appService.save({
                 ...existingApp,
                 ...validatedData,
@@ -39,6 +40,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 dockerfilePath: validatedData.buildMethod === 'DOCKERFILE'
                     ? validatedData.dockerfilePath ?? existingApp.dockerfilePath
                     : existingApp.dockerfilePath,
+                ...mapFrameworkFields(validatedData),
                 containerImageSource: null,
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
@@ -59,6 +61,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                     dockerfilePath: ['Path to Dockerfile is required when using the Dockerfile build method.'],
                 });
             }
+            validateFrameworkSource(validatedData);
             const publicKey = await appGitSshKeyService.getPublicKey(appId);
             if (!publicKey) {
                 throw new ServiceException('Generate SSH keys before saving a Git SSH source.');
@@ -71,6 +74,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 dockerfilePath: validatedData.buildMethod === 'DOCKERFILE'
                     ? validatedData.dockerfilePath ?? existingApp.dockerfilePath
                     : existingApp.dockerfilePath,
+                ...mapFrameworkFields(validatedData),
                 containerImageSource: null,
                 containerRegistryUsername: null,
                 containerRegistryPassword: null,
@@ -95,6 +99,7 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
                 gitBranch: null,
                 gitUsername: null,
                 gitToken: null,
+                ...mapFrameworkFields({}),
                 sourceType: 'CONTAINER',
                 id: appId,
             });
@@ -104,6 +109,45 @@ export const saveGeneralAppSourceInfo = async (prevState: any, inputData: AppSou
         throw new ServiceException('Invalid Source Type');
     });
 };
+
+function validateFrameworkSource(data: { buildMethod?: string; framework?: string | null; buildCommand?: string | null }) {
+    if (data.buildMethod !== 'FRAMEWORK') {
+        return;
+    }
+    const errors: Record<string, string[]> = {};
+    if (!data.framework) {
+        errors.framework = ['Select a framework.'];
+    }
+    if (!data.buildCommand?.trim()) {
+        errors.buildCommand = ['Build command is required when using the framework build method.'];
+    }
+    if (Object.keys(errors).length > 0) {
+        throw new FormValidationException('Please correct the errors in the form.', errors);
+    }
+}
+
+function mapFrameworkFields(data: Partial<Pick<AppSourceInfoInputModel, 'buildMethod' | 'framework' | 'installCommand' | 'buildCommand' | 'runCommand' | 'rootDirectory' | 'outputDirectory' | 'nodeVersion'>>) {
+    if (data.buildMethod !== 'FRAMEWORK') {
+        return {
+            framework: null,
+            installCommand: null,
+            buildCommand: null,
+            runCommand: null,
+            rootDirectory: null,
+            outputDirectory: null,
+            nodeVersion: null,
+        };
+    }
+    return {
+        framework: data.framework || null,
+        installCommand: data.installCommand || null,
+        buildCommand: data.buildCommand || null,
+        runCommand: data.runCommand || null,
+        rootDirectory: data.rootDirectory || './',
+        outputDirectory: data.outputDirectory || null,
+        nodeVersion: data.nodeVersion || null,
+    };
+}
 
 export const ensureGitSshPublicKey = async (appId: string) =>
     simpleAction(async () => {

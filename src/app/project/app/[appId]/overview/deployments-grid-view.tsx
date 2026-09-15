@@ -1,5 +1,5 @@
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { File, GitCommit, LucideTerminal, RotateCcw } from 'lucide-react';
+import { Boxes, File, GitCommit, LucideTerminal, RotateCcw } from 'lucide-react';
 import ShortCommitHash from '@/components/custom/short-commit-hash';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
 import { Item, ItemContent, ItemTitle } from '@/components/ui/item';
 import { formatDateTime } from '@/frontend/utils/format.utils';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
+import { appBuildMethodLabels } from '@/shared/model/app-source-info.model';
 import DeploymentStatusBadge from './deployment-status-badge';
 
 type DeploymentsGridViewProps = {
@@ -99,13 +100,10 @@ export function DeploymentsGridView({
                         </div>}
                         {deployment.gitCommit && <span aria-hidden="true">·</span>}
                         {deployment.buildMethod && <>
-                            <span>
-                                {deployment.buildMethod === 'DOCKERFILE'
-                                    ? <div className="flex items-center gap-1">
-                                        <File className="size-3" />
-                                        Dockerfile
-                                    </div>
-                                    : 'Railpack'}
+                            <span className="flex items-center gap-1">
+                                {deployment.buildMethod === 'DOCKERFILE' && <File className="size-3" />}
+                                {deployment.buildMethod === 'FRAMEWORK' && <Boxes className="size-3" />}
+                                {appBuildMethodLabels[deployment.buildMethod] ?? '-'}
                             </span>
                             <span aria-hidden="true">·</span>
                         </>}

@@ -421,6 +421,15 @@ model App {
   gitToken       String?
   dockerfilePath String  @default("./Dockerfile")
 
+  // Framework build method (buildMethod = FRAMEWORK): Railpack with explicit install/build/start overrides.
+  framework       String?
+  installCommand  String?
+  buildCommand    String?
+  runCommand      String?
+  rootDirectory   String? @default("./")
+  outputDirectory String?
+  nodeVersion     String?
+
   replicas Int    @default(1)
   envVars  String @default("")
 

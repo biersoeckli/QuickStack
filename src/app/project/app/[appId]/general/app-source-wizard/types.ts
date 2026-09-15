@@ -1,7 +1,7 @@
-import { AppBuildMethod } from "@/shared/model/app-source-info.model";
+import { AppBuildMethod, appBuildMethodLabels } from "@/shared/model/app-source-info.model";
 
 export type SourceType = 'GIT' | 'GIT_SSH' | 'CONTAINER';
-export type StepId = 'source' | 'git-url' | 'ssh-url' | 'branch' | 'build-method' | 'dockerfile' | 'container-image' | 'summary';
+export type StepId = 'source' | 'git-url' | 'ssh-url' | 'branch' | 'build-method' | 'dockerfile' | 'framework' | 'container-image' | 'summary';
 export type SourceWizardInput = {
     sourceType: SourceType;
     buildMethod?: AppBuildMethod;
@@ -13,6 +13,13 @@ export type SourceWizardInput = {
     gitUsername?: string | null;
     gitToken?: string | null;
     dockerfilePath?: string | null;
+    framework?: string | null;
+    installCommand?: string | null;
+    buildCommand?: string | null;
+    runCommand?: string | null;
+    rootDirectory?: string | null;
+    outputDirectory?: string | null;
+    nodeVersion?: string | null;
 };
 export type SourceFormPatch = Partial<SourceWizardInput>;
 
@@ -22,9 +29,6 @@ export const sourceTypeLabels: Record<SourceType, string> = {
     CONTAINER: 'Docker Container Image',
 };
 
-export const buildMethodLabels: Record<AppBuildMethod, string> = {
-    RAILPACK: 'Railpack',
-    DOCKERFILE: 'Dockerfile',
-};
+export const buildMethodLabels: Record<AppBuildMethod, string> = appBuildMethodLabels;
 
 export const defaultDockerfilePath = './Dockerfile';

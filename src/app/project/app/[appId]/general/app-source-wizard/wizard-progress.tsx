@@ -2,7 +2,7 @@ import { cn } from "@/frontend/utils/utils";
 import { SourceType, SourceWizardInput, StepId } from "./types";
 
 export function WizardProgress({ step, formData }: { step: StepId; formData: SourceWizardInput }) {
-    const steps = getProgressSteps(formData.sourceType as SourceType);
+    const steps = getProgressSteps(formData.sourceType as SourceType, formData.buildMethod);
     const currentIndex = Math.max(0, steps.findIndex((item) => item.id === step));
 
     return (
@@ -16,9 +16,10 @@ export function WizardProgress({ step, formData }: { step: StepId; formData: Sou
     );
 }
 
-function getProgressSteps(sourceType: SourceType): Array<{ id: StepId }> {
+function getProgressSteps(sourceType: SourceType, buildMethod?: string): Array<{ id: StepId }> {
     if (sourceType === 'CONTAINER') {
         return [{ id: 'source' }, { id: 'container-image' }, { id: 'summary' }];
     }
-    return [{ id: 'source' }, { id: sourceType === 'GIT' ? 'git-url' : 'ssh-url' }, { id: 'branch' }, { id: 'build-method' }, { id: 'dockerfile' }, { id: 'summary' }];
+    const buildConfigStep: StepId = buildMethod === 'FRAMEWORK' ? 'framework' : 'dockerfile';
+    return [{ id: 'source' }, { id: sourceType === 'GIT' ? 'git-url' : 'ssh-url' }, { id: 'branch' }, { id: 'build-method' }, { id: buildConfigStep }, { id: 'summary' }];
 }

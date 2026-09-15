@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDialog } from "@/frontend/states/zustand.states";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
+import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
+import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Play, Server } from "lucide-react";
 import { AppSourceWizardDialog } from "./app-source-wizard/app-source-wizard-dialog";
 import { PublicDeployKeyDialog } from "./app-source-wizard/public-deploy-key-dialog";
 import { ReadonlyInfo } from "./app-source-wizard/readonly-info";
@@ -137,6 +138,17 @@ function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedMod
                         <ReadonlyInfo label="Build Method" value={buildMethodLabels[(app.buildMethod as AppBuildMethod) ?? 'RAILPACK']} />
                         {app.buildMethod === 'DOCKERFILE' && (
                             <ReadonlyInfo icon={FileCode2} label="Dockerfile Path" value={app.dockerfilePath || defaultDockerfilePath} />
+                        )}
+                        {app.buildMethod === 'FRAMEWORK' && (
+                            <>
+                                <ReadonlyInfo
+                                    icon={Boxes}
+                                    label="Framework"
+                                    value={app.framework ? jsFrameworkPresets[app.framework as JsFramework]?.label ?? app.framework : 'Not configured'}
+                                />
+                                <ReadonlyInfo icon={Package} label="Build Command" value={app.buildCommand || 'Not configured'} />
+                                <ReadonlyInfo icon={Play} label="Run Command" value={app.runCommand || 'Static output'} />
+                            </>
                         )}
                     </>
                 )}

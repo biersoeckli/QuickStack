@@ -15,6 +15,7 @@ import { formatDateTime } from "@/frontend/utils/format.utils";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { BuildJobModel } from "@/shared/model/build-job";
+import { appBuildMethodLabels } from "@/shared/model/app-source-info.model";
 import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { GlobalBuildJobModel } from "@/shared/model/global-build-job.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
@@ -103,7 +104,7 @@ export default function WorkloadBuildsTable({
         ['name', 'Build Job', false],
         ['buildMethod', 'Build Method', true, (item) => (
             <span className="text-muted-foreground text-sm">
-                {item.buildMethod === 'DOCKERFILE' ? 'Dockerfile' : item.buildMethod === 'RAILPACK' ? 'Railpack' : '-'}
+                {item.buildMethod ? appBuildMethodLabels[item.buildMethod] ?? '-' : '-'}
             </span>
         )],
         ['startTime', 'Started At', true, (item) => item.startTime ? formatDateTime(item.startTime) : '-'],

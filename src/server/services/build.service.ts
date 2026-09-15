@@ -10,8 +10,10 @@ import dataAccess from "../adapter/db.client";
 import k3s from "../adapter/kubernetes-api.adapter";
 import buildQueueInitContainer from "./build-job-builders/build-init-container.service";
 import dockerfileBuildJobBuilder from "./build-job-builders/dockerfile-build-job-builder.service";
+import frameworkBuildJobBuilder from "./build-job-builders/framework-build-job-builder.service";
 import railpackBuildJobBuilder from "./build-job-builders/railpack-build-job-builder.service";
 import { BuildJobBuilder } from "./build-job-builders/build-job-builder.interface";
+import { AppBuildMethodUtils } from "@/shared/utils/app-build-method.utils";
 import clusterService from "./cluster.service";
 import { dlog } from "./deployment-logs.service";
 import gitService from "./git.service";
@@ -120,6 +122,9 @@ class BuildService {
 
         if (buildMethod === 'DOCKERFILE') {
             await dlog(deploymentId, `Dockerfile path: ${workload.dockerfilePath || './Dockerfile'}`);
+        } else if (buildMethod === 'FRAMEWORK') {
+            const app = workload as AppExtendedModel;
+            await dlog(deploymentId, `Framework build (${app.framework ?? 'unknown'}) with Railpack prepare, build and start overrides.`);
         } else {
             await dlog(deploymentId, `Railpack build will run queue wait, prepare step, and BuildKit build in sequence.`);
         }
@@ -160,7 +165,7 @@ class BuildService {
         if (workloadType === 'agent') {
             return 'DOCKERFILE';
         }
-        return workload.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK';
+        return AppBuildMethodUtils.normalize(workload.buildMethod);
     }
 
     private async getMaxParallelBuilds(deploymentId: string): Promise<number> {
@@ -174,7 +179,13 @@ class BuildService {
     }
 
     private getBuilder(buildMethod: AppBuildMethod): BuildJobBuilder {
-        return buildMethod === 'DOCKERFILE' ? dockerfileBuildJobBuilder : railpackBuildJobBuilder;
+        if (buildMethod === 'DOCKERFILE') {
+            return dockerfileBuildJobBuilder;
+        }
+        if (buildMethod === 'FRAMEWORK') {
+            return frameworkBuildJobBuilder;
+        }
+        return railpackBuildJobBuilder;
     }
 
     private async getBuildSchedulingConfig(deploymentId: string): Promise<{

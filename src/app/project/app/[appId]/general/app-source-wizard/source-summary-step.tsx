@@ -1,4 +1,5 @@
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
+import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
 import { SecretSummaryRow, SummaryRow } from "./source-wizard-fields";
 import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels, SourceWizardInput } from "./types";
 
@@ -20,6 +21,17 @@ export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGi
                     <SummaryRow label="Git Branch" value={formData.gitBranch ?? ''} />
                     <SummaryRow label="Build Method" value={buildMethodLabels[(formData.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK']} />
                     {formData.buildMethod === 'DOCKERFILE' && <SummaryRow label="Dockerfile Path" value={formData.dockerfilePath ?? defaultDockerfilePath} mono />}
+                    {formData.buildMethod === 'FRAMEWORK' && (
+                        <>
+                            <SummaryRow label="Framework" value={formData.framework && jsFrameworkPresets[formData.framework as JsFramework] ? jsFrameworkPresets[formData.framework as JsFramework].label : 'Not selected'} />
+                            <SummaryRow label="Install Command" value={formData.installCommand || 'Auto-detected from lockfile'} mono />
+                            <SummaryRow label="Build Command" value={formData.buildCommand || 'Not configured'} mono />
+                            <SummaryRow label="Run Command" value={formData.runCommand || 'Static output'} mono />
+                            <SummaryRow label="Root Directory" value={formData.rootDirectory || './'} mono />
+                            <SummaryRow label="Output Directory" value={formData.outputDirectory || 'Not configured'} mono />
+                            <SummaryRow label="Node Version" value={formData.nodeVersion || 'Default (lts)'} mono />
+                        </>
+                    )}
                 </>
             )}
             {formData.sourceType === 'GIT' && (
