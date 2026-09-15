@@ -81,7 +81,7 @@ export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKe
                                             selected={field.value instanceof Date ? field.value : undefined}
                                             onSelect={(date) => field.onChange(date ?? null)}
                                             disabled={(date) => date < new Date()}
-                                            initialFocus
+                                            autoFocus
                                         />
                                     </PopoverContent>
                                 </Popover>
