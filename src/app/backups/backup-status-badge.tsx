@@ -1,7 +1,6 @@
 'use client'
 
-import { Tooltip, TooltipContent } from "@/components/ui/tooltip";
-import { TooltipTrigger } from "@radix-ui/react-tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BackupStatusBadgeProps {
     missedBackup: boolean | undefined;

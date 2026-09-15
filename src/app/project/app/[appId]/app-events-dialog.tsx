@@ -13,7 +13,7 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EventInfoModel } from "@/shared/model/event-info.model";
 import { formatDateTime } from "@/frontend/utils/format.utils";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/frontend/utils/utils";
 
 export function AppEventsDialog({
