@@ -20,9 +20,10 @@ import {
     type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Bot, Boxes, Cloud, Database, Edit2, Globe2, RotateCcw, Trash2 } from 'lucide-react';
+import { Bot, Boxes, Cloud, Database, Edit2, Globe2, Info, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
@@ -50,7 +51,12 @@ const connectionTargetHandleClassName = '!size-3 !border-2 !border-background !b
 
 type EdgeMenu = { edgeId: string; x: number; y: number };
 type NodeMenu = { appId: string; x: number; y: number };
-type WorkloadNodeData = NetworkGraphNode & { connectionInProgress?: boolean; connectionTarget?: boolean };
+type WorkloadNodeData = NetworkGraphNode & {
+    connectionInProgress?: boolean;
+    connectionTarget?: boolean;
+    selected?: boolean;
+    connectedToSelection?: boolean;
+};
 type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
     projectId: string;
@@ -64,7 +70,12 @@ const WorkloadNode = memo(function WorkloadNode({
     const database = !!data.appType && data.appType.toUpperCase() !== 'APP';
     const Icon = data.kind === 'AGENT' ? Bot : database ? Database : Boxes;
     return (
-        <div className={cn('group relative flex w-[240px] cursor-pointer items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-sm transition-all duration-150 hover:border-qs-500/50 hover:shadow-md', data.external && 'border-dashed border-amber-500/70 bg-amber-500/5')}>
+        <div className={cn(
+            'group relative flex w-[240px] cursor-pointer items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-sm transition-all duration-150 hover:border-qs-500/50 hover:shadow-md',
+            data.external && 'border-dashed border-amber-500/70 bg-amber-500/5',
+            data.selected && 'border-qs-500 ring-2 ring-qs-500/20 shadow-md',
+            !data.selected && !data.connectedToSelection && 'opacity-40',
+        )}>
             <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg ring-1', data.kind === 'AGENT' ? 'bg-violet-500/15 text-violet-600 ring-violet-500/30' : database ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30' : 'bg-qs-500/10 text-qs-600 ring-qs-500/30')}>
                 <Icon className="size-5" />
             </div>
@@ -85,9 +96,11 @@ const WorkloadNode = memo(function WorkloadNode({
         </div>
     );
 });
-const InternetNode = memo(function InternetNode() {
+const InternetNode = memo(function InternetNode({
+    data,
+}: NodeProps<Node<WorkloadNodeData, 'internet'>>) {
     return (
-        <div className="flex flex-col items-center gap-1.5">
+        <div className={cn('flex flex-col items-center gap-1.5 transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
             <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-sm">
                 <Cloud className="size-7" />
             </div>
@@ -241,12 +254,17 @@ function ProjectNetworkGraphEditor({
         id: node.id,
         type: node.kind === 'INTERNET' ? 'internet' : 'workload',
         position: node.position,
-        data: node.kind === 'INTERNET' ? node : {
+        data: {
             ...node,
             connectionInProgress: !!connectionSourceNodeId,
             connectionTarget: node.id === connectionTargetNodeId,
+            selected: node.id === selectedNodeId,
+            connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
+                (edge.source === selectedNodeId && edge.target === node.id)
+                || (edge.target === selectedNodeId && edge.source === node.id),
+            ),
         },
-    })), [connectionSourceNodeId, connectionTargetNodeId, layout?.nodes]);
+    })), [connectionSourceNodeId, connectionTargetNodeId, layout?.edges, layout?.nodes, selectedNodeId]);
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
     const edges = useMemo(() => (layout?.edges ?? []).map(edge => {
@@ -263,14 +281,19 @@ function ProjectNetworkGraphEditor({
             markerEnd: edge.direction === 'INTERNET_CONNECTION'
                 ? edge.internetEgress ? { type: MarkerType.ArrowClosed, color: presentation.color, width: 16, height: 16 } : undefined
                 : { type: MarkerType.ArrowClosed, color: presentation.color, width: 16, height: 16 },
-            style: { stroke: presentation.color, strokeWidth: 1.5, strokeDasharray: presentation.dashed ? '5 4' : undefined },
+            style: {
+                stroke: presentation.color,
+                strokeWidth: selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId) ? 2.5 : 1.5,
+                strokeDasharray: presentation.dashed ? '5 4' : undefined,
+                opacity: selectedNodeId && edge.source !== selectedNodeId && edge.target !== selectedNodeId ? 0.2 : 1,
+            },
             label: presentation.label,
             labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600 },
             labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.9, stroke: 'hsl(var(--border))', strokeWidth: 1 },
             labelBgPadding: [6, 3] as [number, number],
             labelBgBorderRadius: 6,
         };
-    }), [layout?.edges]);
+    }), [layout?.edges, selectedNodeId]);
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
@@ -299,17 +322,41 @@ function ProjectNetworkGraphEditor({
             const reactFlow = reactFlowRef.current;
             const graphContainer = graphContainerRef.current;
             const drawerContent = drawerContentRef.current;
-            const node = reactFlow?.getNode(selectedNodeId);
-            if (!reactFlow || !graphContainer || !drawerContent || !node) return;
+            const selectedReactFlowNode = reactFlow?.getNode(selectedNodeId);
+            if (!reactFlow || !graphContainer || !drawerContent || !selectedReactFlowNode) return;
 
             const graphBounds = graphContainer.getBoundingClientRect();
             const drawerWidth = drawerContent.getBoundingClientRect().width;
-            const zoom = reactFlow.getZoom();
-            const nodeWidth = node.measured?.width ?? 240;
-            const nodeHeight = node.measured?.height ?? 68;
-            const nodeCenterX = node.position.x + nodeWidth / 2;
-            const nodeCenterY = node.position.y + nodeHeight / 2;
+            const connectedNodeIds = new Set([selectedNodeId]);
+            for (const edge of layout?.edges ?? []) {
+                if (edge.source === selectedNodeId) connectedNodeIds.add(edge.target);
+                if (edge.target === selectedNodeId) connectedNodeIds.add(edge.source);
+            }
+            const relatedNodes = Array.from(connectedNodeIds)
+                .map(id => reactFlow.getNode(id))
+                .filter((node): node is NonNullable<typeof node> => !!node);
+            const relatedBounds = relatedNodes.reduce((bounds, node) => {
+                const width = node.measured?.width ?? (node.id === 'INTERNET' ? 96 : 240);
+                const height = node.measured?.height ?? (node.id === 'INTERNET' ? 96 : 68);
+                return {
+                    minX: Math.min(bounds.minX, node.position.x),
+                    minY: Math.min(bounds.minY, node.position.y),
+                    maxX: Math.max(bounds.maxX, node.position.x + width),
+                    maxY: Math.max(bounds.maxY, node.position.y + height),
+                };
+            }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
             const visibleGraphWidth = Math.max(0, graphBounds.width - drawerWidth);
+            const padding = 72;
+            const contentWidth = relatedBounds.maxX - relatedBounds.minX;
+            const contentHeight = relatedBounds.maxY - relatedBounds.minY;
+            const zoom = Math.max(0.3, Math.min(
+                reactFlow.getZoom(),
+                1.1,
+                (visibleGraphWidth - padding * 2) / Math.max(contentWidth, 1),
+                (graphBounds.height - padding * 2) / Math.max(contentHeight, 1),
+            ));
+            const nodeCenterX = (relatedBounds.minX + relatedBounds.maxX) / 2;
+            const nodeCenterY = (relatedBounds.minY + relatedBounds.maxY) / 2;
 
             void reactFlow.setViewport({
                 x: visibleGraphWidth / 2 - nodeCenterX * zoom,
@@ -319,24 +366,31 @@ function ProjectNetworkGraphEditor({
         });
 
         return () => cancelAnimationFrame(animationFrame);
-    }, [selectedNode, selectedNodeId]);
+    }, [layout?.edges, selectedNode, selectedNodeId]);
 
     return (
-        <div className="space-y-2">
-            <div className="flex min-h-8 flex-wrap items-center gap-3">
-                <Legend />
-                <div className="flex-1"></div>
-                {canEditLayout && <div className="flex shrink-0 divide-x overflow-hidden rounded-md border bg-background">
-                    <Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground" onClick={resetLayout}>
-                        <RotateCcw className="mr-1.5 size-3.5" />
-                        Reset
-                    </Button>
-                </div>}
-            </div>
+        <div>
             <div
                 ref={graphContainerRef}
                 className="relative -mx-8 h-[calc(100dvh-14rem)] min-h-80 w-auto overflow-hidden bg-background lg:-mx-10"
             >
+                <div className="absolute right-4 top-4 z-10 flex overflow-hidden rounded-md border bg-background shadow-sm">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground">
+                                <Info className="mr-1.5 size-3.5" />
+                                Legend
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-auto p-3">
+                            <Legend />
+                        </PopoverContent>
+                    </Popover>
+                    {canEditLayout && <Button variant="ghost" size="sm" className="rounded-none border-0 border-l text-muted-foreground shadow-none hover:text-foreground" onClick={resetLayout}>
+                        <RotateCcw className="mr-1.5 size-3.5" />
+                        Reset
+                    </Button>}
+                </div>
                 <ReactFlow
                     onInit={instance => { reactFlowRef.current = instance; }}
                     nodes={nodes}
