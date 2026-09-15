@@ -6,7 +6,7 @@ import { useDialog } from "@/frontend/states/zustand.states";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
-import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Play, Server } from "lucide-react";
+import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
 import { AppSourceWizardDialog } from "./app-source-wizard/app-source-wizard-dialog";
 import { PublicDeployKeyDialog } from "./app-source-wizard/public-deploy-key-dialog";
 import { ReadonlyInfo } from "./app-source-wizard/readonly-info";
