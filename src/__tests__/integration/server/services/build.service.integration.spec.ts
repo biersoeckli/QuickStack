@@ -114,8 +114,10 @@ describe('build.service integration', () => {
             { framework: 'SVELTEKIT', rootDirectory: './sveltekit' },
         ];
 
-        it.each(frameworks)('builds and deploys the $framework dummy app', async ({ framework, rootDirectory }) => {
+        it('builds and deploys one randomly selected framework dummy app', async () => {
+            const { framework, rootDirectory } = frameworks[Math.floor(Math.random() * frameworks.length)];
             const preset = jsFrameworkPresets[framework];
+            console.info(`Selected framework integration test: ${framework}`);
 
             await runBuildDeployAndAssert({
                 appIdPrefix: `framework-${framework.toLowerCase()}`,

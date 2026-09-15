@@ -1,7 +1,7 @@
 'use server'
 
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
-import { appDockerfileDetectionZodModel, appGitBranchesLookupZodModel, appSourceInfoContainerZodModel, appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, AppDockerfileDetectionModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
+import { appDockerfileDetectionZodModel, appFrameworkConfigurationZodModel, appGitBranchesLookupZodModel, appSourceInfoContainerZodModel, appSourceInfoGitSshZodModel, appSourceInfoGitZodModel, AppDockerfileDetectionModel, AppFrameworkConfigurationModel, AppGitBranchesLookupModel, AppSourceInfoInputModel } from "@/shared/model/app-source-info.model";
 import { FormValidationException } from "@/shared/model/form-validation-exception.model";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
@@ -227,6 +227,26 @@ export const saveGeneralAppContainerConfig = async (prevState: any, inputData: A
             securityContextRunAsGroup: validatedData.securityContextRunAsGroup ?? null,
             securityContextFsGroup: validatedData.securityContextFsGroup ?? null,
             securityContextPrivileged: validatedData.securityContextPrivileged ?? false,
+            id: appId,
+        });
+    });
+
+export const saveFrameworkConfiguration = async (prevState: any, inputData: AppFrameworkConfigurationModel, appId: string) =>
+    saveFormAction(inputData, appFrameworkConfigurationZodModel, async (validatedData) => {
+        await isAuthorizedWriteForApp(appId);
+        const existingApp = await appService.getById(appId);
+        if (existingApp.buildMethod !== 'FRAMEWORK') {
+            throw new ServiceException('Framework configuration is only available for framework builds.');
+        }
+
+        await appService.save({
+            ...existingApp,
+            installCommand: validatedData.installCommand || null,
+            buildCommand: validatedData.buildCommand,
+            runCommand: validatedData.runCommand || null,
+            rootDirectory: validatedData.rootDirectory || './',
+            outputDirectory: validatedData.outputDirectory || null,
+            nodeVersion: validatedData.nodeVersion || null,
             id: appId,
         });
     });

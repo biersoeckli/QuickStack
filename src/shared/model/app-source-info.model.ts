@@ -22,6 +22,16 @@ const frameworkSourceFields = {
   nodeVersion: z.string().trim().nullish(),
 };
 
+export const appFrameworkConfigurationZodModel = z.object({
+  installCommand: z.string().trim(),
+  buildCommand: z.string().trim().min(1, 'Build command is required.'),
+  runCommand: z.string().trim(),
+  rootDirectory: z.string().trim(),
+  outputDirectory: z.string().trim(),
+  nodeVersion: z.string().trim(),
+});
+export type AppFrameworkConfigurationModel = z.infer<typeof appFrameworkConfigurationZodModel>;
+
 const gitHttpsUrlRegex = /^https:\/\/[^\s/]+(?::\d+)?(\/[^\s]*)+$/;
 const gitHubGitLabDotGitRegex = /^https:\/\/(github\.com|gitlab\.com)\//;
 const gitSshScpUrlRegex = /^[^\s@]+@[^\s:]+:[^\s]+$/;

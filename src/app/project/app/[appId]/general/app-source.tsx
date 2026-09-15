@@ -12,6 +12,7 @@ import { PublicDeployKeyDialog } from "./app-source-wizard/public-deploy-key-dia
 import { ReadonlyInfo } from "./app-source-wizard/readonly-info";
 import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from "./app-source-wizard/types";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import FrameworkConfigurationCard from './framework-configuration-card';
 
 export default function GeneralAppSource({
     app,
@@ -51,22 +52,25 @@ export default function GeneralAppSource({
     }
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                    <CardTitle>Source</CardTitle>
-                    <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
-                </div>
-                {!readonly && configured && (
-                    <Button type="button" variant="secondary" onClick={openSourceWizard}>
-                        Change source
-                    </Button>
-                )}
-            </CardHeader>
-            <CardContent>
-                {cardContent}
-            </CardContent>
-        </Card>
+        <>
+            <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                    <div>
+                        <CardTitle>Source</CardTitle>
+                        <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
+                    </div>
+                    {!readonly && configured && (
+                        <Button type="button" variant="secondary" onClick={openSourceWizard}>
+                            Change source
+                        </Button>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {cardContent}
+                </CardContent>
+            </Card>
+            {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
+        </>
     );
 }
 
@@ -146,8 +150,6 @@ function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedMod
                                     label="Framework"
                                     value={app.framework ? jsFrameworkPresets[app.framework as JsFramework]?.label ?? app.framework : 'Not configured'}
                                 />
-                                <ReadonlyInfo icon={Package} label="Build Command" value={app.buildCommand || 'Not configured'} />
-                                <ReadonlyInfo icon={Play} label="Run Command" value={app.runCommand || 'Static output'} />
                             </>
                         )}
                     </>
