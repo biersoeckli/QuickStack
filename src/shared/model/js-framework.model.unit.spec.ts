@@ -13,7 +13,7 @@ describe('jsFrameworkPresets', () => {
     it('provides a static-site React preset', () => {
         expect(jsFrameworkPresets.REACT).toMatchObject({
             id: 'REACT',
-            installCommand: 'npm install',
+            installCommand: 'npm install --force',
             buildCommand: 'npm run build',
             runCommand: '',
             logoSrc: '/framework-logos/react.svg',

@@ -143,7 +143,7 @@ export function SidebarCient({
                   <ChevronDown className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
+              <DropdownMenuContent className="w-(--radix-popper-anchor-width)">
                 <Link href="https://quickstack.dev" target="_blank">
                   <DropdownMenuItem>
                     <Info />
@@ -340,7 +340,7 @@ export function SidebarCient({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 side="top"
-                className="w-[--radix-popper-anchor-width]"
+                className="w-(--radix-popper-anchor-width)"
               >
                 <Link href="/settings/profile">
                   <DropdownMenuItem>

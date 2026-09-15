@@ -1,33 +1,38 @@
 "use client"
 
 import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
-import { cn } from "@/frontend/utils/utils"
+import { cn } from "cn"
+import { Progress as ProgressPrimitive } from "radix-ui"
 
-const Progress = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
-    color?: "blue" | "green" | "red" | "orange" | "default"
-  }
->(({ className, value, color = "default", ...props }, ref) => {
-  const colorClasses = {
-    blue: "bg-blue-400",
-    green: "bg-green-400",
-    red: "bg-red-500",
-    orange: "bg-orange-400",
-    default: "bg-primary",
-  }
+const colorClasses = {
+  blue: "bg-blue-400",
+  green: "bg-green-400",
+  red: "bg-red-500",
+  orange: "bg-orange-400",
+  default: "bg-primary",
+} as const
 
+type ProgressColor = keyof typeof colorClasses
+
+function Progress({
+  className,
+  value,
+  color = "default",
+  ...props
+}: React.ComponentProps<typeof ProgressPrimitive.Root> & {
+  color?: ProgressColor
+}) {
   return (
     <ProgressPrimitive.Root
-      ref={ref}
+      data-slot="progress"
       className={cn(
-        "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
         className
       )}
       {...props}
     >
       <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
         className={cn(
           "h-full w-full flex-1 transition-all",
           colorClasses[color]
@@ -36,8 +41,6 @@ const Progress = React.forwardRef<
       />
     </ProgressPrimitive.Root>
   )
-})
-Progress.displayName = ProgressPrimitive.Root.displayName
+}
 
 export { Progress }
-

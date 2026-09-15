@@ -72,34 +72,34 @@ export default function ResourcesNodes({
   }, [updatedNodeRessources]);
 
   const getUsageColor = (percentage: number) => {
-    if (percentage >= 90) return "hsl(var(--chart-1))";
-    if (percentage >= 80) return "hsl(var(--chart-4))";
-    return "hsl(var(--chart-2))";
+    if (percentage >= 90) return "var(--chart-1)";
+    if (percentage >= 80) return "var(--chart-4)";
+    return "var(--chart-2)";
   };
 
   const pieChartConfig = {
     used: {
       label: "Used",
-      color: "hsl(var(--chart-1))",
+      color: "var(--chart-1)",
     },
     free: {
       label: "Free",
-      color: "hsl(var(--muted))",
+      color: "var(--muted)",
     },
   } satisfies ChartConfig;
 
   const storagePieChartConfig = {
     used: {
       label: "Used",
-      color: "hsl(var(--chart-1))",
+      color: "var(--chart-1)",
     },
     reserved: {
       label: "Reserved",
-      color: "hsl(var(--chart-2))",
+      color: "var(--chart-2)",
     },
     free: {
       label: "Free",
-      color: "hsl(var(--muted))",
+      color: "var(--muted)",
     },
   } satisfies ChartConfig;
 
@@ -113,8 +113,8 @@ export default function ResourcesNodes({
 
   const getStorageChartData = (used: number, reserved: number, capacity: number) => {
     return [
-      { status: 'used', value: used, fill: "hsl(var(--chart-1))" },
-      { status: 'reserved', value: reserved, fill: "hsl(var(--chart-2))" },
+      { status: 'used', value: used, fill: "var(--chart-1)" },
+      { status: 'reserved', value: reserved, fill: "var(--chart-2)" },
       { status: 'free', value: Math.max(0, capacity - used - reserved), fill: 'var(--color-free)' },
     ];
   };
@@ -310,7 +310,7 @@ function NodeDetailsSheet({ node }: { node: NodeResourceModel }) {
     },
     safari: {
       label: 'Safari',
-      color: 'hsl(var(--chart-2))',
+      color: 'var(--chart-2)',
     },
   } satisfies ChartConfig;
 

@@ -21,7 +21,7 @@ export function FrameworkStep({ value, onSelect }: {
                             aria-pressed={isSelected}
                             onClick={() => onSelect(option.id)}
                             className={cn(
-                                'relative flex min-h-28 items-center gap-3 rounded-lg border bg-card p-4 text-left text-card-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                'relative flex min-h-28 items-center gap-3 rounded-lg border bg-card p-4 text-left text-card-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                                 isSelected && 'border-primary bg-primary/5 ring-2 ring-primary/20',
                             )}
                         >

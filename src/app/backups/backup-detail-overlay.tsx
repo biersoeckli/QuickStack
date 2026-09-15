@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog"
 import React from "react";
 import { BackupInfoModel } from "@/shared/model/backup-info.model";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { formatDateTime } from "@/frontend/utils/format.utils";
