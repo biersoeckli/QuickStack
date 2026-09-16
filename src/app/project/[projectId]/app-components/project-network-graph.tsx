@@ -151,6 +151,7 @@ function ProjectNetworkGraphEditor({
     const [nodeMenu, setNodeMenu] = useState<NodeMenu>();
     const [saving, setSaving] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
+    const [isNodeDrawerOpen, setIsNodeDrawerOpen] = useState(false);
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
     const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -314,6 +315,10 @@ function ProjectNetworkGraphEditor({
                 copyValue
             } satisfies PanelConnection;
         }), [layout, selectedNodeId]);
+
+    useEffect(() => {
+        if (selectedNodeId) setIsNodeDrawerOpen(true);
+    }, [selectedNodeId]);
 
     useEffect(() => {
         if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
@@ -481,7 +486,9 @@ function ProjectNetworkGraphEditor({
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
                         const data = node.data as NetworkGraphNode;
-                        if (data.kind !== 'INTERNET') setSelectedNodeId(node.id);
+                        if (data.kind !== 'INTERNET') {
+                            setSelectedNodeId(node.id);
+                        }
                     }}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
@@ -547,8 +554,11 @@ function ProjectNetworkGraphEditor({
                     app={selectedApp}
                     role={selectedAppRole}
                     connections={selectedConnections}
-                    open
-                    onOpenChange={open => { if (!open) setSelectedNodeId(undefined); }}
+                    open={isNodeDrawerOpen}
+                    onOpenChange={setIsNodeDrawerOpen}
+                    onOpenChangeComplete={open => {
+                        if (!open) setSelectedNodeId(undefined);
+                    }}
                     onOpen={() => router.push(`/project/app/${selectedNode.id.replace('APP:', '')}`)} />}
             </div>
         </div>

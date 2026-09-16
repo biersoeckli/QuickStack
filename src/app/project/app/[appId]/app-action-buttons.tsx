@@ -25,7 +25,7 @@ export default function AppActionButtons({
     const appSourceIsConfigured = AppSourceUtils.isConfiguredSource(app);
     const deploymentStatus = usePodsStatus(state => state.podsStatus.get(app.id)?.deploymentStatus ?? 'UNKNOWN');
 
-    return <Card>
+    return <Card className="p-0">
         <CardContent className="p-4 ">
             <ScrollArea>
                 <div className="flex gap-4">

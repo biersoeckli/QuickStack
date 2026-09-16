@@ -170,6 +170,7 @@ export function NodeDetailsDrawer({
     connections,
     open,
     onOpenChange,
+    onOpenChangeComplete,
     onOpen,
 }: {
     contentRef?: Ref<HTMLDivElement>;
@@ -179,6 +180,7 @@ export function NodeDetailsDrawer({
     connections: PanelConnection[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onOpenChangeComplete: (open: boolean) => void;
     onOpen: () => void;
 }) {
     const isDialogOpen = useDialog((state) => state.isDialogOpen);
@@ -275,8 +277,12 @@ export function NodeDetailsDrawer({
             modal={false}
             open={open}
             onOpenChange={onOpenChange}
+            onOpenChangeComplete={onOpenChangeComplete}
         >
-            <DrawerContent ref={contentRef} className="flex flex-col p-0 data-[swipe-direction=right]:w-[85vw] sm:data-[swipe-direction=right]:max-w-lg lg:data-[swipe-direction=right]:max-w-xl">
+            <DrawerContent
+                ref={contentRef}
+                className="border border-border/60 sm:data-[swipe-axis=x]:w-[28rem] lg:data-[swipe-axis=x]:w-[32rem] shadow"
+            >
                 <Button
                     type="button"
                     variant="ghost"
@@ -287,11 +293,8 @@ export function NodeDetailsDrawer({
                     <X className="size-4" />
                     <span className="sr-only">Close</span>
                 </Button>
-                <Tabs
-                    defaultValue="overview"
-                    className="flex min-h-0 flex-1 flex-col pt-7"
-                >
-                    <DrawerHeader className="gap-4 border-b p-6 pb-0 pr-12 text-left">
+                <Tabs defaultValue="overview" className="min-h-0 flex-1">
+                    <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
                         <div className="flex items-start gap-3">
                             <div
                                 className={cn(
@@ -321,34 +324,22 @@ export function NodeDetailsDrawer({
                             )}
                         </div>
                         {app && role && !needsSourceConfiguration ? (
-                            <ScrollArea className="w-full whitespace-nowrap">
-                                <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-none bg-transparent p-0">
-                                    <TabsTrigger
-                                        value="overview"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
-                                    >
-                                        <LayoutDashboard className="mr-1.5 size-3.5" />
+                            <ScrollArea>
+                                <TabsList className="mt-4">
+                                    <TabsTrigger value="overview">
+                                        <LayoutDashboard />
                                         Overview
                                     </TabsTrigger>
-                                    <TabsTrigger
-                                        value="logs"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
-                                    >
-                                        <ScrollText className="mr-1.5 size-3.5" />
+                                    <TabsTrigger value="logs">
+                                        <ScrollText />
                                         Logs
                                     </TabsTrigger>
-                                    <TabsTrigger
-                                        value="deployments"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
-                                    >
-                                        <Rocket className="mr-1.5 size-3.5" />
+                                    <TabsTrigger value="deployments">
+                                        <Rocket />
                                         Deployments
                                     </TabsTrigger>
-                                    <TabsTrigger
-                                        value="stats"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
-                                    >
-                                        <BarChart3 className="mr-1.5 size-3.5" />
+                                    <TabsTrigger value="stats">
+                                        <BarChart3 />
                                         Stats
                                     </TabsTrigger>
                                 </TabsList>
@@ -358,7 +349,7 @@ export function NodeDetailsDrawer({
                             <div className="h-2"></div>
                         )}
                     </DrawerHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                    <ScrollArea className="min-h-0 flex-1 px-4">
                         {needsSourceConfiguration ? (
                             <>
                                 <GeneralAppSource
@@ -467,7 +458,7 @@ export function NodeDetailsDrawer({
                                 {connectionsContent}
                             </div>
                         )}
-                    </div>
+                    </ScrollArea>
                 </Tabs>
                 {isApp && (
                     <DrawerFooter className="border-t p-4">
