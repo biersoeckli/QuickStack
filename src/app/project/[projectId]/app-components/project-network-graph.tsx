@@ -34,6 +34,7 @@ import { NodeDetailsDrawer, type PanelConnection } from './project-network-graph
 import { connectionDeletionProvenance, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
+import { getFocusedNodeViewport } from './project-network-graph/project-network-graph-focus';
 import { useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { AppNetworkPolicyRuleEditModel, NetworkPolicySelectableTarget } from '@/shared/model/app-network-policy-edit.model';
@@ -327,46 +328,25 @@ function ProjectNetworkGraphEditor({
 
             const graphBounds = graphContainer.getBoundingClientRect();
             const drawerWidth = drawerContent.getBoundingClientRect().width;
-            const connectedNodeIds = new Set([selectedNodeId]);
-            for (const edge of layout?.edges ?? []) {
-                if (edge.source === selectedNodeId) connectedNodeIds.add(edge.target);
-                if (edge.target === selectedNodeId) connectedNodeIds.add(edge.source);
-            }
-            const relatedNodes = Array.from(connectedNodeIds)
-                .map(id => reactFlow.getNode(id))
-                .filter((node): node is NonNullable<typeof node> => !!node);
-            const relatedBounds = relatedNodes.reduce((bounds, node) => {
-                const width = node.measured?.width ?? (node.id === 'INTERNET' ? 96 : 240);
-                const height = node.measured?.height ?? (node.id === 'INTERNET' ? 96 : 68);
-                return {
-                    minX: Math.min(bounds.minX, node.position.x),
-                    minY: Math.min(bounds.minY, node.position.y),
-                    maxX: Math.max(bounds.maxX, node.position.x + width),
-                    maxY: Math.max(bounds.maxY, node.position.y + height),
-                };
-            }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
-            const visibleGraphWidth = Math.max(0, graphBounds.width - drawerWidth);
-            const padding = 72;
-            const contentWidth = relatedBounds.maxX - relatedBounds.minX;
-            const contentHeight = relatedBounds.maxY - relatedBounds.minY;
-            const zoom = Math.max(0.3, Math.min(
-                reactFlow.getZoom(),
-                1.1,
-                (visibleGraphWidth - padding * 2) / Math.max(contentWidth, 1),
-                (graphBounds.height - padding * 2) / Math.max(contentHeight, 1),
-            ));
-            const nodeCenterX = (relatedBounds.minX + relatedBounds.maxX) / 2;
-            const nodeCenterY = (relatedBounds.minY + relatedBounds.maxY) / 2;
+            const nodeWidth = selectedReactFlowNode.measured?.width ?? 240;
+            const nodeHeight = selectedReactFlowNode.measured?.height ?? 68;
+            const viewport = getFocusedNodeViewport({
+                node: {
+                    x: selectedReactFlowNode.position.x,
+                    y: selectedReactFlowNode.position.y,
+                    width: nodeWidth,
+                    height: nodeHeight,
+                },
+                graphWidth: graphBounds.width,
+                graphHeight: graphBounds.height,
+                drawerWidth,
+            });
 
-            void reactFlow.setViewport({
-                x: visibleGraphWidth / 2 - nodeCenterX * zoom,
-                y: graphBounds.height / 2 - nodeCenterY * zoom,
-                zoom,
-            }, { duration: 300 });
+            void reactFlow.setViewport(viewport, { duration: 300 });
         });
 
         return () => cancelAnimationFrame(animationFrame);
-    }, [layout?.edges, selectedNode, selectedNodeId]);
+    }, [selectedNode, selectedNodeId]);
 
     return (
         <div>
