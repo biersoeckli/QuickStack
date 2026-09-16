@@ -51,10 +51,8 @@ export function TemplateDetailsPanel({ template }: { template: TemplateDetails }
                     <>
                         <Separator />
                         <CardFooter className="p-3">
-                            <Button asChild variant="ghost" size="sm" className="w-full justify-between">
-                                <a href={template.websiteUrl} target="_blank" rel="noreferrer">
-                                    Open website <ExternalLink />
-                                </a>
+                            <Button render={<a href={template.websiteUrl} target="_blank" rel="noreferrer" />} variant="ghost" size="sm" className="w-full justify-between">
+                                Open website <ExternalLink />
                             </Button>
                         </CardFooter>
                     </>

@@ -114,7 +114,7 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
                 <div className="flex flex-wrap items-center gap-2">
                     {canInstall && <Button disabled={loading} onClick={() => runOperation('install')}><Download className="mr-2 h-4 w-4" />Install</Button>}
                     {addon.status === 'ready' && !addon.availableVersion && <span className="flex items-center text-sm text-muted-foreground"><CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />Up to date</span>}
-                    <Button asChild size="sm" variant="outline"><Link href={addon.documentationUrl} target="_blank"><ExternalLink className="mr-2 h-4 w-4" />Documentation</Link></Button>
+                    <Button render={<Link href={addon.documentationUrl} target="_blank" />} size="sm" variant="outline"><ExternalLink className="mr-2 h-4 w-4" />Documentation</Button>
                 </div>
                 {canRemove && <DropdownMenu>
                     <DropdownMenuTrigger asChild>
