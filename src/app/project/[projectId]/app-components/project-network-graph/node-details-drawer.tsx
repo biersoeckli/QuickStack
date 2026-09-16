@@ -115,7 +115,7 @@ function AppStatusActions({
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem
                             disabled={!appSourceIsConfigured}
-                            onSelect={() =>
+                            onClick={() =>
                                 void Toast.fromAction(() => deploy(app.id))
                             }
                         >
@@ -127,7 +127,7 @@ function AppStatusActions({
                                 app.sourceType === 'GIT_SSH') && (
                                 <DropdownMenuItem
                                     disabled={!appSourceIsConfigured}
-                                    onSelect={() =>
+                                    onClick={() =>
                                         void Toast.fromAction(() =>
                                             deploy(app.id, true),
                                         )
@@ -139,7 +139,7 @@ function AppStatusActions({
                             )}
                         <DropdownMenuItem
                             disabled={!canStart || !appSourceIsConfigured}
-                            onSelect={() =>
+                            onClick={() =>
                                 void Toast.fromAction(() => startApp(app.id))
                             }
                         >
@@ -148,7 +148,7 @@ function AppStatusActions({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             disabled={!canStop || !appSourceIsConfigured}
-                            onSelect={() =>
+                            onClick={() =>
                                 void Toast.fromAction(() => stopApp(app.id))
                             }
                         >
@@ -325,28 +325,28 @@ export function NodeDetailsDrawer({
                                 <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-none bg-transparent p-0">
                                     <TabsTrigger
                                         value="overview"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
                                     >
                                         <LayoutDashboard className="mr-1.5 size-3.5" />
                                         Overview
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="logs"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
                                     >
                                         <ScrollText className="mr-1.5 size-3.5" />
                                         Logs
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="deployments"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
                                     >
                                         <Rocket className="mr-1.5 size-3.5" />
                                         Deployments
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="stats"
-                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                        className="shrink-0 flex-1 rounded-none border-b-2 border-transparent px-3 data-active:border-primary data-active:bg-transparent data-active:shadow-none"
                                     >
                                         <BarChart3 className="mr-1.5 size-3.5" />
                                         Stats

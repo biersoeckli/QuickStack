@@ -117,12 +117,10 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
                     <Button render={<Link href={addon.documentationUrl} target="_blank" />} size="sm" variant="outline"><ExternalLink className="mr-2 h-4 w-4" />Documentation</Button>
                 </div>
                 {canRemove && <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={loading}>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" disabled={loading}>
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Add-on actions</span>
-                        </Button>
-                    </DropdownMenuTrigger>
+                        </Button>} />
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem className="text-destructive" onClick={() => runOperation('remove')}>
                             <Trash2 /> Remove

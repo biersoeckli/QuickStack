@@ -5,13 +5,12 @@ import { checkK3sUpgradeControllerStatus, installK3sUpgradeController, startK3sU
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { RefreshCw, ExternalLink, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, ExternalLink, CheckCircle2, AlertCircle, CircleHelp } from "lucide-react";
 import React from "react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { K3sReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter";
 
 export default function K3sUpdateInfo({
@@ -115,7 +114,7 @@ export default function K3sUpdateInfo({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger >
-                                <QuestionMarkCircledIcon />
+                                <CircleHelp />
                             </TooltipTrigger>
                             <TooltipContent>
                                 <div className="space-y-3 max-w-xl">

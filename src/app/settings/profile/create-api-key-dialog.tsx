@@ -61,8 +61,7 @@ export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKe
                             <FormItem className="flex flex-col">
                                 <FormLabel>Expires At (optional)</FormLabel>
                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
+                                    <PopoverTrigger render={<FormControl>
                                             <Button
                                                 variant="outline"
                                                 className={cn(
@@ -73,8 +72,7 @@ export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKe
                                                 {field.value instanceof Date ? format(field.value, "PPP") : "Pick a date"}
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
+                                        </FormControl>} />
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
                                             mode="single"

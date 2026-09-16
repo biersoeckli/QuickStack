@@ -14,8 +14,7 @@ export function LabelWithHint({ children, hint }: { children: ReactNode; hint?: 
             <FormLabel className="m-0">{children}</FormLabel>
             {hint && (
                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
+                    <TooltipTrigger render={<Button
                             type="button"
                             variant="ghost"
                             size="icon"
@@ -23,8 +22,7 @@ export function LabelWithHint({ children, hint }: { children: ReactNode; hint?: 
                         >
                             <HelpCircle className="h-3.5 w-3.5" />
                             <span className="sr-only">More information</span>
-                        </Button>
-                    </TooltipTrigger>
+                        </Button>} />
                     <TooltipContent side="top" className="max-w-80">
                         <div className="text-sm leading-relaxed">{hint}</div>
                     </TooltipContent>

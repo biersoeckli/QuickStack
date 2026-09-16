@@ -32,9 +32,13 @@ export function BreadcrumbsGenerator() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="start">
                                         {x.dropdownItems.map((item) => (
-                                            <DropdownMenuItem key={item.url} disabled={item.active} asChild={!item.active}>
-                                                {item.active ? <span>{item.name}</span> : <Link href={item.url}>{item.name}</Link>}
-                                            </DropdownMenuItem>
+                                            item.active ? (
+                                                <DropdownMenuItem key={item.url} disabled>
+                                                    {item.name}
+                                                </DropdownMenuItem>
+                                            ) : (
+                                                <DropdownMenuItem key={item.url} render={<Link href={item.url}>{item.name}</Link>} />
+                                            )
                                         ))}
                                     </DropdownMenuContent>
                                 </DropdownMenu>

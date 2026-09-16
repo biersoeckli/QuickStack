@@ -144,8 +144,8 @@ export default function Logs({
                     </div>}
                     <div>
                         <TooltipProvider>
-                            <Tooltip delayDuration={300}>
-                                <TooltipTrigger>
+                            <Tooltip>
+                                <TooltipTrigger delay={300}>
                                     <LogsDownloadOverlay appId={app.id} >
                                         <Button variant="secondary">
                                             <Download />
@@ -159,8 +159,8 @@ export default function Logs({
                         </TooltipProvider>
                     </div>
                     <div>
-                        <Tooltip delayDuration={300}>
-                            <TooltipTrigger>
+                        <Tooltip>
+                            <TooltipTrigger delay={300}>
                                 <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
                                     <Expand />
                                 </Button>

@@ -8,7 +8,7 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 import CreateProjectActions from "../create-project-actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { deleteAgent } from "../actions";
@@ -89,14 +89,14 @@ export default function AgentListClient({ agents, session, projectId }: AgentLis
                 actionCol={(item) => (
                     <div className="flex justify-end">
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
+                            <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0">
                                     <span className="sr-only">Open menu</span>
                                     <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
+                                </Button>} />
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuGroup>
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                </DropdownMenuGroup>
                                 <Link href={`/project/agent/${item.id}`}>
                                     <DropdownMenuItem>
                                         <Eye /> <span>Show Agent Details</span>

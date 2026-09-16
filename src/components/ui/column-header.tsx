@@ -1,15 +1,9 @@
 import { cn } from "@/frontend/utils/utils"
 import { Button } from "./button"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "./dropdown-menu"
-import {
-    ArrowDownIcon,
-    ArrowUpIcon,
-    CaretSortIcon,
-    EyeNoneIcon,
-  } from "@radix-ui/react-icons"
-  import { Column } from "@tanstack/react-table"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "./dropdown-menu"
+import { Column } from "@tanstack/react-table"
 import { useState } from "react"
-import { FilterIcon, FilterX, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff, FilterIcon, FilterX, Trash2 } from "lucide-react"
 
   interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -55,59 +49,57 @@ export function DataTableColumnHeader<TData, TValue>({
   return (
       <div className={cn("flex items-center space-x-0.5", className)}>
           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                  <Button
+              <DropdownMenuTrigger render={<Button
                       variant="ghost"
                       size="sm"
-                      className="-ml-3 h-8 data-[state=open]:bg-accent"
+                      className="-ml-3 h-8 data-popup-open:bg-accent"
                   >
                       <span>{title}</span>
                       {!disableSorting && <>
                           {
                               column.getIsSorted() === "desc" ? (
-                                  <ArrowDownIcon className="ml-2 h-4 w-4" />
+                                  <ArrowDown className="ml-2 h-4 w-4" />
                               ) : column.getIsSorted() === "asc" ? (
-                                  <ArrowUpIcon className="ml-2 h-4 w-4" />
+                                  <ArrowUp className="ml-2 h-4 w-4" />
                               ) : (
-                                  <CaretSortIcon className="ml-2 h-4 w-4" />
+                                  <ChevronsUpDown className="ml-2 h-4 w-4" />
                               )
                           }
                       </>}
-                  </Button>
-              </DropdownMenuTrigger>
+                  </Button>} />
               {!disableSorting &&<DropdownMenuContent align="start">
                   {/* Sorting options */}
                   <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-                      <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                      <ArrowUp className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
                       Asc
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-                      <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                      <ArrowDown className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
                       Desc
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
-                      <EyeNoneIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                      <EyeOff className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
                       Hide
                   </DropdownMenuItem>
               </DropdownMenuContent>}
           </DropdownMenu>
 
           {filterOptions.length > 0 && (<DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                  <Button
+              <DropdownMenuTrigger render={<Button
                       variant="ghost"
                       size="sm"
-                      className="-ml-3 h-8 data-[state=open]:bg-accent"
+                      className="-ml-3 h-8 data-popup-open:bg-accent"
                   >
                      {tempFilters.length === 0 ? <FilterIcon /> : <FilterX />}
-                  </Button>
-              </DropdownMenuTrigger>
+                  </Button>} />
               <DropdownMenuContent align="start">
                   {/* Filtering options */}
                   {filterOptions.length > 0 && (
                       <>
-                          <DropdownMenuLabel>Filter Options</DropdownMenuLabel>
+                          <DropdownMenuGroup>
+                              <DropdownMenuLabel>Filter Options</DropdownMenuLabel>
+                          </DropdownMenuGroup>
                           {filterOptions.map((option) => (
                               <DropdownMenuItem
                                   key={`${option.accessorKey}_${option.filterLabel}`}

@@ -56,11 +56,9 @@ export default function SsoProvidersTable({
             <div className="flex-1" />
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" onClick={() => copyRedirectUrl(item.id)}>
+                <TooltipTrigger render={<Button variant="ghost" onClick={() => copyRedirectUrl(item.id)}>
                     <CopyIcon />
-                  </Button>
-                </TooltipTrigger>
+                  </Button>} />
                 <TooltipContent>Copy redirect URL to clipboard</TooltipContent>
               </Tooltip>
             </TooltipProvider>

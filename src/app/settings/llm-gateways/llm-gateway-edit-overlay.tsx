@@ -228,7 +228,7 @@ function LiteLlmInstanceDeployForm({ projects }: { projects: ProjectExtendedMode
                 {targetMode === 'existing' ? (
                     <div className="grid gap-2">
                         <Label>Existing Project</Label>
-                        <Select value={projectId} onValueChange={setProjectId}>
+                        <Select value={projectId} onValueChange={(value) => setProjectId(value ?? '')}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select Project" />
                             </SelectTrigger>
@@ -308,9 +308,7 @@ export default function LlmGatewayEditOverlay({
     if (!gateway) {
         return (
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    {children}
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger render={children as React.ReactElement} />
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={handleOpen}>
                         <FilePenLine />

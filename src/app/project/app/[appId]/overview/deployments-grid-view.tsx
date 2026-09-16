@@ -1,5 +1,4 @@
-import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { Boxes, File, GitCommit, LucideTerminal, RotateCcw } from 'lucide-react';
+import { Boxes, EllipsisVertical, File, GitCommit, LucideTerminal, RotateCcw } from 'lucide-react';
 import ShortCommitHash from '@/components/custom/short-commit-hash';
 import { Button } from '@/components/ui/button';
 import {
@@ -69,23 +68,21 @@ export function DeploymentsGridView({
                             <span className="sr-only">Open Terminal</span>
                         </Button>
                         {(canStopBuild(deployment) || canRollback(deployment)) && <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="icon" variant="ghost" className="size-7 shrink-0">
-                                    <DotsVerticalIcon />
+                            <DropdownMenuTrigger render={<Button size="icon" variant="ghost" className="size-7 shrink-0">
+                                    <EllipsisVertical />
                                     <span className="sr-only">Deployment actions</span>
-                                </Button>
-                            </DropdownMenuTrigger>
+                                </Button>} />
                             <DropdownMenuContent align="end">
                                 {canStopBuild(deployment) && (
                                     <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
-                                        onSelect={() => onStopBuild(deployment)}
+                                        onClick={() => onStopBuild(deployment)}
                                     >
                                         Stop Build
                                     </DropdownMenuItem>
                                 )}
                                 {canRollback(deployment) && (
-                                    <DropdownMenuItem onSelect={() => onRollback(deployment)}>
+                                    <DropdownMenuItem onClick={() => onRollback(deployment)}>
                                         <RotateCcw />
                                         Rollback to this deployment
                                     </DropdownMenuItem>

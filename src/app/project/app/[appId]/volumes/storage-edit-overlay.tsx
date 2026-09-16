@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { cn } from "@/frontend/utils/utils"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, CircleHelp } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
@@ -38,7 +38,6 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { saveVolume } from "./actions"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 import StorageClassCombobox from "@/components/custom/storage-class-combobox"
@@ -171,7 +170,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                         <div className="self-center">
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild><QuestionMarkCircledIcon /></TooltipTrigger>
+                              <TooltipTrigger render={<CircleHelp />} />
                               <TooltipContent>
                                 <p className="max-w-[350px]">
                                   In most cases you will want to use ReadWriteOnce.
@@ -186,8 +185,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                         </div>
                       </FormLabel>
                       <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
+                        <PopoverTrigger render={<FormControl>
                             <Button
                               variant="outline"
                               role="combobox"
@@ -204,8 +202,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                                 : "Select accessMode"}
                               <ChevronsUpDown className="opacity-50" />
                             </Button>
-                          </FormControl>
-                        </PopoverTrigger>
+                          </FormControl>} />
                         <PopoverContent className="w-[200px] p-0">
                           <Command>
                             <CommandList>
@@ -251,7 +248,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                           <div className="self-center">
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger asChild><QuestionMarkCircledIcon /></TooltipTrigger>
+                                <TooltipTrigger render={<CircleHelp />} />
                                 <TooltipContent>
                                   <p className="max-w-[350px]">
                                     Choose where the volume is provisioned.<br /><br />

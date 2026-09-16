@@ -316,9 +316,7 @@ function NodeDetailsSheet({ node }: { node: NodeResourceModel }) {
 
   return (
     <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">View Details</Button>
-      </SheetTrigger>
+      <SheetTrigger render={<Button variant="outline" size="sm">View Details</Button>} />
       <SheetContent className="overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">

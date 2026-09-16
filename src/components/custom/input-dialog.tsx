@@ -120,9 +120,7 @@ export function InputDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(isO) => setIsOpen(isO)}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger render={children as React.ReactElement} />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

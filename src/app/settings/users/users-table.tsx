@@ -96,11 +96,9 @@ export default function UsersTable({ users, userGroups, session, ssoProviders }:
                             {providers.map((provider) =>
                                 provider.type !== "OIDC" ? (
                                     <Tooltip key={provider.id}>
-                                        <TooltipTrigger asChild>
-                                            <span className="inline-flex cursor-default" aria-label={provider.name}>
+                                        <TooltipTrigger render={<span className="inline-flex cursor-default" aria-label={provider.name}>
                                                 <SsoProviderLogo type={provider.type} className="size-4" />
-                                            </span>
-                                        </TooltipTrigger>
+                                            </span>} />
                                         <TooltipContent>{provider.name}</TooltipContent>
                                     </Tooltip>
                                 ) : (
@@ -150,9 +148,7 @@ export default function UsersTable({ users, userGroups, session, ssoProviders }:
             </UserEditOverlay>
             {selectedUsers.length > 0 && (
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline"> Actions <ChevronDown /></Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger render={<Button variant="outline"> Actions <ChevronDown /></Button>} />
                     <DropdownMenuContent>
                         <DropdownMenuItem onClick={() => setIsRoleDialogOpen(true)}>
                             <UserPlus />   Assign Group

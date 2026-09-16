@@ -1,4 +1,4 @@
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { CircleHelp } from "lucide-react";
 import { FormLabel } from "../ui/form";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
@@ -11,7 +11,7 @@ export default function FormLabelWithQuestion(
         <div>
             <TooltipProvider>
                 <Tooltip>
-                    <TooltipTrigger asChild><QuestionMarkCircledIcon /></TooltipTrigger>
+                    <TooltipTrigger render={<CircleHelp />} />
                     <TooltipContent>
                         <p className="max-w-[350px]">{hint}</p>
                     </TooltipContent>

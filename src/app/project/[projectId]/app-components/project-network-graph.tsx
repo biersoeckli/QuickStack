@@ -376,12 +376,10 @@ function ProjectNetworkGraphEditor({
             >
                 <div className="absolute right-4 top-4 z-10 flex overflow-hidden rounded-md border bg-background shadow-xs">
                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground">
+                        <PopoverTrigger render={<Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground">
                                 <Info className="mr-1.5 size-3.5" />
                                 Legend
-                            </Button>
-                        </PopoverTrigger>
+                            </Button>} />
                         <PopoverContent align="end" className="w-auto p-3">
                             <Legend />
                         </PopoverContent>

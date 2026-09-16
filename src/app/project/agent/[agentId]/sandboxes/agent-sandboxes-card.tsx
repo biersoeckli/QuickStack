@@ -242,15 +242,13 @@ export default function AgentSandboxesCard({
 
         return (
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
+                <DropdownMenuTrigger render={<Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
                     >
                         {icon}
-                    </Button>
-                </DropdownMenuTrigger>
+                    </Button>} />
                 <DropdownMenuContent align="end">
                     {agentDomains.map((domain) => (
                         <DropdownMenuItem key={domain.id} onClick={() => handleOpenAgentAccess(sandboxName, view, domain.id)}>
@@ -327,50 +325,42 @@ export default function AgentSandboxesCard({
                             actionCol={(item: SandboxInfo) => (
                                 <TooltipProvider>
                                     <div className="flex gap-1">
-                                        <Tooltip delayDuration={300}>
-                                            <TooltipTrigger asChild>
-                                                <Button
+                                        <Tooltip>
+                                            <TooltipTrigger delay={300} render={<Button
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-8 w-8"
                                                     onClick={() => handleOpenLogs(item.name)}
                                                 >
                                                     <Logs className="h-4 w-4" />
-                                                </Button>
-                                            </TooltipTrigger>
+                                                </Button>} />
                                             <TooltipContent>
                                                 <p>View Logs</p>
                                             </TooltipContent>
                                         </Tooltip>
                                         {item.status === 'DEPLOYED' && (
                                             <>
-                                                <Tooltip delayDuration={300}>
-                                                    <TooltipTrigger asChild>
-                                                        {renderAccessButton(item.name, 'agent')}
-                                                    </TooltipTrigger>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={300} render={renderAccessButton(item.name, 'agent') as React.ReactElement} />
                                                     <TooltipContent>
                                                         <p>Open Agent UI</p>
                                                     </TooltipContent>
                                                 </Tooltip>
-                                                <Tooltip delayDuration={300}>
-                                                    <TooltipTrigger asChild>
-                                                        {renderAccessButton(item.name, 'files')}
-                                                    </TooltipTrigger>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={300} render={renderAccessButton(item.name, 'files') as React.ReactElement} />
                                                     <TooltipContent>
                                                         <p>Open Files</p>
                                                     </TooltipContent>
                                                 </Tooltip>
-                                                <Tooltip delayDuration={300}>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={300} render={<Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8"
                                                             onClick={() => handleOpenTerminal()}
                                                         >
                                                             <Terminal className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
+                                                        </Button>} />
                                                     <TooltipContent>
                                                         <p>Open Terminal</p>
                                                     </TooltipContent>
@@ -378,17 +368,15 @@ export default function AgentSandboxesCard({
                                             </>
                                         )}
                                         {!readonly && (
-                                            <Tooltip delayDuration={300}>
-                                                <TooltipTrigger asChild>
-                                                    <Button
+                                            <Tooltip>
+                                                <TooltipTrigger delay={300} render={<Button
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-red-500 hover:text-red-700"
                                                         onClick={() => handleStopSandbox(item.name)}
                                                     >
                                                         <Square className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
+                                                    </Button>} />
                                                 <TooltipContent>
                                                     <p>Stop Sandbox</p>
                                                 </TooltipContent>

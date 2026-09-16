@@ -1,9 +1,9 @@
 "use client"
 
-import { MixerHorizontalIcon } from "@radix-ui/react-icons"
+import { SlidersHorizontal } from "lucide-react"
 import { Table } from "@tanstack/react-table"
 import { Button } from "./button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "./dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "./dropdown-menu"
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>
@@ -14,18 +14,18 @@ export function DataTableViewOptions<TData>({
 }: DataTableViewOptionsProps<TData>) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
+      <DropdownMenuTrigger render={<Button
           variant="outline"
           size="sm"
           className="ml-auto hidden h-8 lg:flex"
         >
-          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
           View
-        </Button>
-      </DropdownMenuTrigger>
+        </Button>} />
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>show / hide Columns</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>show / hide Columns</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

@@ -100,8 +100,8 @@ export default function DbGateDbTool({
                     disabled={loading}>Open DB Gate</Button>
 
                 <TooltipProvider>
-                    <Tooltip delayDuration={300}>
-                        <TooltipTrigger>
+                    <Tooltip>
+                        <TooltipTrigger delay={300}>
                             <Button onClick={() => downloadDbGateFilesForAppAsync()} disabled={!isDbGateActive || loading}
                                 variant="ghost"><Download /></Button>
                         </TooltipTrigger>

@@ -131,9 +131,7 @@ function SettingRow({ label, description, checked, disabled, onChange, hint }: {
                 <Label>{label}</Label>
                 {hint && <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3.5 w-3.5" /></Button>
-                        </TooltipTrigger>
+                        <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3.5 w-3.5" /></Button>} />
                         <TooltipContent>{hint}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>}

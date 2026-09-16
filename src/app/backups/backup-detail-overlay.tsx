@@ -70,9 +70,7 @@ export function BackupDetailDialog({
         <Dialog open={isOpen} onOpenChange={(isO) => {
             setIsOpen(isO);
         }}>
-            <DialogTrigger asChild>
-                {children}
-            </DialogTrigger>
+            <DialogTrigger render={children as React.ReactElement} />
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>
                     <DialogTitle>Backups</DialogTitle>

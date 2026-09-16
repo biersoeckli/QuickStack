@@ -59,7 +59,7 @@ export default function UsersBulkRoleAssignment({
                         Select a Group to assign to {selectedUsers.length} selected user(s).
                     </DialogDescription>
                 </DialogHeader>
-                <Select onValueChange={setSelectedGroup} value={selectedGroup}>
+                <Select onValueChange={(value) => setSelectedGroup(value ?? '')} value={selectedGroup}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select a group" />
                     </SelectTrigger>

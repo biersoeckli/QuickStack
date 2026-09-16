@@ -38,7 +38,7 @@ export default function CreateProjectActions({
     return (
         <>
             <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button><Plus /> Create {isAgentProject ? 'Agent' : 'App'}</Button></DropdownMenuTrigger>
+                <DropdownMenuTrigger render={<Button><Plus /> Create {isAgentProject ? 'Agent' : 'App'}</Button>} />
                 <DropdownMenuContent>
                     {isAgentProject ? (
                         <>

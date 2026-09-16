@@ -30,12 +30,10 @@ function PodStatusIndicator({ appId, showLabel }: PodStatusIndicatorProps) {
     if (!appPods) {
         return (
             <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 w-fit">
+                <TooltipTrigger render={<div className="flex items-center gap-2 w-fit">
                         <div className="w-3 h-3 rounded-full bg-red-400" />
                         {showLabel && <span className="text-xs text-gray-500">Unknown</span>}
-                    </div>
-                </TooltipTrigger>
+                    </div>} />
                 <TooltipContent>
                     <p>Could not retrieve deployment status</p>
                 </TooltipContent>
@@ -84,12 +82,10 @@ function PodStatusIndicator({ appId, showLabel }: PodStatusIndicatorProps) {
 
     return (
         <Tooltip>
-            <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 w-fit">
+            <TooltipTrigger render={<div className="flex items-center gap-2 w-fit">
                     <div className={cn("w-3 h-3 rounded-full", statusColor)} />
                     {showLabel && <span className="text-xs text-gray-700">{statusLabel}</span>}
-                </div>
-            </TooltipTrigger>
+                </div>} />
             <TooltipContent>
                 <p>{tooltipText}</p>
             </TooltipContent>

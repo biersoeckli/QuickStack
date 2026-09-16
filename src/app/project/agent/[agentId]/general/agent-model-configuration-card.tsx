@@ -102,9 +102,10 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                                     <FormLabel>LLM Gateway</FormLabel>
                                     <Select
                                         onValueChange={(value) => {
-                                            field.onChange(value);
+                                            const nextGatewayId = value ?? '';
+                                            field.onChange(nextGatewayId);
                                             form.setValue('modelAlias', []);
-                                            setSelectedGatewayId(value);
+                                            setSelectedGatewayId(nextGatewayId);
                                         }}
                                         defaultValue={field.value ?? ''}
                                         disabled={readonly}

@@ -97,7 +97,7 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                     render={({ field }) => <FormItem>
                         <FormLabel>{ingress ? 'Source' : 'Target'}</FormLabel>
                         <Select disabled={!selectedProjectId} value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
-                            const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
+                            const [targetType, targetId] = (value ?? '').split(':') as ['APP' | 'AGENT', string];
                             const target = targetsForSelectedProject.find(item => item.type === targetType && item.id === targetId);
                             form.setValue('targetType', targetType);
                             field.onChange(targetId);

@@ -113,15 +113,13 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                         <FormMessage />
                                         {!readonly && suggestedMemoryMb !== undefined && (
                                             <TooltipProvider>
-                                                <Tooltip delayDuration={200}>
-                                                    <TooltipTrigger asChild>
-                                                        <span
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200} render={<span
                                                             className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
                                                             onClick={() => form.setValue('memoryReservation', suggestedMemoryMb)}
                                                         >
                                                             ~ {suggestedMemoryMb} MB
-                                                        </span>
-                                                    </TooltipTrigger>
+                                                        </span>} />
                                                     <TooltipContent>
                                                         <p>Suggestion based on current pod resource usage</p>
                                                     </TooltipContent>
@@ -158,15 +156,13 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                         <FormMessage />
                                         {!readonly && suggestedCpuMillicores !== undefined && (
                                             <TooltipProvider>
-                                                <Tooltip delayDuration={200}>
-                                                    <TooltipTrigger asChild>
-                                                        <span
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200} render={<span
                                                             className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
                                                             onClick={() => form.setValue('cpuReservation', suggestedCpuMillicores)}
                                                         >
                                                             ~ {suggestedCpuMillicores} m
-                                                        </span>
-                                                    </TooltipTrigger>
+                                                        </span>} />
                                                     <TooltipContent>
                                                         <p>Suggestion based on current pod resource usage</p>
                                                     </TooltipContent>

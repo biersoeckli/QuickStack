@@ -1,5 +1,4 @@
-import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { RotateCcw } from 'lucide-react';
+import { EllipsisVertical, RotateCcw } from 'lucide-react';
 import { SimpleDataTable } from '@/components/custom/simple-data-table';
 import ShortCommitHash from '@/components/custom/short-commit-hash';
 import { Button } from '@/components/ui/button';
@@ -78,14 +77,12 @@ export function DeploymentsDefaultView({
                     )}
                     {canRollback(deployment) && (
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    <DotsVerticalIcon />
+                            <DropdownMenuTrigger render={<Button variant="outline">
+                                    <EllipsisVertical />
                                     <span className="sr-only">Deployment actions</span>
-                                </Button>
-                            </DropdownMenuTrigger>
+                                </Button>} />
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => onRollback(deployment)}>
+                                <DropdownMenuItem onClick={() => onRollback(deployment)}>
                                     <RotateCcw />
                                     Rollback to this deployment
                                 </DropdownMenuItem>

@@ -56,10 +56,8 @@ export default function MonitoringTab({
                             <TableRow>
                                 <TableCell className="font-medium">
                                     <TooltipProvider>
-                                        <Tooltip delayDuration={200}>
-                                            <TooltipTrigger asChild>
-                                                <div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuPercent.toFixed(2)}</div>
-                                            </TooltipTrigger>
+                                        <Tooltip>
+                                            <TooltipTrigger delay={200} render={<div className={'px-3 py-1.5 rounded cursor-pointer'}>{selectedPod?.cpuPercent.toFixed(2)}</div>} />
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{selectedPod?.cpuAbsolutCores.toFixed(10)} cores</p>
                                             </TooltipContent>

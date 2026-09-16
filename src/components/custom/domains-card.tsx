@@ -3,10 +3,9 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { CheckIcon, EditIcon, Plus, TrashIcon, XIcon } from "lucide-react";
+import { CheckIcon, EditIcon, ExternalLink, Plus, TrashIcon, XIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { Code } from "@/components/custom/code";
-import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { DomainEditModel } from "@/shared/model/domain-edit.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
@@ -67,7 +66,7 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                                 <TableCell className="font-medium flex gap-2">
                                     <Code>{domain.hostname}</Code>
                                     <div className="self-center cursor-pointer" onClick={() => window.open((domain.useSsl ? 'https://' : 'http://') + domain.hostname, '_blank')}>
-                                        <OpenInNewWindowIcon />
+                                        <ExternalLink />
                                     </div>
                                 </TableCell>
                                 <TableCell className="font-medium">{domain.port}</TableCell>

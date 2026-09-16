@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
-import { QuestionMarkIcon } from "@radix-ui/react-icons";
+import { CircleHelp } from "lucide-react";
 
 
 
@@ -13,11 +13,9 @@ export function HintBoxUrl({ url }: { url: string }) {
 
     return <TooltipProvider>
         <Tooltip>
-            <TooltipTrigger asChild>
-                <Link href={url} target="_blank">
-                    <Button type="button" variant="outline" className="h-8 w-8 p-0"><QuestionMarkIcon /></Button>
-                </Link>
-            </TooltipTrigger>
+            <TooltipTrigger render={<Link href={url} target="_blank">
+                    <Button type="button" variant="outline" className="h-8 w-8 p-0"><CircleHelp /></Button>
+                </Link>} />
             <TooltipContent>
                 <p>Absprung zu {uri.hostname}</p>
             </TooltipContent>

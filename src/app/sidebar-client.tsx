@@ -130,9 +130,8 @@ export function SidebarCient({
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+              <DropdownMenuTrigger render={<SidebarMenuButton size="lg"
+                  className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-qs-500 text-sidebar-primary-foreground">
                     <QuickStackLogo className="size-5" color="light-all" />
                   </div>
@@ -141,9 +140,8 @@ export function SidebarCient({
                     <span className="truncate text-xs">Admin Panel</span>
                   </div>
                   <ChevronDown className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-(--radix-popper-anchor-width)">
+                </SidebarMenuButton>} />
+              <DropdownMenuContent className="w-(--anchor-width)">
                 <Link href="https://quickstack.dev" target="_blank">
                   <DropdownMenuItem>
                     <Info />
@@ -168,16 +166,13 @@ export function SidebarCient({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{
+                <SidebarMenuButton tooltip={{
                   children: 'All Projects',
                   hidden: open,
-                }}
-                  isActive={path === '/'}>
-                  <Link href="/">
+                }} isActive={path === '/'} render={<Link href="/">
                     <FolderClosed />
                     <span>Projects</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </Link>} />
                 {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
                   <SidebarMenuAction>
                     <Plus />
@@ -193,23 +188,17 @@ export function SidebarCient({
                     return (
                       <DropdownMenu key={item.id}>
                         <SidebarMenuItem>
-                          <SidebarMenuButton asChild tooltip={{
+                          <SidebarMenuButton tooltip={{
                             children: `Project: ${item.name}`,
                             hidden: open,
-                          }}
-                            isActive={currentlySelectedProjectId === item.id}
-                          >
-                            <Link href={`/project/${item.id}`}>
+                          }} isActive={currentlySelectedProjectId === item.id} render={<Link href={`/project/${item.id}`}>
                               <Dot />  <span>{item.name}</span>
-                            </Link>
-                          </SidebarMenuButton>
+                            </Link>} />
                           {workloads.length ? (<>
-                            <DropdownMenuTrigger asChild>
-                              <SidebarMenuAction className="">
+                            <DropdownMenuTrigger render={<SidebarMenuAction className="">
                                 <ChevronRight />
                                 <span className="sr-only">Toggle</span>
-                              </SidebarMenuAction>
-                            </DropdownMenuTrigger>
+                              </SidebarMenuAction>} />
 
                             <DropdownMenuContent
                               side={isMobile ? "bottom" : "right"}
@@ -217,10 +206,7 @@ export function SidebarCient({
                               className="min-w-56 rounded-lg"
                             >
                               {workloads.map((workload) => (
-                                <DropdownMenuItem asChild key={workload.name}
-                                  className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
-                                  <a href={`${workloadPath}${workload.id}`}>{workload.name}</a>
-                                </DropdownMenuItem>
+                                <DropdownMenuItem key={workload.name} className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={`${workloadPath}${workload.id}`}>{workload.name}</a>} />
                               ))}
                             </DropdownMenuContent>
                           </>) : null}
@@ -238,16 +224,13 @@ export function SidebarCient({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{
+                <SidebarMenuButton tooltip={{
                   children: 'Builds',
                   hidden: open,
-                }}
-                  isActive={path.startsWith('/builds')}>
-                  <Link href="/builds">
+                }} isActive={path.startsWith('/builds')} render={<Link href="/builds">
                     <Hammer />
                     <span>Builds</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </Link>} />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -257,16 +240,13 @@ export function SidebarCient({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{
+                <SidebarMenuButton tooltip={{
                   children: 'Monitoring',
                   hidden: open,
-                }}
-                  isActive={path.startsWith('/monitoring')}>
-                  <Link href="/monitoring">
+                }} isActive={path.startsWith('/monitoring')} render={<Link href="/monitoring">
                     <ChartNoAxesCombined />
                     <span>Monitoring</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </Link>} />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -276,16 +256,13 @@ export function SidebarCient({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{
+                <SidebarMenuButton tooltip={{
                   children: 'Backups',
                   hidden: open,
-                }}
-                  isActive={path.startsWith('/backups')}>
-                  <Link href="/backups">
+                }} isActive={path.startsWith('/backups')} render={<Link href="/backups">
                     <History />
                     <span>Backups</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </Link>} />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -296,24 +273,20 @@ export function SidebarCient({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{
+                <SidebarMenuButton tooltip={{
                   children: 'Settings',
                   hidden: open,
-                }}>
-                  <Link href="/settings/profile">
+                }} render={<Link href="/settings/profile">
                     <Settings2 />
                     <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </Link>} />
                 <SidebarMenuSub>
                   {(UserGroupUtils.isAdmin(session) ? settingsMenu :
                     settingsMenu.filter(x => !x.adminOnly)).map((item) => (
                       <SidebarMenuSubItem key={item.url}>
-                        <SidebarMenuButton asChild>
-                          <Link href={item.url}>
+                        <SidebarMenuButton render={<Link href={item.url}>
                             <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                          </Link>} />
                       </SidebarMenuSubItem>
                     ))}
                 </SidebarMenuSub>
@@ -327,20 +300,18 @@ export function SidebarCient({
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
+              <DropdownMenuTrigger render={<SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                  className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarFallback className="rounded-lg">{session.email.substring(0, 1)?.toUpperCase() || 'Q'}</AvatarFallback>
                   </Avatar>
                   {session.email}
                   <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
+                </SidebarMenuButton>} />
               <DropdownMenuContent
                 side="top"
-                className="w-(--radix-popper-anchor-width)"
+                className="w-(--anchor-width)"
               >
                 <Link href="/settings/profile">
                   <DropdownMenuItem>

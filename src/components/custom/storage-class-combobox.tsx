@@ -45,8 +45,7 @@ export default function StorageClassCombobox({
 
     return (
         <Popover>
-            <PopoverTrigger asChild>
-                <Button
+            <PopoverTrigger render={<Button
                     variant="outline"
                     role="combobox"
                     className={cn(
@@ -62,8 +61,7 @@ export default function StorageClassCombobox({
                             ? storageClassOptions.find((storageClass) => storageClass.value === value)?.label ?? value
                             : "Select storage class"}
                     <ChevronsUpDown className="opacity-50" />
-                </Button>
-            </PopoverTrigger>
+                </Button>} />
             <PopoverContent className="max-w-[280px] p-0">
                 <Command>
                     <CommandList>

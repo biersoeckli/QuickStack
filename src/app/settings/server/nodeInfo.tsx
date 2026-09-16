@@ -51,7 +51,7 @@ export default function NodeInfo({ nodeInfos, clusterJoinToken }: { nodeInfos: N
                                 <div className="flex justify-center gap-4">
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild><div className={(nodeInfo.pidOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>CPU</div></TooltipTrigger>
+                                            <TooltipTrigger render={<div className={(nodeInfo.pidOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>CPU</div>} />
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{nodeInfo.pidStatusText}</p>
                                             </TooltipContent>
@@ -59,9 +59,7 @@ export default function NodeInfo({ nodeInfos, clusterJoinToken }: { nodeInfos: N
                                     </TooltipProvider>
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className={(nodeInfo.memoryOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>RAM</div>
-                                            </TooltipTrigger>
+                                            <TooltipTrigger render={<div className={(nodeInfo.memoryOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>RAM</div>} />
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{nodeInfo.memoryStatusText}</p>
                                             </TooltipContent>
@@ -69,9 +67,7 @@ export default function NodeInfo({ nodeInfos, clusterJoinToken }: { nodeInfos: N
                                     </TooltipProvider>
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className={(nodeInfo.diskOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>Disk</div>
-                                            </TooltipTrigger>
+                                            <TooltipTrigger render={<div className={(nodeInfo.diskOk ? 'bg-green-200 text-green-700' : 'bg-red-200 text-red-700') + ' px-3 py-1.5 rounded cursor-pointer'}>Disk</div>} />
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{nodeInfo.diskStatusText}</p>
                                             </TooltipContent>
@@ -87,9 +83,7 @@ export default function NodeInfo({ nodeInfos, clusterJoinToken }: { nodeInfos: N
                                     <span className="font-semibold">Schedulable:</span>
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <span className={nodeInfo.schedulable ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}> {nodeInfo.schedulable ? 'Yes' : 'No'}</span>
-                                            </TooltipTrigger>
+                                            <TooltipTrigger render={<span className={nodeInfo.schedulable ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}> {nodeInfo.schedulable ? 'Yes' : 'No'}</span>} />
                                             <TooltipContent>
                                                 <p className="max-w-[350px]">{nodeInfo.schedulable ? 'Node is ready to run containers.' : 'Node ist deactivated. All containers will be scheduled on other nodes.'}</p>
                                             </TooltipContent>
