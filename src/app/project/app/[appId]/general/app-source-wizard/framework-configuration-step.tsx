@@ -42,10 +42,8 @@ export function FrameworkConfigurationStep({ framework, formData, onChange, onCh
                 </div>
             </div>
             <Collapsible>
-                <CollapsibleTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="group -ml-2 text-muted-foreground hover:text-foreground">
-                        Build details <ChevronDown className="ml-1.5 size-4 transition-transform group-data-[state=open]:rotate-180" />
-                    </Button>
+                <CollapsibleTrigger render={<Button type="button" variant="ghost" size="sm" className="group -ml-2 text-muted-foreground hover:text-foreground" />}>
+                    Build details <ChevronDown className="ml-1.5 size-4 transition-transform group-data-[panel-open]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-3">
                     <div className="grid gap-4 md:grid-cols-2">
