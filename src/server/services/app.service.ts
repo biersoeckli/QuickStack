@@ -18,6 +18,7 @@ import appNetworkPolicyService from "./app-network-policy.service";
 import { AppBasicAuthModel, AppDomainModel, AppFileMountModel, AppModel, AppNodePortModel, AppVolumeModel } from "@/shared/model/generated-zod";
 import { z } from "zod";
 import { GitHashUtils } from "@/shared/utils/git-hash.utils";
+import { AppBuildMethodUtils } from "@/shared/utils/app-build-method.utils";
 
 class AppService {
 
@@ -42,7 +43,7 @@ class AppService {
                         buildJobName,
                         gitCommitHash,
                         gitCommitMessage,
-                        buildMethod: app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK',
+                        buildMethod: AppBuildMethodUtils.normalize(app.buildMethod),
                     });
                 }
                 // Otherwise the build-watch service will trigger the deployment once the build job completes

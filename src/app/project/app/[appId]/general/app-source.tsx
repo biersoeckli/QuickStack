@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDialog } from "@/frontend/states/zustand.states";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
+import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
+import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
 import { AppSourceWizardDialog } from "./app-source-wizard/app-source-wizard-dialog";
 import { PublicDeployKeyDialog } from "./app-source-wizard/public-deploy-key-dialog";
 import { ReadonlyInfo } from "./app-source-wizard/readonly-info";
 import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from "./app-source-wizard/types";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import FrameworkConfigurationCard from './framework-configuration-card';
 
 export default function GeneralAppSource({
     app,
@@ -50,22 +52,25 @@ export default function GeneralAppSource({
     }
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                    <CardTitle>Source</CardTitle>
-                    <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
-                </div>
-                {!readonly && configured && (
-                    <Button type="button" variant="secondary" onClick={openSourceWizard}>
-                        Change source
-                    </Button>
-                )}
-            </CardHeader>
-            <CardContent>
-                {cardContent}
-            </CardContent>
-        </Card>
+        <>
+            <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                    <div>
+                        <CardTitle>Source</CardTitle>
+                        <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
+                    </div>
+                    {!readonly && configured && (
+                        <Button type="button" variant="secondary" onClick={openSourceWizard}>
+                            Change source
+                        </Button>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {cardContent}
+                </CardContent>
+            </Card>
+            {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
+        </>
     );
 }
 
@@ -137,6 +142,15 @@ function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedMod
                         <ReadonlyInfo label="Build Method" value={buildMethodLabels[(app.buildMethod as AppBuildMethod) ?? 'RAILPACK']} />
                         {app.buildMethod === 'DOCKERFILE' && (
                             <ReadonlyInfo icon={FileCode2} label="Dockerfile Path" value={app.dockerfilePath || defaultDockerfilePath} />
+                        )}
+                        {app.buildMethod === 'FRAMEWORK' && (
+                            <>
+                                <ReadonlyInfo
+                                    icon={Boxes}
+                                    label="Framework"
+                                    value={app.framework ? jsFrameworkPresets[app.framework as JsFramework]?.label ?? app.framework : 'Not configured'}
+                                />
+                            </>
                         )}
                     </>
                 )}

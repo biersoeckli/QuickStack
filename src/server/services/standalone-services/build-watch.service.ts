@@ -11,6 +11,7 @@ import { BUILD_NAMESPACE } from '../registry.service';
 import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
 import { RollbackAnnotationUtils } from '@/shared/utils/rollback-annotation.utils';
+import { AppBuildMethodUtils } from '@/shared/utils/app-build-method.utils';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -98,7 +99,7 @@ class BuildWatchService {
                     buildJobName,
                     gitCommitHash,
                     gitCommitMessage,
-                    buildMethod: buildMethod ?? (app.buildMethod === 'DOCKERFILE' ? 'DOCKERFILE' : 'RAILPACK'),
+                    buildMethod: buildMethod ?? AppBuildMethodUtils.normalize(app.buildMethod),
                     isRollback,
                 });
             }

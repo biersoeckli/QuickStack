@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatDateTime } from '@/frontend/utils/format.utils';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
+import { appBuildMethodLabels } from '@/shared/model/app-source-info.model';
 import DeploymentStatusBadge from './deployment-status-badge';
 
 type DeploymentsDefaultViewProps = {
@@ -49,9 +50,7 @@ export function DeploymentsDefaultView({
                 ['buildMethod', 'Build Method', true, deployment => (
                     <span className="text-sm text-muted-foreground">
                         {deployment.buildMethod
-                            ? deployment.buildMethod === 'DOCKERFILE'
-                                ? 'Dockerfile'
-                                : 'Railpack'
+                            ? appBuildMethodLabels[deployment.buildMethod] ?? '—'
                             : '—'}
                     </span>
                 )],

@@ -1,9 +1,36 @@
 import { z } from "zod";
+import { jsFrameworkZodModel } from "./js-framework.model";
 
 export const appSourceTypeZodModel = z.enum(["GIT", "GIT_SSH", "CONTAINER"]);
 export const appTypeZodModel = z.enum(["APP", "POSTGRES", "MYSQL", "MARIADB", "MONGODB", "REDIS"]);
-export const appBuildMethodZodModel = z.enum(["RAILPACK", "DOCKERFILE"]);
+export const appBuildMethodZodModel = z.enum(["RAILPACK", "DOCKERFILE", "FRAMEWORK"]);
 export type AppBuildMethod = z.infer<typeof appBuildMethodZodModel>;
+
+export const appBuildMethodLabels: Record<AppBuildMethod, string> = {
+  RAILPACK: 'Railpack',
+  DOCKERFILE: 'Dockerfile',
+  FRAMEWORK: 'Framework',
+};
+
+const frameworkSourceFields = {
+  framework: jsFrameworkZodModel.nullish(),
+  installCommand: z.string().nullish(),
+  buildCommand: z.string().nullish(),
+  runCommand: z.string().nullish(),
+  rootDirectory: z.string().trim().nullish(),
+  outputDirectory: z.string().trim().nullish(),
+  nodeVersion: z.string().trim().nullish(),
+};
+
+export const appFrameworkConfigurationZodModel = z.object({
+  installCommand: z.string().trim(),
+  buildCommand: z.string().trim().min(1, 'Build command is required.'),
+  runCommand: z.string().trim(),
+  rootDirectory: z.string().trim(),
+  outputDirectory: z.string().trim(),
+  nodeVersion: z.string().trim(),
+});
+export type AppFrameworkConfigurationModel = z.infer<typeof appFrameworkConfigurationZodModel>;
 
 const gitHttpsUrlRegex = /^https:\/\/[^\s/]+(?::\d+)?(\/[^\s]*)+$/;
 const gitHubGitLabDotGitRegex = /^https:\/\/(github\.com|gitlab\.com)\//;
@@ -26,6 +53,7 @@ export const appSourceInfoGitZodModel = z.object({
   gitToken: z.string().trim().nullish(),
   buildMethod: appBuildMethodZodModel.default("RAILPACK"),
   dockerfilePath: z.string().trim().nullish(),
+  ...frameworkSourceFields,
 });
 export type AppSourceInfoGitModel = z.infer<typeof appSourceInfoGitZodModel>;
 
@@ -34,6 +62,7 @@ export const appSourceInfoGitSshZodModel = z.object({
   gitBranch: z.string().trim().min(1, gitBranchValidationMessage),
   buildMethod: appBuildMethodZodModel.default("RAILPACK"),
   dockerfilePath: z.string().trim().nullish(),
+  ...frameworkSourceFields,
 });
 export type AppSourceInfoGitSshModel = z.infer<typeof appSourceInfoGitSshZodModel>;
 
@@ -86,6 +115,7 @@ export const appSourceInfoInputZodModel = z.object({
   gitUsername: z.string().trim().nullish(),
   gitToken: z.string().trim().nullish(),
   dockerfilePath: z.string().trim().nullish(),
+  ...frameworkSourceFields,
 }).superRefine((val, ctx) => {
   if (val.sourceType === 'GIT' && val.gitUrl && !gitUrlValidation(val.gitUrl)) {
     ctx.addIssue({
@@ -114,6 +144,22 @@ export const appSourceInfoInputZodModel = z.object({
       path: ['dockerfilePath'],
       message: 'Path to Dockerfile is required when using the Dockerfile build method.',
     });
+  }
+  if ((val.sourceType === 'GIT' || val.sourceType === 'GIT_SSH') && val.buildMethod === 'FRAMEWORK') {
+    if (!val.framework) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['framework'],
+        message: 'Select a framework.',
+      });
+    }
+    if (!val.buildCommand) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buildCommand'],
+        message: 'Build command is required when using the framework build method.',
+      });
+    }
   }
 });
 export type AppSourceInfoInputModel = z.infer<typeof appSourceInfoInputZodModel>;

@@ -69,6 +69,7 @@ vi.mock('@/server/services/deployment-logs.service', () => ({ dlog: vi.fn() }));
 import buildService from '@/server/services/build.service';
 import gitService from '@/server/services/git.service';
 import dockerfileBuildJobBuilder from '@/server/services/build-job-builders/dockerfile-build-job-builder.service';
+import frameworkBuildJobBuilder from '@/server/services/build-job-builders/framework-build-job-builder.service';
 import railpackBuildJobBuilder from '@/server/services/build-job-builders/railpack-build-job-builder.service';
 import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
 import agentGitSshKeyService from '@/server/services/agent-git-ssh-key.service';
@@ -80,6 +81,7 @@ describe('BuildService.buildApp builder selection', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.spyOn(dockerfileBuildJobBuilder, 'buildJobDefinition').mockResolvedValue({} as any);
+        vi.spyOn(frameworkBuildJobBuilder, 'buildJobDefinition').mockResolvedValue({} as any);
         vi.spyOn(railpackBuildJobBuilder, 'buildJobDefinition').mockResolvedValue({} as any);
         vi.mocked(gitService.openGitContext).mockImplementation(async (_app, fn) => fn({
             checkIfDockerfileExists: dockerfileCheckSpy,
@@ -117,6 +119,25 @@ describe('BuildService.buildApp builder selection', () => {
 
         expect(dockerfileCheckSpy).not.toHaveBeenCalled();
         expect(railpackBuildJobBuilder.buildJobDefinition).toHaveBeenCalled();
+        expect(dockerfileBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
+    });
+
+    it('uses the Framework builder for framework apps', async () => {
+        await buildService.buildApp('deployment-1', {
+            id: 'app-1',
+            projectId: 'project-1',
+            sourceType: 'GIT',
+            buildMethod: 'FRAMEWORK',
+            gitUrl: 'https://github.com/example/repo.git',
+            gitBranch: 'main',
+            dockerfilePath: './Dockerfile',
+            buildCommand: 'next build',
+            runCommand: 'next start',
+        } as any);
+
+        expect(dockerfileCheckSpy).not.toHaveBeenCalled();
+        expect(frameworkBuildJobBuilder.buildJobDefinition).toHaveBeenCalled();
+        expect(railpackBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
         expect(dockerfileBuildJobBuilder.buildJobDefinition).not.toHaveBeenCalled();
     });
 
