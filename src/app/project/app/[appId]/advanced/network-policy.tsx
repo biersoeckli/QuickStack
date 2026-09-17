@@ -98,7 +98,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
     return <Card>
         <CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>
         <CardContent className="space-y-6">
-            <Card>
+            <Card className="p-0">
                 <CardContent className="space-y-4 p-4">
                     <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
                 </CardContent>

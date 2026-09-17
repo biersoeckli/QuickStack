@@ -37,7 +37,7 @@ import {
     ItemMedia,
     ItemTitle,
 } from '@/components/ui/item';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
     Drawer,
@@ -324,7 +324,7 @@ export function NodeDetailsDrawer({
                             )}
                         </div>
                         {app && role && !needsSourceConfiguration ? (
-                            <ScrollArea>
+                            <ScrollArea scrollbarOrientation="horizontal">
                                 <TabsList className="mt-4">
                                     <TabsTrigger value="overview">
                                         <LayoutDashboard />
@@ -343,7 +343,6 @@ export function NodeDetailsDrawer({
                                         Stats
                                     </TabsTrigger>
                                 </TabsList>
-                                <ScrollBar orientation="horizontal" />
                             </ScrollArea>
                         ) : (
                             <div className="h-2"></div>
@@ -353,6 +352,7 @@ export function NodeDetailsDrawer({
                         {needsSourceConfiguration ? (
                             <>
                                 <GeneralAppSource
+                                    hideCard
                                     app={app}
                                     readonly={
                                         role !== RolePermissionEnum.READWRITE

@@ -62,17 +62,17 @@ export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKe
                                 <FormLabel>Expires At (optional)</FormLabel>
                                 <Popover>
                                     <PopoverTrigger render={<FormControl>
-                                            <Button
-                                                variant="outline"
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value instanceof Date ? format(field.value, "PPP") : "Pick a date"}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>} />
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value instanceof Date ? format(field.value, "PPP") : "Pick a date"}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>} />
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
                                             mode="single"
@@ -88,8 +88,8 @@ export function CreateApiKeyDialog({ onCreated, userId }: { onCreated: (rawApiKe
                         )}
                     />
                     <div className="flex gap-2 justify-end">
-                        <Button type="button" variant="outline" onClick={() => closeDialog()}>Cancel</Button>
                         <Button type="submit">Create</Button>
+                        <Button type="button" variant="outline" onClick={() => closeDialog()}>Cancel</Button>
                     </div>
                 </form>
             </Form>

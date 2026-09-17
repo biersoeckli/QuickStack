@@ -114,7 +114,7 @@ export default function K3sUpdateInfo({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger >
-                                <CircleHelp />
+                                <CircleHelp className="h-4 w-4" />
                             </TooltipTrigger>
                             <TooltipContent>
                                 <div className="space-y-3 max-w-xl">

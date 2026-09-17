@@ -42,7 +42,7 @@ export default function MonitoringTab({
 
     const ContentWrapper = hideCard ? Fragment : Card;
     return <>
-        <ContentWrapper>
+        <ContentWrapper className="p-0">
             <CardContent className={cn('space-y-4', hideCard ? 'p-0' : 'pb-0')}>
                 {!selectedPod ? <FullLoadingSpinner /> :
                     <Table>

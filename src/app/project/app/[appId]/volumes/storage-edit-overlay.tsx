@@ -170,7 +170,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                         <div className="self-center">
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger render={<CircleHelp />} />
+                              <TooltipTrigger render={<CircleHelp className="h-4 w-4" />} />
                               <TooltipContent>
                                 <p className="max-w-[350px]">
                                   In most cases you will want to use ReadWriteOnce.
@@ -248,7 +248,7 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
                           <div className="self-center">
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger render={<CircleHelp />} />
+                                <TooltipTrigger render={<CircleHelp  className="h-4 w-4"/>} />
                                 <TooltipContent>
                                   <p className="max-w-[350px]">
                                     Choose where the volume is provisioned.<br /><br />

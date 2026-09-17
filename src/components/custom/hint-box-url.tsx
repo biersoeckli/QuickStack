@@ -17,7 +17,7 @@ export function HintBoxUrl({ url }: { url: string }) {
                     <Button type="button" variant="outline" className="h-8 w-8 p-0"><CircleHelp /></Button>
                 </Link>} />
             <TooltipContent>
-                <p>Absprung zu {uri.hostname}</p>
+                <p>Link to {uri.hostname}</p>
             </TooltipContent>
         </Tooltip>
     </TooltipProvider>

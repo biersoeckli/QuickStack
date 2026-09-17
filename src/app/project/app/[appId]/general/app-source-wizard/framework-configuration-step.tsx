@@ -16,7 +16,7 @@ export function FrameworkConfigurationStep({ framework, formData, onChange, onCh
     const serverPreset = !!formData.runCommand?.trim();
 
     return (
-        <div className="space-y-4 rounded-md border p-4">
+        <div className="space-y-4 rounded-2xl border p-4">
             <div className="flex items-center gap-3 border-b pb-4">
                 <Image src={preset.logoSrc} alt={`${preset.label} logo`} width={40} height={40} unoptimized className="size-10 shrink-0 object-contain" />
                 <div className="min-w-0 flex-1">
@@ -25,33 +25,35 @@ export function FrameworkConfigurationStep({ framework, formData, onChange, onCh
                 </div>
                 <Button type="button" variant="ghost" size="sm" onClick={onChangeFramework}>Change</Button>
             </div>
-            <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Build</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <IconInput icon={Hammer} label="Build Command" className="font-mono text-sm" placeholder={preset.buildCommand} value={formData.buildCommand ?? ''} onChange={(event) => onChange({ buildCommand: event.target.value })} />
-                    <div className="space-y-2">
-                        <IconInput icon={Play} label="Run Command" className="font-mono text-sm" placeholder="Leave empty to serve static output" value={formData.runCommand ?? ''} onChange={(event) => onChange({ runCommand: event.target.value })} />
-                       </div>
-                </div>
-            </div>
-            <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Paths</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <IconInput icon={FolderTree} label="Root Directory" className="font-mono text-sm" placeholder="./" value={formData.rootDirectory ?? ''} onChange={(event) => onChange({ rootDirectory: event.target.value })} />
-                    <IconInput icon={FolderOutput} label="Output Directory" className="font-mono text-sm" placeholder={preset.outputDirectory} value={formData.outputDirectory ?? ''} onChange={(event) => onChange({ outputDirectory: event.target.value })} />
-                </div>
-            </div>
-            <Collapsible>
-                <CollapsibleTrigger render={<Button type="button" variant="ghost" size="sm" className="group -ml-2 text-muted-foreground hover:text-foreground" />}>
-                    Build details <ChevronDown className="ml-1.5 size-4 transition-transform group-data-[panel-open]:rotate-180" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3">
+            <div className="space-y-4 max-h-90 overflow-y-auto overscroll-contain">
+                <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Build</h3>
                     <div className="grid gap-4 md:grid-cols-2">
-                        <IconInput icon={Download} label="Install Command" className="font-mono text-sm" value={formData.installCommand ?? ''} onChange={(event) => onChange({ installCommand: event.target.value })} />
-                        <IconInput icon={Cpu} label="Node Version" className="font-mono text-sm" placeholder="lts" value={formData.nodeVersion ?? ''} onChange={(event) => onChange({ nodeVersion: event.target.value })} />
+                        <IconInput icon={Hammer} label="Build Command" className="font-mono text-sm" placeholder={preset.buildCommand} value={formData.buildCommand ?? ''} onChange={(event) => onChange({ buildCommand: event.target.value })} />
+                        <div className="space-y-2">
+                            <IconInput icon={Play} label="Run Command" className="font-mono text-sm" placeholder="Leave empty to serve static output" value={formData.runCommand ?? ''} onChange={(event) => onChange({ runCommand: event.target.value })} />
+                        </div>
                     </div>
-                </CollapsibleContent>
-            </Collapsible>
+                </div>
+                <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Paths</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <IconInput icon={FolderTree} label="Root Directory" className="font-mono text-sm" placeholder="./" value={formData.rootDirectory ?? ''} onChange={(event) => onChange({ rootDirectory: event.target.value })} />
+                        <IconInput icon={FolderOutput} label="Output Directory" className="font-mono text-sm" placeholder={preset.outputDirectory} value={formData.outputDirectory ?? ''} onChange={(event) => onChange({ outputDirectory: event.target.value })} />
+                    </div>
+                </div>
+                <Collapsible>
+                    <CollapsibleTrigger render={<Button type="button" variant="ghost" size="sm" className="group -ml-2 text-muted-foreground hover:text-foreground" />}>
+                        Build details <ChevronDown className="ml-1.5 size-4 transition-transform group-data-[panel-open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-3">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <IconInput icon={Download} label="Install Command" className="font-mono text-sm" value={formData.installCommand ?? ''} onChange={(event) => onChange({ installCommand: event.target.value })} />
+                            <IconInput icon={Cpu} label="Node Version" className="font-mono text-sm" placeholder="lts" value={formData.nodeVersion ?? ''} onChange={(event) => onChange({ nodeVersion: event.target.value })} />
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
+            </div>
         </div>
     );
 }

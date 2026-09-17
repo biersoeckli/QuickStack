@@ -11,7 +11,7 @@ export default function FormLabelWithQuestion(
         <div>
             <TooltipProvider>
                 <Tooltip>
-                    <TooltipTrigger render={<CircleHelp />} />
+                    <TooltipTrigger render={<CircleHelp  className="h-4 w-4" />} />
                     <TooltipContent>
                         <p className="max-w-[350px]">{hint}</p>
                     </TooltipContent>

@@ -22,7 +22,7 @@ import { Settings, Network, HardDrive, Rocket, Wrench, Hammer, ChevronsLeftRight
 import QsBuildSettings from "./qs-build-settings";
 import { getBuildSettings } from "./actions";
 import quickStackUpdateService from "@/server/services/qs-update.service";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import clusterService from "@/server/services/cluster.service";
 import NodeInfo from "./nodeInfo";
 import UpdateInfoPage from "./update-info";
@@ -93,7 +93,7 @@ export default async function QuickStackSettingsPage({
             <Separator className="my-6" />
 
             <ServerSettingsTabs defaultTab={defaultTab}>
-                <ScrollArea>
+                <ScrollArea scrollbarOrientation="horizontal">
                     <TabsList>
                         <TabsTrigger value="general"><Settings className="mr-2 h-4 w-4" />General</TabsTrigger>
                         <TabsTrigger value="networking"><Network className="mr-2 h-4 w-4" />Networking / Traefik</TabsTrigger>
@@ -104,7 +104,6 @@ export default async function QuickStackSettingsPage({
                         <TabsTrigger value="updates"><Rocket className="mr-2 h-4 w-4" />Updates &amp; Add-Ons {newVersionInfo && <div className="h-2 w-2 ml-2 rounded-full bg-orange-500 animate-pulse" />}</TabsTrigger>
                         <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
                     </TabsList>
-                    <ScrollBar orientation="horizontal" />
                 </ScrollArea>
                 <TabsContent value="general" className="space-y-4">
                     <div className="grid gap-6">
