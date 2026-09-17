@@ -82,7 +82,7 @@ export default function EnvEdit({ app, readonly }: {
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Passed to Docker as build arguments (KEY=VALUE) while building the image only.
+                                        Passed to builder as build arguments while building the image only.
                                         They are not available at runtime, are not secret, and apply on the next build.
                                     </FormDescription>
                                     {!buildArgsEnabled && (
