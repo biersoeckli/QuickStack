@@ -32,6 +32,7 @@ export const AppModel = z.object({
   nodeVersion: z.string().nullish(),
   replicas: z.number().int(),
   envVars: z.string(),
+  buildArgs: z.string(),
   memoryReservation: z.number().int().nullish(),
   memoryLimit: z.number().int().nullish(),
   cpuReservation: z.number().int().nullish(),

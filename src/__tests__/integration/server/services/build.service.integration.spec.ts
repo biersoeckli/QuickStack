@@ -327,6 +327,7 @@ function createBuildApp(input: BuildIntegrationInput & { id: string; projectId: 
         nodeVersion: input.nodeVersion,
         replicas: 1,
         envVars: '',
+        buildArgs: '',
         useNetworkPolicy: true,
         healthCheckPeriodSeconds: 15,
         healthCheckTimeoutSeconds: 5,

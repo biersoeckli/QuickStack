@@ -55,7 +55,7 @@ export default function AppNetworkPolicyRuleSection({
 
     return (
         <section>
-            <Card>
+            <Card className="py-0">
                 <CardContent className="space-y-4 p-4">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted">
