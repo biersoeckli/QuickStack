@@ -65,9 +65,7 @@ export default function AppRessourceMonitoring({
                                 <TableCell>
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <span className='font-semibold'>{item.cpuUsagePercent.toFixed(3)}%</span>
-                                            </TooltipTrigger>
+                                            <TooltipTrigger render={<span className='font-semibold'>{item.cpuUsagePercent.toFixed(3)}%</span>} />
                                             <TooltipContent>
                                                 <p>{item.cpuUsage.toFixed(5)} Cores</p>
                                             </TooltipContent>

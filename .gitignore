@@ -46,3 +46,5 @@ internal
 !additional-containers/quickstack-auth-proxy/internal/**
 dist
 storage/
+!src/app/settings/platform/storage/
+!src/app/settings/platform/storage/**

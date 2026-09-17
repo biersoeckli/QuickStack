@@ -24,9 +24,9 @@ export function GitSshUrlStep({ formData, publicKey, isEnsuringKey, isLoadingBra
                 <AlertTitle>Connect a private repository in four steps</AlertTitle>
                 <AlertDescription>QuickStack uses this read-only deploy key to clone the repository.</AlertDescription>
             </Alert>
-            <div className="space-y-3 rounded-md border p-4">
+            <div className="space-y-3 rounded-2xl border p-4">
                 <div className="flex gap-3">
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">1</span>
+                    <span className="mt-1.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">1</span>
                     <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex items-center justify-between gap-3">
                             <Label>Copy the deploy key</Label>

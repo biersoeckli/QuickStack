@@ -109,9 +109,7 @@ export default function DomainEditOverlay({
 
                                         <TooltipProvider>
                                             <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span className="text-sm text-muted-foreground whitespace-nowrap">.{domainSuffix}</span>
-                                                </TooltipTrigger>
+                                                <TooltipTrigger render={<span className="text-sm text-muted-foreground whitespace-nowrap">.{domainSuffix}</span>} />
                                                 <TooltipContent>
                                                     <p>This ist the quickstack.me <br />domain for your instance.</p>
                                                 </TooltipContent>

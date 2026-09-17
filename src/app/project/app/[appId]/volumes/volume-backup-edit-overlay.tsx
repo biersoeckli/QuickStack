@@ -149,7 +149,7 @@ export default function VolumeBackupEditDialog({
                   name="targetId"
                   label="Backup Location"
                   formDescription={<>
-                    S3 Storage Locations can be configured <span className="underline"><Link href="/settings/s3-targets">here</Link></span>.
+                    S3 Storage Locations can be configured <span className="underline"><Link href="/settings/integrations/s3-targets">here</Link></span>.
                   </>}
                   values={s3Targets.map((target) =>
                     [target.id, `${target.name}`])}

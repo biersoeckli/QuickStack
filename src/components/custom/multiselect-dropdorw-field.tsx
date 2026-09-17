@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -62,11 +63,11 @@ export function MultiselectDropdownField<TFormType extends FieldValues>(
       />
     </div>
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline">{!(form.getValues()[name] as string) || (form.getValues()[name] as string).length === 0 ? label : (form.getValues()[name] as string)?.replaceAll(',', ', ')}</Button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger render={<Button variant="outline">{!(form.getValues()[name] as string) || (form.getValues()[name] as string).length === 0 ? label : (form.getValues()[name] as string)?.replaceAll(',', ', ')}</Button>} />
       <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>Kantone</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Kantone</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <ScrollArea className="h-60">
           {Array.from(values.keys()).map((key) => {

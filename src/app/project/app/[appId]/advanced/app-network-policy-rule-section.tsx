@@ -141,12 +141,10 @@ function RuleRow({ rule, readonly, onDelete, currentProjectId, projects }: {
             <TableCell>
                 {!readonly && (
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon">
                                 <MoreHorizontal />
                                 <span className="sr-only">Rule actions</span>
-                            </Button>
-                        </DropdownMenuTrigger>
+                            </Button>} />
                         <DropdownMenuContent align="end">
                             {rule.targetType === 'APP' && <DropdownMenuItem onClick={copyInternalHostname}>
                                 <CopyIcon /> Copy internal hostname

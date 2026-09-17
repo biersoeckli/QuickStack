@@ -1,5 +1,5 @@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, GitBranch } from "lucide-react";
+import { GitBranch } from "lucide-react";
 
 export function GitBranchStep({ branches, selectedBranch, onSelect }: {
     branches: string[];
@@ -8,7 +8,7 @@ export function GitBranchStep({ branches, selectedBranch, onSelect }: {
 }) {
     return (
         <div>
-            <Command className="rounded-md border">
+            <Command className="rounded-2xl border">
                 <CommandInput placeholder="Search branches..." />
                 <CommandList>
                     <CommandEmpty>No branches found.</CommandEmpty>
@@ -18,11 +18,11 @@ export function GitBranchStep({ branches, selectedBranch, onSelect }: {
                                 key={branch}
                                 value={branch}
                                 className="cursor-pointer"
+                                data-checked={branch === selectedBranch}
                                 onSelect={() => onSelect(branch)}
                             >
                                 <GitBranch className="mr-2 h-4 w-4" />
                                 <span className="truncate">{branch}</span>
-                                <Check className={branch === selectedBranch ? 'ml-auto h-4 w-4' : 'ml-auto h-4 w-4 opacity-0'} />
                             </CommandItem>
                         ))}
                     </CommandGroup>

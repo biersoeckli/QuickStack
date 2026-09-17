@@ -92,7 +92,7 @@ export default function UserLoginForm({ ssoProviders }: { ssoProviders: SsoLogin
                     })();
                 }} className="space-y-6">
 
-                    <CardContent className="space-y-5 pt-6">
+                    <CardContent className="space-y-5 pt-2">
                         <FormField
                             control={form.control}
                             name="email"

@@ -56,7 +56,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
 
     return (
         <Form {...form}>
-            <TooltipProvider delayDuration={150}>
+            <TooltipProvider delay={150}>
                 <form action={() => form.handleSubmit((data) => formAction(data))()}>
                     <Card>
                         <CardHeader>

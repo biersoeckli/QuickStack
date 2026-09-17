@@ -64,6 +64,10 @@ function EditProjectForm({ existingItem, agentsAvailable }: {
                     disabled={!!existingItem}
                     value={projectType}
                     onValueChange={(value) => setProjectType(value as ProjectType)}
+                    items={[
+                        { value: 'APP', label: 'App' },
+                        ...(agentsAvailable ? [{ value: 'AGENT', label: 'Agent' }] : []),
+                    ]}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select Project Type" />

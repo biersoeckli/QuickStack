@@ -133,7 +133,11 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
                             No LLM Gateways configured. Add one in Settings.
                         </p>
                     ) : (
-                        <Select value={selectedGatewayId} onValueChange={setSelectedGatewayId}>
+                        <Select
+                            value={selectedGatewayId}
+                            onValueChange={(value) => setSelectedGatewayId(value ?? '')}
+                            items={gateways.map((gateway) => ({ value: gateway.id, label: gateway.name }))}
+                        >
                             <SelectTrigger id="llm-gateway">
                                 <SelectValue placeholder="Select an LLM Gateway" />
                             </SelectTrigger>

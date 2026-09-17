@@ -76,7 +76,7 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                     name="projectId"
                     render={({ field }) => <FormItem>
                         <FormLabel>Project</FormLabel>
-                        <Select value={field.value} onValueChange={(projectId) => {
+                        <Select value={field.value} items={projects.map((project) => ({ value: project.id, label: project.name }))} onValueChange={(projectId) => {
                             field.onChange(projectId);
                             form.setValue('targetId', '');
                             form.setValue('targetType', 'APP');
@@ -96,8 +96,8 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                     name="targetId"
                     render={({ field }) => <FormItem>
                         <FormLabel>{ingress ? 'Source' : 'Target'}</FormLabel>
-                        <Select disabled={!selectedProjectId} value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} onValueChange={(value) => {
-                            const [targetType, targetId] = value.split(':') as ['APP' | 'AGENT', string];
+                        <Select disabled={!selectedProjectId} value={field.value ? `${form.getValues('targetType')}:${field.value}` : ''} items={targetsForSelectedProject.map((target) => ({ value: `${target.type}:${target.id}`, label: `${target.name} (${target.type === 'APP' ? 'App' : 'Agent sandbox'})` }))} onValueChange={(value) => {
+                            const [targetType, targetId] = (value ?? '').split(':') as ['APP' | 'AGENT', string];
                             const target = targetsForSelectedProject.find(item => item.type === targetType && item.id === targetId);
                             form.setValue('targetType', targetType);
                             field.onChange(targetId);
@@ -132,7 +132,7 @@ export default function AppNetworkPolicyRuleDialog({ direction, targets, current
                     name="protocol"
                     render={({ field }) => <FormItem>
                         <FormLabel>Protocol</FormLabel>
-                        <Select value={field.value} onValueChange={(protocol) => {
+                        <Select value={field.value} items={[{ value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]} onValueChange={(protocol) => {
                             field.onChange(protocol);
                             setErrorMessage(null);
                         }}>

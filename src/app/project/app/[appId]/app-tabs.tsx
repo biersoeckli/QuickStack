@@ -22,7 +22,7 @@ import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended
 import BasicAuth from "./advanced/basic-auth";
 import NetworkPolicy from "./advanced/network-policy";
 import HealthCheckSettings from "./advanced/health-check-settings";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
@@ -67,7 +67,7 @@ export default function AppTabs({
 
     return (
         <Tabs defaultValue="general" value={activeTab} onValueChange={(newTab) => openTab(newTab)} className="space-y-4">
-            <ScrollArea>
+            <ScrollArea scrollbarOrientation="horizontal">
                 <TabsList>
                     <TabsTrigger value="overview"><Eye className="mr-2 h-4 w-4" />Overview</TabsTrigger>
                     {app.appType !== 'APP' && <TabsTrigger value="credentials"><Key className="mr-2 h-4 w-4" />Credentials</TabsTrigger>}
@@ -77,7 +77,6 @@ export default function AppTabs({
                     <TabsTrigger value="storage"><HardDrive className="mr-2 h-4 w-4" />Storage</TabsTrigger>
                     <TabsTrigger value="advanced"><Cog className="mr-2 h-4 w-4" />Advanced</TabsTrigger>
                 </TabsList>
-                <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <TabsContent value="overview" className="grid grid-cols-1 3xl:grid-cols-2 gap-4">
                 <MonitoringTab app={app} />

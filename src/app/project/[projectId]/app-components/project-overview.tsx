@@ -58,7 +58,7 @@ export default function AppProjectOverview({
             width: 'min(720px, calc(100vw - 2rem))',
             maxWidth: '720px',
         });
-    }, [openDialog, showNewNetworkPolicyExplanation]);
+    }, [openDialog, showNewNetworkPolicyExplanation, apps.length]);
 
     useEffect(() => {
         if (isProjectOverviewTab(requestedTab)) {

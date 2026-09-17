@@ -54,7 +54,9 @@ export default function SelectFormField<TFormType extends FieldValues>(
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>{label}</FormLabel>
-                    <Select disabled={field.disabled}
+                    <Select
+                        disabled={field.disabled}
+                        items={values.map(([value, label]) => ({ value, label }))}
                         onValueChange={(val) => {
                             if (val) {
                                 form.setValue(name as any, val as any);
@@ -62,7 +64,7 @@ export default function SelectFormField<TFormType extends FieldValues>(
                                     onValueChange(val);
                                 }
                             }
-                        }} defaultValue={field.value ?? undefined}>
+                        }} value={field.value ?? undefined}>
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder={placeholder} />

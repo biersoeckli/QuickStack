@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog"
 import React from "react";
 import { BackupInfoModel } from "@/shared/model/backup-info.model";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 import { formatDateTime } from "@/frontend/utils/format.utils";
@@ -70,9 +70,7 @@ export function BackupDetailDialog({
         <Dialog open={isOpen} onOpenChange={(isO) => {
             setIsOpen(isO);
         }}>
-            <DialogTrigger asChild>
-                {children}
-            </DialogTrigger>
+            <DialogTrigger render={children as React.ReactElement} />
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>
                     <DialogTitle>Backups</DialogTitle>

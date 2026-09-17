@@ -13,7 +13,7 @@ export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGi
 }) {
     const isGitSource = formData.sourceType === 'GIT' || formData.sourceType === 'GIT_SSH';
     return (
-        <div className="max-h-[50vh] overflow-y-auto overscroll-contain rounded-md border">
+        <div className="max-h-[50vh] overflow-y-auto overscroll-contain rounded-2xl border">
             <div className="space-y-4 p-4">
                 <SummaryRow label="Source Type" value={sourceTypeLabels[formData.sourceType as SourceType]} />
                 {isGitSource && (

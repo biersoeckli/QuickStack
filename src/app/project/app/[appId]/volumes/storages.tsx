@@ -182,8 +182,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                 <TableCell className="font-medium">
                                     {volume.shareWithOtherApps && (
                                         <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-800 inline-flex items-center gap-1">
                                                         <Share2 className="h-3 w-3" />
                                                         Shareable
@@ -197,8 +197,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                     )}
                                     {volume.sharedVolumeId && (
                                         <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-800 inline-flex items-center gap-1">
                                                         <Share2 className="h-3 w-3" />
                                                         Shared
@@ -214,8 +214,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                 <TableCell className="font-medium flex gap-2">
                                     {!volume.sharedVolumeId && <>
                                         <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <Button variant="ghost" onClick={() => asyncDownloadPvcData(volume.id)} disabled={isLoading}>
                                                         <Download />
                                                     </Button>
@@ -226,8 +226,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                             </Tooltip>
                                         </TooltipProvider>
                                         {!readonly && <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
                                                         <Folder />
                                                     </Button>
@@ -240,8 +240,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                     </>}
                                     {/*<StorageRestoreDialog app={app} volume={volume}>
                                         <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <Button variant="ghost" disabled={isLoading}>
                                                         <Upload />
                                                     </Button>
@@ -255,8 +255,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                     {!readonly && <>
                                         {volume.sharedVolumeId ? (
                                             <TooltipProvider>
-                                                <Tooltip delayDuration={200}>
-                                                    <TooltipTrigger>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200}>
                                                         <Button variant="ghost" disabled={true}><EditIcon /></Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
@@ -267,8 +267,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                         ) : (
                                             <DialogEditDialog app={app} volume={volume} storageClasses={storageClasses}>
                                                 <TooltipProvider>
-                                                    <Tooltip delayDuration={200}>
-                                                        <TooltipTrigger>
+                                                    <Tooltip>
+                                                        <TooltipTrigger delay={200}>
                                                             <Button variant="ghost" disabled={isLoading}><EditIcon /></Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
@@ -279,8 +279,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                             </DialogEditDialog>
                                         )}
                                         <TooltipProvider>
-                                            <Tooltip delayDuration={200}>
-                                                <TooltipTrigger>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={200}>
                                                     <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
                                                         {volume.sharedVolumeId ? <Unlink /> : <TrashIcon />}
                                                     </Button>

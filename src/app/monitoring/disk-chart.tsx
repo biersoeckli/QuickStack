@@ -33,15 +33,15 @@ export default function ChartDiskRessources({
     const chartConfig = {
         diskUsed: {
             label: "Used",
-            color: "hsl(var(--chart-1))",
+            color: "var(--chart-1)",
         },
         diskReserved: {
             label: "Reserved (free but not usable)",
-            color: "hsl(var(--chart-2))",
+            color: "var(--chart-2)",
         },
         diskSchedulable: {
             label: "Schedulable",
-            color: "hsl(var(--muted))",
+            color: "var(--muted)",
         },
     } satisfies ChartConfig
 

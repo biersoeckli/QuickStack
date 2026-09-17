@@ -109,12 +109,10 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
                                 <TableCell className="font-medium">{rule.protocol}</TableCell>
                                 <TableCell className="font-medium flex gap-2">
                                     <TooltipProvider>
-                                        <Tooltip delayDuration={300}>
-                                            <TooltipTrigger asChild>
-                                                <Button type="button" variant="ghost" title="Copy internal hostname" onClick={() => copyInternalHostname(rule)}>
+                                        <Tooltip>
+                                            <TooltipTrigger delay={300} render={<Button type="button" variant="ghost" title="Copy internal hostname" onClick={() => copyInternalHostname(rule)}>
                                                     <CopyIcon />
-                                                </Button>
-                                            </TooltipTrigger>
+                                                </Button>} />
                                             <TooltipContent>
                                                 <p>Copy internal hostname to clipboard</p>
                                             </TooltipContent>

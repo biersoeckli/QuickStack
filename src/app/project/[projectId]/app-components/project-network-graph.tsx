@@ -46,9 +46,9 @@ import { deleteApp } from '@/app/project/[projectId]/actions';
 import { EditAppDialog } from './edit-app-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 
-const hiddenHandleClassName = '!size-1.5 !border-0 !bg-transparent !opacity-0 pointer-events-none';
-const connectionSourceHandleClassName = '!size-3 !border-2 !border-background !bg-qs-500 !opacity-0 !shadow-md transition-all duration-150 group-hover:!opacity-100 [&.connectingfrom]:!opacity-0 hover:!bg-qs-600';
-const connectionTargetHandleClassName = '!size-3 !border-2 !border-background !bg-qs-400 !opacity-0 !shadow-md transition-all duration-150 [&.connectingto]:!opacity-100 hover:!bg-qs-500';
+const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
+const connectionSourceHandleClassName = 'size-3! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
+const connectionTargetHandleClassName = 'size-3! border-2! border-background! bg-qs-400! opacity-0! shadow-md! transition-all duration-150 [&.connectingto]:opacity-100! hover:bg-qs-500!';
 
 type EdgeMenu = { edgeId: string; x: number; y: number };
 type NodeMenu = { appId: string; x: number; y: number };
@@ -72,7 +72,7 @@ const WorkloadNode = memo(function WorkloadNode({
     const Icon = data.kind === 'AGENT' ? Bot : database ? Database : Boxes;
     return (
         <div className={cn(
-            'group relative flex w-[240px] cursor-pointer items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-sm transition-all duration-150 hover:border-qs-500/50 hover:shadow-md',
+            'group relative flex w-[240px] cursor-pointer items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-xs transition-all duration-150 hover:border-qs-500/50 hover:shadow-md',
             data.external && 'border-dashed border-amber-500/70 bg-amber-500/5',
             data.selected && 'border-qs-500 ring-2 ring-qs-500/20 shadow-md',
             !data.selected && !data.connectedToSelection && 'opacity-40',
@@ -89,11 +89,11 @@ const WorkloadNode = memo(function WorkloadNode({
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{data.caption ?? (database ? data.appType : data.kind === 'AGENT' ? 'Agent sandbox' : 'App')}</p>
             </div>
-            <Handle id="target-ingress" type="target" position={Position.Left} title="Drop connection here" className={cn(data.external ? hiddenHandleClassName : connectionTargetHandleClassName, data.connectionTarget && '!opacity-100')} />
+            <Handle id="target-ingress" type="target" position={Position.Left} title="Drop connection here" className={cn(data.external ? hiddenHandleClassName : connectionTargetHandleClassName, data.connectionTarget && 'opacity-100!')} />
             <Handle id="source-internet" type="source" position={Position.Top} className={hiddenHandleClassName} />
             <Handle id="source-ingress" type="source" position={Position.Bottom} className={hiddenHandleClassName} />
             <Handle id="target-egress" type="target" position={Position.Left} className={hiddenHandleClassName} />
-            <Handle id="source-egress" type="source" position={Position.Right} title="Drag to create connection" className={cn(data.external ? hiddenHandleClassName : connectionSourceHandleClassName, data.connectionInProgress && '!opacity-0')} />
+            <Handle id="source-egress" type="source" position={Position.Right} title="Drag to create connection" className={cn(data.external ? hiddenHandleClassName : connectionSourceHandleClassName, data.connectionInProgress && 'opacity-0!')} />
         </div>
     );
 });
@@ -102,7 +102,7 @@ const InternetNode = memo(function InternetNode({
 }: NodeProps<Node<WorkloadNodeData, 'internet'>>) {
     return (
         <div className={cn('flex flex-col items-center gap-1.5 transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
-            <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-sm">
+            <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-xs">
                 <Cloud className="size-7" />
             </div>
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Internet</span>
@@ -152,6 +152,7 @@ function ProjectNetworkGraphEditor({
     const [nodeMenu, setNodeMenu] = useState<NodeMenu>();
     const [saving, setSaving] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
+    const [isNodeDrawerOpen, setIsNodeDrawerOpen] = useState(false);
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
     const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -289,8 +290,8 @@ function ProjectNetworkGraphEditor({
                 opacity: selectedNodeId && edge.source !== selectedNodeId && edge.target !== selectedNodeId ? 0.2 : 1,
             },
             label: presentation.label,
-            labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600 },
-            labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.9, stroke: 'hsl(var(--border))', strokeWidth: 1 },
+            labelStyle: { fill: 'var(--muted-foreground)', fontSize: 10, fontWeight: 600 },
+            labelBgStyle: { fill: 'var(--card)', fillOpacity: 0.9, stroke: 'var(--border)', strokeWidth: 1 },
             labelBgPadding: [6, 3] as [number, number],
             labelBgBorderRadius: 6,
         };
@@ -315,6 +316,10 @@ function ProjectNetworkGraphEditor({
                 copyValue
             } satisfies PanelConnection;
         }), [layout, selectedNodeId]);
+
+    useEffect(() => {
+        if (selectedNodeId) setIsNodeDrawerOpen(true);
+    }, [selectedNodeId]);
 
     useEffect(() => {
         if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
@@ -354,14 +359,12 @@ function ProjectNetworkGraphEditor({
                 ref={graphContainerRef}
                 className="relative -mx-8 h-[calc(100dvh-14rem)] min-h-80 w-auto overflow-hidden bg-background lg:-mx-10"
             >
-                <div className="absolute right-4 top-4 z-10 flex overflow-hidden rounded-md border bg-background shadow-sm">
+                <div className="absolute right-4 top-4 z-10 flex overflow-hidden rounded-md border bg-background shadow-xs">
                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground">
+                        <PopoverTrigger render={<Button variant="ghost" size="sm" className="rounded-none border-0 text-muted-foreground shadow-none hover:text-foreground">
                                 <Info className="mr-1.5 size-3.5" />
                                 Legend
-                            </Button>
-                        </PopoverTrigger>
+                            </Button>} />
                         <PopoverContent align="end" className="w-auto p-3">
                             <Legend />
                         </PopoverContent>
@@ -455,18 +458,20 @@ function ProjectNetworkGraphEditor({
                     }}
                     onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
                     style={{
-                        '--xy-controls-button-background-color': 'hsl(var(--secondary))',
-                        '--xy-controls-button-background-color-hover': 'hsl(var(--accent))',
-                        '--xy-controls-button-color': 'hsl(var(--secondary-foreground))',
-                        '--xy-controls-button-border-color': 'hsl(var(--border))',
+                        '--xy-controls-button-background-color': 'var(--secondary)',
+                        '--xy-controls-button-background-color-hover': 'var(--accent)',
+                        '--xy-controls-button-color': 'var(--secondary-foreground)',
+                        '--xy-controls-button-border-color': 'var(--border)',
                         '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
                         const data = node.data as NetworkGraphNode;
-                        if (data.kind !== 'INTERNET') setSelectedNodeId(node.id);
+                        if (data.kind !== 'INTERNET') {
+                            setSelectedNodeId(node.id);
+                        }
                     }}
                 >
-                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="hsl(var(--muted-foreground) / 0.35)" />
+                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
                     <Controls showInteractive={false} />
                 </ReactFlow>
                 {dirty && (
@@ -529,8 +534,11 @@ function ProjectNetworkGraphEditor({
                     app={selectedApp}
                     role={selectedAppRole}
                     connections={selectedConnections}
-                    open
-                    onOpenChange={open => { if (!open) setSelectedNodeId(undefined); }}
+                    open={isNodeDrawerOpen}
+                    onOpenChange={setIsNodeDrawerOpen}
+                    onOpenChangeComplete={open => {
+                        if (!open) setSelectedNodeId(undefined);
+                    }}
                     onOpen={() => router.push(`/project/app/${selectedNode.id.replace('APP:', '')}`)} />}
             </div>
         </div>

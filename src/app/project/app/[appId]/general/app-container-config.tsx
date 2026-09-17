@@ -70,7 +70,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                 </CardDescription>
             </CardHeader>
             <Form {...form}>
-                <TooltipProvider delayDuration={150}>
+                <TooltipProvider delay={150}>
                     <form action={() => form.handleSubmit((data) => {
                         return formAction(data);
                     })()}>

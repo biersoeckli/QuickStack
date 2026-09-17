@@ -98,7 +98,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
     return <Card>
         <CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>
         <CardContent className="space-y-6">
-            <Card>
+            <Card className="p-0">
                 <CardContent className="space-y-4 p-4">
                     <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
                 </CardContent>
@@ -131,9 +131,7 @@ function SettingRow({ label, description, checked, disabled, onChange, hint }: {
                 <Label>{label}</Label>
                 {hint && <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3.5 w-3.5" /></Button>
-                        </TooltipTrigger>
+                        <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3.5 w-3.5" /></Button>} />
                         <TooltipContent>{hint}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>}

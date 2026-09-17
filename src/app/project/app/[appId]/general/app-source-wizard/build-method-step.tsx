@@ -1,6 +1,6 @@
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { Boxes, Check, FileCode2, Package, type LucideIcon } from "lucide-react";
+import { Boxes, FileCode2, Package, type LucideIcon } from "lucide-react";
 
 export function BuildMethodStep({ value, onChange }: {
     value: AppBuildMethod;
@@ -13,7 +13,7 @@ export function BuildMethodStep({ value, onChange }: {
     ];
 
     return (<div>
-        <Command className="rounded-md border">
+        <Command className="rounded-2xl border">
             <CommandList>
                 <CommandGroup>
                     {options.map((option) => (
@@ -21,6 +21,7 @@ export function BuildMethodStep({ value, onChange }: {
                             key={option.value}
                             value={option.value}
                             className="cursor-pointer"
+                                data-checked={value === option.value}
                             onSelect={() => onChange(option.value)}
                         >
                             <option.icon className="mr-4 ml-1 h-4 w-4" />
@@ -28,8 +29,7 @@ export function BuildMethodStep({ value, onChange }: {
                                 <p className="font-medium">{option.label}</p>
                                 <p className="text-sm text-muted-foreground">{option.description}</p>
                             </div>
-                            <Check className={value === option.value ? 'ml-auto h-4 w-4' : 'ml-auto h-4 w-4 opacity-0'} />
-                        </CommandItem>
+                            </CommandItem>
                     ))}
                 </CommandGroup>
             </CommandList>

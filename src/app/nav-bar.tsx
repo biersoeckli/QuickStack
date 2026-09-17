@@ -22,19 +22,17 @@ export function NavBar() {
                         <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
                             <Link href="/" className={pathname === '/' ? activeCss : inactiveCss}>Projects</Link>
                             <Link href="/metrics" className={pathname.startsWith('/metrics') ? activeCss : inactiveCss}>Metrics</Link>
-                            <Link href="/settings/profile" className={pathname.startsWith('/settings') ? activeCss : inactiveCss}>Settings</Link>
+                            <Link href="/settings/account/profile" className={pathname.startsWith('/settings') ? activeCss : inactiveCss}>Settings</Link>
                         </nav>
                         <div className="ml-auto flex items-center space-x-4">
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-8 rounded-full" type="button" id="radix-:reh:" aria-haspopup="menu" aria-expanded="false" data-state="closed" control-id="ControlID-46">
+                                <DropdownMenuTrigger render={<button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-8 rounded-full" type="button">
                                         <span className="relative flex shrink-0 overflow-hidden rounded-full h-8 w-8">
                                             <User className="pt-2 pl-2" />
                                         </span>
-                                    </button>
-                                </DropdownMenuTrigger>
+                                    </button>} />
                                 <DropdownMenuContent className="w-56">
-                                    <Link href="/settings/profile">
+                                    <Link href="/settings/account/profile">
                                         <DropdownMenuItem>
                                             View Profile
                                         </DropdownMenuItem>

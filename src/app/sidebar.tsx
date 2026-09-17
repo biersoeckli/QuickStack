@@ -15,7 +15,8 @@ export async function AppSidebar() {
 
   const projects = await projectService.getAllForNavigation();
   const newVersionInfo = await quickStackUpdateService.getNewVersionInfo();
-  const agentsAvailable = await agentSandboxAddonService.isAvailable();
+  const agentSandboxStatus = await agentSandboxAddonService.getStatus();
+  const agentsAvailable = agentSandboxStatus.status === 'ready';
   const relevantProjectsForUser = projects.filter((project) =>
     UserGroupUtils.sessionHasReadAccessToProject(session, project.id));
   for (const project of relevantProjectsForUser) {

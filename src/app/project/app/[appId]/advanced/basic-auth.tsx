@@ -53,8 +53,8 @@ export default function BasicAuth({ app, readonly }: {
                                 <TableCell className="font-medium">{basicAuth.username}</TableCell>
                                 <TableCell className="font-medium">
                                     <TooltipProvider>
-                                        <Tooltip delayDuration={300}>
-                                            <TooltipTrigger>
+                                        <Tooltip>
+                                            <TooltipTrigger delay={300}>
                                                 <Button variant="ghost">
                                                     <Eye />
                                                 </Button>
