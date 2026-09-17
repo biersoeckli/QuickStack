@@ -12,12 +12,10 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
   SidebarMenuAction,
   useSidebar
 } from "@/components/ui/sidebar"
-import { BookOpen, Boxes, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Settings, Settings2, User, User2 } from "lucide-react"
+import { BookOpen, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Settings2, User } from "lucide-react"
 import Link from "next/link"
 import { EditProjectDialog } from "./projects/edit-project-dialog"
 import { SidebarLogoutButton } from "./sidebar-logout-button"
@@ -28,10 +26,11 @@ import {
 import { ProjectNavigationModel } from "@/shared/model/project-extended.model"
 import { UserSession } from "@/shared/model/sim-session.model"
 import { usePathname } from "next/navigation"
-import { JSX, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
 import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
+import { developerSettingsNavigation, serverSettingsHref, serverSettingsNavigation, settingsNavigation } from "@/shared/utils/settings-navigation"
 
 export function SidebarCient({
   projects,
@@ -51,45 +50,14 @@ export function SidebarCient({
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
   const [currentlySelectedAgentId, setCurrentlySelectedAgentId] = useState<string | null>(null);
 
-  const settingsMenu = [
-    {
-      title: "Profile",
-      url: "/settings/profile",
-      icon: User,
-    },
-    {
-      title: "Users & Groups",
-      url: "/settings/users",
-      icon: User2,
-      adminOnly: true,
-    },
-    {
-      title: "S3 Targets",
-      url: "/settings/s3-targets",
-      icon: Settings,
-      adminOnly: true,
-    }
-  ] as {
-    title: string | JSX.Element;
-    url: string;
-    icon?: React.ComponentType<any>;
-    adminOnly?: boolean;
-  }[];
-
-  if (agentsAvailable) {
-    settingsMenu.push({
-      title: "LLM Gateways",
-      url: "/settings/llm-gateways",
-      icon: Boxes,
-      adminOnly: true,
-    });
-  }
-
-  settingsMenu.push({
-    title: <span className="flex items-center gap-2">QuickStack Settings {newVersionInfo && <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />}</span>,
-    url: "/settings/server",
-    adminOnly: true,
-  });
+  const isAdmin = UserGroupUtils.isAdmin(session)
+  const visibleSettingsGroups = settingsNavigation.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      (!item.adminOnly || isAdmin) && (item.href !== "/settings/integrations/llm-gateways" || agentsAvailable)
+    ),
+  })).filter((group) => group.items.length > 0)
+  const showSettingsNavigation = path.startsWith("/settings")
 
   useEffect(() => {
     if (path.startsWith('/project/agent/')) {
@@ -125,6 +93,7 @@ export function SidebarCient({
   } = useSidebar()
 
   return (
+    <>
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
@@ -276,20 +245,11 @@ export function SidebarCient({
                 <SidebarMenuButton tooltip={{
                   children: 'Settings',
                   hidden: open,
-                }} render={<Link href="/settings/profile">
+                }} isActive={showSettingsNavigation} render={<Link href="/settings/account/profile">
                     <Settings2 />
                     <span>Settings</span>
+                    {newVersionInfo && <span className="ml-auto size-2 rounded-full bg-orange-500 animate-pulse" />}
                   </Link>} />
-                <SidebarMenuSub>
-                  {(UserGroupUtils.isAdmin(session) ? settingsMenu :
-                    settingsMenu.filter(x => !x.adminOnly)).map((item) => (
-                      <SidebarMenuSubItem key={item.url}>
-                        <SidebarMenuButton render={<Link href={item.url}>
-                            <span>{item.title}</span>
-                          </Link>} />
-                      </SidebarMenuSubItem>
-                    ))}
-                </SidebarMenuSub>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -313,7 +273,7 @@ export function SidebarCient({
                 side="top"
                 className="w-(--anchor-width)"
               >
-                <Link href="/settings/profile">
+                <Link href="/settings/account/profile">
                   <DropdownMenuItem>
                     <User />
                     <span>Profile</span>
@@ -326,5 +286,65 @@ export function SidebarCient({
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+    {showSettingsNavigation && <aside className="sticky top-0 hidden h-svh w-64 shrink-0 self-start flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+      <div className="flex h-16 items-center gap-2 border-b px-4 text-sm font-semibold">
+        <Settings2 className="size-4" />
+        Settings
+      </div>
+      <SidebarContent className="gap-0 py-2">
+        {visibleSettingsGroups.map((group) => <SidebarGroup key={group.title}>
+          <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => {
+                const Icon = item.icon
+                return <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href}>
+                    <Icon />
+                    <span>{item.title}</span>
+                  </Link>} />
+                </SidebarMenuItem>
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>)}
+
+        {isAdmin && <SidebarGroup>
+          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {serverSettingsNavigation.map((item) => {
+                const Icon = item.icon
+                const href = serverSettingsHref(item.tab)
+                return <SidebarMenuItem key={item.tab}>
+                  <SidebarMenuButton isActive={path === href} render={<Link href={href}>
+                    <Icon />
+                    <span>{item.title}</span>
+                    {item.tab === "updates" && newVersionInfo && <span className="ml-auto size-2 rounded-full bg-orange-500 animate-pulse" />}
+                  </Link>} />
+                </SidebarMenuItem>
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>}
+        {isAdmin && <SidebarGroup>
+          <SidebarGroupLabel>Developer</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {developerSettingsNavigation.map((item) => {
+                const Icon = item.icon
+                return <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href}>
+                    <Icon />
+                    <span>{item.title}</span>
+                  </Link>} />
+                </SidebarMenuItem>
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>}
+      </SidebarContent>
+    </aside>}
+    </>
   )
 }

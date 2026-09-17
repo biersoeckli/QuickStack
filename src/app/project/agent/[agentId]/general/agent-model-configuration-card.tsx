@@ -101,6 +101,7 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                                 <FormItem>
                                     <FormLabel>LLM Gateway</FormLabel>
                                     <Select
+                                        items={gateways.map((gateway) => ({ value: gateway.id, label: gateway.name }))}
                                         onValueChange={(value) => {
                                             const nextGatewayId = value ?? '';
                                             field.onChange(nextGatewayId);

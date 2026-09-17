@@ -161,7 +161,12 @@ export default function HealthCheckSettings({ workload, readonly, saveHealthChec
                                                         }>
                                                             HTTP Scheme
                                                         </FormLabelWithQuestion>
-                                                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            defaultValue={field.value}
+                                                            value={field.value}
+                                                            items={[{ value: 'HTTP', label: 'HTTP' }, { value: 'HTTPS', label: 'HTTPS' }]}
+                                                        >
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select scheme" />

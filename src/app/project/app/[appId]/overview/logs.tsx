@@ -122,7 +122,11 @@ export default function Logs({
                 {appPods && appPods.length === 0 && <div>No running pods found for this app.</div>}
                 {selectedPod && appPods && <div className="flex gap-4">
                     <div className="flex-1">
-                        <Select value={selectedPod.podName} onValueChange={(val) => setSelectedPod(appPods.find(p => p.podName === val))}>
+                        <Select
+                            value={selectedPod.podName}
+                            onValueChange={(val) => setSelectedPod(appPods.find(p => p.podName === val))}
+                            items={appPods.map((pod) => ({ value: pod.podName, label: `${pod.podName} (${pod.status})` }))}
+                        >
                             <SelectTrigger className="w-full" >
                                 <SelectValue placeholder="Pod wählen" />
                             </SelectTrigger>

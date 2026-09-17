@@ -6,7 +6,7 @@ import { join } from 'node:path';
 describe('Template Icons', () => {
     describe('Local icon validation', () => {
         const checkTemplateIcon = (template: AppTemplateModel) => {
-            const { name, iconName } = template;
+            const { iconName } = template;
 
             // Check if iconName exists
             expect(iconName).toBeDefined();

@@ -114,7 +114,11 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Protocol</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value}
+                                                items={[{ value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]}
+                                            >
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select protocol" />

@@ -22,7 +22,7 @@ export function NavBar() {
                         <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
                             <Link href="/" className={pathname === '/' ? activeCss : inactiveCss}>Projects</Link>
                             <Link href="/metrics" className={pathname.startsWith('/metrics') ? activeCss : inactiveCss}>Metrics</Link>
-                            <Link href="/settings/profile" className={pathname.startsWith('/settings') ? activeCss : inactiveCss}>Settings</Link>
+                            <Link href="/settings/account/profile" className={pathname.startsWith('/settings') ? activeCss : inactiveCss}>Settings</Link>
                         </nav>
                         <div className="ml-auto flex items-center space-x-4">
                             <DropdownMenu>
@@ -32,7 +32,7 @@ export function NavBar() {
                                         </span>
                                     </button>} />
                                 <DropdownMenuContent className="w-56">
-                                    <Link href="/settings/profile">
+                                    <Link href="/settings/account/profile">
                                         <DropdownMenuItem>
                                             View Profile
                                         </DropdownMenuItem>

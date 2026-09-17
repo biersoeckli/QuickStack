@@ -145,7 +145,7 @@ export default function CreateTemplateAgentSetupDialog({
                                                         <Select value={field.value} onValueChange={(value) => {
                                                             field.onChange(value);
                                                             loadModelAliases(templateIndex, value);
-                                                        }}>
+                                                        }} items={gateways.map((gateway) => ({ value: gateway.id, label: gateway.name }))}>
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select an LLM Gateway" />
