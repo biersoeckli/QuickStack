@@ -17,6 +17,9 @@ const REGISTRY_CONTAINER_PORT = 5000;
 const REGISTRY_SVC_NAME = 'registry-svc';
 const REGISTRY_PVC_NAME = 'registry-data-pvc';
 const REGISTRY_CONFIG_MAP_NAME = 'registry-config-map';
+const REGISTRY_CONFIG_FILE_NAME = 'config.yml';
+const REGISTRY_CONFIG_MOUNT_PATH = '/etc/distribution';
+const LEGACY_REGISTRY_CONFIG_PATH = '/etc/docker/registry/config.yml';
 export const BUILD_NAMESPACE = "registry-and-build";
 export const REGISTRY_URL_EXTERNAL = `localhost:${REGISTRY_NODE_PORT}`;
 export const REGISTRY_URL_INTERNAL = `${REGISTRY_SVC_NAME}.${BUILD_NAMESPACE}.svc.cluster.local:${REGISTRY_CONTAINER_PORT}`
@@ -43,8 +46,21 @@ class RegistryService {
             throw new Error('Cannot run garbage collection, because registry is not running.');
         }
         console.log("Running garbage collection...");
-        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['bin/registry', 'garbage-collect', '/etc/distribution/config.yml']);
+        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['sh', '-c', this.getGarbageCollectionCommand()]);
         console.log("Garbage collection completed.");
+    }
+
+    private getGarbageCollectionCommand(): string {
+        const configCandidates = [
+            `${REGISTRY_CONFIG_MOUNT_PATH}/${REGISTRY_CONFIG_FILE_NAME}`,
+            LEGACY_REGISTRY_CONFIG_PATH,
+        ].map(path => `"${path}"`).join(' ');
+        return [
+            `config=""`,
+            `for candidate in ${configCandidates}; do if [ -f "$candidate" ]; then config="$candidate"; break; fi; done`,
+            `if [ -z "$config" ]; then echo "Registry config not found, looked in: ${configCandidates}" >&2; exit 1; fi`,
+            `bin/registry garbage-collect "$config"`,
+        ].join('; ');
     }
 
     async doesImageExist(image: string, tag: string) {
@@ -239,7 +255,7 @@ class RegistryService {
                                     ...localStorageVolumeMount,
                                     {
                                         name: REGISTRY_CONFIG_MAP_NAME,
-                                        mountPath: '/etc/distribution',
+                                        mountPath: REGISTRY_CONFIG_MOUNT_PATH,
                                         readOnly: true,
                                     }
                                 ],
@@ -304,7 +320,7 @@ class RegistryService {
                 namespace: BUILD_NAMESPACE,
             },
             data: {
-                'config.yml': `
+                [REGISTRY_CONFIG_FILE_NAME]: `
 version: 0.1
 log:
   fields:
