@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type Ref } from 'react';
+import { type Ref } from 'react';
 
 import {
     ArrowDown,
@@ -18,6 +18,7 @@ import {
     Play,
     Rocket,
     ScrollText,
+    Settings,
     Square,
     X,
 } from 'lucide-react';
@@ -38,7 +39,6 @@ import {
     ItemTitle,
 } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
     Drawer,
     DrawerContent,
@@ -50,7 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
-import { useDialog, usePodsStatus } from '@/frontend/states/zustand.states';
+import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
@@ -62,6 +62,11 @@ import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { NetworkGraphNode } from './project-network-graph-projection';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
+import { DrawerOverview } from './drawer/drawer-overview';
+import { DrawerSettings } from './drawer/drawer-settings';
+import { NestedDrawerProvider } from './drawer/nested-drawer';
+import type { S3Target } from '@prisma/client';
+import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 
 export type PanelConnection = {
     id: string;
@@ -168,6 +173,10 @@ export function NodeDetailsDrawer({
     app,
     role,
     connections,
+    s3Targets,
+    storageClasses,
+    volumeBackups,
+    gitSshPublicKey,
     open,
     onOpenChange,
     onOpenChangeComplete,
@@ -178,12 +187,15 @@ export function NodeDetailsDrawer({
     app?: AppExtendedModel;
     role?: RolePermissionEnum;
     connections: PanelConnection[];
+    s3Targets: S3Target[];
+    storageClasses: string[];
+    volumeBackups: VolumeBackupExtendedModel[];
+    gitSshPublicKey?: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onOpenChangeComplete: (open: boolean) => void;
     onOpen: () => void;
 }) {
-    const isDialogOpen = useDialog((state) => state.isDialogOpen);
     const isApp = node.kind === 'APP';
     const needsSourceConfiguration =
         app &&
@@ -264,12 +276,6 @@ export function NodeDetailsDrawer({
         ? `${externalDomain.useSsl ? 'https' : 'http'}://${externalDomain.hostname}`
         : undefined;
 
-    useEffect(() => {
-        if (open && isDialogOpen) {
-            onOpenChange(false);
-        }
-    }, [isDialogOpen, onOpenChange, open]);
-
     return (
         <Drawer
             swipeDirection="right"
@@ -281,8 +287,9 @@ export function NodeDetailsDrawer({
         >
             <DrawerContent
                 ref={contentRef}
-                className="border border-border/60 sm:data-[swipe-axis=x]:w-[28rem] lg:data-[swipe-axis=x]:w-[32rem] shadow"
+                className="border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow"
             >
+                <NestedDrawerProvider>
                 <Button
                     type="button"
                     variant="ghost"
@@ -298,20 +305,20 @@ export function NodeDetailsDrawer({
                         <div className="flex items-start gap-3">
                             <div
                                 className={cn(
-                                    'flex size-10 shrink-0 items-center justify-center rounded-lg ring-1',
+                                    'flex size-12 shrink-0 items-center justify-center rounded-lg ring-1',
                                     isApp
                                         ? 'bg-qs-500/10 text-qs-600 ring-qs-500/30'
                                         : 'bg-violet-500/15 text-violet-600 ring-violet-500/30',
                                 )}
                             >
                                 {isApp ? (
-                                    <Boxes className="size-5" />
+                                    <Boxes className="size-6" />
                                 ) : (
-                                    <Bot className="size-5" />
+                                    <Bot className="size-6" />
                                 )}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <DrawerTitle className="truncate text-base">
+                                <DrawerTitle className="truncate text-lg">
                                     {node.name}
                                 </DrawerTitle>
                                 <DrawerDescription className="text-xs">
@@ -342,6 +349,10 @@ export function NodeDetailsDrawer({
                                         <BarChart3 />
                                         Stats
                                     </TabsTrigger>
+                                    <TabsTrigger value="settings">
+                                        <Settings />
+                                        Settings
+                                    </TabsTrigger>
                                 </TabsList>
                             </ScrollArea>
                         ) : (
@@ -361,76 +372,11 @@ export function NodeDetailsDrawer({
                             </>
                         ) : app && role ? (
                             <>
-                                <TabsContent
-                                    value="overview"
-                                    className="mt-4 space-y-6"
-                                >
-                                    <ItemGroup className="gap-0">
-                                        <Item size="xs">
-                                            <ItemContent>
-                                                <ItemTitle className="font-normal text-muted-foreground">
-                                                    Image
-                                                </ItemTitle>
-                                            </ItemContent>
-                                            <ItemActions className="max-w-[65%] truncate">
-                                                {app.sourceType === 'CONTAINER'
-                                                    ? (app.containerImageSource ??
-                                                        'Not configured')
-                                                    : (app.gitUrl ??
-                                                        'Not configured')}
-                                            </ItemActions>
-                                        </Item>
-                                        <Item size="xs">
-                                            <ItemContent>
-                                                <ItemTitle className="font-normal text-muted-foreground">
-                                                    Replicas
-                                                </ItemTitle>
-                                            </ItemContent>
-                                            <ItemActions>
-                                                {app.replicas}
-                                            </ItemActions>
-                                        </Item>
-                                        <Item size="xs">
-                                            <ItemContent>
-                                                <ItemTitle className="font-normal text-muted-foreground">
-                                                    Project
-                                                </ItemTitle>
-                                            </ItemContent>
-                                            <ItemActions>
-                                                {app.project.name}
-                                            </ItemActions>
-                                        </Item>
-                                        {externalUrl && (
-                                            <Item size="xs">
-                                                <ItemContent>
-                                                    <ItemTitle className="font-normal text-muted-foreground">
-                                                        External URL
-                                                    </ItemTitle>
-                                                </ItemContent>
-                                                <ItemActions className="max-w-[65%] truncate">
-                                                    <a
-                                                        href={externalUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="flex items-center gap-1 truncate text-primary underline"
-                                                    >
-                                                        <span className="truncate">
-                                                            {externalUrl}
-                                                        </span>
-                                                        <ExternalLink className="size-3 shrink-0" />
-                                                    </a>
-                                                </ItemActions>
-                                            </Item>
-                                        )}
-                                    </ItemGroup>
-                                    <Separator className="my-8" />
-                                    <div className="space-y-3">
-                                        <h3 className="text-sm font-semibold">
-                                            Network Policies
-                                        </h3>
-                                        {connectionsContent}
-                                    </div>
-                                </TabsContent>
+                                <DrawerOverview
+                                    app={app}
+                                    connectionsContent={connectionsContent}
+                                    externalUrl={externalUrl}
+                                />
                                 <TabsContent value="logs" className="mt-4">
                                     <Logs key={app.id} app={app} role={role} hideCard />
                                 </TabsContent>
@@ -447,6 +393,16 @@ export function NodeDetailsDrawer({
                                 </TabsContent>
                                 <TabsContent value="stats" className="mt-4">
                                     <MonitoringTab key={app.id} app={app} />
+                                </TabsContent>
+                                <TabsContent value="settings" className="mt-4">
+                                    <DrawerSettings
+                                        app={app}
+                                        role={role}
+                                        s3Targets={s3Targets}
+                                        storageClasses={storageClasses}
+                                        volumeBackups={volumeBackups}
+                                        gitSshPublicKey={gitSshPublicKey}
+                                    />
                                 </TabsContent>
                             </>
                         ) : (
@@ -465,12 +421,12 @@ export function NodeDetailsDrawer({
                         <Button
                             variant="secondary"
                             className="w-full"
-                            onClick={onOpen}
-                        >
+                            onClick={onOpen}>
                             Open App Settings<ExternalLink className="ml-2 size-4" />
                         </Button>
                     </DrawerFooter>
                 )}
+                </NestedDrawerProvider>
             </DrawerContent>
         </Drawer>
     );

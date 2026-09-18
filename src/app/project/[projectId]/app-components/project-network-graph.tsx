@@ -45,6 +45,8 @@ import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/adv
 import { deleteApp } from '@/app/project/[projectId]/actions';
 import { EditAppDialog } from './edit-app-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
+import type { S3Target } from '@prisma/client';
+import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'size-3! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -63,6 +65,10 @@ type ProjectNetworkGraphProps = {
     projectId: string;
     session: UserSession;
     savedPositions: ProjectNetworkGraphPositions;
+    s3Targets: S3Target[];
+    storageClasses: string[];
+    volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
+    gitSshPublicKeysByApp: Record<string, string | undefined>;
 };
 
 const WorkloadNode = memo(function WorkloadNode({
@@ -142,6 +148,10 @@ function ProjectNetworkGraphEditor({
     projectId,
     session,
     savedPositions,
+    s3Targets,
+    storageClasses,
+    volumeBackupsByApp,
+    gitSshPublicKeysByApp,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
     const { openDialog } = useDialog();
@@ -534,6 +544,10 @@ function ProjectNetworkGraphEditor({
                     app={selectedApp}
                     role={selectedAppRole}
                     connections={selectedConnections}
+                    s3Targets={s3Targets}
+                    storageClasses={storageClasses}
+                    volumeBackups={selectedApp ? (volumeBackupsByApp[selectedApp.id] ?? []) : []}
+                    gitSshPublicKey={selectedApp ? gitSshPublicKeysByApp[selectedApp.id] : undefined}
                     open={isNodeDrawerOpen}
                     onOpenChange={setIsNodeDrawerOpen}
                     onOpenChangeComplete={open => {

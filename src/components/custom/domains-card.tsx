@@ -11,12 +11,14 @@ import { DomainEditModel } from "@/shared/model/domain-edit.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import DomainEditOverlay from "@/components/custom/domain-edit-overlay";
 import { deleteDomain } from "@/app/project/actions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function DomainsCard({ domains, workloadId, workloadType, readonly }: {
+export default function DomainsCard({ domains, workloadId, workloadType, readonly, hideCard = false }: {
     domains: DomainEditModel[];
     workloadId: string;
     workloadType: WorkloadType;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -37,18 +39,19 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
             existingDomain={domain}
             workloadId={workloadId}
             workloadType={workloadType} />, {
-                maxWidth: 'max-w-2xl',
-            });
+            maxWidth: 'max-w-2xl',
+        });
     }
+    const CardWrapper = hideCard ? 'div' : Card;
 
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>Domains</CardTitle>
                 <CardDescription>Add custom domains. If a domain is configured, it will be public and accessible via the internet.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            {domains.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{domains.length} Domains</TableCaption>
                     <TableHeader>
@@ -57,12 +60,12 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                             <TableHead>Port</TableHead>
                             <TableHead>SSL</TableHead>
                             <TableHead>Redirect HTTP to HTTPS</TableHead>
-                            <TableHead className="w-[100px]">Action</TableHead>
+                            {!readonly && <TableHead className="w-[88px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {domains.map(domain => (
-                            <TableRow key={domain.hostname}>
+                            <TableRow key={domain.hostname} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium flex gap-2">
                                     <Code>{domain.hostname}</Code>
                                     <div className="self-center cursor-pointer" onClick={() => window.open((domain.useSsl ? 'https://' : 'http://') + domain.hostname, '_blank')}>
@@ -72,21 +75,31 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                                 <TableCell className="font-medium">{domain.port}</TableCell>
                                 <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
                                 <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
-                                {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <Button variant="ghost" onClick={() => openEditDomainDialog(domain)}><EditIcon /></Button>
-                                    <Button variant="ghost" onClick={() => asyncDeleteDomain(domain.id!)}>
-                                        <TrashIcon />
-                                    </Button>
+                                {!readonly && <TableCell className="w-[88px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger render={<Button variant="ghost" size="icon" onClick={() => openEditDomainDialog(domain)}><EditIcon /></Button>} />
+                                                <TooltipContent>Edit domain</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger render={<Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteDomain(domain.id!)}><TrashIcon /></Button>} />
+                                                <TooltipContent>Delete domain</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
                                 </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                 <Button onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
             </CardFooter>}
-        </Card >
+        </CardWrapper>
 
     </>;
 }
