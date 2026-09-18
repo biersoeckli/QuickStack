@@ -17,9 +17,8 @@ const REGISTRY_CONTAINER_PORT = 5000;
 const REGISTRY_SVC_NAME = 'registry-svc';
 const REGISTRY_PVC_NAME = 'registry-data-pvc';
 const REGISTRY_CONFIG_MAP_NAME = 'registry-config-map';
-const REGISTRY_CONFIG_FILE_NAME = 'config.yml';
-const REGISTRY_CONFIG_MOUNT_PATH = '/etc/distribution';
-const LEGACY_REGISTRY_CONFIG_PATH = '/etc/docker/registry/config.yml';
+const REGISTRY_DEPLOYMENT_NAME = 'registry';
+const REGISTRY_IMAGE = 'registry:3.1.1';
 export const BUILD_NAMESPACE = "registry-and-build";
 export const REGISTRY_URL_EXTERNAL = `localhost:${REGISTRY_NODE_PORT}`;
 export const REGISTRY_URL_INTERNAL = `${REGISTRY_SVC_NAME}.${BUILD_NAMESPACE}.svc.cluster.local:${REGISTRY_CONTAINER_PORT}`
@@ -46,21 +45,8 @@ class RegistryService {
             throw new Error('Cannot run garbage collection, because registry is not running.');
         }
         console.log("Running garbage collection...");
-        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['sh', '-c', this.getGarbageCollectionCommand()]);
+        await podService.runCommandInPod(BUILD_NAMESPACE, pods[0].podName, pods[0].containerName, ['bin/registry', 'garbage-collect', '/etc/distribution/config.yml']);
         console.log("Garbage collection completed.");
-    }
-
-    private getGarbageCollectionCommand(): string {
-        const configCandidates = [
-            `${REGISTRY_CONFIG_MOUNT_PATH}/${REGISTRY_CONFIG_FILE_NAME}`,
-            LEGACY_REGISTRY_CONFIG_PATH,
-        ].map(path => `"${path}"`).join(' ');
-        return [
-            `config=""`,
-            `for candidate in ${configCandidates}; do if [ -f "$candidate" ]; then config="$candidate"; break; fi; done`,
-            `if [ -z "$config" ]; then echo "Registry config not found, looked in: ${configCandidates}" >&2; exit 1; fi`,
-            `bin/registry garbage-collect "$config"`,
-        ].join('; ');
     }
 
     async doesImageExist(image: string, tag: string) {
@@ -108,10 +94,16 @@ class RegistryService {
         await this.createOrUpdateRegistryConfigMap(s3Target);
 
         const deployments = await k3s.apps.listNamespacedDeployment({ namespace: BUILD_NAMESPACE });
-        if (deployments.items.length > 0 && !forceDeploy) {
+        const existingDeployment = deployments.items.find(dep => dep.metadata?.name === REGISTRY_DEPLOYMENT_NAME);
+        const deployedImage = existingDeployment?.spec?.template?.spec?.containers?.[0]?.image;
+        const registryImageOutdated = !!existingDeployment && deployedImage !== REGISTRY_IMAGE;
+        if (existingDeployment && !forceDeploy && !registryImageOutdated) {
             return;
         }
 
+        if (registryImageOutdated) {
+            console.log(`Registry image is outdated (deployed: ${deployedImage}, expected: ${REGISTRY_IMAGE}), redeploying...`);
+        }
         console.log("(Re)deploying registry because it is not deployed or forced...");
         console.log(`Registry storage location is set to ${registryLocation}.`);
 
@@ -198,7 +190,7 @@ class RegistryService {
     private async createOrUpdateRegistryDeployment(useLocalStorage = true) {
         console.log("Creating Registry Deployment...");
 
-        const deploymentName = 'registry';
+        const deploymentName = REGISTRY_DEPLOYMENT_NAME;
 
         const masterNode = await clusterService.getFirstMasterNode();
         if (useLocalStorage && !masterNode) {
@@ -250,12 +242,12 @@ class RegistryService {
                         containers: [
                             {
                                 name: deploymentName,
-                                image: 'registry:3.1.1',
+                                image: REGISTRY_IMAGE,
                                 volumeMounts: [
                                     ...localStorageVolumeMount,
                                     {
                                         name: REGISTRY_CONFIG_MAP_NAME,
-                                        mountPath: REGISTRY_CONFIG_MOUNT_PATH,
+                                        mountPath: '/etc/distribution',
                                         readOnly: true,
                                     }
                                 ],
@@ -320,7 +312,7 @@ class RegistryService {
                 namespace: BUILD_NAMESPACE,
             },
             data: {
-                [REGISTRY_CONFIG_FILE_NAME]: `
+                'config.yml': `
 version: 0.1
 log:
   fields:
