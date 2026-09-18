@@ -44,6 +44,22 @@ describe('deployment-logs.service', () => {
         );
     });
 
+    it('deletes deployment logs older than 30 days', async () => {
+        const oldDeploymentId = 'deploy-old';
+        const recentDeploymentId = 'deploy-recent';
+        await writeLogFile(oldDeploymentId, 'old log');
+        await writeLogFile(recentDeploymentId, 'recent log');
+
+        const oldLogDate = new Date();
+        oldLogDate.setDate(oldLogDate.getDate() - 31);
+        await fs.utimes(PathUtils.appDeploymentLogFile(oldDeploymentId), oldLogDate, oldLogDate);
+
+        await deploymentLogService.deleteOldDeploymentLogs();
+
+        await expect(fs.access(PathUtils.appDeploymentLogFile(oldDeploymentId))).rejects.toThrow();
+        await expect(fs.access(PathUtils.appDeploymentLogFile(recentDeploymentId))).resolves.toBeUndefined();
+    });
+
     it('streams the existing log content before watching for updates', async () => {
         const deploymentId = 'deploy-stream';
         await writeLogFile(deploymentId, 'first\nsecond\n');

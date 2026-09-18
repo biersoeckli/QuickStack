@@ -32,7 +32,11 @@ class RegistryService {
         for (const image of allImages) {
             const tags = await registryApiAdapter.listTagsForImage(image);
             for (const tag of tags) {
-                totalSize += await registryApiAdapter.deleteImage(image, tag);
+                try {
+                    totalSize += await registryApiAdapter.deleteImage(image, tag);
+                } catch (error) {
+                    console.error(`Failed to delete image ${image}:${tag}`, error);
+                }
             }
         }
         await this.runGarbageCollection();
