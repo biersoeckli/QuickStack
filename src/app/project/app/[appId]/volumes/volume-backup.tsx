@@ -80,12 +80,12 @@ export default function VolumeBackupList({
                             <TableHead>Backup Method</TableHead>
                             <TableHead>Backup Location</TableHead>
                             <TableHead>Created At</TableHead>
-                            <TableHead className="w-[100px]">Action</TableHead>
+                            {!readonly && <TableHead className="w-[120px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {volumeBackups.map(volumeBackup => (
-                            <TableRow key={volumeBackup.id}>
+                            <TableRow key={volumeBackup.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volumeBackup.cron}</TableCell>
                                 <TableCell className="font-medium">{volumeBackup.retention}</TableCell>
                                 <TableCell className="font-medium">
@@ -95,17 +95,19 @@ export default function VolumeBackupList({
                                 </TableCell>
                                 <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
                                 <TableCell className="font-medium">{formatDateTime(volumeBackup.createdAt)}</TableCell>
-                                {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <Button disabled={isLoading} variant="ghost" onClick={() => asyncRunBackupVolumeSchedule(volumeBackup.id)}>
+                                {!readonly && <TableCell className="w-[120px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                    <Button disabled={isLoading} variant="ghost" size="icon" onClick={() => asyncRunBackupVolumeSchedule(volumeBackup.id)}>
                                         <Play />
                                     </Button>
                                     <VolumeBackupEditDialog volumeBackup={volumeBackup}
                                         s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
-                                        <Button disabled={isLoading} variant="ghost"><EditIcon /></Button>
+                                        <Button disabled={isLoading} variant="ghost" size="icon"><EditIcon /></Button>
                                     </VolumeBackupEditDialog>
-                                    <Button disabled={isLoading} variant="ghost" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
+                                    <Button disabled={isLoading} variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
                                         <TrashIcon />
                                     </Button>
+                                    </div>
                                 </TableCell>}
                             </TableRow>
                         ))}

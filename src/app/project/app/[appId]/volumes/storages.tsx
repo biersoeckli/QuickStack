@@ -163,12 +163,12 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                             <TableHead>Storage Class</TableHead>
                             <TableHead>Access Mode</TableHead>
                             <TableHead>Shared</TableHead>
-                            <TableHead className="w-[100px]">Action</TableHead>
+                            <TableHead className="w-[160px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {volumesWithStorage.map(volume => (
-                            <TableRow key={volume.containerMountPath}>
+                            <TableRow key={volume.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
                                 <TableCell className="font-medium">{volume.size} MB</TableCell>
                                 <TableCell className="font-medium space-y-2">
@@ -214,7 +214,8 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                                         </TooltipProvider>
                                     )}
                                 </TableCell>
-                                <TableCell className="font-medium flex gap-2">
+                                <TableCell className="w-[160px] font-medium">
+                                    <div className="flex gap-2 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                                     {!volume.sharedVolumeId && <>
                                         <TooltipProvider>
                                             <Tooltip>
@@ -294,6 +295,7 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                                             </Tooltip>
                                         </TooltipProvider>
                                     </>}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

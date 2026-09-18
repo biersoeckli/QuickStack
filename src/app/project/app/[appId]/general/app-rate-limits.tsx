@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { saveGeneralAppRateLimits } from "./actions";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { AppRateLimitsModel, appRateLimitsZodModel } from "@/shared/model/app-rate-limits.model";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -88,16 +89,19 @@ export default function GeneralAppRateLimits({ app, readonly, hideCard = false }
                                 )}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                             <FormField
                                 control={form.control}
                                 name="memoryLimit"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Memory Limit (MB)</FormLabel>
+                                        <FormLabel>Memory Limit</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                            <InputGroup>
+                                                <InputGroupInput type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                <InputGroupAddon align="inline-end"><InputGroupText>MB</InputGroupText></InputGroupAddon>
+                                            </InputGroup>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -109,9 +113,12 @@ export default function GeneralAppRateLimits({ app, readonly, hideCard = false }
                                 name="memoryReservation"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Memory Reservation (MB)</FormLabel>
+                                        <FormLabel>Memory Reservation</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                            <InputGroup>
+                                                <InputGroupInput type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                <InputGroupAddon align="inline-end"><InputGroupText>MB</InputGroupText></InputGroupAddon>
+                                            </InputGroup>
                                         </FormControl>
                                         <FormMessage />
                                         {!readonly && suggestedMemoryMb !== undefined && (
@@ -138,9 +145,12 @@ export default function GeneralAppRateLimits({ app, readonly, hideCard = false }
                                 name="cpuLimit"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>CPU Limit (m)</FormLabel>
+                                        <FormLabel>CPU Limit</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                            <InputGroup>
+                                                <InputGroupInput type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                <InputGroupAddon align="inline-end"><InputGroupText>mCPU</InputGroupText></InputGroupAddon>
+                                            </InputGroup>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -152,9 +162,12 @@ export default function GeneralAppRateLimits({ app, readonly, hideCard = false }
                                 name="cpuReservation"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>CPU Reservation (m)</FormLabel>
+                                        <FormLabel>CPU Reservation</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                            <InputGroup>
+                                                <InputGroupInput type="number" {...field} value={field.value as string | number | readonly string[] | undefined} />
+                                                <InputGroupAddon align="inline-end"><InputGroupText>mCPU</InputGroupText></InputGroupAddon>
+                                            </InputGroup>
                                         </FormControl>
                                         <FormMessage />
                                         {!readonly && suggestedCpuMillicores !== undefined && (

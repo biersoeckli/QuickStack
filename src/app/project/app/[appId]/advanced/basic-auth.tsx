@@ -46,12 +46,12 @@ export default function BasicAuth({ app, readonly, hideCard = false }: {
                         <TableRow>
                             <TableHead>Username</TableHead>
                             <TableHead>Password</TableHead>
-                            <TableHead className="w-[100px]">Action</TableHead>
+                            {!readonly && <TableHead className="w-[88px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {app.appBasicAuths.map(basicAuth => (
-                            <TableRow key={basicAuth.id}>
+                            <TableRow key={basicAuth.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{basicAuth.username}</TableCell>
                                 <TableCell className="font-medium">
                                     <TooltipProvider>
@@ -67,8 +67,9 @@ export default function BasicAuth({ app, readonly, hideCard = false }: {
                                         </Tooltip>
                                     </TooltipProvider>
                                 </TableCell>
-                                {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <Button
+                                {!readonly && <TableCell className="w-[88px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                    <Button size="icon"
                                         variant="ghost"
                                         onClick={() => void openDialog(
                                             <BasicAuthEditDialog
@@ -80,9 +81,10 @@ export default function BasicAuth({ app, readonly, hideCard = false }: {
                                     >
                                         <EditIcon />
                                     </Button>
-                                    <Button variant="ghost" onClick={() => asyncDelete(basicAuth.id)}>
+                                    <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDelete(basicAuth.id)}>
                                         <TrashIcon />
                                     </Button>
+                                    </div>
                                 </TableCell>}
                             </TableRow>
                         ))}
