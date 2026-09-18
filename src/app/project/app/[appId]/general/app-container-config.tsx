@@ -23,9 +23,10 @@ import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args
 
 export type AppContainerConfigInputModel = z.infer<typeof appContainerConfigZodModel>;
 
-export default function GeneralAppContainerConfig({ app, readonly }: {
+export default function GeneralAppContainerConfig({ app, readonly, hideCard = false }: {
     app: AppExtendedModel;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
     // Parse containerArgs from JSON string to array
@@ -60,21 +61,22 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
     }, [form, state]);
 
     const values = form.watch();
+    const CardWrapper = hideCard ? 'div' : Card;
 
     return (
-        <Card>
-            <CardHeader>
+        <CardWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Container Configuration</CardTitle>
                 <CardDescription>
                     Override image defaults only when your workload needs custom startup behavior or Linux security settings.
                 </CardDescription>
-            </CardHeader>
+            </CardHeader>}
             <Form {...form}>
                 <TooltipProvider delay={150}>
                     <form action={() => form.handleSubmit((data) => {
                         return formAction(data);
                     })()}>
-                        <CardContent className="space-y-6">
+                        <CardContent className={hideCard ? "space-y-6 px-0" : "space-y-6"}>
                             <div className="space-y-4">
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium">Runtime</p>
@@ -210,7 +212,7 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                             </div>
                         </CardContent>
                         {!readonly && (
-                            <CardFooter className="gap-4">
+                            <CardFooter className={hideCard ? "gap-4 px-0" : "gap-4"}>
                                 <SubmitButton>Save</SubmitButton>
                                 <p className="text-red-500">{state?.message}</p>
                             </CardFooter>
@@ -218,6 +220,6 @@ export default function GeneralAppContainerConfig({ app, readonly }: {
                     </form>
                 </TooltipProvider>
             </Form>
-        </Card>
+        </CardWrapper>
     );
 }

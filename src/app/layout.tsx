@@ -50,7 +50,7 @@ export default async function RootLayout({
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
           <main className="flex min-w-0 flex-1 flex-col items-center">
-            <div className="w-full min-w-0 max-w-8xl px-2 lg:px-4">
+            <div className="w-full min-w-0 max-w-8xl px-2 has-[[data-project-network-graph]]:max-w-none lg:px-4">
               <div className="min-w-0 flex-col p-6 md:flex">
                 {userIsLoggedIn && <BreadcrumbsGenerator />}
                 <Suspense fallback={<FullLoadingSpinner />}>

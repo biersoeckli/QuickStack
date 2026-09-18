@@ -19,12 +19,14 @@ export default function VolumeBackupList({
     app,
     volumeBackups,
     s3Targets,
-    readonly
+    readonly,
+    hideCard = false,
 }: {
     app: AppExtendedModel,
     s3Targets: S3Target[],
     volumeBackups: VolumeBackupExtendedModel[];
     readonly: boolean;
+    hideCard?: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -60,13 +62,15 @@ export default function VolumeBackupList({
         }
     };
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>Backup Schedules</CardTitle>
                 <CardDescription>Configure backup schedules for your volumes. Backups can be stored in a S3 bucket.</CardDescription>
             </CardHeader>
-            <CardContent>
+            {volumeBackups.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{volumeBackups.length} Backup Rules</TableCaption>
                     <TableHeader>
@@ -107,12 +111,12 @@ export default function VolumeBackupList({
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                 <VolumeBackupEditDialog s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
                     <Button>Add Backup Schedule</Button>
                 </VolumeBackupEditDialog>
             </CardFooter>}
-        </Card >
+        </CardWrapper>
     </>;
 }

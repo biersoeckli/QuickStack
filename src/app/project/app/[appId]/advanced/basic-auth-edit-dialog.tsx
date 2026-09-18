@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppBasicAuth } from "@prisma/client"
@@ -23,19 +23,18 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { BasicAuthEditModel, basicAuthEditZodModel } from "@/shared/model/basic-auth-edit.model"
 import { saveBasicAuth } from "./actions"
 import { z } from "zod"
+import { useDialog } from '@/frontend/states/zustand.states';
 
 
 export default function BasicAuthEditDialog({
-  children,
   basicAuth,
   app
 }: {
-  children: React.ReactNode;
   basicAuth?: AppBasicAuth;
   app: AppExtendedModel;
 }) {
 
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const { closeDialog } = useDialog();
   const form = useForm<z.input<typeof basicAuthEditZodModel>, unknown, z.output<typeof basicAuthEditZodModel>>({
     resolver: zodResolver(basicAuthEditZodModel),
     defaultValues: {
@@ -57,10 +56,10 @@ export default function BasicAuthEditDialog({
       toast.success('Authentication information saved successfully', {
         description: "Click \"deploy\" to apply the changes to your app.",
       });
-      setIsOpen(false);
+      closeDialog();
     }
     FormUtils.mapValidationErrorsToForm<typeof basicAuthEditZodModel>(state, form);
-  }, [form, state]);
+  }, [closeDialog, form, state]);
 
   useEffect(() => {
     form.reset(basicAuth);
@@ -68,18 +67,13 @@ export default function BasicAuthEditDialog({
 
   return (
     <>
-      <div onClick={() => setIsOpen(true)}>
-        {children}
-      </div>
-      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Basic Authentication</DialogTitle>
-            <DialogDescription>
-              Configure basic authentication to secure your app.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
+      <DialogHeader>
+        <DialogTitle>Basic Authentication</DialogTitle>
+        <DialogDescription>
+          Configure basic authentication to secure your app.
+        </DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
             <form action={() => form.handleSubmit((data) => {
               return formAction(data);
             }, console.error)()}>
@@ -116,9 +110,7 @@ export default function BasicAuthEditDialog({
                 <SubmitButton>Save</SubmitButton>
               </div>
             </form>
-          </Form >
-        </DialogContent>
-      </Dialog>
+      </Form >
     </>
   )
 

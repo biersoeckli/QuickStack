@@ -30,10 +30,11 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedPercentage?: number;
 });
 
-export default function StorageList({ app, readonly, storageClasses }: {
+export default function StorageList({ app, readonly, storageClasses, hideCard = false }: {
     app: AppExtendedModel;
     storageClasses: string[];
     readonly: boolean;
+    hideCard?: boolean;
 }) {
 
     const [volumesWithStorage, setVolumesWithStorage] = React.useState<AppVolumeWithCapacity[]>(app.appVolumes as AppVolumeWithCapacity[]);
@@ -143,13 +144,15 @@ export default function StorageList({ app, readonly, storageClasses }: {
         }
     }
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>Volumes</CardTitle>
                 <CardDescription>Add one or more volumes to to configure persistent storage within your container.</CardDescription>
             </CardHeader>
-            <CardContent>
+            {volumesWithStorage.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{app.appVolumes.length} Storage</TableCaption>
                     <TableHeader>
@@ -296,8 +299,8 @@ export default function StorageList({ app, readonly, storageClasses }: {
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter className="flex gap-2">
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "flex gap-2 px-0 mt-4" : "flex gap-2"}>
                 <DialogEditDialog app={app} storageClasses={storageClasses}>
                     <Button>Add Volume</Button>
                 </DialogEditDialog>
@@ -305,6 +308,6 @@ export default function StorageList({ app, readonly, storageClasses }: {
                     <Button variant="outline">Add Shared Volume</Button>
                 </SharedStorageEditDialog>
             </CardFooter>}
-        </Card >
+        </CardWrapper>
     </>;
 }

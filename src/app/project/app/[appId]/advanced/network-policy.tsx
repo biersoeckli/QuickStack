@@ -22,7 +22,7 @@ import NetworkPolicyGraph from './network-policy-graph';
 
 type Project = { id: string; name: string; apps: { id: string; name: string; appType: AppExtendedModel['appType'] }[]; agents: { id: string; name: string }[] };
 
-export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel; readonly: boolean }) {
+export default function NetworkPolicy({ app, readonly, hideCard = false }: { app: AppExtendedModel; readonly: boolean; hideCard?: boolean }) {
     const router = useRouter();
     const [draft, setDraft] = useState(() => AppNetworkPolicyDraftUtils.fromApp(app));
     const [baseline, setBaseline] = useState(() => AppNetworkPolicyDraftUtils.fromApp(app));
@@ -94,10 +94,11 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         ))}
         onAdd={addRule}
     />, { maxWidth: 'max-w-md' });
+    const CardWrapper = hideCard ? 'div' : Card;
 
-    return <Card>
-        <CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>
-        <CardContent className="space-y-6">
+    return <CardWrapper>
+        {!hideCard && <CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>}
+        <CardContent className={hideCard ? "space-y-6 px-0" : "space-y-6"}>
             <Card className="p-0">
                 <CardContent className="space-y-4 p-4">
                     <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
@@ -118,10 +119,10 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
                 </TabsContent>
             </Tabs>}
         </CardContent>
-        {!readonly && dirty && <CardFooter className="flex items-center justify-between gap-4 border-t pt-6">
+        {!readonly && dirty && <CardFooter className={hideCard ? "flex items-center justify-between gap-4 px-0 pt-6" : "flex items-center justify-between gap-4 border-t pt-6"}>
             <Button onClick={saveChanges} disabled={saving}>Save & Apply Changes</Button>
         </CardFooter>}
-    </Card>;
+    </CardWrapper>;
 }
 
 function SettingRow({ label, description, checked, disabled, onChange, hint }: { label: string; description: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void; hint?: string }) {

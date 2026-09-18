@@ -11,11 +11,12 @@ import { WorkloadType } from "@/shared/model/runtime-type.model";
 import FileMountEditOverlay from "@/components/custom/file-mount-edit-overlay";
 import { deleteFileMount } from "@/app/project/actions";
 
-export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly }: {
+export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly, hideCard = false }: {
     fileMounts: FileMountEditModel[];
     workloadId: string;
     workloadType: WorkloadType;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -40,13 +41,15 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
         });
     };
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>File Mounts</CardTitle>
                 <CardDescription>Create files which are mounted into the container.</CardDescription>
             </CardHeader>
-            <CardContent>
+            {fileMounts.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{fileMounts.length} File Mounts</TableCaption>
                     <TableHeader>
@@ -69,10 +72,10 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                 <Button onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
             </CardFooter>}
-        </Card>
+        </CardWrapper>
     </>;
 }

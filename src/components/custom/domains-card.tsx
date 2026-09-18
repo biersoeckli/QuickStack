@@ -12,11 +12,12 @@ import { WorkloadType } from "@/shared/model/runtime-type.model";
 import DomainEditOverlay from "@/components/custom/domain-edit-overlay";
 import { deleteDomain } from "@/app/project/actions";
 
-export default function DomainsCard({ domains, workloadId, workloadType, readonly }: {
+export default function DomainsCard({ domains, workloadId, workloadType, readonly, hideCard = false }: {
     domains: DomainEditModel[];
     workloadId: string;
     workloadType: WorkloadType;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -40,15 +41,16 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                 maxWidth: 'max-w-2xl',
             });
     }
+    const CardWrapper = hideCard ? 'div' : Card;
 
     return <>
-        <Card>
-            <CardHeader>
+        <CardWrapper>
+             <CardHeader>
                 <CardTitle>Domains</CardTitle>
                 <CardDescription>Add custom domains. If a domain is configured, it will be public and accessible via the internet.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+           {domains.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{domains.length} Domains</TableCaption>
                     <TableHeader>
@@ -82,11 +84,11 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                 <Button onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
             </CardFooter>}
-        </Card >
+        </CardWrapper>
 
     </>;
 }

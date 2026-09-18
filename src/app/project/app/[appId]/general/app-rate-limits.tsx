@@ -21,9 +21,10 @@ import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.util
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
-export default function GeneralAppRateLimits({ app, readonly }: {
+export default function GeneralAppRateLimits({ app, readonly, hideCard = false }: {
     app: AppExtendedModel;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const form = useForm<z.input<typeof appRateLimitsZodModel>, unknown, z.output<typeof appRateLimitsZodModel>>({
         resolver: zodResolver(appRateLimitsZodModel),
@@ -58,17 +59,19 @@ export default function GeneralAppRateLimits({ app, readonly }: {
         FormUtils.mapValidationErrorsToForm<typeof appRateLimitsZodModel>(state, form);
     }, [form, state]);
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
-            <CardHeader>
+        <CardWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Container Rate Limits</CardTitle>
                 <CardDescription>Provide optional rate Limits per running container instance.</CardDescription>
-            </CardHeader>
+            </CardHeader>}
             <Form {...form}>
                 <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
-                    <CardContent className="space-y-4">
+                    <CardContent className={hideCard ? "space-y-4 px-0" : "space-y-4"}>
                         <div className={cn('grid grid-cols-2 gap-4 ', app.appType !== 'APP' && 'hidden')}>
 
                             <FormField
@@ -115,11 +118,11 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger delay={200} render={<span
-                                                            className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
-                                                            onClick={() => form.setValue('memoryReservation', suggestedMemoryMb)}
-                                                        >
-                                                            ~ {suggestedMemoryMb} MB
-                                                        </span>} />
+                                                        className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                                                        onClick={() => form.setValue('memoryReservation', suggestedMemoryMb)}
+                                                    >
+                                                        ~ {suggestedMemoryMb} MB
+                                                    </span>} />
                                                     <TooltipContent>
                                                         <p>Suggestion based on current pod resource usage</p>
                                                     </TooltipContent>
@@ -158,11 +161,11 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger delay={200} render={<span
-                                                            className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
-                                                            onClick={() => form.setValue('cpuReservation', suggestedCpuMillicores)}
-                                                        >
-                                                            ~ {suggestedCpuMillicores} m
-                                                        </span>} />
+                                                        className="inline-flex cursor-pointer items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                                                        onClick={() => form.setValue('cpuReservation', suggestedCpuMillicores)}
+                                                    >
+                                                        ~ {suggestedCpuMillicores} m
+                                                    </span>} />
                                                     <TooltipContent>
                                                         <p>Suggestion based on current pod resource usage</p>
                                                     </TooltipContent>
@@ -174,13 +177,13 @@ export default function GeneralAppRateLimits({ app, readonly }: {
                             />
                         </div>
                     </CardContent>
-                    {!readonly && <CardFooter className="gap-4">
+                    {!readonly && <CardFooter className={hideCard ? "gap-4 px-0" : "gap-4"}>
                         <SubmitButton>Save</SubmitButton>
                         <p className="text-red-500">{state?.message}</p>
                     </CardFooter>}
                 </form>
             </Form >
-        </Card >
+        </CardWrapper >
 
     </>;
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
     FormControl,
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppNodePort } from "@prisma/client"
@@ -23,10 +23,10 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { saveNodePort } from "./actions"
 import { toast } from "sonner"
 import { NodePortEditModel, nodePortEditZodModel } from "@/shared/model/node-port-edit.model"
+import { useDialog } from '@/frontend/states/zustand.states';
 
-export default function NodePortEditDialog({ children, appNodePort, appId }: { children: React.ReactNode; appNodePort?: AppNodePort; appId: string; }) {
-
-    const [isOpen, setIsOpen] = useState<boolean>(false);
+export default function NodePortEditDialog({ appNodePort, appId }: { appNodePort?: AppNodePort; appId: string; }) {
+    const { closeDialog } = useDialog();
 
     const form = useForm<z.input<typeof nodePortEditZodModel>, unknown, z.output<typeof nodePortEditZodModel>>({
         resolver: zodResolver(nodePortEditZodModel),
@@ -49,10 +49,10 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
             toast.success('Node port saved successfully.', {
                 description: 'Click "deploy" to apply the changes to your app.',
             });
-            setIsOpen(false);
+            closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof nodePortEditZodModel>(state, form);
-    }, [form, state]);
+    }, [closeDialog, form, state]);
 
     useEffect(() => {
         if (appNodePort) {
@@ -66,18 +66,13 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
 
     return (
         <>
-            <div onClick={() => setIsOpen(true)}>
-                {children}
-            </div>
-            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{appNodePort ? 'Edit' : 'Add'} Node Port</DialogTitle>
-                        <DialogDescription>
-                            Expose this app directly on a host/node port. Changes take effect after redeployment.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Form {...form}>
+            <DialogHeader>
+                <DialogTitle>{appNodePort ? 'Edit' : 'Add'} Node Port</DialogTitle>
+                <DialogDescription>
+                    Expose this app directly on a host/node port. Changes take effect after redeployment.
+                </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
                         <form action={() => form.handleSubmit((data) => {
                             return formAction(data);
                         })()}>
@@ -137,9 +132,7 @@ export default function NodePortEditDialog({ children, appNodePort, appId }: { c
                                 <SubmitButton>Save</SubmitButton>
                             </div>
                         </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            </Form>
         </>
     );
 }
