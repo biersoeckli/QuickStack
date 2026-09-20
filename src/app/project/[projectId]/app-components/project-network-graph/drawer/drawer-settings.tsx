@@ -101,8 +101,8 @@ export function DrawerSettings({
     }, [settingsSections]);
 
     return (
-        <div className="grid gap-8 pb-4 [&_[data-slot=card-footer]]:mt-4 lg:grid-cols-3">
-            <div className="space-y-10 lg:col-span-2">
+        <div className="grid gap-8 pb-4 [&_[data-slot=card-footer]]:mt-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
+            <div className="min-w-0 space-y-10">
             {app.appType !== 'APP' && (
                 <SettingsSection id="credentials" title="Credentials" icon={Key}>
                     <Button
@@ -263,7 +263,7 @@ export function DrawerSettings({
                 </Button>
             </SettingsSection>
             </div>
-            <nav aria-label="Settings sections" className="hidden self-start lg:sticky lg:top-0 lg:block -mt-4">
+            <nav aria-label="Settings sections" className="-mt-4 hidden self-start lg:sticky lg:top-0 lg:block">
                 <div className="space-y-1 border-l border-border/70 py-1">
                     <p className="px-3 pb-2 text-xs font-medium text-muted-foreground">
                         Sections
