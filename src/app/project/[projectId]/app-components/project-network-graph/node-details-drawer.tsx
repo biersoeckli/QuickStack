@@ -3,18 +3,11 @@
 import { type Ref } from 'react';
 
 import {
-    ArrowDown,
-    ArrowUp,
     BarChart3,
     Bot,
     Boxes,
     ChevronDown,
-    Copy,
-    ExternalLink,
-    Globe2,
     Hammer,
-    LayoutDashboard,
-    Network,
     Play,
     Rocket,
     ScrollText,
@@ -29,21 +22,13 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Item,
-    ItemActions,
-    ItemContent,
-    ItemDescription,
-    ItemGroup,
-    ItemMedia,
-    ItemTitle,
-} from '@/components/ui/item';
+
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Drawer,
     DrawerContent,
     DrawerDescription,
-    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
@@ -54,7 +39,6 @@ import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { toast } from 'sonner';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import Logs from '@/app/project/app/[appId]/overview/logs';
 import BuildsTab from '@/app/project/app/[appId]/overview/deployments';
@@ -62,7 +46,6 @@ import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { NetworkGraphNode } from './project-network-graph-projection';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
-import { DrawerOverview } from './drawer/drawer-overview';
 import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
 import type { S3Target } from '@prisma/client';
@@ -284,7 +267,7 @@ export function NodeDetailsDrawer({
                                 <div className="h-2"></div>
                             )}
                         </DrawerHeader>
-                        <ScrollArea className="min-h-0 flex-1 px-4">
+                        <ScrollArea className="min-h-0 flex-1 px-6 pt-2">
                             {needsSourceConfiguration ? (
                                 <>
                                     <GeneralAppSource
@@ -299,7 +282,7 @@ export function NodeDetailsDrawer({
                                 <>
                                     <TabsContent
                                         value="deployments"
-                                        className="mt-4"
+                                        className="mb-4"
                                     >
                                         <BuildsTab
                                             key={app.id}
@@ -308,13 +291,13 @@ export function NodeDetailsDrawer({
                                             view="grid"
                                         />
                                     </TabsContent>
-                                    <TabsContent value="logs" className="mt-4">
+                                    <TabsContent value="logs" className="mb-4">
                                         <Logs key={app.id} app={app} role={role} hideCard />
                                     </TabsContent>
-                                    <TabsContent value="stats" className="mt-4">
-                                        <MonitoringTab key={app.id} app={app} />
+                                    <TabsContent value="stats" className="mb-4">
+                                        <MonitoringTab hideCard key={app.id} app={app} />
                                     </TabsContent>
-                                    <TabsContent value="settings" className="mt-4">
+                                    <TabsContent value="settings" className="mb-4">
                                         <DrawerSettings
                                             app={app}
                                             role={role}

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from '@/frontend/utils/utils';
 import BasicAuth from '@/app/project/app/[appId]/advanced/basic-auth';
 import { saveHealthCheck } from '@/app/project/app/[appId]/advanced/actions';
@@ -103,165 +104,175 @@ export function DrawerSettings({
     return (
         <div className="grid gap-8 pb-4 [&_[data-slot=card-footer]]:mt-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
             <div className="min-w-0 space-y-10">
-            {app.appType !== 'APP' && (
-                <SettingsSection id="credentials" title="Credentials" icon={Key}>
+                {app.appType !== 'APP' && (
+                    <SettingsSection id="credentials" title="Credentials" icon={Key}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                openNestedDrawer({
+                                    title: 'Database credentials',
+                                    content: (
+                                        <div className="space-y-4">
+                                            {role === RolePermissionEnum.READWRITE && (
+                                                <DbToolsCard app={app} />
+                                            )}
+                                            <DbCredentials app={app} />
+                                        </div>
+                                    ),
+                                })
+                            }
+                        >
+                            Manage database credentials
+                        </Button>
+                    </SettingsSection>
+                )}
+                <SettingsSection
+                    id="source"
+                    title="Source"
+                    icon={Boxes}
+                >
+                    <GeneralAppSource
+                        hideCard
+                        app={app}
+                        readonly={readonly}
+                        gitSshPublicKey={gitSshPublicKey}
+                    />
+                </SettingsSection>
+                <SettingsSection
+                    id="deployment"
+                    title="Deployment"
+                    icon={SlidersHorizontal}
+                >
+                    <GeneralAppRateLimits app={app} readonly={readonly} hideCard />
                     <Button
                         type="button"
                         variant="outline"
                         onClick={() =>
                             openNestedDrawer({
-                                title: 'Database credentials',
+                                title: 'Advanced settings',
                                 content: (
-                                    <div className="space-y-4">
-                                        {role === RolePermissionEnum.READWRITE && (
-                                            <DbToolsCard app={app} />
-                                        )}
-                                        <DbCredentials app={app} />
-                                    </div>
+                                    <GeneralAppContainerConfig
+                                        app={app}
+                                        readonly={readonly}
+
+                                    />
+                                ),
+                            })
+                        }>
+                        Advanced settings
+                    </Button>
+                </SettingsSection>
+                <SettingsSection
+                    id="environment"
+                    title="Environment"
+                    icon={Zap}
+                >
+                    <DrawerEnvironment
+                        app={app}
+                        onEdit={() =>
+                            openNestedDrawer({
+                                title: 'Environment variables',
+                                content: (
+                                    <EnvEdit
+                                        app={app}
+                                        readonly={readonly}
+                                        hideCard={false}
+                                    />
                                 ),
                             })
                         }
-                    >
-                        Manage database credentials
+                    />
+                </SettingsSection>
+                <SettingsSection
+                    id="networking"
+                    title="Networking"
+                    icon={Network}
+                >
+                    <DomainsCard
+                        readonly={readonly}
+                        domains={app.appDomains}
+                        workloadId={app.id}
+                        workloadType="app"
+                        hideCard
+                    />
+                    <NodePortsCard app={app} readonly={readonly} hideCard />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                            openNestedDrawer({
+                                title: 'Network policies',
+                                content: (
+                                    <NetworkPolicy
+                                        app={app}
+                                        readonly={readonly}
+                                        hideCard={false}
+                                    />
+                                ),
+                            })
+                        }>
+                        Edit network policies
                     </Button>
                 </SettingsSection>
-            )}
-            <SettingsSection
-                id="source"
-                title="Source"
-                icon={Boxes}
-            >
-                <GeneralAppSource
-                    hideCard
-                    app={app}
-                    readonly={readonly}
-                    gitSshPublicKey={gitSshPublicKey}
-                />
-            </SettingsSection>
-            <SettingsSection
-                id="deployment"
-                title="Deployment"
-                icon={SlidersHorizontal}
-            >
-                <GeneralAppRateLimits app={app} readonly={readonly} hideCard />
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                        openNestedDrawer({
-                            title: 'Advanced settings',
-                            content: (
-                                <GeneralAppContainerConfig
-                                    app={app}
-                                    readonly={readonly}
-
-                                />
-                            ),
-                        })
-                    }>
-                    Advanced settings
-                </Button>
-            </SettingsSection>
-            <SettingsSection
-                id="environment"
-                title="Environment"
-                icon={Zap}
-            >
-                <DrawerEnvironment
-                    app={app}
-                    onEdit={() =>
-                        openNestedDrawer({
-                            title: 'Environment variables',
-                            content: (
-                                <EnvEdit
-                                    app={app}
-                                    readonly={readonly}
-                                    hideCard={false}
-                                />
-                            ),
-                        })
-                    }
-                />
-            </SettingsSection>
-            <SettingsSection
-                id="networking"
-                title="Networking"
-                icon={Network}
-            >
-                <DomainsCard
-                    readonly={readonly}
-                    domains={app.appDomains}
-                    workloadId={app.id}
-                    workloadType="app"
-                    hideCard
-                />
-                <NodePortsCard app={app} readonly={readonly} hideCard />
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                        openNestedDrawer({
-                            title: 'Network policies',
-                            content: (
-                                <NetworkPolicy
-                                    app={app}
-                                    readonly={readonly}
-                                    hideCard={false}
-                                />
-                            ),
-                        })
-                    }>
-                    Edit network policies
-                </Button>
-            </SettingsSection>
-            <SettingsSection id="storage" title="Storage" icon={HardDrive}>
-                <StorageList
-                    app={app}
-                    readonly={readonly}
-                    storageClasses={storageClasses}
-                    hideCard
-                />
-                <FileMountsCard
-                    readonly={readonly}
-                    fileMounts={app.appFileMounts}
-                    workloadId={app.id}
-                    workloadType="app"
-                    hideCard
-                />
-                <VolumeBackupList
-                    app={app}
-                    readonly={readonly}
-                    s3Targets={s3Targets}
-                    volumeBackups={volumeBackups}
-                    hideCard
-                />
-            </SettingsSection>
-            <SettingsSection
-                id="advanced"
-                title="Advanced"
-                icon={Globe2}
-            >
-                <BasicAuth app={app} readonly={readonly} hideCard />
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                        openNestedDrawer({
-                            title: 'Health checks',
-                            content: (
-                                <HealthCheckSettings
-                                    readonly={readonly}
-                                    workload={app}
-                                    saveHealthCheck={saveHealthCheck}
-                                    hideCard={false}
-                                />
-                            ),
-                        })
-                    }
+                <SettingsSection id="storage" title="Storage" icon={HardDrive}>
+                    <StorageList
+                        app={app}
+                        readonly={readonly}
+                        storageClasses={storageClasses}
+                        hideCard
+                    />
+                    <FileMountsCard
+                        readonly={readonly}
+                        fileMounts={app.appFileMounts}
+                        workloadId={app.id}
+                        workloadType="app"
+                        hideCard
+                    />
+                    <VolumeBackupList
+                        app={app}
+                        readonly={readonly}
+                        s3Targets={s3Targets}
+                        volumeBackups={volumeBackups}
+                        hideCard
+                    />
+                </SettingsSection>
+                <SettingsSection
+                    id="advanced"
+                    title="Advanced"
+                    icon={Globe2}
                 >
-                    Edit health checks
-                </Button>
-            </SettingsSection>
+                    <BasicAuth app={app} readonly={readonly} hideCard />
+                    <div>
+                        <CardHeader>
+                            <CardTitle>Health Checks</CardTitle>
+                            <CardDescription>
+                                Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic (In kubernetes terms, startup, readiness and liveness probes).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                    openNestedDrawer({
+                                        title: 'Health checks',
+                                        content: (
+                                            <HealthCheckSettings
+                                                readonly={readonly}
+                                                workload={app}
+                                                saveHealthCheck={saveHealthCheck}
+                                                hideCard={false}
+                                            />
+                                        ),
+                                    })
+                                }
+                            >
+                                Edit health checks
+                            </Button>
+                        </CardFooter>
+                    </div>
+                </SettingsSection>
             </div>
             <nav aria-label="Settings sections" className="-mt-4 hidden self-start lg:sticky lg:top-0 lg:block">
                 <div className="space-y-1 border-l border-border/70 py-1">
@@ -277,7 +288,7 @@ export function DrawerSettings({
                             className={cn(
                                 'h-8 w-full justify-start rounded-none px-3 text-muted-foreground hover:bg-transparent hover:text-foreground',
                                 activeSection === section.id &&
-                                    '-ml-px border-l-2 border-l-primary font-medium text-foreground',
+                                '-ml-px border-l-2 border-l-primary font-medium text-foreground',
                             )}
                             aria-current={
                                 activeSection === section.id ? 'location' : undefined
