@@ -81,7 +81,7 @@ export default function NodePortsCard({ app, readonly, hideCard = false }: {
             </CardContent>}
             {!readonly && (
                 <CardFooter className={hideCard ? "px-0" : undefined}>
-                    <Button
+                    <Button variant="outline"
                         onClick={() => void openDialog(
                             <NodePortEditDialog appId={app.id} />,
                             { maxWidth: '425px' },

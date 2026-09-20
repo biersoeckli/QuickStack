@@ -188,6 +188,7 @@ function ProjectNetworkGraphEditor({
     const [saving, setSaving] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
     const [isNodeDrawerOpen, setIsNodeDrawerOpen] = useState(false);
+    const [drawerTab, setDrawerTab] = useState<string | null>(() => searchParams.get('drawerTab'));
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
     const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -201,6 +202,7 @@ function ProjectNetworkGraphEditor({
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
 
     const updateDrawerQuery = useCallback((appId?: string, tab?: string) => {
+        setDrawerTab(appId ? (tab ?? 'deployments') : null);
         const params = new URLSearchParams(searchParams.toString());
 
         if (!appId) {
@@ -212,6 +214,10 @@ function ProjectNetworkGraphEditor({
         }
 
         TabNavigationUtils.replaceQuery(params);
+    }, [searchParams]);
+
+    useEffect(() => {
+        setDrawerTab(searchParams.get('drawerTab'));
     }, [searchParams]);
 
     useEffect(() => {
@@ -335,6 +341,10 @@ function ProjectNetworkGraphEditor({
                 role,
                 allowInternetAccess: draft.allowInternetAccess,
                 onToggleInternetAccess: () => toggleInternetAccess(app.id),
+                onOpenDrawerTab: (tab: string) => {
+                    setSelectedNodeId(node.id);
+                    updateDrawerQuery(app.id, tab);
+                },
                 onDelete: () => void deleteLocalApp(app.id),
             } : undefined,
             connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
@@ -343,7 +353,7 @@ function ProjectNetworkGraphEditor({
             ),
         },
     };
-    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, layout?.edges, layout?.nodes, projectId, selectedNodeId, session, toggleInternetAccess]);
+    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, layout?.edges, layout?.nodes, projectId, selectedNodeId, session, toggleInternetAccess, updateDrawerQuery]);
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
     const edges = useMemo(() => (layout?.edges ?? []).map(edge => {
@@ -564,7 +574,7 @@ function ProjectNetworkGraphEditor({
                     onOpenChangeComplete={open => {
                         if (!open) setSelectedNodeId(undefined);
                     }}
-                    requestedTab={searchParams.get('drawerTab')}
+                    requestedTab={drawerTab}
                     onTabChange={tab => {
                         if (selectedApp) updateDrawerQuery(selectedApp.id, tab);
                     }}

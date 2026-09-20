@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Edit2, Globe2, Hammer, Play, Rocket, Square, Trash2 } from 'lucide-react';
+import { Box, Edit2, Globe2, Hammer, Logs, Play, Rocket, Settings, Square, Trash2 } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -26,6 +26,7 @@ export type ProjectNetworkGraphAppContextMenuProps = {
     role?: RolePermissionEnum;
     allowInternetAccess: boolean;
     onToggleInternetAccess: () => void;
+    onOpenDrawerTab: (tab: 'deployments' | 'logs' | 'settings') => void;
     onDelete: () => void;
     children: ReactNode;
 };
@@ -38,6 +39,7 @@ export function ProjectNetworkGraphAppContextMenu({
     onToggleInternetAccess,
     onDelete,
     children,
+    onOpenDrawerTab
 }: ProjectNetworkGraphAppContextMenuProps) {
     const canWrite = role === RolePermissionEnum.READWRITE;
     const deploymentStatus = usePodsStatus(
@@ -93,6 +95,19 @@ export function ProjectNetworkGraphAppContextMenu({
                             </ContextMenuItem>
                         </ContextMenuSubContent>
                     </ContextMenuSub>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => onOpenDrawerTab('deployments')}>
+                        <Box />
+                        View Deployments
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => onOpenDrawerTab('logs')}>
+                        <Logs />
+                        View Logs
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => onOpenDrawerTab('settings')}>
+                        <Settings />
+                        View Settings
+                    </ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem onClick={onToggleInternetAccess}>
                         <Globe2 />

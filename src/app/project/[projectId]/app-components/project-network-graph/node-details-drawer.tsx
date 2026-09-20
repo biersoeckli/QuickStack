@@ -11,7 +11,7 @@ import {
     Key,
     Play,
     Rocket,
-    ScrollText,
+    Logs as LogsIcon,
     Settings,
     Square,
     X,
@@ -285,7 +285,7 @@ export function NodeDetailsDrawer({
                                             </TabsTrigger>
                                         )}
                                         <TabsTrigger value="logs">
-                                            <ScrollText />
+                                            <LogsIcon />
                                             Logs
                                         </TabsTrigger>
                                         <TabsTrigger value="stats">

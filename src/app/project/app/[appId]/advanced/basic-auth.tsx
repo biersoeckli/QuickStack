@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { EditIcon, Eye, TrashIcon } from "lucide-react";
+import { EditIcon, Eye, Plus, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import React from "react";
@@ -69,21 +69,21 @@ export default function BasicAuth({ app, readonly, hideCard = false }: {
                                 </TableCell>
                                 {!readonly && <TableCell className="w-[88px] font-medium">
                                     <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                                    <Button size="icon"
-                                        variant="ghost"
-                                        onClick={() => void openDialog(
-                                            <BasicAuthEditDialog
-                                                app={app}
-                                                basicAuth={basicAuth}
-                                            />,
-                                            { maxWidth: '425px' },
-                                        )}
-                                    >
-                                        <EditIcon />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDelete(basicAuth.id)}>
-                                        <TrashIcon />
-                                    </Button>
+                                        <Button size="icon"
+                                            variant="ghost"
+                                            onClick={() => void openDialog(
+                                                <BasicAuthEditDialog
+                                                    app={app}
+                                                    basicAuth={basicAuth}
+                                                />,
+                                                { maxWidth: '425px' },
+                                            )}
+                                        >
+                                            <EditIcon />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDelete(basicAuth.id)}>
+                                            <TrashIcon />
+                                        </Button>
                                     </div>
                                 </TableCell>}
                             </TableRow>
@@ -97,8 +97,7 @@ export default function BasicAuth({ app, readonly, hideCard = false }: {
                         <BasicAuthEditDialog app={app} />,
                         { maxWidth: '425px' },
                     )}
-                >
-                    Add Auth Credential
+                    variant="outline"><Plus /> Add Auth Credential
                 </Button>
             </CardFooter>}
         </CardWrapper>

@@ -75,7 +75,7 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
                 </Table>
             </CardContent>}
             {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
-                <Button onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
+                <Button variant="outline" onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
             </CardFooter>}
         </CardWrapper>
     </>;

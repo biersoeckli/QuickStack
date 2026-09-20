@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -29,7 +29,7 @@ import { Check, ChevronsUpDown, CircleHelp } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume } from "@prisma/client"
@@ -41,20 +41,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 import StorageClassCombobox from "@/components/custom/storage-class-combobox"
+import { useDialog } from "@/frontend/states/zustand.states";
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
   { label: "ReadWriteMany", value: "ReadWriteMany" },
 ] as const
 
-export default function StorageEditDialog({ children, volume, app, storageClasses }: {
-  children: React.ReactNode;
+export default function StorageEditDialog({ volume, app, storageClasses }: {
   volume?: AppVolume;
   app: AppExtendedModel;
   storageClasses: string[];
 }) {
 
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const { closeDialog } = useDialog();
   const defaultStorageClassName = volume?.storageClassName ?? storageClasses[0] ?? "";
 
   const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
@@ -89,10 +89,10 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
       toast.success('Volume saved successfully', {
         description: "Click \"deploy\" to apply the changes to your app.",
       });
-      setIsOpen(false);
+      closeDialog();
     }
     FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-  }, [form, state]);
+  }, [closeDialog, form, state]);
 
   useEffect(() => {
     form.reset({
@@ -109,11 +109,6 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
 
   return (
     <>
-      <div onClick={() => setIsOpen(true)}>
-        {children}
-      </div>
-      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Volume</DialogTitle>
             <DialogDescription>
@@ -287,8 +282,6 @@ export default function StorageEditDialog({ children, volume, app, storageClasse
               </div>
             </form>
           </Form >
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

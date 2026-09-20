@@ -54,7 +54,7 @@ function BuildStatusIndicator({ appId, showLabel, className }: BuildStatusIndica
             <Tooltip>
                 <TooltipTrigger render={<button type="button" onClick={showLogs} className={cn('flex w-fit items-center gap-1.5', canShowLogs && 'cursor-pointer', className)}>
                     <Spinner className="size-3 text-blue-500" />
-                    {showLabel && <span className="text-xs text-blue-700">{buildStatus.status === 'RUNNING' ? 'Building' : 'Pending'}</span>}
+                    {showLabel && <span className="text-xs text-blue-700 shimmer">{buildStatus.status === 'RUNNING' ? 'Building' : 'Pending'}</span>}
                 </button>} />
                 <TooltipContent>
                     <p>{buildStatus.status === 'RUNNING' ? 'Build is running' : 'Build is queued'}</p>

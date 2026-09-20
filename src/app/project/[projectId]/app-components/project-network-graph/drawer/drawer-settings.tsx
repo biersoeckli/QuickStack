@@ -131,7 +131,7 @@ export function DrawerSettings({
                                 ),
                             })
                         }>
-                        Advanced settings
+                        Advanced container settings
                     </Button>
                 </SettingsSection>
                 <SettingsSection

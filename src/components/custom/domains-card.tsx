@@ -97,7 +97,7 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                 </Table>
             </CardContent>}
             {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
-                <Button onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
+                <Button variant="outline" onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
             </CardFooter>}
         </CardWrapper>
 

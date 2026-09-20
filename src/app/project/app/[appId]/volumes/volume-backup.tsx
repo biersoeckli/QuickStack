@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { EditIcon, Play, TrashIcon } from "lucide-react";
+import { EditIcon, Play, Plus, TrashIcon } from "lucide-react";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { deleteBackupVolume, runBackupVolumeSchedule } from "./actions";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { S3Target } from "@prisma/client";
 import React from "react";
 import { formatDateTime } from "@/frontend/utils/format.utils";
@@ -30,6 +30,7 @@ export default function VolumeBackupList({
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openDialog: openGenericDialog } = useDialog();
     const [isLoading, setIsLoading] = React.useState(false);
 
     // Filter out shared volumes (volumes that are mounted from other apps)
@@ -100,10 +101,22 @@ export default function VolumeBackupList({
                                     <Button disabled={isLoading} variant="ghost" size="icon" onClick={() => asyncRunBackupVolumeSchedule(volumeBackup.id)}>
                                         <Play />
                                     </Button>
-                                    <VolumeBackupEditDialog volumeBackup={volumeBackup}
-                                        s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
-                                        <Button disabled={isLoading} variant="ghost" size="icon"><EditIcon /></Button>
-                                    </VolumeBackupEditDialog>
+                                    <Button
+                                        disabled={isLoading}
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => void openGenericDialog(
+                                            <VolumeBackupEditDialog
+                                                volumeBackup={volumeBackup}
+                                                s3Targets={s3Targets}
+                                                volumes={ownVolumes}
+                                                app={app}
+                                            />,
+                                            { maxWidth: '425px' },
+                                        )}
+                                    >
+                                        <EditIcon />
+                                    </Button>
                                     <Button disabled={isLoading} variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteBackupVolume(volumeBackup.id)}>
                                         <TrashIcon />
                                     </Button>
@@ -115,9 +128,15 @@ export default function VolumeBackupList({
                 </Table>
             </CardContent>}
             {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
-                <VolumeBackupEditDialog s3Targets={s3Targets} volumes={ownVolumes as AppVolume[]} app={app}>
-                    <Button>Add Backup Schedule</Button>
-                </VolumeBackupEditDialog>
+                <Button
+                    variant="outline"
+                    onClick={() => void openGenericDialog(
+                        <VolumeBackupEditDialog s3Targets={s3Targets} volumes={ownVolumes} app={app} />,
+                        { maxWidth: '425px' },
+                    )}
+                >
+                    <Plus /> Add Backup Schedule
+                </Button>
             </CardFooter>}
         </CardWrapper>
     </>;
