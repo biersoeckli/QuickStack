@@ -6,6 +6,7 @@ import {
     BarChart3,
     Bot,
     Boxes,
+    ExternalLink,
     Hammer,
     Key,
     Play,
@@ -16,6 +17,12 @@ import {
     X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     Tooltip,
     TooltipContent,
@@ -88,32 +95,20 @@ function AppStatusActions({
         'UNKNOWN',
         'DEPLOYING',
     ].includes(deploymentStatus);
+    const openDomain = (domain: AppExtendedModel['appDomains'][number]) => {
+        const protocol = domain.useSsl ? 'https' : 'http';
+
+        window.open(`${protocol}://${domain.hostname}`, '_blank');
+    };
 
     return (
         <div className="flex shrink-0 items-center gap-1">
-            <PodStatusIndicator appId={app.id}  />
-            {canManage ? (
+            <PodStatusIndicator appId={app.id} />
+            {(canManage || app.appDomains.length > 0) && (
                 <TooltipProvider delay={300}>
                     <div className="ml-2 flex items-center gap-1 pl-2">
-                        <Tooltip>
-                            <TooltipTrigger
-                                render={
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        disabled={!appSourceIsConfigured}
-                                        onClick={() => void Toast.fromAction(() => deploy(app.id))}
-                                    >
-                                        <Rocket />
-                                        <span className="sr-only">Deploy</span>
-                                    </Button>
-                                }
-                            />
-                            <TooltipContent>Deploy</TooltipContent>
-                        </Tooltip>
-                        {app.appType === 'APP' &&
-                            (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') && (
+                        {canManage && (
+                            <>
                                 <Tooltip>
                                     <TooltipTrigger
                                         render={
@@ -122,54 +117,121 @@ function AppStatusActions({
                                                 variant="ghost"
                                                 size="icon-sm"
                                                 disabled={!appSourceIsConfigured}
-                                                onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
+                                                onClick={() => void Toast.fromAction(() => deploy(app.id))}
                                             >
-                                                <Hammer />
-                                                <span className="sr-only">Rebuild</span>
+                                                <Rocket />
+                                                <span className="sr-only">Deploy</span>
                                             </Button>
                                         }
                                     />
-                                    <TooltipContent>Rebuild</TooltipContent>
+                                    <TooltipContent>Deploy</TooltipContent>
                                 </Tooltip>
-                            )}
-                        <Tooltip>
-                            <TooltipTrigger
-                                render={
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        disabled={!canStart || !appSourceIsConfigured}
-                                        onClick={() => void Toast.fromAction(() => startApp(app.id))}
-                                    >
-                                        <Play />
-                                        <span className="sr-only">Start</span>
-                                    </Button>
-                                }
-                            />
-                            <TooltipContent>Start</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger
-                                render={
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        className="hover:bg-destructive/10 hover:text-destructive"
-                                        disabled={!canStop || !appSourceIsConfigured}
-                                        onClick={() => void Toast.fromAction(() => stopApp(app.id))}
-                                    >
-                                        <Square />
-                                        <span className="sr-only">Stop</span>
-                                    </Button>
-                                }
-                            />
-                            <TooltipContent>Stop</TooltipContent>
-                        </Tooltip>
+                                {app.appType === 'APP' &&
+                                    (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') && (
+                                <Tooltip>
+                                            <TooltipTrigger
+                                                render={
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        disabled={!appSourceIsConfigured}
+                                                        onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
+                                                    >
+                                                        <Hammer />
+                                                        <span className="sr-only">Rebuild</span>
+                                                    </Button>
+                                                }
+                                            />
+                                            <TooltipContent>Rebuild</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        render={
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                disabled={!canStart || !appSourceIsConfigured}
+                                                onClick={() => void Toast.fromAction(() => startApp(app.id))}
+                                            >
+                                                <Play />
+                                                <span className="sr-only">Start</span>
+                                            </Button>
+                                        }
+                                    />
+                                    <TooltipContent>Start</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        render={
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                className="hover:bg-destructive/10 hover:text-destructive"
+                                                disabled={!canStop || !appSourceIsConfigured}
+                                                onClick={() => void Toast.fromAction(() => stopApp(app.id))}
+                                            >
+                                                <Square />
+                                                <span className="sr-only">Stop</span>
+                                            </Button>
+                                        }
+                                    />
+                                    <TooltipContent>Stop</TooltipContent>
+                                </Tooltip>
+                            </>
+                        )}
+                        {app.appDomains.length === 1 && (
+                            <Tooltip>
+                                <TooltipTrigger
+                                    render={
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            onClick={() => openDomain(app.appDomains[0])}
+                                        >
+                                            <ExternalLink />
+                                            <span className="sr-only">Open domain</span>
+                                        </Button>
+                                    }
+                                />
+                                <TooltipContent>Open domain</TooltipContent>
+                                </Tooltip>
+                        )}
+                        {app.appDomains.length > 1 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger
+                                    render={
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="Open domain"
+                                            title="Open domain"
+                                        >
+                                            <ExternalLink />
+                                        </Button>
+                                    }
+                                />
+                                <DropdownMenuContent align="end" className="w-fit">
+                                    {app.appDomains.map((domain) => (
+                                        <DropdownMenuItem
+                                            key={domain.id}
+                                            onClick={() => openDomain(domain)}
+                                        >
+                                            <ExternalLink />
+                                            {domain.hostname}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </TooltipProvider>
-            ) : null}
+            )}
         </div>
     );
 }
@@ -284,7 +346,7 @@ export function NodeDetailsDrawer({
                                 {app && !needsSourceConfiguration && (<>
                                     <AppStatusActions app={app} role={role} />
                                     <div className=""></div>
-                                    </>
+                                </>
                                 )}
                             </div>
                             {app && role && !needsSourceConfiguration ? (

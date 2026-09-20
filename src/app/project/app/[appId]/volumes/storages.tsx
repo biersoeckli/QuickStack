@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink, Plus, Disc, FolderPlus } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink, Plus, FolderPlus } from "lucide-react";
 import DialogEditDialog from "./storage-edit-overlay";
 import SharedStorageEditDialog from "./shared-storage-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";

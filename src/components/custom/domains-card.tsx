@@ -57,9 +57,11 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
-                            <TableHead>Port</TableHead>
-                            <TableHead>SSL</TableHead>
-                            <TableHead>Redirect HTTP to HTTPS</TableHead>
+                            {!hideCard && <>
+                                <TableHead>Port</TableHead>
+                                <TableHead>SSL</TableHead>
+                                <TableHead>Redirect HTTP to HTTPS</TableHead>
+                            </>}
                             {!readonly && <TableHead className="w-[88px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
@@ -72,9 +74,11 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                                         <ExternalLink className="h-3 w-3" />
                                     </div>
                                 </TableCell>
-                                <TableCell className="font-medium">{domain.port}</TableCell>
-                                <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
-                                <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
+                                {!hideCard && <>
+                                    <TableCell className="font-medium">{domain.port}</TableCell>
+                                    <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
+                                    <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
+                                </>}
                                 {!readonly && <TableCell className="w-[88px] font-medium">
                                     <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                                         <TooltipProvider>
@@ -99,7 +103,7 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
             {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                 <Button variant="outline" onClick={() => openEditDomainDialog()}><Plus /> Add Domain</Button>
             </CardFooter>}
-        </CardWrapper>
+        </CardWrapper >
 
     </>;
 }
