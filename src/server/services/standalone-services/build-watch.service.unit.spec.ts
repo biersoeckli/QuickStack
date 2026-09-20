@@ -51,7 +51,7 @@ vi.mock('@/server/services/app-git-ssh-key.service', () => ({
         deleteTemporaryBuildSecret: vi.fn(),
     },
 }));
-vi.mock('@/server/services/standalone-services/build-status.service', () => ({
+vi.mock('@/server/services/standalone-services/build-status-pub-sub.service', () => ({
     default: {
         ensureSeeded: vi.fn().mockResolvedValue(undefined),
         applyJobEvent: vi.fn().mockResolvedValue(undefined),
@@ -60,7 +60,7 @@ vi.mock('@/server/services/standalone-services/build-status.service', () => ({
 
 import buildService from '@/server/services/build.service';
 import buildWatchService from '@/server/services/standalone-services/build-watch.service';
-import buildStatusService from '@/server/services/standalone-services/build-status.service';
+import buildStatusService from '@/server/services/standalone-services/build-status-pub-sub.service';
 import deploymentService from '@/server/services/deployment.service';
 import appService from '@/server/services/app.service';
 import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';

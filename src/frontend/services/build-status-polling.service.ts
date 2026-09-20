@@ -6,19 +6,19 @@ import { useBuildStatus } from '../states/zustand.states';
  * Singleton service that manages streaming for the build status of all apps.
  * This service runs in the browser and updates the Zustand store with fresh data via SSE.
  */
-class BuildStatusPollingService {
-    private static instance: BuildStatusPollingService;
+class BuildStatusSSEStateService {
+    private static instance: BuildStatusSSEStateService;
     private controller: AbortController | null = null;
     private isConnected = false;
     private buffer = '';
 
     private constructor() { }
 
-    public static getInstance(): BuildStatusPollingService {
-        if (!BuildStatusPollingService.instance) {
-            BuildStatusPollingService.instance = new BuildStatusPollingService();
+    public static getInstance(): BuildStatusSSEStateService {
+        if (!BuildStatusSSEStateService.instance) {
+            BuildStatusSSEStateService.instance = new BuildStatusSSEStateService();
         }
-        return BuildStatusPollingService.instance;
+        return BuildStatusSSEStateService.instance;
     }
 
     public start(): void {
@@ -96,7 +96,7 @@ class BuildStatusPollingService {
             try {
                 const data = JSON.parse(frame);
                 const { setBuildStatus, updateBuildStatus } = useBuildStatus.getState();
-
+console.log('data', data)
                 if (Array.isArray(data)) {
                     setBuildStatus(data as AppBuildStatusModel[]);
                 } else {
@@ -118,4 +118,4 @@ class BuildStatusPollingService {
     }
 }
 
-export const buildStatusPollingService = BuildStatusPollingService.getInstance();
+export const buildStatusPollingService = BuildStatusSSEStateService.getInstance();

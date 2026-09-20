@@ -7,7 +7,7 @@ vi.mock('@/server/services/build.service', () => ({
 }));
 
 import buildService from '@/server/services/build.service';
-import buildStatusService from '@/server/services/standalone-services/build-status.service';
+import buildStatusService from '@/server/services/standalone-services/build-status-pub-sub.service';
 import type { GlobalBuildJobModel } from '@/shared/model/global-build-job.model';
 
 function makeBuild(overrides: Partial<GlobalBuildJobModel> & Pick<GlobalBuildJobModel, 'workloadId' | 'status'>): GlobalBuildJobModel {

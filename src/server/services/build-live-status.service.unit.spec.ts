@@ -3,14 +3,14 @@ vi.mock('@/server/services/project.service', () => ({
         getAll: vi.fn(),
     },
 }));
-vi.mock('@/server/services/standalone-services/build-status.service', () => ({
+vi.mock('@/server/services/standalone-services/build-status-pub-sub.service', () => ({
     default: {
         getStatuses: vi.fn(),
     },
 }));
 
 import projectService from '@/server/services/project.service';
-import buildStatusService from '@/server/services/standalone-services/build-status.service';
+import buildStatusService from '@/server/services/standalone-services/build-status-pub-sub.service';
 import buildLiveStatusService from '@/server/services/build-live-status.service';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 
@@ -53,7 +53,7 @@ describe('BuildLiveStatusService', () => {
                     apps: [app('app-1', 'GIT'), app('app-2', 'GIT')],
                 },
             ] as any);
-            vi.spyOn(UserGroupUtils, 'sessionHasReadAccessForApp').mockImplementation((_session, appId) => appId === 'app-1');
+            vi.spyOn(UserGroupUtils, 'sessionHasReadAccessForProjectWorkload').mockImplementation((_session, appId) => appId === 'app-1');
 
             const lookup = await buildLiveStatusService.getBuildableAppLookup({} as any);
 

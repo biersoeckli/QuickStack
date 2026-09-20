@@ -172,7 +172,6 @@ export function NodeDetailsDrawer({
     node,
     app,
     role,
-    connections,
     s3Targets,
     storageClasses,
     volumeBackups,
@@ -186,7 +185,6 @@ export function NodeDetailsDrawer({
     node: NetworkGraphNode;
     app?: AppExtendedModel;
     role?: RolePermissionEnum;
-    connections: PanelConnection[];
     s3Targets: S3Target[];
     storageClasses: string[];
     volumeBackups: VolumeBackupExtendedModel[];
@@ -231,7 +229,7 @@ export function NodeDetailsDrawer({
                         <X className="size-4" />
                         <span className="sr-only">Close</span>
                     </Button>
-                    <Tabs defaultValue="overview" className="min-h-0 flex-1">
+                    <Tabs defaultValue="deployments" className="min-h-0 flex-1">
                         <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
                             <div className="flex items-start gap-3">
                                 <div
@@ -263,18 +261,14 @@ export function NodeDetailsDrawer({
                             </div>
                             {app && role && !needsSourceConfiguration ? (
                                 <ScrollArea scrollbarOrientation="horizontal">
-                                    <TabsList className="mt-4">
-                                        <TabsTrigger value="overview">
-                                            <LayoutDashboard />
-                                            Overview
+                                    <TabsList className="mt-4 gap-4">
+                                        <TabsTrigger value="deployments">
+                                            <Rocket />
+                                            Deployments
                                         </TabsTrigger>
                                         <TabsTrigger value="logs">
                                             <ScrollText />
                                             Logs
-                                        </TabsTrigger>
-                                        <TabsTrigger value="deployments">
-                                            <Rocket />
-                                            Deployments
                                         </TabsTrigger>
                                         <TabsTrigger value="stats">
                                             <BarChart3 />
@@ -301,19 +295,8 @@ export function NodeDetailsDrawer({
                                         }
                                     />
                                 </>
-                            ) : app && role ? (
+                            ) : app && role && (
                                 <>
-
-                                    <TabsContent value="overview" className="mt-4 space-y-6">
-                                        <DrawerOverview
-                                            app={app}
-                                            role={role}
-                                            externalUrl={externalUrl}
-                                        />
-                                    </TabsContent>
-                                    <TabsContent value="logs" className="mt-4">
-                                        <Logs key={app.id} app={app} role={role} hideCard />
-                                    </TabsContent>
                                     <TabsContent
                                         value="deployments"
                                         className="mt-4"
@@ -324,6 +307,9 @@ export function NodeDetailsDrawer({
                                             role={role}
                                             view="grid"
                                         />
+                                    </TabsContent>
+                                    <TabsContent value="logs" className="mt-4">
+                                        <Logs key={app.id} app={app} role={role} hideCard />
                                     </TabsContent>
                                     <TabsContent value="stats" className="mt-4">
                                         <MonitoringTab key={app.id} app={app} />
@@ -339,9 +325,7 @@ export function NodeDetailsDrawer({
                                         />
                                     </TabsContent>
                                 </>
-                            ) : (<>
-
-                            </>)}
+                            )}
                         </ScrollArea>
                     </Tabs>
                 </NestedDrawerProvider>

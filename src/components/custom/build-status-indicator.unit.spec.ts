@@ -1,14 +1,19 @@
 import React from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppBuildStatusModel } from '@/shared/model/app-build-status.model';
 import { useBuildStatus } from '@/frontend/states/zustand.states';
+import { useDialog } from '@/frontend/states/zustand.states';
 import BuildStatusIndicator from './build-status-indicator';
 
 vi.mock('@/components/ui/tooltip', () => ({
     Tooltip: ({ children }: { children: React.ReactNode }) => children,
     TooltipTrigger: ({ children, render }: { children?: React.ReactNode; render?: React.ReactNode }) => render ?? children,
     TooltipContent: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock('@/app/project/app/[appId]/overview/build-logs-overlay', () => ({
+    BuildLogsDialogContent: () => null,
 }));
 
 function status(workloadId: string, buildStatus: AppBuildStatusModel['status']): AppBuildStatusModel {
@@ -30,6 +35,7 @@ describe('BuildStatusIndicator', () => {
             isLoading: false,
             listeners: new Set(),
         });
+        useDialog.setState({ openDialog: vi.fn() });
     });
 
     afterEach(() => {
@@ -42,6 +48,20 @@ describe('BuildStatusIndicator', () => {
         render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
 
         expect(screen.getByText('Building')).toBeTruthy();
+    });
+
+    it('opens build logs for a running build', () => {
+        const openDialog = vi.fn();
+        useDialog.setState({ openDialog });
+        useBuildStatus.setState({ buildStatus: new Map([['app-a', {
+            ...status('app-a', 'RUNNING'),
+            deploymentId: 'deployment-1',
+        }]]) });
+
+        render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+        fireEvent.click(screen.getByRole('button'));
+
+        expect(openDialog).toHaveBeenCalledOnce();
     });
 
     it('shows a pending label while a build is queued', () => {

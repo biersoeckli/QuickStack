@@ -1,5 +1,5 @@
 import buildLiveStatusService from "@/server/services/build-live-status.service";
-import buildStatusService from "@/server/services/standalone-services/build-status.service";
+import buildStatusService from "@/server/services/standalone-services/build-status-pub-sub.service";
 import buildWatchService from "@/server/services/standalone-services/build-watch.service";
 import { getAuthUserSession, simpleRoute } from "@/server/utils/action-wrapper.utils";
 import { StreamUtils } from "@/shared/utils/stream.utils";

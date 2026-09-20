@@ -1,5 +1,5 @@
 import projectService from './project.service';
-import buildStatusService from './standalone-services/build-status.service';
+import buildStatusService from './standalone-services/build-status-pub-sub.service';
 import { AppBuildStatusModel } from '@/shared/model/app-build-status.model';
 import { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
@@ -25,7 +25,7 @@ class BuildLiveStatusService {
                 if (!BUILDABLE_SOURCE_TYPES.includes(app.sourceType)) {
                     continue;
                 }
-                if (session && !UserGroupUtils.sessionHasReadAccessForApp(session, app.id)) {
+                if (session && !UserGroupUtils.sessionHasReadAccessForProjectWorkload(session, app.id)) {
                     continue;
                 }
                 appLookup.set(app.id, {

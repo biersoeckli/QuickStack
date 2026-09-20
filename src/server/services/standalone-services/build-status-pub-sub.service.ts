@@ -12,7 +12,7 @@ export type BuildStatusListener = (status: AppBuildStatusModel) => void | Promis
 type ReconcilableBuild = BuildJobModel & Partial<Pick<GlobalBuildJobModel, 'workloadName' | 'projectName' | 'projectId' | 'completionTime'>>;
 
 declare global {
-    var buildStatusServiceInstance: BuildStatusService | undefined;
+    var buildStatusServiceInstance: BuildStatusPubSubService | undefined;
 }
 
 /**
@@ -23,7 +23,7 @@ declare global {
  * source of truth: `ensureSeeded` builds it from the build service, so a restart
  * or reconnect behaves the same as a long-running process.
  */
-class BuildStatusService {
+class BuildStatusPubSubService {
     private statuses = new Map<string, AppBuildStatusModel>();
     private subscribers = new Set<BuildStatusListener>();
     private seedPromise: Promise<void> | null = null;
@@ -233,6 +233,6 @@ class BuildStatusService {
     }
 }
 
-const buildStatusService = globalThis.buildStatusServiceInstance ?? new BuildStatusService();
+const buildStatusService = globalThis.buildStatusServiceInstance ?? new BuildStatusPubSubService();
 globalThis.buildStatusServiceInstance = buildStatusService;
 export default buildStatusService;

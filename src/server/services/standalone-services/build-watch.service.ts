@@ -12,7 +12,7 @@ import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
 import { RollbackAnnotationUtils } from '@/shared/utils/rollback-annotation.utils';
 import { AppBuildMethodUtils } from '@/shared/utils/app-build-method.utils';
-import buildStatusService from './build-status.service';
+import buildStatusService from './build-status-pub-sub.service';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
