@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
         const { instanceId, registryLocation } = await paramService.initializeDefaults();
 
-        // Always (re)deploy the registry on startup so storage settings and image version are never stale.
+        // Always redeploy the registry on startup when it is missing or running an outdated image.
         const isLocalRegistryStorage = registryLocation.value === Constants.INTERNAL_REGISTRY_LOCATION;
         if (isLocalRegistryStorage || await s3TargetService.existsById(registryLocation.value)) {
             await registryService.deployRegistry(registryLocation.value, true);

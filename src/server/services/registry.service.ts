@@ -17,6 +17,8 @@ const REGISTRY_CONTAINER_PORT = 5000;
 const REGISTRY_SVC_NAME = 'registry-svc';
 const REGISTRY_PVC_NAME = 'registry-data-pvc';
 const REGISTRY_CONFIG_MAP_NAME = 'registry-config-map';
+const REGISTRY_DEPLOYMENT_NAME = 'registry';
+const REGISTRY_IMAGE = 'registry:3.1.1';
 export const BUILD_NAMESPACE = "registry-and-build";
 export const REGISTRY_URL_EXTERNAL = `localhost:${REGISTRY_NODE_PORT}`;
 export const REGISTRY_URL_INTERNAL = `${REGISTRY_SVC_NAME}.${BUILD_NAMESPACE}.svc.cluster.local:${REGISTRY_CONTAINER_PORT}`
@@ -30,7 +32,11 @@ class RegistryService {
         for (const image of allImages) {
             const tags = await registryApiAdapter.listTagsForImage(image);
             for (const tag of tags) {
-                totalSize += await registryApiAdapter.deleteImage(image, tag);
+                try {
+                    totalSize += await registryApiAdapter.deleteImage(image, tag);
+                } catch (error) {
+                    console.error(`Failed to delete image ${image}:${tag}`, error);
+                }
             }
         }
         await this.runGarbageCollection();
@@ -92,10 +98,16 @@ class RegistryService {
         await this.createOrUpdateRegistryConfigMap(s3Target);
 
         const deployments = await k3s.apps.listNamespacedDeployment({ namespace: BUILD_NAMESPACE });
-        if (deployments.items.length > 0 && !forceDeploy) {
+        const existingDeployment = deployments.items.find(dep => dep.metadata?.name === REGISTRY_DEPLOYMENT_NAME);
+        const deployedImage = existingDeployment?.spec?.template?.spec?.containers?.[0]?.image;
+        const registryImageOutdated = !!existingDeployment && deployedImage !== REGISTRY_IMAGE;
+        if (existingDeployment && !forceDeploy && !registryImageOutdated) {
             return;
         }
 
+        if (registryImageOutdated) {
+            console.log(`Registry image is outdated (deployed: ${deployedImage}, expected: ${REGISTRY_IMAGE}), redeploying...`);
+        }
         console.log("(Re)deploying registry because it is not deployed or forced...");
         console.log(`Registry storage location is set to ${registryLocation}.`);
 
@@ -182,7 +194,7 @@ class RegistryService {
     private async createOrUpdateRegistryDeployment(useLocalStorage = true) {
         console.log("Creating Registry Deployment...");
 
-        const deploymentName = 'registry';
+        const deploymentName = REGISTRY_DEPLOYMENT_NAME;
 
         const masterNode = await clusterService.getFirstMasterNode();
         if (useLocalStorage && !masterNode) {
@@ -234,7 +246,7 @@ class RegistryService {
                         containers: [
                             {
                                 name: deploymentName,
-                                image: 'registry:3.1.1',
+                                image: REGISTRY_IMAGE,
                                 volumeMounts: [
                                     ...localStorageVolumeMount,
                                     {
