@@ -15,7 +15,7 @@ import {
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
 import { EditAppDialog } from '../edit-app-dialog';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
-import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
+import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
@@ -41,23 +41,16 @@ export function ProjectNetworkGraphAppContextMenu({
     children,
     onOpenDrawerTab
 }: ProjectNetworkGraphAppContextMenuProps) {
-    const canWrite = role === RolePermissionEnum.READWRITE;
     const deploymentStatus = usePodsStatus(
         (state) => state.podsStatus.get(app.id)?.deploymentStatus ?? 'UNKNOWN',
     );
-    const appSourceIsConfigured = AppSourceUtils.isConfiguredSource(app);
-    const canStart = ['ERROR', 'UNKNOWN', 'SHUTDOWN', 'SHUTTING_DOWN'].includes(
-        deploymentStatus,
-    );
-    const canStop = ['BUILDING', 'DEPLOYED', 'ERROR', 'UNKNOWN', 'DEPLOYING'].includes(
-        deploymentStatus,
-    );
+    const lifecycle = AppLifecycleUtils.availability(app, role, deploymentStatus);
 
     return (
         <ContextMenu>
             <ContextMenuTrigger>{children}</ContextMenuTrigger>
             <ContextMenuContent onClick={(event) => event.stopPropagation()}>
-                {canWrite && <>
+                {lifecycle.canManage && <>
                     <ContextMenuSub>
                         <ContextMenuSubTrigger className="gap-2">
                             <Rocket />
@@ -65,29 +58,28 @@ export function ProjectNetworkGraphAppContextMenu({
                         </ContextMenuSubTrigger>
                         <ContextMenuSubContent onClick={(event) => event.stopPropagation()}>
                             <ContextMenuItem
-                                disabled={!appSourceIsConfigured}
+                                disabled={!lifecycle.canDeploy}
                                 onClick={() => void Toast.fromAction(() => deploy(app.id))}
                             >
                                 <Rocket />
                                 Deploy
                             </ContextMenuItem>
-                            {app.appType === 'APP'
-                                && (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') && <ContextMenuItem
-                                    disabled={!appSourceIsConfigured}
+                            {lifecycle.supportsRebuild && <ContextMenuItem
+                                    disabled={!lifecycle.canRebuild}
                                     onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
                                 >
                                     <Hammer />
                                     Rebuild
                                 </ContextMenuItem>}
                             <ContextMenuItem
-                                disabled={!canStart || !appSourceIsConfigured}
+                                disabled={!lifecycle.canStart}
                                 onClick={() => void Toast.fromAction(() => startApp(app.id))}
                             >
                                 <Play />
                                 Start
                             </ContextMenuItem>
                             <ContextMenuItem
-                                disabled={!canStop || !appSourceIsConfigured}
+                                disabled={!lifecycle.canStop}
                                 onClick={() => void Toast.fromAction(() => stopApp(app.id))}
                             >
                                 <Square />
@@ -114,13 +106,13 @@ export function ProjectNetworkGraphAppContextMenu({
                         {allowInternetAccess ? 'Disable' : 'Enable'} Egress Internet Access
                     </ContextMenuItem>
                 </>}
-                {canWrite && <EditAppDialog projectId={projectId} existingItem={app}>
+                {lifecycle.canManage && <EditAppDialog projectId={projectId} existingItem={app}>
                     <ContextMenuItem>
                         <Edit2 />
                         Edit App Name
                     </ContextMenuItem>
                 </EditAppDialog>}
-                {canWrite && <ContextMenuItem variant="destructive" onClick={onDelete}>
+                {lifecycle.canManage && <ContextMenuItem variant="destructive" onClick={onDelete}>
                     <Trash2 />
                     Delete App
                 </ContextMenuItem>}

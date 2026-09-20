@@ -43,6 +43,7 @@ import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
+import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import Logs from '@/app/project/app/[appId]/overview/logs';
@@ -57,6 +58,10 @@ import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
+import {
+    DrawerSessionUtils,
+    type DrawerTab,
+} from './project-network-graph-drawer-session';
 
 export type PanelConnection = {
     id: string;
@@ -65,13 +70,6 @@ export type PanelConnection = {
     label?: string;
     copyValue?: string;
 };
-
-const drawerTabValues = ['deployments', 'credentials', 'logs', 'stats', 'settings'] as const;
-type DrawerTab = (typeof drawerTabValues)[number];
-
-function isDrawerTab(value: string | null | undefined): value is DrawerTab {
-    return drawerTabValues.includes(value as DrawerTab);
-}
 
 function AppStatusActions({
     app,
@@ -83,18 +81,7 @@ function AppStatusActions({
     const deploymentStatus = usePodsStatus(
         (state) => state.podsStatus.get(app.id)?.deploymentStatus ?? 'UNKNOWN',
     );
-    const canManage = role === RolePermissionEnum.READWRITE;
-    const appSourceIsConfigured = AppSourceUtils.isConfiguredSource(app);
-    const canStart = ['ERROR', 'UNKNOWN', 'SHUTDOWN', 'SHUTTING_DOWN'].includes(
-        deploymentStatus,
-    );
-    const canStop = [
-        'BUILDING',
-        'DEPLOYED',
-        'ERROR',
-        'UNKNOWN',
-        'DEPLOYING',
-    ].includes(deploymentStatus);
+    const lifecycle = AppLifecycleUtils.availability(app, role, deploymentStatus);
     const openDomain = (domain: AppExtendedModel['appDomains'][number]) => {
         const protocol = domain.useSsl ? 'https' : 'http';
 
@@ -104,10 +91,10 @@ function AppStatusActions({
     return (
         <div className="flex shrink-0 items-center gap-1">
             <PodStatusIndicator appId={app.id} />
-            {(canManage || app.appDomains.length > 0) && (
+            {(lifecycle.canManage || app.appDomains.length > 0) && (
                 <TooltipProvider delay={300}>
                     <div className="ml-2 flex items-center gap-1 pl-2">
-                        {canManage && (
+                        {lifecycle.canManage && (
                             <>
                                 <Tooltip>
                                     <TooltipTrigger
@@ -116,7 +103,7 @@ function AppStatusActions({
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon-sm"
-                                                disabled={!appSourceIsConfigured}
+                                                disabled={!lifecycle.canDeploy}
                                                 onClick={() => void Toast.fromAction(() => deploy(app.id))}
                                             >
                                                 <Rocket />
@@ -126,8 +113,7 @@ function AppStatusActions({
                                     />
                                     <TooltipContent>Deploy</TooltipContent>
                                 </Tooltip>
-                                {app.appType === 'APP' &&
-                                    (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') && (
+                                {lifecycle.supportsRebuild && (
                                 <Tooltip>
                                             <TooltipTrigger
                                                 render={
@@ -135,7 +121,7 @@ function AppStatusActions({
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon-sm"
-                                                        disabled={!appSourceIsConfigured}
+                                                        disabled={!lifecycle.canRebuild}
                                                         onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
                                                     >
                                                         <Hammer />
@@ -153,7 +139,7 @@ function AppStatusActions({
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon-sm"
-                                                disabled={!canStart || !appSourceIsConfigured}
+                                                disabled={!lifecycle.canStart}
                                                 onClick={() => void Toast.fromAction(() => startApp(app.id))}
                                             >
                                                 <Play />
@@ -171,7 +157,7 @@ function AppStatusActions({
                                                 variant="ghost"
                                                 size="icon-sm"
                                                 className="hover:bg-destructive/10 hover:text-destructive"
-                                                disabled={!canStop || !appSourceIsConfigured}
+                                                disabled={!lifecycle.canStop}
                                                 onClick={() => void Toast.fromAction(() => stopApp(app.id))}
                                             >
                                                 <Square />
@@ -271,12 +257,7 @@ export function NodeDetailsDrawer({
         role === RolePermissionEnum.READWRITE &&
         !AppSourceUtils.isConfiguredSource(app);
 
-    const defaultTab: DrawerTab =
-        app?.appType !== 'APP' && requestedTab === 'credentials'
-            ? 'credentials'
-            : isDrawerTab(requestedTab)
-                ? requestedTab
-                : 'deployments';
+    const defaultTab = DrawerSessionUtils.resolveTab(app?.appType, requestedTab);
     const [activeTab, setActiveTab] = useState<DrawerTab>(defaultTab);
 
     useEffect(() => {
@@ -284,9 +265,9 @@ export function NodeDetailsDrawer({
     }, [app?.id, defaultTab]);
 
     const handleTabChange = (tab: string) => {
-        if (!isDrawerTab(tab)) return;
-        setActiveTab(tab);
-        onTabChange(tab);
+        const nextTab = DrawerSessionUtils.resolveTab(app?.appType, tab);
+        setActiveTab(nextTab);
+        onTabChange(nextTab);
     };
 
     return (
