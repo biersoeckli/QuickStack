@@ -8,6 +8,7 @@ import {
     Boxes,
     ChevronDown,
     Hammer,
+    Key,
     Play,
     Rocket,
     ScrollText,
@@ -46,6 +47,8 @@ import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { NetworkGraphNode } from './project-network-graph-projection';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
+import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials';
+import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
 import type { S3Target } from '@prisma/client';
@@ -249,6 +252,12 @@ export function NodeDetailsDrawer({
                                             <Rocket />
                                             Deployments
                                         </TabsTrigger>
+                                        {app.appType !== 'APP' && (
+                                            <TabsTrigger value="credentials">
+                                                <Key />
+                                                DB Access
+                                            </TabsTrigger>
+                                        )}
                                         <TabsTrigger value="logs">
                                             <ScrollText />
                                             Logs
@@ -297,7 +306,18 @@ export function NodeDetailsDrawer({
                                     <TabsContent value="stats" className="mb-4">
                                         <MonitoringTab hideCard key={app.id} app={app} />
                                     </TabsContent>
-                                    <TabsContent value="settings" className="mb-4">
+                                    {app.appType !== 'APP' && (
+                                        <TabsContent
+                                            value="credentials"
+                                            className="mb-4 space-y-4 px-1 pt-1"
+                                        >
+                                            {role === RolePermissionEnum.READWRITE && (
+                                                <DbToolsCard app={app} />
+                                            )}
+                                            <DbCredentials app={app} />
+                                        </TabsContent>
+                                    )}
+                                    <TabsContent value="settings" className="mb-4 pt-4">
                                         <DrawerSettings
                                             app={app}
                                             role={role}

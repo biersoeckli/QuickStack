@@ -4,7 +4,6 @@ import {
     Boxes,
     Globe2,
     HardDrive,
-    Key,
     Network,
     SlidersHorizontal,
     Zap,
@@ -22,8 +21,6 @@ import EnvEdit from '@/app/project/app/[appId]/environment/env-edit';
 import GeneralAppContainerConfig from '@/app/project/app/[appId]/general/app-container-config';
 import GeneralAppRateLimits from '@/app/project/app/[appId]/general/app-rate-limits';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
-import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials';
-import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import StorageList from '@/app/project/app/[appId]/volumes/storages';
 import VolumeBackupList from '@/app/project/app/[appId]/volumes/volume-backup';
 import DomainsCard from '@/components/custom/domains-card';
@@ -55,9 +52,6 @@ export function DrawerSettings({
     const { openNestedDrawer } = useNestedDrawer();
     const settingsSections = useMemo(
         () => [
-            ...(app.appType !== 'APP'
-                ? [{ id: 'credentials', label: 'Credentials' }]
-                : []),
             { id: 'source', label: 'Source' },
             { id: 'deployment', label: 'Deployment' },
             { id: 'environment', label: 'Environment' },
@@ -65,7 +59,7 @@ export function DrawerSettings({
             { id: 'storage', label: 'Storage' },
             { id: 'advanced', label: 'Advanced' },
         ],
-        [app.appType],
+        [],
     );
     const [activeSection, setActiveSection] = useState(settingsSections[0].id);
 
@@ -104,29 +98,6 @@ export function DrawerSettings({
     return (
         <div className="grid gap-8 pb-4 [&_[data-slot=card-footer]]:mt-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
             <div className="min-w-0 space-y-10">
-                {app.appType !== 'APP' && (
-                    <SettingsSection id="credentials" title="Credentials" icon={Key}>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                                openNestedDrawer({
-                                    title: 'Database credentials',
-                                    content: (
-                                        <div className="space-y-4">
-                                            {role === RolePermissionEnum.READWRITE && (
-                                                <DbToolsCard app={app} />
-                                            )}
-                                            <DbCredentials app={app} />
-                                        </div>
-                                    ),
-                                })
-                            }
-                        >
-                            Manage database credentials
-                        </Button>
-                    </SettingsSection>
-                )}
                 <SettingsSection
                     id="source"
                     title="Source"
