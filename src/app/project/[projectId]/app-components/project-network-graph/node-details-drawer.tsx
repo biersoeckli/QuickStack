@@ -1,6 +1,6 @@
 'use client';
 
-import { type Ref } from 'react';
+import { type Ref, useEffect, useState } from 'react';
 
 import {
     BarChart3,
@@ -61,6 +61,13 @@ export type PanelConnection = {
     label?: string;
     copyValue?: string;
 };
+
+const drawerTabValues = ['deployments', 'credentials', 'logs', 'stats', 'settings'] as const;
+type DrawerTab = (typeof drawerTabValues)[number];
+
+function isDrawerTab(value: string | null | undefined): value is DrawerTab {
+    return drawerTabValues.includes(value as DrawerTab);
+}
 
 function AppStatusActions({
     app,
@@ -165,7 +172,8 @@ export function NodeDetailsDrawer({
     open,
     onOpenChange,
     onOpenChangeComplete,
-    onOpen,
+    requestedTab,
+    onTabChange,
 }: {
     contentRef?: Ref<HTMLDivElement>;
     node: NetworkGraphNode;
@@ -178,7 +186,8 @@ export function NodeDetailsDrawer({
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onOpenChangeComplete: (open: boolean) => void;
-    onOpen: () => void;
+    requestedTab?: string | null;
+    onTabChange: (tab: DrawerTab) => void;
 }) {
     const isApp = node.kind === 'APP';
     const needsSourceConfiguration =
@@ -186,10 +195,23 @@ export function NodeDetailsDrawer({
         role === RolePermissionEnum.READWRITE &&
         !AppSourceUtils.isConfiguredSource(app);
 
-    const externalDomain = app?.appDomains[0];
-    const externalUrl = externalDomain
-        ? `${externalDomain.useSsl ? 'https' : 'http'}://${externalDomain.hostname}`
-        : undefined;
+    const defaultTab: DrawerTab =
+        app?.appType !== 'APP' && requestedTab === 'credentials'
+            ? 'credentials'
+            : isDrawerTab(requestedTab)
+                ? requestedTab
+                : 'deployments';
+    const [activeTab, setActiveTab] = useState<DrawerTab>(defaultTab);
+
+    useEffect(() => {
+        setActiveTab(defaultTab);
+    }, [app?.id, defaultTab]);
+
+    const handleTabChange = (tab: string) => {
+        if (!isDrawerTab(tab)) return;
+        setActiveTab(tab);
+        onTabChange(tab);
+    };
 
     return (
         <Drawer
@@ -215,7 +237,11 @@ export function NodeDetailsDrawer({
                         <X className="size-4" />
                         <span className="sr-only">Close</span>
                     </Button>
-                    <Tabs defaultValue="deployments" className="min-h-0 flex-1">
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={handleTabChange}
+                        className="min-h-0 flex-1"
+                    >
                         <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
                             <div className="flex items-start gap-3">
                                 <div

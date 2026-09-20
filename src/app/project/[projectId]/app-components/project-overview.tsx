@@ -57,6 +57,7 @@ export default function AppProjectOverview({
     const searchParams = useSearchParams();
     const { openDialog } = useDialog();
     const requestedTab = searchParams.get('tab');
+    const requestedDrawerAppId = searchParams.get('drawerAppId');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
 
     useEffect(() => {
@@ -71,13 +72,17 @@ export default function AppProjectOverview({
     }, [openDialog, showNewNetworkPolicyExplanation, apps.length]);
 
     useEffect(() => {
+        if (requestedDrawerAppId) {
+            setCurrentTab('graph');
+            return;
+        }
         if (isProjectOverviewTab(requestedTab)) {
             setCurrentTab(requestedTab);
             return;
         }
         const savedTab = window.localStorage.getItem(tabStorageKey());
         setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'graph');
-    }, [projectId, requestedTab]);
+    }, [projectId, requestedDrawerAppId, requestedTab]);
 
     const handleTabChange = (value: string) => {
         if (!isProjectOverviewTab(value)) return;

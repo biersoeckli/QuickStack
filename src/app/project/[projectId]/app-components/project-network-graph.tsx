@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Background,
     BackgroundVariant,
@@ -32,8 +32,7 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
-import { NodeDetailsDrawer, type PanelConnection } from './project-network-graph/node-details-drawer';
+import { NodeDetailsDrawer } from './project-network-graph/node-details-drawer';
 import {
     ProjectNetworkGraphAppContextMenu,
     type ProjectNetworkGraphAppContextMenuProps,
@@ -54,6 +53,7 @@ import { deleteApp } from '@/app/project/[projectId]/actions';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
+import { TabNavigationUtils } from '@/frontend/utils/tab-navigation.utils';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -180,6 +180,7 @@ function ProjectNetworkGraphEditor({
     gitSshPublicKeysByApp,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { openDialog } = useDialog();
     const { openConfirmDialog } = useConfirmDialog();
     const [drafts, setDrafts] = useState<Record<string, AppNetworkPolicyDraft>>(() => AppNetworkPolicyDraftUtils.collectionFromApps(apps));
@@ -198,6 +199,32 @@ function ProjectNetworkGraphEditor({
     const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
+
+    const updateDrawerQuery = useCallback((appId?: string, tab?: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (!appId) {
+            params.delete('drawerAppId');
+            params.delete('drawerTab');
+        } else {
+            params.set('drawerAppId', appId);
+            params.set('drawerTab', tab ?? 'deployments');
+        }
+
+        TabNavigationUtils.replaceQuery(params);
+    }, [searchParams]);
+
+    useEffect(() => {
+        const requestedAppId = searchParams.get('drawerAppId');
+
+        if (!requestedAppId) return;
+        if (!localAppIds.has(requestedAppId)) {
+            updateDrawerQuery();
+            return;
+        }
+
+        setSelectedNodeId(`APP:${requestedAppId}`);
+    }, [localAppIds, searchParams, updateDrawerQuery]);
     const writable = useCallback(
         (appId: string) => UserGroupUtils.sessionHasWriteAccessForApp(session, appId),
         [session],
@@ -352,24 +379,6 @@ function ProjectNetworkGraphEditor({
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
-    const selectedConnections = useMemo(() => (layout?.edges ?? [])
-        .filter(edge => edge.source === selectedNodeId || edge.target === selectedNodeId)
-        .map(edge => {
-            const otherNode = (layout?.nodes ?? []).find(node => node.id === (edge.source === selectedNodeId ? edge.target : edge.source));
-            const direction = edge.source === selectedNodeId ? 'Egress' : 'Ingress';
-            const port = Number.parseInt(edge.labels[0] ?? '', 10);
-            const copyValue = direction === 'Ingress' && otherNode?.kind === 'APP' && otherNode.projectId
-                ? InternalHostnameUtils.getInternalBaseUrlForApp({ id: otherNode.id.replace('APP:', ''), projectId: otherNode.projectId }, Number.isNaN(port) ? undefined : port)
-                : undefined;
-            return {
-                id: edge.id,
-                name: otherNode?.name ?? 'Unknown workload',
-                direction,
-                label: graphEdgePresentation(edge).label,
-                copyValue
-            } satisfies PanelConnection;
-        }), [layout, selectedNodeId]);
-
     useEffect(() => {
         if (selectedNodeId) setIsNodeDrawerOpen(true);
     }, [selectedNodeId]);
@@ -501,6 +510,11 @@ function ProjectNetworkGraphEditor({
                         const data = node.data as NetworkGraphNode;
                         if (data.kind !== 'INTERNET') {
                             setSelectedNodeId(node.id);
+                            if (data.kind === 'APP') {
+                                updateDrawerQuery(node.id.replace('APP:', ''));
+                            } else {
+                                updateDrawerQuery();
+                            }
                         }
                     }}
                 >
@@ -538,17 +552,23 @@ function ProjectNetworkGraphEditor({
                     node={selectedNode}
                     app={selectedApp}
                     role={selectedAppRole}
-                    connections={selectedConnections}
                     s3Targets={s3Targets}
                     storageClasses={storageClasses}
                     volumeBackups={selectedApp ? (volumeBackupsByApp[selectedApp.id] ?? []) : []}
                     gitSshPublicKey={selectedApp ? gitSshPublicKeysByApp[selectedApp.id] : undefined}
                     open={isNodeDrawerOpen}
-                    onOpenChange={setIsNodeDrawerOpen}
+                    onOpenChange={open => {
+                        setIsNodeDrawerOpen(open);
+                        if (!open) updateDrawerQuery();
+                    }}
                     onOpenChangeComplete={open => {
                         if (!open) setSelectedNodeId(undefined);
                     }}
-                    onOpen={() => router.push(`/project/app/${selectedNode.id.replace('APP:', '')}`)} />}
+                    requestedTab={searchParams.get('drawerTab')}
+                    onTabChange={tab => {
+                        if (selectedApp) updateDrawerQuery(selectedApp.id, tab);
+                    }}
+                />}
             </div>
         </div>
     );
