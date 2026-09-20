@@ -6,7 +6,6 @@ import {
     BarChart3,
     Bot,
     Boxes,
-    ChevronDown,
     Hammer,
     Key,
     Play,
@@ -18,13 +17,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Drawer,
@@ -93,69 +90,86 @@ function AppStatusActions({
     ].includes(deploymentStatus);
 
     return (
-        <div className="flex items-center rounded-md bg-emerald-500/10 px-2 py-1">
-
+        <div className="flex shrink-0 items-center gap-1">
+            <PodStatusIndicator appId={app.id}  />
             {canManage ? (
-                <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <div className="flex items-center gap-1">
-                            <PodStatusIndicator appId={app.id} showLabel />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="ml-1 size-5"
-                            >
-                                <ChevronDown className="size-3.5" />
-                                <span className="sr-only">App actions</span>
-                            </Button>
-                        </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            disabled={!appSourceIsConfigured}
-                            onClick={() =>
-                                void Toast.fromAction(() => deploy(app.id))
-                            }
-                        >
-                            <Rocket />
-                            Deploy
-                        </DropdownMenuItem>
+                <TooltipProvider delay={300}>
+                    <div className="ml-2 flex items-center gap-1 pl-2">
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        disabled={!appSourceIsConfigured}
+                                        onClick={() => void Toast.fromAction(() => deploy(app.id))}
+                                    >
+                                        <Rocket />
+                                        <span className="sr-only">Deploy</span>
+                                    </Button>
+                                }
+                            />
+                            <TooltipContent>Deploy</TooltipContent>
+                        </Tooltip>
                         {app.appType === 'APP' &&
-                            (app.sourceType === 'GIT' ||
-                                app.sourceType === 'GIT_SSH') && (
-                                <DropdownMenuItem
-                                    disabled={!appSourceIsConfigured}
-                                    onClick={() =>
-                                        void Toast.fromAction(() =>
-                                            deploy(app.id, true),
-                                        )
-                                    }
-                                >
-                                    <Hammer />
-                                    Rebuild
-                                </DropdownMenuItem>
+                            (app.sourceType === 'GIT' || app.sourceType === 'GIT_SSH') && (
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        render={
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                disabled={!appSourceIsConfigured}
+                                                onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
+                                            >
+                                                <Hammer />
+                                                <span className="sr-only">Rebuild</span>
+                                            </Button>
+                                        }
+                                    />
+                                    <TooltipContent>Rebuild</TooltipContent>
+                                </Tooltip>
                             )}
-                        <DropdownMenuItem
-                            disabled={!canStart || !appSourceIsConfigured}
-                            onClick={() =>
-                                void Toast.fromAction(() => startApp(app.id))
-                            }
-                        >
-                            <Play />
-                            Start
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            disabled={!canStop || !appSourceIsConfigured}
-                            onClick={() =>
-                                void Toast.fromAction(() => stopApp(app.id))
-                            }
-                        >
-                            <Square />
-                            Stop
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            ) : <PodStatusIndicator appId={app.id} showLabel />}
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        disabled={!canStart || !appSourceIsConfigured}
+                                        onClick={() => void Toast.fromAction(() => startApp(app.id))}
+                                    >
+                                        <Play />
+                                        <span className="sr-only">Start</span>
+                                    </Button>
+                                }
+                            />
+                            <TooltipContent>Start</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="hover:bg-destructive/10 hover:text-destructive"
+                                        disabled={!canStop || !appSourceIsConfigured}
+                                        onClick={() => void Toast.fromAction(() => stopApp(app.id))}
+                                    >
+                                        <Square />
+                                        <span className="sr-only">Stop</span>
+                                    </Button>
+                                }
+                            />
+                            <TooltipContent>Stop</TooltipContent>
+                        </Tooltip>
+                    </div>
+                </TooltipProvider>
+            ) : null}
         </div>
     );
 }
@@ -267,8 +281,10 @@ export function NodeDetailsDrawer({
                                             (isApp ? 'App' : 'Agent sandbox')}
                                     </DrawerDescription>
                                 </div>
-                                {app && !needsSourceConfiguration && (
+                                {app && !needsSourceConfiguration && (<>
                                     <AppStatusActions app={app} role={role} />
+                                    <div className=""></div>
+                                    </>
                                 )}
                             </div>
                             {app && role && !needsSourceConfiguration ? (
