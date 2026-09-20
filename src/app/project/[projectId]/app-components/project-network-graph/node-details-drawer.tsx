@@ -12,6 +12,7 @@ import {
     Play,
     Rocket,
     Logs as LogsIcon,
+    Pencil,
     Settings,
     Square,
     X,
@@ -56,6 +57,7 @@ import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
+import { EditAppDialog } from '../edit-app-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import {
@@ -316,8 +318,24 @@ export function NodeDetailsDrawer({
                                     )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <DrawerTitle className="truncate text-lg">
-                                        {node.name}
+                                    <DrawerTitle className="group/title flex items-center gap-1 text-lg">
+                                        <span className="truncate">{node.name}</span>
+                                        {app && role === RolePermissionEnum.READWRITE && (
+                                            <EditAppDialog
+                                                projectId={app.projectId}
+                                                existingItem={app}
+                                            >
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    className="shrink-0 opacity-0 transition-opacity group-hover/title:opacity-100 focus-visible:opacity-100"
+                                                >
+                                                    <Pencil />
+                                                    <span className="sr-only">Edit app name</span>
+                                                </Button>
+                                            </EditAppDialog>
+                                        )}
                                     </DrawerTitle>
                                     <DrawerDescription className="text-xs">
                                         {node.caption ??

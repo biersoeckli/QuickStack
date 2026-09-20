@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Background,
@@ -53,7 +53,10 @@ import { deleteApp } from '@/app/project/[projectId]/actions';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
-import { useProjectNetworkGraphDrawerSession } from './project-network-graph/project-network-graph-drawer-session';
+import {
+    type DrawerTab,
+    useProjectNetworkGraphDrawerSession,
+} from './project-network-graph/project-network-graph-drawer-session';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -188,6 +191,7 @@ function ProjectNetworkGraphEditor({
     const [saving, setSaving] = useState(false);
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
+    const [graphHeight, setGraphHeight] = useState<number>();
     const graphContainerRef = useRef<HTMLDivElement>(null);
     const drawerContentRef = useRef<HTMLDivElement>(null);
     const reactFlowRef = useRef<Pick<ReactFlowInstance, 'getNode' | 'getZoom' | 'setViewport'>>(null);
@@ -210,6 +214,19 @@ function ProjectNetworkGraphEditor({
         () => new Set(apps.filter(app => writable(app.id)).map(app => app.id)),
         [apps, writable],
     );
+
+    useLayoutEffect(() => {
+        const updateGraphHeight = () => {
+            const graphContainer = graphContainerRef.current;
+            if (!graphContainer) return;
+
+            setGraphHeight(Math.max(0, window.innerHeight - graphContainer.getBoundingClientRect().top));
+        };
+
+        updateGraphHeight();
+        window.addEventListener('resize', updateGraphHeight);
+        return () => window.removeEventListener('resize', updateGraphHeight);
+    }, []);
     const cancelConnectionTargetLeave = () => {
         if (connectionTargetLeaveTimer.current) clearTimeout(connectionTargetLeaveTimer.current);
     };
@@ -308,11 +325,10 @@ function ProjectNetworkGraphEditor({
             selected: node.id === selectedNodeId,
             contextMenu: app && draft && role === RolePermissionEnum.READWRITE ? {
                 app,
-                projectId,
                 role,
                 allowInternetAccess: draft.allowInternetAccess,
                 onToggleInternetAccess: () => toggleInternetAccess(app.id),
-                onOpenDrawerTab: (tab: string) => {
+                onOpenDrawerTab: (tab: DrawerTab) => {
                     drawerSession.openAppTab(app.id, tab);
                 },
                 onDelete: () => void deleteLocalApp(app.id),
@@ -323,7 +339,7 @@ function ProjectNetworkGraphEditor({
             ),
         },
     };
-    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, projectId, selectedNodeId, session, toggleInternetAccess]);
+    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
     const edges = useMemo(() => (layout?.edges ?? []).map(edge => {
@@ -395,7 +411,8 @@ function ProjectNetworkGraphEditor({
         <div>
             <div
                 ref={graphContainerRef}
-                className="relative -mx-8 h-[calc(100dvh-14rem)] min-h-80 w-auto overflow-hidden bg-background lg:-mx-10"
+                className="relative -mx-8 w-auto overflow-hidden bg-background lg:-mx-10"
+                style={{ height: graphHeight ?? 'calc(100dvh - 14rem)' }}
             >
                 <div className="absolute right-4 top-4 z-10 flex overflow-hidden rounded-md border bg-background shadow-xs">
                     <Popover>

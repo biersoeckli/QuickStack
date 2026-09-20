@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Box, Edit2, Globe2, Hammer, Logs, Play, Rocket, Settings, Square, Trash2 } from 'lucide-react';
+import { Box, Globe2, Hammer, Logs, Play, Rocket, Settings, Square, Trash2 } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -13,7 +13,6 @@ import {
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
-import { EditAppDialog } from '../edit-app-dialog';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
@@ -22,7 +21,6 @@ import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 
 export type ProjectNetworkGraphAppContextMenuProps = {
     app: AppExtendedModel;
-    projectId: string;
     role?: RolePermissionEnum;
     allowInternetAccess: boolean;
     onToggleInternetAccess: () => void;
@@ -33,7 +31,6 @@ export type ProjectNetworkGraphAppContextMenuProps = {
 
 export function ProjectNetworkGraphAppContextMenu({
     app,
-    projectId,
     role,
     allowInternetAccess,
     onToggleInternetAccess,
@@ -106,12 +103,6 @@ export function ProjectNetworkGraphAppContextMenu({
                         {allowInternetAccess ? 'Disable' : 'Enable'} Egress Internet Access
                     </ContextMenuItem>
                 </>}
-                {lifecycle.canManage && <EditAppDialog projectId={projectId} existingItem={app}>
-                    <ContextMenuItem>
-                        <Edit2 />
-                        Edit App Name
-                    </ContextMenuItem>
-                </EditAppDialog>}
                 {lifecycle.canManage && <ContextMenuItem variant="destructive" onClick={onDelete}>
                     <Trash2 />
                     Delete App

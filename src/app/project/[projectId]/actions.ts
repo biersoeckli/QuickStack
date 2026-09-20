@@ -56,7 +56,7 @@ export const createApp = async (appName: string, projectId: string, appId?: stri
             projectId
         });
 
-        return new SuccessActionResult(returnData, "App created successfully.");
+        return new SuccessActionResult(returnData, "Saved successfully.");
     });
 
 export const createAppFromTemplate = async (prevState: any, inputData: AppTemplateModel, projectId: string) =>
