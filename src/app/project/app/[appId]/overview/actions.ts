@@ -7,8 +7,6 @@ import deploymentService from "@/server/services/deployment.service";
 import monitoringService from "@/server/services/monitoring.service";
 import podService from "@/server/services/pod.service";
 import { isAuthorizedReadForApp, isAuthorizedWriteForApp, simpleAction } from "@/server/utils/action-wrapper.utils";
-import appLogsService from "@/server/services/standalone-services/app-logs.service";
-import { ServiceException } from "@/shared/model/service.exception.model";
 
 export const getDeploymentsAndBuildsForApp = async (appId: string) =>
     simpleAction(async () => {
@@ -48,20 +46,4 @@ export const createNewWebhookUrl = async (appId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForApp(appId);
         await appService.regenerateWebhookId(appId);
-    });
-
-export const getDownloadableLogs = async (appId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedReadForApp(appId);
-        return new SuccessActionResult(await appLogsService.getAvailableLogsForApp(appId));
-    });
-
-export const exportLogsToFileForToday = async (appId: string) =>
-    simpleAction(async () => {
-        await isAuthorizedReadForApp(appId);
-        const result = await appLogsService.writeAppLogsToDiskForApp(appId);
-        if (!result) {
-            throw new ServiceException('There are no logs available for today.');
-        }
-        return new SuccessActionResult(result);
     });

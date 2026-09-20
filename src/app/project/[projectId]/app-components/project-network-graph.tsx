@@ -22,7 +22,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Bot, Boxes, Cloud, Database, Edit2, Globe2, Info, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import BuildStatusIndicator from '@/components/custom/build-status-indicator';
@@ -493,23 +493,25 @@ function ProjectNetworkGraphEditor({
                 </ReactFlow>
                 {dirty && (
                     <Card className="absolute bottom-4 left-16 z-10 flex w-fit overflow-hidden p-1 shadow-md">
-                        <Button
-                            size="sm"
-                            disabled={saving}
-                            className="bg-qs-600 text-white hover:bg-qs-700 disabled:bg-qs-600 disabled:text-white"
-                            onClick={() => void saveChanges()}
-                        >
-                            Save & Apply
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={saving}
-                            className="text-muted-foreground hover:text-foreground ml-2"
-                            onClick={discardChanges}
-                        >
-                            Cancel
-                        </Button>
+                        <CardFooter className="p-0">
+                            <Button
+                                size="sm"
+                                disabled={saving}
+                                className="bg-qs-600 text-white hover:bg-qs-700 disabled:bg-qs-600 disabled:text-white"
+                                onClick={() => void saveChanges()}
+                            >
+                                Save & Apply
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={saving}
+                                className="text-muted-foreground hover:text-foreground ml-2"
+                                onClick={discardChanges}
+                            >
+                                Cancel
+                            </Button>
+                        </CardFooter>
                     </Card>
                 )}
                 {edgeMenu && createPortal(

@@ -9,10 +9,9 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { toast } from "sonner";
 import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import { Button } from "@/components/ui/button";
-import { Download, Expand, Terminal } from "lucide-react";
+import { Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
-import { LogsDownloadOverlay } from "./logs-download-overlay";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 import { cn } from "@/frontend/utils/utils";
@@ -146,22 +145,6 @@ export default function Logs({
                             </Button>
                         </TerminalDialog>
                     </div>}
-                    <div>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger delay={300}>
-                                    <LogsDownloadOverlay appId={app.id} >
-                                        <Button variant="secondary">
-                                            <Download />
-                                        </Button>
-                                    </LogsDownloadOverlay>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Download Logs</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
                     <div>
                         <Tooltip>
                             <TooltipTrigger delay={300}>

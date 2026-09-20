@@ -5,6 +5,10 @@ import { FsUtils } from '../utils/fs.utils';
 
 class DeploymentLogService {
 
+    async deleteAllLogs() {
+        await FsUtils.deleteDirIfExistsAsync(PathUtils.deploymentLogsPath, true);
+    }
+
     async writeLogs(deploymentId: string, logMessage: string, addDate = true, addNewLine = true) {
         try {
             const now = new Date();

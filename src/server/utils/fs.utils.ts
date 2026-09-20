@@ -2,10 +2,6 @@ import fs from "fs"
 
 export class FsUtils {
 
-    static listFilesInDirAsync(appLogsFolder: string) {
-        return fs.promises.readdir(appLogsFolder);
-    }
-
     static getFileStats(file: string) {
         return fs.promises.stat(file);
     }

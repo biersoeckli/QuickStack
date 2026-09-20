@@ -69,7 +69,7 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                                 <TableCell className="font-medium flex gap-2">
                                     <Code>{domain.hostname}</Code>
                                     <div className="self-center cursor-pointer" onClick={() => window.open((domain.useSsl ? 'https://' : 'http://') + domain.hostname, '_blank')}>
-                                        <ExternalLink />
+                                        <ExternalLink className="h-3 w-3" />
                                     </div>
                                 </TableCell>
                                 <TableCell className="font-medium">{domain.port}</TableCell>

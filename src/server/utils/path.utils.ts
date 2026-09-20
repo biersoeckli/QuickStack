@@ -31,19 +31,6 @@ export class PathUtils {
         return path.join(this.tempDataRoot, 'backup-restore');
     }
 
-    static get persistedLogsPath() {
-        return path.join(this.internalDataRoot, 'app-logs');
-    }
-
-    static appLogsFolder(appId: string): string {
-        return path.join(this.persistedLogsPath, `${appId}`);
-    }
-
-    static appLogsFile(appId: string, date: Date): string {
-        const dateString = date.toISOString().split('T')[0];
-        return path.join(this.appLogsFolder(appId), `${appId}_${dateString}.tar.gz`);
-    }
-
     static gitRootPathForApp(appId: string): string {
         return path.join(PathUtils.gitRootPath, this.convertIdToFolderFriendlyName(appId));
     }

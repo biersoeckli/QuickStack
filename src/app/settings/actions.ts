@@ -16,7 +16,7 @@ import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.util
 import buildService from "@/server/services/build.service";
 import standalonePodService from "@/server/services/standalone-services/standalone-pod.service";
 import maintenanceService from "@/server/services/standalone-services/maintenance.service";
-import appLogsService from "@/server/services/standalone-services/app-logs.service";
+import deploymentLogService from "@/server/services/deployment-logs.service";
 import systemBackupService from "@/server/services/standalone-services/system-backup.service";
 import backupService from "@/server/services/standalone-services/backup.service";
 import networkPolicyService from "@/server/services/network-policy.service";
@@ -248,8 +248,8 @@ export const purgeRegistryImages = async () =>
 export const deleteOldAppLogs = async () =>
   simpleAction(async () => {
     await getAdminUserSession();
-    await appLogsService.deleteOldAppLogs();
-    return new SuccessActionResult(undefined, `Successfully deletes old app logs.`);
+    await deploymentLogService.deleteAllLogs();
+    return new SuccessActionResult(undefined, 'Successfully deleted all deployment logs.');
   });
 
 export const setCanaryChannel = async (useCanaryChannel: boolean) =>

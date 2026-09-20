@@ -11,7 +11,6 @@ import { Constants } from './shared/utils/constants'
 import backupService from './server/services/standalone-services/backup.service'
 import maintenanceService from './server/services/standalone-services/maintenance.service'
 import passwordChangeService from './server/services/standalone-services/password-change.service'
-import appLogsService from './server/services/standalone-services/app-logs.service'
 
 declare global {
     var quickStackInitKey: string | undefined;
@@ -64,7 +63,6 @@ async function initializeNextJs() {
 
     await backupService.registerAllBackups();
     maintenanceService.configureMaintenanceCronJobs();
-    appLogsService.configureCronJobs();
 
     const app = next({ dev });
     const handle = app.getRequestHandler();

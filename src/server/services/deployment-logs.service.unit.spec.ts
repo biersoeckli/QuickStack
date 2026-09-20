@@ -44,6 +44,15 @@ describe('deployment-logs.service', () => {
         );
     });
 
+    it('deletes all deployment logs', async () => {
+        await writeLogFile('deploy-one', 'first');
+        await writeLogFile('deploy-two', 'second');
+
+        await deploymentLogService.deleteAllLogs();
+
+        await expect(fs.access(PathUtils.deploymentLogsPath)).rejects.toThrow();
+    });
+
     it('streams the existing log content before watching for updates', async () => {
         const deploymentId = 'deploy-stream';
         await writeLogFile(deploymentId, 'first\nsecond\n');
