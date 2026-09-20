@@ -12,6 +12,7 @@ import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
 import { RollbackAnnotationUtils } from '@/shared/utils/rollback-annotation.utils';
 import { AppBuildMethodUtils } from '@/shared/utils/app-build-method.utils';
+import buildStatusService from './build-status.service';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -29,6 +30,8 @@ class BuildWatchService {
         this.isWatchRunning = true;
         console.log('[BuildWatch] Starting build job watch...');
 
+        await buildStatusService.ensureSeeded();
+
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
 
@@ -38,6 +41,7 @@ class BuildWatchService {
             async (type: string, apiObj: unknown) => {
                 try {
                     const job = apiObj as V1Job;
+                    await buildStatusService.applyJobEvent(type, job);
                     await this.handleJobEvent(job);
                 } catch (e) {
                     console.error('[BuildWatch] Error handling job event:', e);

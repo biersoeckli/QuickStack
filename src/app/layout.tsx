@@ -13,6 +13,7 @@ import { BreadcrumbsGenerator } from "../components/custom/breadcrumbs-generator
 import { getUserSession } from "@/server/utils/action-wrapper.utils";
 import { InputDialog } from "@/components/custom/input-dialog";
 import PodsStatusPollingProvider from "@/components/custom/pods-status-polling-provider";
+import BuildStatusPollingProvider from "@/components/custom/build-status-polling-provider";
 import { GenericDialog } from "@/components/custom/generic-dialog";
 
 const inter = Inter({
@@ -66,6 +67,7 @@ export default async function RootLayout({
         <InputDialog />
         <GenericDialog />
         {userIsLoggedIn && <PodsStatusPollingProvider />}
+        {userIsLoggedIn && <BuildStatusPollingProvider />}
       </body>
     </html>
   );

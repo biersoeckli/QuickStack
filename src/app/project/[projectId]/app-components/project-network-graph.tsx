@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
+import BuildStatusIndicator from '@/components/custom/build-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
@@ -89,7 +90,8 @@ const WorkloadNode = memo(function WorkloadNode({
             <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                     <p className="truncate text-sm font-semibold" title={data.name}>{data.name}</p>
-                    {data.kind === 'APP' && <div className={cn('ml-auto shrink-0 transition-opacity', data.connectionTarget && 'opacity-0')}>
+                    {data.kind === 'APP' && <div className={cn('ml-auto flex shrink-0 items-center gap-1.5 transition-opacity', data.connectionTarget && 'opacity-0')}>
+                        <BuildStatusIndicator appId={data.id.replace('APP:', '')} showLabel />
                         <PodStatusIndicator appId={data.id.replace('APP:', '')} />
                     </div>}
                 </div>

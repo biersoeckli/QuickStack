@@ -1,3 +1,4 @@
+import { AppBuildStatusModel } from "@/shared/model/app-build-status.model";
 import { AppPodsStatusModel } from "@/shared/model/app-pod-status.model";
 import { ReactNode } from "react";
 import { create } from "zustand"
@@ -147,6 +148,65 @@ export const usePodsStatus = create<ZustandPodsStatusProps>((set, get) => ({
     },
     getPodsForApp: (appId) => {
         return get().podsStatus.get(appId);
+    },
+    subscribeToStatusChanges: (callback) => {
+        set((state) => {
+            const newListeners = new Set(state.listeners);
+            newListeners.add(callback);
+            return { listeners: newListeners };
+        });
+        return () => {
+            set((state) => {
+                const newListeners = new Set(state.listeners);
+                newListeners.delete(callback);
+                return { listeners: newListeners };
+            });
+        };
+    }
+}));
+
+/* Build Status Store */
+interface ZustandBuildStatusProps {
+    buildStatus: Map<string, AppBuildStatusModel>;
+    lastUpdate: Date | null;
+    isLoading: boolean;
+    listeners: Set<(changedWorkloadIds: string[]) => void>;
+    setBuildStatus: (data: AppBuildStatusModel[]) => void;
+    updateBuildStatus: (data: AppBuildStatusModel) => void;
+    setLoading: (loading: boolean) => void;
+    getBuildStatus: (workloadId: string) => AppBuildStatusModel | undefined;
+    subscribeToStatusChanges: (callback: (changedWorkloadIds: string[]) => void) => () => void;
+}
+
+export const useBuildStatus = create<ZustandBuildStatusProps>((set, get) => ({
+    buildStatus: new Map(),
+    lastUpdate: null,
+    isLoading: true,
+    listeners: new Set(),
+    setBuildStatus: (data) => {
+        set({
+            buildStatus: new Map(data.map(build => [build.workloadId, build])),
+            lastUpdate: new Date(),
+            isLoading: false,
+        });
+        get().listeners.forEach(listener => listener(data.map(build => build.workloadId)));
+    },
+    updateBuildStatus: (data) => {
+        set((state) => {
+            const newMap = new Map(state.buildStatus);
+            newMap.set(data.workloadId, data);
+            return {
+                buildStatus: newMap,
+                lastUpdate: new Date(),
+            };
+        });
+        get().listeners.forEach(listener => listener([data.workloadId]));
+    },
+    setLoading: (loading) => {
+        set({ isLoading: loading });
+    },
+    getBuildStatus: (workloadId) => {
+        return get().buildStatus.get(workloadId);
     },
     subscribeToStatusChanges: (callback) => {
         set((state) => {

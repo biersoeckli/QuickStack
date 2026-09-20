@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { usePolling } from '@/frontend/hooks/use-polling';
-import { useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
+import { useBuildStatus, useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
@@ -97,6 +97,15 @@ export default function BuildsTab({
         && !!deployment.gitCommit
         && deployment.status !== 'DEPLOYING'
         && deployment.status !== 'DEPLOYED';
+
+    const currentBuildStatus = useBuildStatus(state => state.buildStatus.get(app.id)?.status);
+
+    useEffect(() => {
+        if (currentBuildStatus === undefined) {
+            return;
+        }
+        void updateBuilds();
+    }, [currentBuildStatus, updateBuilds]);
 
     usePolling(updateBuilds, {
         intervalMs: 10000,
