@@ -47,6 +47,29 @@ class VolumeBackupService {
         });
     }
 
+    async getWithVolumeAndAppById(id: string) {
+        return dataAccess.client.volumeBackup.findFirstOrThrow({
+            where: { id },
+            include: {
+                volume: {
+                    include: { app: true },
+                },
+            },
+        });
+    }
+
+    async getAppIdById(id: string) {
+        const volumeBackup = await dataAccess.client.volumeBackup.findFirstOrThrow({
+            where: { id },
+            select: {
+                volume: {
+                    select: { appId: true },
+                },
+            },
+        });
+        return volumeBackup.volume.appId;
+    }
+
     async save(item: Prisma.VolumeBackupUncheckedCreateInput | Prisma.VolumeBackupUncheckedUpdateInput) {
         let savedItem: VolumeBackup;
         try {

@@ -48,7 +48,7 @@ export default function GeneralAppSource({
     );
 
     if (hideCard) {
-        return <div className="pt-4 space-y-4">
+        return <div className="space-y-4">
             {cardContent}
             {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
         </div>;

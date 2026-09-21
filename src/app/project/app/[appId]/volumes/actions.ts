@@ -3,7 +3,7 @@
 import { appVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
-import { isAuthorizedReadForApp, isAuthorizedWriteForApp, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp, isAuthorizedWriteForApp, isAuthorizedWriteForWorkload, saveFormAction, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { z } from "zod";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import pvcService from "@/server/services/pvc.service";
@@ -16,7 +16,7 @@ import { volumeUploadZodModel } from "@/shared/model/volume-upload.model";
 import restoreService from "@/server/services/restore.service";
 import fileBrowserService from "@/server/services/file-browser-service";
 import monitoringService from "@/server/services/monitoring.service";
-import dataAccess from "@/server/adapter/db.client";
+import type { BackupEntry } from "@/shared/model/backup-info.model";
 
 const actionAppVolumeEditZodModel = appVolumeEditZodModel.merge(z.object({
     appId: z.string(),
@@ -47,14 +47,7 @@ export const saveVolume = async (prevState: any, inputData: z.infer<typeof actio
         const sharedVolumeId = existingVolume?.sharedVolumeId ?? validatedData.sharedVolumeId ?? undefined;
 
         if (sharedVolumeId) {
-            const sharedVolume = await dataAccess.client.appVolume.findFirstOrThrow({
-                where: {
-                    id: sharedVolumeId
-                },
-                include: {
-                    app: true
-                }
-            });
+            const sharedVolume = await appService.getVolumeWithAppById(sharedVolumeId);
             if (sharedVolume.app.projectId !== existingApp.projectId) {
                 throw new ServiceException('Shared volumes must belong to the same project.');
             }
@@ -176,19 +169,7 @@ export const runBackupVolumeSchedule = async (backupVolumeId: string) =>
     simpleAction(async () => {
         await validateBackupVolumeWriteAuthorization(backupVolumeId);
 
-        // Get the backup volume with app info to determine backup method
-        const backupVolume = await dataAccess.client.volumeBackup.findFirstOrThrow({
-            where: {
-                id: backupVolumeId
-            },
-            include: {
-                volume: {
-                    include: {
-                        app: true
-                    }
-                }
-            }
-        });
+        const backupVolume = await volumeBackupService.getWithVolumeAndAppById(backupVolumeId);
 
         // Use database-specific backup if it's a database app AND useDatabaseBackup is true
         if (backupVolume.volume.app.appType !== 'APP' && backupVolume.useDatabaseBackup) {
@@ -198,6 +179,14 @@ export const runBackupVolumeSchedule = async (backupVolumeId: string) =>
         }
 
         return new SuccessActionResult(undefined, 'Backup created and uploaded successfully');
+    });
+
+export const getBackupsForVolumeSchedule = async (backupVolumeId: string) =>
+    simpleAction(async () => {
+        await validateBackupVolumeReadAuthorization(backupVolumeId);
+
+        const backups = await backupService.getBackupsForVolumeSchedule(backupVolumeId);
+        return new SuccessActionResult<BackupEntry[]>(backups);
     });
 
 export const openFileBrowserForVolume = async (volumeId: string) =>
@@ -211,53 +200,26 @@ export const openFileBrowserForVolume = async (volumeId: string) =>
     }>>;
 
 async function validateVolumeWriteAuthorization(volumeId: string) {
-    const volumeAppId = await dataAccess.client.appVolume.findFirstOrThrow({
-        where: {
-            id: volumeId,
-        },
-        select: {
-            appId: true,
-        }
-    });
-    await isAuthorizedWriteForApp(volumeAppId?.appId);
+    const volume = await appService.getVolumeWithAppById(volumeId);
+    await isAuthorizedWriteForWorkload(volume.appId);
 }
 
 async function validateVolumeReadAuthorization(volumeId: string) {
-    const volumeAppId = await dataAccess.client.appVolume.findFirstOrThrow({
-        where: {
-            id: volumeId,
-        },
-        select: {
-            appId: true,
-        }
-    });
-    await isAuthorizedReadForApp(volumeAppId?.appId);
+    const volume = await appService.getVolumeWithAppById(volumeId);
+    await isAuthorizedReadForApp(volume.appId);
 }
 
 async function validateFileMountWriteAuthorization(fileMountId: string) {
-    const fileMountAppId = await dataAccess.client.appFileMount.findFirstOrThrow({
-        where: {
-            id: fileMountId,
-        },
-        select: {
-            appId: true,
-        }
-    });
-    await isAuthorizedWriteForApp(fileMountAppId?.appId);
+    const appId = await appService.getFileMountAppId(fileMountId);
+    await isAuthorizedWriteForApp(appId);
 }
 
 async function validateBackupVolumeWriteAuthorization(backupVolumeId: string) {
-    const volumeAppId = await dataAccess.client.volumeBackup.findFirstOrThrow({
-        where: {
-            id: backupVolumeId,
-        },
-        select: {
-            volume: {
-                select: {
-                    appId: true,
-                }
-            }
-        }
-    });
-    await isAuthorizedWriteForApp(volumeAppId?.volume.appId);
+    const appId = await volumeBackupService.getAppIdById(backupVolumeId);
+    await isAuthorizedWriteForApp(appId);
+}
+
+async function validateBackupVolumeReadAuthorization(backupVolumeId: string) {
+    const appId = await volumeBackupService.getAppIdById(backupVolumeId);
+    await isAuthorizedReadForApp(appId);
 }

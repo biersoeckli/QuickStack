@@ -9,15 +9,21 @@ export const drawerTabValues = [
     'credentials',
     'logs',
     'stats',
+    'backups',
     'settings',
 ] as const;
 
 export type DrawerTab = (typeof drawerTabValues)[number];
 
 export class DrawerSessionUtils {
-    static resolveTab(appType: string | undefined, requestedTab: string | null | undefined): DrawerTab {
+    static resolveTab(
+        appType: string | undefined,
+        requestedTab: string | null | undefined,
+        hasVolumes = true,
+    ): DrawerTab {
         if (!drawerTabValues.includes(requestedTab as DrawerTab)) return 'deployments';
         if (requestedTab === 'credentials' && appType === 'APP') return 'deployments';
+        if (requestedTab === 'backups' && !hasVolumes) return 'deployments';
         return requestedTab as DrawerTab;
     }
 }

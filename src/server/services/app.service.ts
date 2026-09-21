@@ -474,6 +474,21 @@ class AppService {
         });
     }
 
+    async getVolumeWithAppById(id: string) {
+        return dataAccess.client.appVolume.findFirstOrThrow({
+            where: { id },
+            include: { app: true },
+        });
+    }
+
+    async getFileMountAppId(fileMountId: string) {
+        const fileMount = await dataAccess.client.appFileMount.findFirstOrThrow({
+            where: { id: fileMountId },
+            select: { appId: true },
+        });
+        return fileMount.appId;
+    }
+
     async getShareableVolumesByProjectId(projectId: string, appId: string) {
         return await dataAccess.client.appVolume.findMany({
             where: {

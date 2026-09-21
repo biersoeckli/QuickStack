@@ -8,10 +8,8 @@ import {
     SlidersHorizontal,
     Zap,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from '@/frontend/utils/utils';
 import BasicAuth from '@/app/project/app/[appId]/advanced/basic-auth';
 import { saveHealthCheck } from '@/app/project/app/[appId]/advanced/actions';
 import HealthCheckSettings from '@/app/project/app/[appId]/advanced/health-check-settings';
@@ -22,13 +20,10 @@ import GeneralAppContainerConfig from '@/app/project/app/[appId]/general/app-con
 import GeneralAppRateLimits from '@/app/project/app/[appId]/general/app-rate-limits';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
 import StorageList from '@/app/project/app/[appId]/volumes/storages';
-import VolumeBackupList from '@/app/project/app/[appId]/volumes/volume-backup';
 import DomainsCard from '@/components/custom/domains-card';
 import FileMountsCard from '@/components/custom/file-mounts-card';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import type { S3Target } from '@prisma/client';
-import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import { SettingsSection } from './settings-section';
 import { DrawerEnvironment } from './drawer-environment';
 import { useNestedDrawer } from './nested-drawer';
@@ -36,68 +31,20 @@ import { useNestedDrawer } from './nested-drawer';
 export function DrawerSettings({
     app,
     role,
-    s3Targets,
     storageClasses,
-    volumeBackups,
     gitSshPublicKey,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
-    s3Targets: S3Target[];
     storageClasses: string[];
-    volumeBackups: VolumeBackupExtendedModel[];
     gitSshPublicKey?: string;
 }) {
     const readonly = role !== RolePermissionEnum.READWRITE;
     const { openNestedDrawer } = useNestedDrawer();
-    const settingsSections = useMemo(
-        () => [
-            { id: 'source', label: 'Source' },
-            { id: 'deployment', label: 'Deployment' },
-            { id: 'environment', label: 'Environment' },
-            { id: 'networking', label: 'Networking' },
-            { id: 'storage', label: 'Storage' },
-            { id: 'advanced', label: 'Advanced' },
-        ],
-        [],
-    );
-    const [activeSection, setActiveSection] = useState(settingsSections[0].id);
-
-    useEffect(() => {
-        const sections = settingsSections
-            .map((section) => document.getElementById(section.id))
-            .filter((section): section is HTMLElement => section !== null);
-        const scrollArea = sections[0]?.closest<HTMLElement>(
-            '[data-slot="scroll-area-viewport"]',
-        );
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visibleSection = entries
-                    .filter((entry) => entry.isIntersecting)
-                    .sort(
-                        (left, right) =>
-                            left.boundingClientRect.top -
-                            right.boundingClientRect.top,
-                    )[0];
-
-                if (visibleSection) {
-                    setActiveSection(visibleSection.target.id);
-                }
-            },
-            {
-                root: scrollArea,
-                rootMargin: '-5% 0px -70% 0px',
-                threshold: 0,
-            },
-        );
-
-        sections.forEach((section) => observer.observe(section));
-        return () => observer.disconnect();
-    }, [settingsSections]);
 
     return (
-        <div className="grid gap-8 pb-4 [&_[data-slot=card-footer]]:mt-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
-            <div className="min-w-0 space-y-10">
+        <div className="relative grid gap-16 grid-cols-1 lg:grid-cols-[1fr_auto]">
+            <div className="pb-4 space-y-10 [&_[data-slot=card-footer]]:mt-4">
                 <SettingsSection
                     id="source"
                     title="Source"
@@ -200,13 +147,6 @@ export function DrawerSettings({
                         workloadType="app"
                         hideCard
                     />
-                    <VolumeBackupList
-                        app={app}
-                        readonly={readonly}
-                        s3Targets={s3Targets}
-                        volumeBackups={volumeBackups}
-                        hideCard
-                    />
                 </SettingsSection>
                 <SettingsSection
                     id="advanced"
@@ -245,39 +185,6 @@ export function DrawerSettings({
                     </div>
                 </SettingsSection>
             </div>
-            <nav aria-label="Settings sections" className="-mt-4 hidden self-start lg:sticky lg:top-0 lg:block">
-                <div className="space-y-1 border-l border-border/70 py-1">
-                    <p className="px-3 pb-2 text-xs font-medium text-muted-foreground">
-                        Sections
-                    </p>
-                    {settingsSections.map((section) => (
-                        <Button
-                            key={section.id}
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                                'h-8 w-full justify-start rounded-none px-3 text-muted-foreground hover:bg-transparent hover:text-foreground',
-                                activeSection === section.id &&
-                                '-ml-px border-l-2 border-l-primary font-medium text-foreground',
-                            )}
-                            aria-current={
-                                activeSection === section.id ? 'location' : undefined
-                            }
-                            onClick={() =>
-                                document
-                                    .getElementById(section.id)
-                                    ?.scrollIntoView({
-                                        behavior: 'smooth',
-                                        block: 'start',
-                                    })
-                            }
-                        >
-                            {section.label}
-                        </Button>
-                    ))}
-                </div>
-            </nav>
         </div>
     );
 }

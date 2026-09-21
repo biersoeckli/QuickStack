@@ -47,7 +47,7 @@
     "elysia": "^1.4.28",
     "exact-mirror": "^1.0.0",
     "file-type": "^22.0.1",
-    "lucide-react": "^0.465.0",
+    "lucide-react": "^1.47.0",
     "moment": "^2.30.1",
     "next": "^15",
     "next-auth": "^4.24.14",

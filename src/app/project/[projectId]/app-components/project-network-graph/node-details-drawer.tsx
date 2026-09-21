@@ -16,6 +16,7 @@ import {
     Settings,
     Square,
     X,
+    RotateCwClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,6 +57,7 @@ import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
+import { DrawerBackupsTab } from './drawer-backups-tab';
 import { EditAppDialog } from '../edit-app-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
@@ -91,7 +93,7 @@ function AppStatusActions({
     };
 
     return (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 bg-stone-100 rounded-2xl pl-4 pr-2 py-1">
             <PodStatusIndicator appId={app.id} />
             {(lifecycle.canManage || app.appDomains.length > 0) && (
                 <TooltipProvider delay={300}>
@@ -258,11 +260,16 @@ export function NodeDetailsDrawer({
         app &&
         role === RolePermissionEnum.READWRITE &&
         !AppSourceUtils.isConfiguredSource(app);
+    const hasVolumes = (app?.appVolumes.length ?? 0) > 0;
 
-    const activeTab = DrawerSessionUtils.resolveTab(app?.appType, requestedTab);
+    const activeTab = DrawerSessionUtils.resolveTab(
+        app?.appType,
+        requestedTab,
+        hasVolumes,
+    );
 
     const handleTabChange = (tab: string) => {
-        const nextTab = DrawerSessionUtils.resolveTab(app?.appType, tab);
+        const nextTab = DrawerSessionUtils.resolveTab(app?.appType, tab, hasVolumes);
         onTabChange(nextTab);
     };
 
@@ -363,6 +370,12 @@ export function NodeDetailsDrawer({
                                             <BarChart3 />
                                             Stats
                                         </TabsTrigger>
+                                        {hasVolumes && (
+                                            <TabsTrigger value="backups">
+                                                <RotateCwClock />
+                                                Backups
+                                            </TabsTrigger>
+                                        )}
                                         <TabsTrigger value="settings">
                                             <Settings />
                                             Settings
@@ -402,6 +415,16 @@ export function NodeDetailsDrawer({
                                     <TabsContent value="stats" className="mb-4">
                                         <MonitoringTab hideCard key={app.id} app={app} />
                                     </TabsContent>
+                                    {hasVolumes && (
+                                        <TabsContent value="backups" className="mb-4 pt-4 px-2">
+                                            <DrawerBackupsTab
+                                                app={app}
+                                                role={role}
+                                                s3Targets={s3Targets}
+                                                volumeBackups={volumeBackups}
+                                            />
+                                        </TabsContent>
+                                    )}
                                     {app.appType !== 'APP' && (
                                         <TabsContent
                                             value="credentials"
@@ -417,9 +440,7 @@ export function NodeDetailsDrawer({
                                         <DrawerSettings
                                             app={app}
                                             role={role}
-                                            s3Targets={s3Targets}
                                             storageClasses={storageClasses}
-                                            volumeBackups={volumeBackups}
                                             gitSshPublicKey={gitSshPublicKey}
                                         />
                                     </TabsContent>

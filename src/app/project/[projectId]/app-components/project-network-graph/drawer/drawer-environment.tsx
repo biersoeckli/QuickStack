@@ -35,7 +35,7 @@ function VariableList({
                         return (
                             <div
                                 key={variableId}
-                                className="flex items-center gap-3 px-3 py-2"
+                                className="group flex items-center gap-3 px-3 py-2"
                             >
                                 <div className="flex min-w-0 flex-1 items-center gap-1">
                                     <code className="min-w-0 truncate text-xs font-medium">
@@ -45,7 +45,7 @@ function VariableList({
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="size-6 shrink-0"
+                                        className="pointer-events-none size-6 shrink-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
                                         title="Copy variable name"
                                         onClick={() => {
                                             void navigator.clipboard.writeText(

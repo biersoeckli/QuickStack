@@ -9,10 +9,15 @@ describe('DrawerSessionUtils.resolveTab', () => {
         ['APP', 'credentials', 'deployments'],
         ['POSTGRES', 'credentials', 'credentials'],
         ['APP', 'logs', 'logs'],
+        ['APP', 'backups', 'backups'],
         ['APP', 'unknown', 'deployments'],
         ['APP', null, 'deployments'],
     ] as const)('normalizes %s requested tab %s to %s', (appType, requestedTab, expected) => {
         expect(DrawerSessionUtils.resolveTab(appType, requestedTab)).toBe(expected);
+    });
+
+    it('rejects the backups tab when the app has no volumes', () => {
+        expect(DrawerSessionUtils.resolveTab('APP', 'backups', false)).toBe('deployments');
     });
 });
 
