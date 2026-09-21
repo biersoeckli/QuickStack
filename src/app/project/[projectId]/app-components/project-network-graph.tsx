@@ -377,6 +377,7 @@ function ProjectNetworkGraphEditor({
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
     useEffect(() => {
         if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
+        if (!window.matchMedia('(min-width: 1024px)').matches) return;
 
         const animationFrame = requestAnimationFrame(() => {
             const reactFlow = reactFlowRef.current;
@@ -440,7 +441,7 @@ function ProjectNetworkGraphEditor({
                     fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
                     minZoom={0.3}
                     maxZoom={1.5}
-                    zoomOnScroll={false}
+                    zoomOnScroll
                     zoomOnPinch={false}
                     zoomOnDoubleClick={false}
                     preventScrolling={false}

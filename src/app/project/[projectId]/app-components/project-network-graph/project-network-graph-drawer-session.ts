@@ -16,18 +16,9 @@ export type DrawerTab = (typeof drawerTabValues)[number];
 
 export class DrawerSessionUtils {
     static resolveTab(appType: string | undefined, requestedTab: string | null | undefined): DrawerTab {
-        if (requestedTab === 'credentials' && appType !== 'APP') {
-            return 'credentials';
-        }
-
-        if (
-            requestedTab !== 'credentials'
-            && drawerTabValues.includes(requestedTab as DrawerTab)
-        ) {
-            return requestedTab as DrawerTab;
-        }
-
-        return 'deployments';
+        if (!drawerTabValues.includes(requestedTab as DrawerTab)) return 'deployments';
+        if (requestedTab === 'credentials' && appType === 'APP') return 'deployments';
+        return requestedTab as DrawerTab;
     }
 }
 
@@ -41,13 +32,9 @@ export function useProjectNetworkGraphDrawerSession({
     appIds: Set<string>;
 }) {
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
-    const [open, setOpen] = useState(false);
-    const [requestedTab, setRequestedTab] = useState<string | null>(
-        () => searchParams.get('drawerTab'),
-    );
+    const requestedTab = searchParams.get('drawerTab');
 
     const updateQuery = useCallback((appId?: string, tab?: DrawerTab) => {
-        setRequestedTab(appId ? (tab ?? 'deployments') : null);
         const params = new URLSearchParams(searchParams.toString());
 
         if (!appId) {
@@ -62,10 +49,6 @@ export function useProjectNetworkGraphDrawerSession({
     }, [searchParams]);
 
     useEffect(() => {
-        setRequestedTab(searchParams.get('drawerTab'));
-    }, [searchParams]);
-
-    useEffect(() => {
         const requestedAppId = searchParams.get('drawerAppId');
 
         if (!requestedAppId) return;
@@ -76,10 +59,6 @@ export function useProjectNetworkGraphDrawerSession({
 
         setSelectedNodeId(`APP:${requestedAppId}`);
     }, [appIds, searchParams, updateQuery]);
-
-    useEffect(() => {
-        if (selectedNodeId) setOpen(true);
-    }, [selectedNodeId]);
 
     const selectNode = useCallback((node: NetworkGraphNode) => {
         setSelectedNodeId(node.id);
@@ -92,17 +71,17 @@ export function useProjectNetworkGraphDrawerSession({
     }, [updateQuery]);
 
     const onOpenChange = useCallback((nextOpen: boolean) => {
-        setOpen(nextOpen);
-        if (!nextOpen) updateQuery();
+        if (!nextOpen) {
+            setSelectedNodeId(undefined);
+            updateQuery();
+        }
     }, [updateQuery]);
 
-    const onOpenChangeComplete = useCallback((nextOpen: boolean) => {
-        if (!nextOpen) setSelectedNodeId(undefined);
-    }, []);
+    const onOpenChangeComplete = useCallback(() => {}, []);
 
     return useMemo(() => ({
         selectedNodeId,
-        open,
+        open: selectedNodeId !== undefined,
         requestedTab,
         selectNode,
         openAppTab,
@@ -111,7 +90,6 @@ export function useProjectNetworkGraphDrawerSession({
     }), [
         onOpenChange,
         onOpenChangeComplete,
-        open,
         openAppTab,
         requestedTab,
         selectNode,

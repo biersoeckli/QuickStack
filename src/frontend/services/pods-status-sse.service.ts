@@ -42,8 +42,9 @@ class PodsStatusPollingService {
     }
 
     private async connect() {
-        this.controller = new AbortController();
-        const signal = this.controller.signal;
+        const controller = new AbortController();
+        this.controller = controller;
+        const signal = controller.signal;
         this.isConnected = true;
         this.buffer = '';
 
@@ -66,7 +67,10 @@ class PodsStatusPollingService {
 
             while (true) {
                 const { value, done } = await reader.read();
-                if (done) break;
+                if (done) {
+                    this.reconnect(controller);
+                    break;
+                }
                 if (value) {
                     this.processChunk(value);
                 }
@@ -76,17 +80,22 @@ class PodsStatusPollingService {
                 console.log('[PodsStatusService] Stream aborted');
             } else {
                 console.error('[PodsStatusService] Stream error:', error);
-                // Retry logic
-                this.isConnected = false;
-                setTimeout(() => {
-                    if (!signal.aborted) {
-                        this.connect();
-                    }
-                }, 5000);
+                this.reconnect(controller);
             }
         } finally {
-            this.isConnected = false;
+            if (this.controller === controller) {
+                this.isConnected = false;
+            }
         }
+    }
+
+    private reconnect(controller: AbortController): void {
+        this.isConnected = false;
+        setTimeout(() => {
+            if (this.controller === controller && !controller.signal.aborted) {
+                this.connect();
+            }
+        }, 5000);
     }
 
     private processChunk(chunk: string) {

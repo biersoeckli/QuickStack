@@ -1,6 +1,6 @@
 'use client';
 
-import { type Ref, useEffect, useState } from 'react';
+import { type Ref } from 'react';
 
 import {
     BarChart3,
@@ -259,16 +259,10 @@ export function NodeDetailsDrawer({
         role === RolePermissionEnum.READWRITE &&
         !AppSourceUtils.isConfiguredSource(app);
 
-    const defaultTab = DrawerSessionUtils.resolveTab(app?.appType, requestedTab);
-    const [activeTab, setActiveTab] = useState<DrawerTab>(defaultTab);
-
-    useEffect(() => {
-        setActiveTab(defaultTab);
-    }, [app?.id, defaultTab]);
+    const activeTab = DrawerSessionUtils.resolveTab(app?.appType, requestedTab);
 
     const handleTabChange = (tab: string) => {
         const nextTab = DrawerSessionUtils.resolveTab(app?.appType, tab);
-        setActiveTab(nextTab);
         onTabChange(nextTab);
     };
 

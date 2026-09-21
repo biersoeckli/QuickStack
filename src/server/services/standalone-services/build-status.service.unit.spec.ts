@@ -189,6 +189,25 @@ describe('BuildStatusService', () => {
             expect(buildService.getAllBuilds).toHaveBeenCalledTimes(1);
             expect(buildStatusService.getStatus('app', 'app-1')?.status).toBe('SUCCEEDED');
         });
+
+        it('rebuilds the cache on every completed seed', async () => {
+            vi.mocked(buildService.getAllBuilds)
+                .mockResolvedValueOnce([makeBuild({ workloadId: 'app-1', status: 'RUNNING' })] as any)
+                .mockResolvedValueOnce([makeBuild({ workloadId: 'app-2', status: 'SUCCEEDED' })] as any);
+
+            await buildStatusService.ensureSeeded();
+            await buildStatusService.ensureSeeded();
+
+            expect(buildService.getAllBuilds).toHaveBeenCalledTimes(2);
+            expect(buildStatusService.getStatus('app', 'app-1')).toBeUndefined();
+            expect(buildStatusService.getStatus('app', 'app-2')?.status).toBe('SUCCEEDED');
+        });
+
+        it('propagates seeding errors so callers do not report stale statuses', async () => {
+            vi.mocked(buildService.getAllBuilds).mockRejectedValueOnce(new Error('Kubernetes unavailable'));
+
+            await expect(buildStatusService.ensureSeeded()).rejects.toThrow('Kubernetes unavailable');
+        });
     });
 
     describe('subscribe', () => {

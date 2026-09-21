@@ -30,7 +30,13 @@ class BuildWatchService {
         this.isWatchRunning = true;
         console.log('[BuildWatch] Starting build job watch...');
 
-        await buildStatusService.ensureSeeded();
+        try {
+            await buildStatusService.ensureSeeded();
+        } catch (error) {
+            // The watch must keep processing build completions when its status
+            // cache cannot be rebuilt. The SSE route will surface the seed error.
+            console.error('[BuildWatch] Failed to seed build statuses:', error);
+        }
 
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
@@ -39,13 +45,13 @@ class BuildWatchService {
             `/apis/batch/v1/namespaces/${BUILD_NAMESPACE}/jobs`,
             {},
             async (type: string, apiObj: unknown) => {
+                const job = apiObj as V1Job;
                 try {
-                    const job = apiObj as V1Job;
                     await buildStatusService.applyJobEvent(type, job);
-                    await this.handleJobEvent(job);
                 } catch (e) {
-                    console.error('[BuildWatch] Error handling job event:', e);
+                    console.error('[BuildWatch] Status update failed:', e);
                 }
+                await this.handleJobEvent(job);
             },
             (err: unknown) => {
                 if (err) console.error('[BuildWatch] Watch error:', err);

@@ -42,8 +42,9 @@ class BuildStatusSSEStateService {
     }
 
     private async connect() {
-        this.controller = new AbortController();
-        const signal = this.controller.signal;
+        const controller = new AbortController();
+        this.controller = controller;
+        const signal = controller.signal;
         this.isConnected = true;
         this.buffer = '';
 
@@ -66,7 +67,10 @@ class BuildStatusSSEStateService {
 
             while (true) {
                 const { value, done } = await reader.read();
-                if (done) break;
+                if (done) {
+                    this.reconnect(controller);
+                    break;
+                }
                 if (value) {
                     this.processChunk(value);
                 }
@@ -76,16 +80,22 @@ class BuildStatusSSEStateService {
                 console.log('[BuildStatusService] Stream aborted');
             } else {
                 console.error('[BuildStatusService] Stream error:', error);
-                this.isConnected = false;
-                setTimeout(() => {
-                    if (!signal.aborted) {
-                        this.connect();
-                    }
-                }, 5000);
+                this.reconnect(controller);
             }
         } finally {
-            this.isConnected = false;
+            if (this.controller === controller) {
+                this.isConnected = false;
+            }
         }
+    }
+
+    private reconnect(controller: AbortController): void {
+        this.isConnected = false;
+        setTimeout(() => {
+            if (this.controller === controller && !controller.signal.aborted) {
+                this.connect();
+            }
+        }, 5000);
     }
 
     private processChunk(chunk: string) {
@@ -96,7 +106,7 @@ class BuildStatusSSEStateService {
             try {
                 const data = JSON.parse(frame);
                 const { setBuildStatus, updateBuildStatus } = useBuildStatus.getState();
-console.log('data', data)
+
                 if (Array.isArray(data)) {
                     setBuildStatus(data as AppBuildStatusModel[]);
                 } else {

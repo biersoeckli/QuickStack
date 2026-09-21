@@ -125,18 +125,28 @@ class BuildStatusPubSubService {
         });
     }
 
-    /** Seeds the cache from Kubernetes once. Concurrent callers share one request. */
+    /** Rebuilds the cache from Kubernetes. Concurrent callers share one request. */
     async ensureSeeded(): Promise<void> {
-        if (!this.seedPromise) {
-            this.seedPromise = (async () => {
-                const builds = await buildService.getAllBuilds();
-                this.applyBuildJobs(builds);
-            })().catch((error) => {
-                console.error('[BuildStatus] Failed to seed build statuses:', error);
-                this.seedPromise = null;
-            });
+        if (this.seedPromise) {
+            return this.seedPromise;
         }
-        return this.seedPromise;
+
+        const seedPromise = (async () => {
+            const builds = await buildService.getAllBuilds();
+            // A restarted watch receives ADDED only for jobs that still exist.
+            // Drop statuses for jobs that disappeared during the restart gap.
+            this.statuses.clear();
+            this.applyBuildJobs(builds);
+        })();
+        this.seedPromise = seedPromise;
+
+        try {
+            await seedPromise;
+        } finally {
+            if (this.seedPromise === seedPromise) {
+                this.seedPromise = null;
+            }
+        }
     }
 
     reset(): void {

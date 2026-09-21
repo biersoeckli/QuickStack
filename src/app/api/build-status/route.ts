@@ -19,6 +19,7 @@ export async function POST() {
         const encoder = new TextEncoder();
         let shouldStopStreaming = false;
         let unsubscribe: (() => void) | null = null;
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
 
         const customReadable = new ReadableStream({
             async start(controller) {
@@ -31,6 +32,10 @@ export async function POST() {
                     } catch (e) {
                         console.error(`[BUILD STATUS] Error while enqueueing build status data: `, e);
                         shouldStopStreaming = true;
+                        unsubscribe?.();
+                        unsubscribe = null;
+                        if (heartbeat) clearInterval(heartbeat);
+                        heartbeat = null;
                         controller.close();
                     }
                 };
@@ -58,6 +63,21 @@ export async function POST() {
                 } catch (e) {
                     console.error("Error fetching initial build status", e);
                 }
+
+                heartbeat = setInterval(() => {
+                    if (shouldStopStreaming) return;
+                    try {
+                        controller.enqueue(encoder.encode(': ping\n\n'));
+                    } catch (error) {
+                        console.error('[BUILD STATUS] Error while sending heartbeat:', error);
+                        shouldStopStreaming = true;
+                        unsubscribe?.();
+                        unsubscribe = null;
+                        if (heartbeat) clearInterval(heartbeat);
+                        heartbeat = null;
+                        controller.close();
+                    }
+                }, 25_000);
             },
             cancel() {
                 console.log("[BUILD STATUS] Client left, cancelling build status stream");
@@ -66,6 +86,8 @@ export async function POST() {
                     unsubscribe();
                     unsubscribe = null;
                 }
+                if (heartbeat) clearInterval(heartbeat);
+                heartbeat = null;
             },
         });
 

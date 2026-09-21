@@ -88,6 +88,26 @@ describe('BuildWatchService', () => {
         expect(buildStatusService.applyJobEvent).toHaveBeenCalledWith('MODIFIED', job);
     });
 
+    it('still handles a completed build when status tracking fails', async () => {
+        vi.mocked(buildStatusService.applyJobEvent).mockRejectedValueOnce(new Error('status unavailable'));
+        vi.mocked(buildService.getJobStatusString).mockReturnValue('SUCCEEDED');
+        vi.mocked(appService.getExtendedById).mockResolvedValue({ buildMethod: 'RAILPACK' } as any);
+
+        await buildWatchService.startWatch();
+        const eventHandler = k8sMocks.watch.mock.calls[0][2] as (type: string, job: unknown) => Promise<void>;
+        await eventHandler('MODIFIED', {
+            metadata: {
+                name: 'build-1',
+                annotations: {
+                    'qs-deplyoment-id': 'deployment-1',
+                    'qs-app-id': 'app-1',
+                },
+            },
+        });
+
+        expect(deploymentService.createDeployment).toHaveBeenCalledTimes(1);
+    });
+
     it('ignores pending jobs and does not trigger deployment work', async () => {
         vi.mocked(buildService.getJobStatusString).mockReturnValue('PENDING');
 
