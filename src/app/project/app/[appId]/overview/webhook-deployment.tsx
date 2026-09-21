@@ -19,14 +19,18 @@ export default function WebhookDeploymentInfo({
     const { openConfirmDialog } = useConfirmDialog();
     const [webhookUrl, setWebhookUrl] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
-        if (app.webhookId) {
+    const setWebhookId = (webhookId?: string | null | void) => {
+        if (webhookId) {
             const hostname = window.location.hostname;
             const port = [80, 443].includes(Number(window.location.port)) ? '' : `:${window.location.port}`;
             const protocol = window.location.protocol;
-            setWebhookUrl(`${protocol}//${hostname}${port}/api/v1/webhook/deploy?id=${app.webhookId}`);
+            setWebhookUrl(`${protocol}//${hostname}${port}/api/v1/webhook/deploy?id=${webhookId}`);
         }
-    }, [app]);
+    }
+
+    useEffect(() => {
+        setWebhookId(app.webhookId);
+    }, [app, app.webhookId]);
 
     const createNewWebhookUrlAsync = async () => {
         if (!await openConfirmDialog({
@@ -36,7 +40,8 @@ export default function WebhookDeploymentInfo({
         })) {
             return;
         }
-        await Toast.fromAction(() => createNewWebhookUrl(app.id), 'Webhook URL has been regenerated.');
+        const newWebhookId = await Toast.fromAction(() => createNewWebhookUrl(app.id), 'Webhook URL has been regenerated.');
+        setWebhookId(newWebhookId.data);
     }
 
     const copyWebhookUrl = () => {

@@ -30,7 +30,7 @@ describe('useProjectNetworkGraphDrawerSession', () => {
         expect(result.current).toBe(session);
     });
 
-    test('opens an app from the URL and closes by clearing the selected node', () => {
+    test('keeps the selected node until the drawer closing animation completes', () => {
         const searchParams = new URLSearchParams('drawerAppId=app-1&drawerTab=logs');
         const appIds = new Set(['app-1']);
         const { result } = renderHook(() =>
@@ -43,8 +43,12 @@ describe('useProjectNetworkGraphDrawerSession', () => {
 
         act(() => result.current.onOpenChange(false));
 
-        expect(result.current.selectedNodeId).toBeUndefined();
+        expect(result.current.selectedNodeId).toBe('APP:app-1');
         expect(result.current.open).toBe(false);
+
+        act(() => result.current.onOpenChangeComplete(false));
+
+        expect(result.current.selectedNodeId).toBeUndefined();
     });
 
     test('clears an unknown drawer app from the URL', () => {

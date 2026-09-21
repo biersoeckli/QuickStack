@@ -444,7 +444,7 @@ function ProjectNetworkGraphEditor({
                     zoomOnScroll
                     zoomOnPinch={false}
                     zoomOnDoubleClick={false}
-                    preventScrolling={false}
+                    preventScrolling
                     nodesDraggable={canEditLayout}
                     nodesConnectable
                     elementsSelectable={false}

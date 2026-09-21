@@ -32,6 +32,7 @@ export function useProjectNetworkGraphDrawerSession({
     appIds: Set<string>;
 }) {
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
+    const [open, setOpen] = useState(false);
     const requestedTab = searchParams.get('drawerTab');
 
     const updateQuery = useCallback((appId?: string, tab?: DrawerTab) => {
@@ -60,28 +61,39 @@ export function useProjectNetworkGraphDrawerSession({
         setSelectedNodeId(`APP:${requestedAppId}`);
     }, [appIds, searchParams, updateQuery]);
 
+    useEffect(() => {
+        if (selectedNodeId) setOpen(true);
+    }, [selectedNodeId]);
+
     const selectNode = useCallback((node: NetworkGraphNode) => {
         setSelectedNodeId(node.id);
+        if (selectedNodeId === node.id) setOpen(true);
         updateQuery(node.kind === 'APP' ? node.id.replace('APP:', '') : undefined);
-    }, [updateQuery]);
+    }, [selectedNodeId, updateQuery]);
 
     const openAppTab = useCallback((appId: string, tab: DrawerTab) => {
-        setSelectedNodeId(`APP:${appId}`);
+        const nodeId = `APP:${appId}`;
+        setSelectedNodeId(nodeId);
+        if (selectedNodeId === nodeId) setOpen(true);
         updateQuery(appId, tab);
-    }, [updateQuery]);
+    }, [selectedNodeId, updateQuery]);
 
     const onOpenChange = useCallback((nextOpen: boolean) => {
+        setOpen(nextOpen);
         if (!nextOpen) {
-            setSelectedNodeId(undefined);
             updateQuery();
         }
     }, [updateQuery]);
 
-    const onOpenChangeComplete = useCallback(() => {}, []);
+    const onOpenChangeComplete = useCallback((nextOpen: boolean) => {
+        // Keep the node mounted until Vaul finishes its exit animation. A click
+        // during that animation reopens it, so do not clear the new selection.
+        if (!nextOpen && !open) setSelectedNodeId(undefined);
+    }, [open]);
 
     return useMemo(() => ({
         selectedNodeId,
-        open: selectedNodeId !== undefined,
+        open,
         requestedTab,
         selectNode,
         openAppTab,
@@ -91,6 +103,7 @@ export function useProjectNetworkGraphDrawerSession({
         onOpenChange,
         onOpenChangeComplete,
         openAppTab,
+        open,
         requestedTab,
         selectNode,
         selectedNodeId,

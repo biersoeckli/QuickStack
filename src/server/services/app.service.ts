@@ -372,6 +372,7 @@ class AppService {
             ...existingApp,
             webhookId: randomBytes
         });
+        return randomBytes;
     }
 
     async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput, tx?: Prisma.TransactionClient) {

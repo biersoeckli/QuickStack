@@ -5,6 +5,9 @@ import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
 import { BuildLogsDialogContent } from "@/app/project/app/[appId]/overview/build-logs-overlay";
 import BuildsTab from "@/app/project/app/[appId]/overview/deployments";
 import { formatDateTime } from "@/frontend/utils/format.utils";
+import WebhookDeploymentInfo from "@/app/project/app/[appId]/overview/webhook-deployment";
+import { Button } from "@/components/ui/button";
+import { Webhook } from "lucide-react";
 
 
 
@@ -33,5 +36,24 @@ export default function DrawerDeploymentsTab({
         });
     };
 
-    return <BuildsTab app={app} role={role} view="grid" onShowLogs={showLogs} />;
+    const showWebhookCard = () => {
+        openNestedDrawer({
+            title: 'Webhook',
+            description: ``,
+            content: (
+                <WebhookDeploymentInfo
+                    app={app}
+                    role={role}
+                />
+            ),
+        });
+    }
+
+    return <div className="space-y-4">
+        <div className="flex items-end justify-between pl-2">
+            <div className="font-semibold text-lg text-foreground/80">Latest Deployments</div>
+            <Button onClick={showWebhookCard} variant="outline"><Webhook /> Configure Webhooks</Button>
+        </div>
+        <BuildsTab app={app} role={role} view="grid" onShowLogs={showLogs} />
+    </div>;
 }

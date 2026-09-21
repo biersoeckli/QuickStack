@@ -6,7 +6,7 @@ import buildService from "@/server/services/build.service";
 import deploymentService from "@/server/services/deployment.service";
 import monitoringService from "@/server/services/monitoring.service";
 import podService from "@/server/services/pod.service";
-import { isAuthorizedReadForApp, isAuthorizedWriteForApp, simpleAction } from "@/server/utils/action-wrapper.utils";
+import { isAuthorizedReadForApp, isAuthorizedWriteForApp, isAuthorizedWriteForWorkload, simpleAction } from "@/server/utils/action-wrapper.utils";
 
 export const getDeploymentsAndBuildsForApp = async (appId: string) =>
     simpleAction(async () => {
@@ -44,6 +44,6 @@ export const getRessourceDataApp = async (projectId: string, appId: string) =>
 
 export const createNewWebhookUrl = async (appId: string) =>
     simpleAction(async () => {
-        await isAuthorizedWriteForApp(appId);
-        await appService.regenerateWebhookId(appId);
+        await isAuthorizedWriteForWorkload(appId);
+       return  await appService.regenerateWebhookId(appId);
     });
