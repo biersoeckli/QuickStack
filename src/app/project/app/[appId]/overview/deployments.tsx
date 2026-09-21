@@ -29,10 +29,12 @@ export default function BuildsTab({
     app,
     role,
     view = 'default',
+    onShowLogs: onShowLogsOverride,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
     view?: BuildsTabView;
+    onShowLogs?: (deployment: DeploymentInfoModel) => void;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -78,7 +80,7 @@ export default function BuildsTab({
         await updateBuilds();
     };
 
-    const showLogs = (deployment: DeploymentInfoModel) =>
+    const showLogs = onShowLogsOverride ?? ((deployment: DeploymentInfoModel) =>
         openDialog(
             <BuildLogsDialogContent
                 deploymentInfo={deployment}
@@ -86,7 +88,7 @@ export default function BuildsTab({
                 workloadType="app"
             />,
             { maxWidth: '1300px' },
-        );
+        ));
     const canStopBuild = (deployment: DeploymentInfoModel) =>
         role === RolePermissionEnum.READWRITE
         && !!deployment.buildJobName

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import {
     Drawer,
     DrawerContent,
+    DrawerDescription,
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
@@ -19,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 type NestedDrawerOptions = {
     title: string;
+    description?: ReactNode;
     content: ReactNode;
 };
 
@@ -63,6 +65,11 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                             </Button>
                             <span>{drawer?.title}</span>
                         </DrawerTitle>
+                        {drawer?.description && (
+                            <DrawerDescription>
+                                {drawer.description}
+                            </DrawerDescription>
+                        )}
                     </DrawerHeader>
                     <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
                         <div className="p-1">

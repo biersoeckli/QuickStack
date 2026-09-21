@@ -48,7 +48,6 @@ import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import Logs from '@/app/project/app/[appId]/overview/logs';
-import BuildsTab from '@/app/project/app/[appId]/overview/deployments';
 import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { NetworkGraphNode } from './project-network-graph-projection';
@@ -64,6 +63,7 @@ import {
     DrawerSessionUtils,
     type DrawerTab,
 } from './project-network-graph-drawer-session';
+import DrawerDeploymentsTab from './drawer-deployments-tab';
 
 export type PanelConnection = {
     id: string;
@@ -116,24 +116,24 @@ function AppStatusActions({
                                     <TooltipContent>Deploy</TooltipContent>
                                 </Tooltip>
                                 {lifecycle.supportsRebuild && (
-                                <Tooltip>
-                                            <TooltipTrigger
-                                                render={
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        disabled={!lifecycle.canRebuild}
-                                                        onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
-                                                    >
-                                                        <Hammer />
-                                                        <span className="sr-only">Rebuild</span>
-                                                    </Button>
-                                                }
-                                            />
-                                            <TooltipContent>Rebuild</TooltipContent>
-                                        </Tooltip>
-                                    )}
+                                    <Tooltip>
+                                        <TooltipTrigger
+                                            render={
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    disabled={!lifecycle.canRebuild}
+                                                    onClick={() => void Toast.fromAction(() => deploy(app.id, true))}
+                                                >
+                                                    <Hammer />
+                                                    <span className="sr-only">Rebuild</span>
+                                                </Button>
+                                            }
+                                        />
+                                        <TooltipContent>Rebuild</TooltipContent>
+                                    </Tooltip>
+                                )}
                                 <Tooltip>
                                     <TooltipTrigger
                                         render={
@@ -187,7 +187,7 @@ function AppStatusActions({
                                     }
                                 />
                                 <TooltipContent>Open domain</TooltipContent>
-                                </Tooltip>
+                            </Tooltip>
                         )}
                         {app.appDomains.length > 1 && (
                             <DropdownMenu>
@@ -396,11 +396,10 @@ export function NodeDetailsDrawer({
                                         value="deployments"
                                         className="mb-4"
                                     >
-                                        <BuildsTab
+                                        <DrawerDeploymentsTab
                                             key={app.id}
                                             app={app}
                                             role={role}
-                                            view="grid"
                                         />
                                     </TabsContent>
                                     <TabsContent value="logs" className="mb-4">
