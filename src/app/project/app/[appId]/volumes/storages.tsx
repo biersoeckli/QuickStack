@@ -159,11 +159,11 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                     <TableHeader>
                         <TableRow>
                             <TableHead>Mount Path</TableHead>
-                            <TableHead>Storage Size</TableHead>
+                            <TableHead className="hidden xl:table-cell">Storage Size</TableHead>
                             <TableHead>Storage Used</TableHead>
-                            <TableHead>Storage Class</TableHead>
-                            <TableHead>Access Mode</TableHead>
-                            <TableHead>Shared</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Storage Class</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Access Mode</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Shared</TableHead>
                             <TableHead className="w-[160px]"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -171,7 +171,7 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                         {volumesWithStorage.map(volume => (
                             <TableRow key={volume.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="font-medium">{volume.size} MB</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MB</TableCell>
                                 <TableCell className="font-medium space-y-2">
                                     {volume.usedPercentage && <>
                                         <Progress value={volume.usedPercentage}
@@ -181,9 +181,9 @@ export default function StorageList({ app, readonly, storageClasses, hideCard = 
                                         </div>
                                     </>}
                                 </TableCell>
-                                <TableCell className="font-medium capitalize">{volume.storageClassName?.replace('-', ' ')}</TableCell>
-                                <TableCell className="font-medium">{volume.accessMode}</TableCell>
-                                <TableCell className="font-medium">
+                                <TableCell className="hidden font-medium capitalize 2xl:table-cell">{volume.storageClassName?.replace('-', ' ')}</TableCell>
+                                <TableCell className="hidden font-medium 2xl:table-cell">{volume.accessMode}</TableCell>
+                                <TableCell className="hidden font-medium 2xl:table-cell">
                                     {volume.shareWithOtherApps && (
                                         <TooltipProvider>
                                             <Tooltip>

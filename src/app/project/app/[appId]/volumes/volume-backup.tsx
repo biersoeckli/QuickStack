@@ -79,8 +79,8 @@ export default function VolumeBackupList({
                         <TableRow>
                             <TableHead>Cron Expression</TableHead>
                             <TableHead>Retention</TableHead>
-                            <TableHead className="">Backup Method</TableHead>
-                            <TableHead className="">Backup Location</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Backup Method</TableHead>
+                            <TableHead className="hidden xl:table-cell">Backup Location</TableHead>
                             {(onBackupScheduleClick || !readonly) && <TableHead className="w-[120px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
@@ -89,12 +89,12 @@ export default function VolumeBackupList({
                             <TableRow key={volumeBackup.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volumeBackup.cron}</TableCell>
                                 <TableCell className="font-medium">{volumeBackup.retention}</TableCell>
-                                <TableCell className="font-medium">
+                                <TableCell className="hidden font-medium 2xl:table-cell">
                                     {app.appType !== 'APP' && volumeBackup.useDatabaseBackup
                                         ? `Database (${app.appType.toLocaleLowerCase()})`
                                         : 'Archive of Volume'}
                                 </TableCell>
-                                <TableCell className="font-medium">{volumeBackup.target.name}</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{volumeBackup.target.name}</TableCell>
                                 {(onBackupScheduleClick || !readonly) && <TableCell className="w-[120px] font-medium">
                                     <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                                     {onBackupScheduleClick && <Button

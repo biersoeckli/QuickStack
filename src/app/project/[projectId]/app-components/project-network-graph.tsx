@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -21,10 +21,16 @@ import {
     type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Bot, Boxes, Cloud, Database, Info, RotateCcw } from 'lucide-react';
+import { Blocks, Bot, Boxes, Cloud, Database, File, Info, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import BuildStatusIndicator from '@/components/custom/build-status-indicator';
 import { cn } from '@/frontend/utils/utils';
@@ -50,6 +56,8 @@ import { AppNetworkPolicyDraft, AppNetworkPolicyDraftUtils } from '@/shared/util
 import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
+import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
+import ChooseTemplateDialog from '@/app/project/[projectId]/choose-template-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
@@ -146,6 +154,51 @@ function ConnectionEdge(props: EdgeProps) {
 }
 const edgeTypes = { connection: ConnectionEdge };
 
+function ProjectNetworkGraphCanvasContextMenu({
+    projectId,
+    canCreateApps,
+    children,
+}: {
+    projectId: string;
+    canCreateApps: boolean;
+    children: ReactNode;
+}) {
+    const { openDialog } = useDialog();
+
+    const openTemplateDialog = (templateType: 'database' | 'template') => {
+        openDialog(
+            <ChooseTemplateDialog projectId={projectId} templateType={templateType} />,
+            { maxWidth: '1000px' },
+        );
+    };
+
+    if (!canCreateApps) return children;
+
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger className="block size-full">
+                {children}
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+                <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
+                    <ContextMenuItem>
+                        <File />
+                        Create Empty App
+                    </ContextMenuItem>
+                </EditAppDialog>
+                <ContextMenuItem onClick={() => openTemplateDialog('template')}>
+                    <Blocks />
+                    Create App from Template
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => openTemplateDialog('database')}>
+                    <Database />
+                    Create Database
+                </ContextMenuItem>
+            </ContextMenuContent>
+        </ContextMenu>
+    );
+}
+
 function Legend() {
     return (
         <div className="flex flex-wrap items-center gap-x-[18px] gap-y-1.5 text-xs text-muted-foreground">
@@ -198,6 +251,7 @@ function ProjectNetworkGraphEditor({
     const connectionTargetLeaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const graphApps = useMemo(() => apps.map(app => AppNetworkPolicyDraftUtils.applyToApp(app, drafts[app.id])), [apps, drafts]);
     const canEditLayout = UserGroupUtils.sessionHasWriteAccessToProject(session, projectId);
+    const canCreateApps = UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId);
     const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
@@ -430,7 +484,11 @@ function ProjectNetworkGraphEditor({
                         Reset
                     </Button>}
                 </div>
-                <ReactFlow
+                <ProjectNetworkGraphCanvasContextMenu
+                    projectId={projectId}
+                    canCreateApps={canCreateApps}
+                >
+                    <ReactFlow
                     onInit={instance => { reactFlowRef.current = instance; }}
                     nodes={nodes}
                     edges={edges}
@@ -509,7 +567,8 @@ function ProjectNetworkGraphEditor({
                 >
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
                     <Controls showInteractive={false} />
-                </ReactFlow>
+                    </ReactFlow>
+                </ProjectNetworkGraphCanvasContextMenu>
                 {dirty && (
                     <Card className="absolute bottom-4 left-16 z-10 flex w-fit overflow-hidden p-1 shadow-md">
                         <CardFooter className="p-0">

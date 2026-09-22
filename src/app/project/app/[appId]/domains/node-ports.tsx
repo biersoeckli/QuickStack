@@ -46,7 +46,7 @@ export default function NodePortsCard({ app, readonly, hideCard = false }: {
                         <TableRow>
                             <TableHead>Container Port</TableHead>
                             <TableHead>Node Port</TableHead>
-                            <TableHead>Protocol</TableHead>
+                            <TableHead className="hidden xl:table-cell">Protocol</TableHead>
                             {!readonly && <TableHead className="w-[88px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
@@ -55,7 +55,7 @@ export default function NodePortsCard({ app, readonly, hideCard = false }: {
                             <TableRow key={np.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{np.port}</TableCell>
                                 <TableCell className="font-medium">{np.nodePort}</TableCell>
-                                <TableCell className="font-medium">{np.protocol}</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{np.protocol}</TableCell>
                                 {!readonly && (
                                     <TableCell className="w-[88px] font-medium">
                                         <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">

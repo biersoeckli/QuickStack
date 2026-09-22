@@ -58,9 +58,9 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                         <TableRow>
                             <TableHead>Name</TableHead>
                             {!hideCard && <>
-                                <TableHead>Port</TableHead>
-                                <TableHead>SSL</TableHead>
-                                <TableHead>Redirect HTTP to HTTPS</TableHead>
+                                <TableHead className="hidden xl:table-cell">Port</TableHead>
+                                <TableHead className="hidden 2xl:table-cell">SSL</TableHead>
+                                <TableHead className="hidden 2xl:table-cell">Redirect HTTP to HTTPS</TableHead>
                             </>}
                             {!readonly && <TableHead className="w-[88px]"></TableHead>}
                         </TableRow>
@@ -75,9 +75,9 @@ export default function DomainsCard({ domains, workloadId, workloadType, readonl
                                     </div>
                                 </TableCell>
                                 {!hideCard && <>
-                                    <TableCell className="font-medium">{domain.port}</TableCell>
-                                    <TableCell className="font-medium">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
-                                    <TableCell className="font-medium">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
+                                    <TableCell className="hidden font-medium xl:table-cell">{domain.port}</TableCell>
+                                    <TableCell className="hidden font-medium 2xl:table-cell">{domain.useSsl ? <CheckIcon /> : <XIcon />}</TableCell>
+                                    <TableCell className="hidden font-medium 2xl:table-cell">{domain.useSsl && domain.redirectHttps ? <CheckIcon /> : <XIcon />}</TableCell>
                                 </>}
                                 {!readonly && <TableCell className="w-[88px] font-medium">
                                     <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">

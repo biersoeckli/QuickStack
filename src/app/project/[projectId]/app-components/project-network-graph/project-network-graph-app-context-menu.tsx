@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Box, Globe2, Hammer, Logs, Play, Rocket, Settings, Square, Trash2 } from 'lucide-react';
+import { Box, Globe2, Hammer, Logs, Play, Rocket, RotateCwClock, Settings, Square, Trash2 } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -24,7 +24,7 @@ export type ProjectNetworkGraphAppContextMenuProps = {
     role?: RolePermissionEnum;
     allowInternetAccess: boolean;
     onToggleInternetAccess: () => void;
-    onOpenDrawerTab: (tab: 'deployments' | 'logs' | 'settings') => void;
+    onOpenDrawerTab: (tab: 'deployments' | 'logs' | 'backups' | 'settings') => void;
     onDelete: () => void;
     children: ReactNode;
 };
@@ -93,6 +93,12 @@ export function ProjectNetworkGraphAppContextMenu({
                         <Logs />
                         View Logs
                     </ContextMenuItem>
+                    {app.appVolumes.length > 0 && (
+                        <ContextMenuItem onClick={() => onOpenDrawerTab('backups')}>
+                            <RotateCwClock />
+                            View Backups
+                        </ContextMenuItem>
+                    )}
                     <ContextMenuItem onClick={() => onOpenDrawerTab('settings')}>
                         <Settings />
                         View Settings
