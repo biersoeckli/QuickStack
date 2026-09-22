@@ -51,7 +51,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                 open={drawer !== null}
                 onOpenChange={(open) => !open && closeNestedDrawer()}
             >
-                <DrawerContent className="border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow">
+                <DrawerContent className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow">
                     <DrawerHeader className="p-6 text-left">
                         <DrawerTitle className="flex items-center gap-2">
                             <Button
@@ -71,8 +71,11 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                             </DrawerDescription>
                         )}
                     </DrawerHeader>
-                    <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
-                        <div className="p-1">
+                    <ScrollArea
+                        className="min-h-0 min-w-0 flex-1 px-4 pb-4"
+                        contentClassName="h-full"
+                    >
+                        <div className="h-full min-w-0 p-1">
                             {drawer?.content}
                         </div>
                     </ScrollArea>

@@ -284,7 +284,7 @@ export function NodeDetailsDrawer({
         >
             <DrawerContent
                 ref={contentRef}
-                className="border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow"
+                className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow"
             >
                 <NestedDrawerProvider>
                     <Button
@@ -300,7 +300,7 @@ export function NodeDetailsDrawer({
                     <Tabs
                         value={activeTab}
                         onValueChange={handleTabChange}
-                        className="min-h-0 flex-1"
+                        className="min-h-0 min-w-0 flex-1"
                     >
                         <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
                             <div className="flex items-start gap-3">
@@ -386,8 +386,12 @@ export function NodeDetailsDrawer({
                                 <div className="h-2"></div>
                             )}
                         </DrawerHeader>
-                        <ScrollArea className="min-h-0 flex-1 px-6 pt-2">
-                            {needsSourceConfiguration ? (
+                        <ScrollArea
+                            className="min-h-0 min-w-0 flex-1 px-6 pt-2"
+                            contentClassName="h-full"
+                        >
+                            <div className="h-full min-w-0">
+                                {needsSourceConfiguration ? (
                                 <>
                                     <GeneralAppSource
                                         hideCard
@@ -401,7 +405,7 @@ export function NodeDetailsDrawer({
                                 <>
                                     <TabsContent
                                         value="deployments"
-                                        className="mb-4"
+                                        className="mb-4 min-w-0"
                                     >
                                         <DrawerDeploymentsTab
                                             key={app.id}
@@ -409,14 +413,20 @@ export function NodeDetailsDrawer({
                                             role={role}
                                         />
                                     </TabsContent>
-                                    <TabsContent value="logs" className="mb-4">
-                                        <Logs key={app.id} app={app} role={role} hideCard />
+                                    <TabsContent value="logs" className="mb-4 h-[calc(100%-1rem)] min-w-0">
+                                        <Logs
+                                            key={app.id}
+                                            app={app}
+                                            role={role}
+                                            hideCard
+                                            useFullHeight
+                                        />
                                     </TabsContent>
-                                    <TabsContent value="stats" className="mb-4">
+                                    <TabsContent value="stats" className="mb-4 min-w-0">
                                         <MonitoringTab hideCard key={app.id} app={app} />
                                     </TabsContent>
                                     {hasVolumes && (
-                                        <TabsContent value="backups" className="mb-4 pt-4 px-2">
+                                        <TabsContent value="backups" className="mb-4 min-w-0 px-2 pt-4">
                                             <DrawerBackupsTab
                                                 app={app}
                                                 role={role}
@@ -428,7 +438,7 @@ export function NodeDetailsDrawer({
                                     {app.appType !== 'APP' && (
                                         <TabsContent
                                             value="credentials"
-                                            className="mb-4 space-y-4 px-1 pt-1"
+                                            className="mb-4 min-w-0 space-y-4 px-1 pt-1"
                                         >
                                             {role === RolePermissionEnum.READWRITE && (
                                                 <DbToolsCard app={app} />
@@ -436,7 +446,7 @@ export function NodeDetailsDrawer({
                                             <DbCredentials app={app} />
                                         </TabsContent>
                                     )}
-                                    <TabsContent value="settings" className="mb-4 pt-4">
+                                    <TabsContent value="settings" className="mb-4 min-w-0 pt-4">
                                         <DrawerSettings
                                             app={app}
                                             role={role}
@@ -445,7 +455,8 @@ export function NodeDetailsDrawer({
                                         />
                                     </TabsContent>
                                 </>
-                            )}
+                                )}
+                            </div>
                         </ScrollArea>
                     </Tabs>
                 </NestedDrawerProvider>
