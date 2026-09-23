@@ -38,6 +38,14 @@ class BuildWatchService {
             console.error('[BuildWatch] Failed to seed build statuses:', error);
         }
 
+        try {
+            await this.seedProcessedJobs();
+        } catch (error) {
+            // Without a successful seed a restarted watch would replay every
+            // existing build job as "ADDED" and redeploy old builds.
+            console.error('[BuildWatch] Failed to seed existing build jobs:', error);
+        }
+
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
 
@@ -51,7 +59,7 @@ class BuildWatchService {
                 } catch (e) {
                     console.error('[BuildWatch] Status update failed:', e);
                 }
-                await this.handleJobEvent(job);
+                await this.handleJobEvent(type, job);
             },
             (err: unknown) => {
                 if (err) console.error('[BuildWatch] Watch error:', err);
@@ -62,7 +70,33 @@ class BuildWatchService {
         );
     }
 
-    private async handleJobEvent(job: V1Job) {
+    /**
+     * Marks already finished build jobs as processed before the watch starts.
+     *
+     * A watch without a resourceVersion first replays every existing job as a
+     * synthetic ADDED event ("Get State and Start at Most Recent"). Without this
+     * seed, a restart would redeploy old successful builds, and because jobs are
+     * replayed in list order an older build could win over the newest one.
+     *
+     * Running and pending jobs stay unseeded so they still deploy on completion.
+     */
+    private async seedProcessedJobs() {
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        for (const job of jobs.items ?? []) {
+            const jobName = job.metadata?.name;
+            if (!jobName) continue;
+
+            const status = buildService.getJobStatusString(job.status);
+            if (status === 'SUCCEEDED' || status === 'FAILED') {
+                this.processedJobs.add(jobName);
+            }
+        }
+        console.log('[BuildWatch] Seeded existing build jobs.');
+    }
+
+    private async handleJobEvent(type: string, job: V1Job) {
+        if (type === 'DELETED') return;
+
         const jobName = job.metadata?.name;
         if (!jobName || this.processedJobs.has(jobName)) return;
 
