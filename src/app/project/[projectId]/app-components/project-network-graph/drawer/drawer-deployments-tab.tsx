@@ -1,6 +1,6 @@
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { useNestedDrawer } from "./drawer/nested-drawer";
+import { useNestedDrawer } from "./nested-drawer";
 import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
 import { BuildLogsDialogContent } from "@/app/project/app/[appId]/overview/build-logs-overlay";
 import BuildsTab from "@/app/project/app/[appId]/overview/deployments";

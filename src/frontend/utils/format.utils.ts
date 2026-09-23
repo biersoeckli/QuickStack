@@ -1,28 +1,41 @@
 
-import { formatInTimeZone } from 'date-fns-tz';
+function formatLocalDate(date: Date, options: Intl.DateTimeFormatOptions): string {
+    return new Intl.DateTimeFormat(undefined, options).format(date);
+}
 
 export function formatDate(date: Date | undefined | null): string {
     if (!date) {
         return '';
     }
-    return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy');
+    return formatLocalDate(date, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    });
 }
 
 export function formatDateTime(date: Date | undefined | null, includeSeconds = false): string {
     if (!date) {
         return '';
     }
-    if (includeSeconds) {
-        return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy HH:mm:ss');
-    }
-    return formatInTimeZone(date, 'Europe/Zurich', 'dd.MM.yyyy HH:mm');
+    return formatLocalDate(date, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(includeSeconds && { second: '2-digit' }),
+    });
 }
 
 export function formatTime(date: Date | undefined | null): string {
     if (!date) {
         return '';
     }
-    return formatInTimeZone(date, 'Europe/Zurich', 'HH:mm');
+    return formatLocalDate(date, {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 export function formatBytes(bytes: number) {

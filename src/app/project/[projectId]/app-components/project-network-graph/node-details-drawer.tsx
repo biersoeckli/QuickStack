@@ -1,6 +1,6 @@
 'use client';
 
-import { type Ref } from 'react';
+import { type ReactNode, type Ref } from 'react';
 
 import {
     BarChart3,
@@ -57,7 +57,7 @@ import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import { DrawerSettings } from './drawer/drawer-settings';
 import { NestedDrawerProvider } from './drawer/nested-drawer';
-import { DrawerBackupsTab } from './drawer-backups-tab';
+import { DrawerBackupsTab } from './drawer/drawer-backups-tab';
 import { EditAppDialog } from '../edit-app-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
@@ -65,7 +65,7 @@ import {
     DrawerSessionUtils,
     type DrawerTab,
 } from './project-network-graph-drawer-session';
-import DrawerDeploymentsTab from './drawer-deployments-tab';
+import DrawerDeploymentsTab from './drawer/drawer-deployments-tab';
 
 export type PanelConnection = {
     id: string;
@@ -74,6 +74,14 @@ export type PanelConnection = {
     label?: string;
     copyValue?: string;
 };
+
+function DrawerTabScrollArea({ children }: { children: ReactNode }) {
+    return (
+        <ScrollArea className="min-h-0 min-w-0 flex-1 px-6 pt-2">
+            <div className="min-w-0 pb-4">{children}</div>
+        </ScrollArea>
+    );
+}
 
 function AppStatusActions({
     app,
@@ -284,7 +292,7 @@ export function NodeDetailsDrawer({
         >
             <DrawerContent
                 ref={contentRef}
-                className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow"
+                className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-[calc(100%-1rem)] sm:data-[swipe-axis=x]:w-1/2 shadow"
             >
                 <NestedDrawerProvider>
                     <Button
@@ -386,78 +394,69 @@ export function NodeDetailsDrawer({
                                 <div className="h-2"></div>
                             )}
                         </DrawerHeader>
-                        <ScrollArea
-                            className="min-h-0 min-w-0 flex-1 px-6 pt-2"
-                            contentClassName="h-full"
-                        >
-                            <div className="h-full min-w-0">
-                                {needsSourceConfiguration ? (
-                                <>
-                                    <GeneralAppSource
-                                        hideCard
-                                        app={app}
-                                        readonly={
-                                            role !== RolePermissionEnum.READWRITE
-                                        }
-                                    />
-                                </>
-                            ) : app && role && (
-                                <>
-                                    <TabsContent
-                                        value="deployments"
-                                        className="mb-4 min-w-0"
-                                    >
-                                        <DrawerDeploymentsTab
-                                            key={app.id}
-                                            app={app}
-                                            role={role}
-                                        />
-                                    </TabsContent>
-                                    <TabsContent value="logs" className="mb-4 h-[calc(100%-1rem)] min-w-0">
-                                        <Logs
-                                            key={app.id}
-                                            app={app}
-                                            role={role}
-                                            hideCard
-                                            useFullHeight
-                                        />
-                                    </TabsContent>
-                                    <TabsContent value="stats" className="mb-4 min-w-0">
+                        {needsSourceConfiguration ? (
+                            <DrawerTabScrollArea>
+                                <GeneralAppSource
+                                    hideCard
+                                    app={app}
+                                    readonly={role !== RolePermissionEnum.READWRITE}
+                                />
+                            </DrawerTabScrollArea>
+                        ) : app && role && (
+                            <>
+                                <TabsContent value="deployments" className="flex min-h-0 min-w-0 flex-1 flex-col">
+                                    <DrawerTabScrollArea>
+                                        <DrawerDeploymentsTab key={app.id} app={app} role={role} />
+                                    </DrawerTabScrollArea>
+                                </TabsContent>
+                                <TabsContent value="logs" className="flex min-h-0 min-w-0 flex-1 flex-col px-6 pt-3 pb-4">
+                                    <Logs key={app.id} app={app} role={role} hideCard useFullHeight />
+                                </TabsContent>
+                                <TabsContent value="stats" className="flex min-h-0 min-w-0 flex-1 flex-col">
+                                    <DrawerTabScrollArea>
                                         <MonitoringTab hideCard key={app.id} app={app} />
+                                    </DrawerTabScrollArea>
+                                </TabsContent>
+                                {hasVolumes && (
+                                    <TabsContent value="backups" className="flex min-h-0 min-w-0 flex-1 flex-col">
+                                        <DrawerTabScrollArea>
+                                            <div className="px-2 pt-4">
+                                                <DrawerBackupsTab
+                                                    app={app}
+                                                    role={role}
+                                                    s3Targets={s3Targets}
+                                                    volumeBackups={volumeBackups}
+                                                />
+                                            </div>
+                                        </DrawerTabScrollArea>
                                     </TabsContent>
-                                    {hasVolumes && (
-                                        <TabsContent value="backups" className="mb-4 min-w-0 px-2 pt-4">
-                                            <DrawerBackupsTab
+                                )}
+                                {app.appType !== 'APP' && (
+                                    <TabsContent value="credentials" className="flex min-h-0 min-w-0 flex-1 flex-col">
+                                        <DrawerTabScrollArea>
+                                            <div className="space-y-4 px-1 pt-1">
+                                                {role === RolePermissionEnum.READWRITE && (
+                                                    <DbToolsCard app={app} />
+                                                )}
+                                                <DbCredentials app={app} />
+                                            </div>
+                                        </DrawerTabScrollArea>
+                                    </TabsContent>
+                                )}
+                                <TabsContent value="settings" className="flex min-h-0 min-w-0 flex-1 flex-col">
+                                    <DrawerTabScrollArea>
+                                        <div className="pt-4">
+                                            <DrawerSettings
                                                 app={app}
                                                 role={role}
-                                                s3Targets={s3Targets}
-                                                volumeBackups={volumeBackups}
+                                                storageClasses={storageClasses}
+                                                gitSshPublicKey={gitSshPublicKey}
                                             />
-                                        </TabsContent>
-                                    )}
-                                    {app.appType !== 'APP' && (
-                                        <TabsContent
-                                            value="credentials"
-                                            className="mb-4 min-w-0 space-y-4 px-1 pt-1"
-                                        >
-                                            {role === RolePermissionEnum.READWRITE && (
-                                                <DbToolsCard app={app} />
-                                            )}
-                                            <DbCredentials app={app} />
-                                        </TabsContent>
-                                    )}
-                                    <TabsContent value="settings" className="mb-4 min-w-0 pt-4">
-                                        <DrawerSettings
-                                            app={app}
-                                            role={role}
-                                            storageClasses={storageClasses}
-                                            gitSshPublicKey={gitSshPublicKey}
-                                        />
-                                    </TabsContent>
-                                </>
-                                )}
-                            </div>
-                        </ScrollArea>
+                                        </div>
+                                    </DrawerTabScrollArea>
+                                </TabsContent>
+                            </>
+                        )}
                     </Tabs>
                 </NestedDrawerProvider>
             </DrawerContent>

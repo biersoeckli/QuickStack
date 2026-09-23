@@ -51,7 +51,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                 open={drawer !== null}
                 onOpenChange={(open) => !open && closeNestedDrawer()}
             >
-                <DrawerContent className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-1/2 shadow">
+                <DrawerContent className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-[calc(100%-1rem)] sm:data-[swipe-axis=x]:w-1/2 shadow">
                     <DrawerHeader className="p-6 text-left">
                         <DrawerTitle className="flex items-center gap-2">
                             <Button
