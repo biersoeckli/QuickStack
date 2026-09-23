@@ -22,9 +22,13 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className={cn(
+          "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
+          scrollbarOrientation === "horizontal"
+          && "overflow-y-hidden overscroll-y-none touch-pan-x"
+        )}
       >
-      <ScrollAreaPrimitive.Content className={contentClassName}>
+        <ScrollAreaPrimitive.Content className={contentClassName}>
           {children}
         </ScrollAreaPrimitive.Content>
       </ScrollAreaPrimitive.Viewport>
