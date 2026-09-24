@@ -26,6 +26,8 @@ import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/
 import SelectFormField from "@/components/custom/select-form-field"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
+import FormLabelWithQuestion from "@/components/custom/form-label-with-question"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { useDialog } from "@/frontend/states/zustand.states";
 
@@ -185,21 +187,16 @@ export default function VolumeBackupEditDialog({
                   control={form.control}
                   name="backupBeforeDeployment"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <FormLabelWithQuestion hint="Run this backup automatically before a deployment is applied. This also applies when an app connected through a network policy is deployed.">
+                        Backup before deployment
+                      </FormLabelWithQuestion>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Backup before deployment
-                        </FormLabel>
-                        <FormDescription>
-                          Run this backup automatically before a deployment. This also applies when a connected app is deployed.
-                        </FormDescription>
-                      </div>
                     </FormItem>
                   )}
                 />
@@ -209,21 +206,16 @@ export default function VolumeBackupEditDialog({
                     control={form.control}
                     name="failSilently"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <FormLabelWithQuestion hint="Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.">
+                          Fail silently
+                        </FormLabelWithQuestion>
                         <FormControl>
-                          <Checkbox
+                          <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            Fail silently
-                          </FormLabel>
-                          <FormDescription>
-                            Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.
-                          </FormDescription>
-                        </div>
                       </FormItem>
                     )}
                   />
