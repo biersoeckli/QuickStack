@@ -3,6 +3,7 @@
 import { Toast } from "@/frontend/utils/toast.utils";
 import { createApp } from "../actions";
 import { useRouter } from "next/navigation";
+import { cloneElement, type MouseEvent, type ReactElement } from "react";
 import type { App } from "@prisma/client";
 import { useInputDialog } from "@/frontend/states/zustand.states";
 
@@ -12,7 +13,7 @@ export function EditAppDialog({
     existingItem,
     openAppAfterCreate = true
 }: {
-    children?: React.ReactNode,
+    children?: ReactElement<{ onClick?: (event: MouseEvent) => void }>;
     projectId: string;
     existingItem?: Pick<App, 'id' | 'name'>;
     openAppAfterCreate?: boolean;
@@ -35,5 +36,12 @@ export function EditAppDialog({
         }
     };
 
-    return <div onClick={() => createAppFunc()}>{children}</div>
+    if (!children) return null;
+
+    return cloneElement(children, {
+        onClick: (event) => {
+            children.props.onClick?.(event);
+            void createAppFunc();
+        },
+    });
 }

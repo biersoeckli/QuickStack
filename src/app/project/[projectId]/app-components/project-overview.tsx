@@ -16,6 +16,8 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import { useDialog } from '@/frontend/states/zustand.states';
 import NewNetworkPolicyExplanationDialog from './new-network-policy-explanation-dialog';
+import type { S3Target } from '@prisma/client';
+import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 
 interface ProjectOverviewProps {
     apps: AppExtendedModel[];
@@ -24,6 +26,10 @@ interface ProjectOverviewProps {
     projectName: string;
     networkGraphPositions: ProjectNetworkGraphPositions;
     showNewNetworkPolicyExplanation: boolean;
+    s3Targets: S3Target[];
+    storageClasses: string[];
+    volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
+    gitSshPublicKeysByApp: Record<string, string | undefined>;
 }
 
 type ProjectOverviewTab = 'table' | 'graph';
@@ -43,10 +49,15 @@ export default function AppProjectOverview({
     projectName,
     networkGraphPositions,
     showNewNetworkPolicyExplanation,
+    s3Targets,
+    storageClasses,
+    volumeBackupsByApp,
+    gitSshPublicKeysByApp,
 }: ProjectOverviewProps) {
     const searchParams = useSearchParams();
     const { openDialog } = useDialog();
     const requestedTab = searchParams.get('tab');
+    const requestedDrawerAppId = searchParams.get('drawerAppId');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
 
     useEffect(() => {
@@ -61,13 +72,17 @@ export default function AppProjectOverview({
     }, [openDialog, showNewNetworkPolicyExplanation, apps.length]);
 
     useEffect(() => {
+        if (requestedDrawerAppId) {
+            setCurrentTab('graph');
+            return;
+        }
         if (isProjectOverviewTab(requestedTab)) {
             setCurrentTab(requestedTab);
             return;
         }
         const savedTab = window.localStorage.getItem(tabStorageKey());
         setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'graph');
-    }, [projectId, requestedTab]);
+    }, [projectId, requestedDrawerAppId, requestedTab]);
 
     const handleTabChange = (value: string) => {
         if (!isProjectOverviewTab(value)) return;
@@ -138,12 +153,16 @@ export default function AppProjectOverview({
             <TabsContent value="table">
                 <AppTable session={session} app={apps} projectId={projectId} />
             </TabsContent>
-            <TabsContent value="graph">
+            <TabsContent value="graph" data-project-network-graph>
                 <ProjectNetworkGraph
                     apps={apps}
                     projectId={projectId}
                     session={session}
                     savedPositions={networkGraphPositions}
+                    s3Targets={s3Targets}
+                    storageClasses={storageClasses}
+                    volumeBackupsByApp={volumeBackupsByApp}
+                    gitSshPublicKeysByApp={gitSshPublicKeysByApp}
                 />
             </TabsContent>
         </Tabs>

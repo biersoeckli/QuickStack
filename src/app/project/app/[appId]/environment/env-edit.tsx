@@ -16,9 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 
 
-export default function EnvEdit({ app, readonly }: {
+export default function EnvEdit({ app, readonly, hideCard = false }: {
     app: AppExtendedModel;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const form = useForm<z.input<typeof appEnvVariablesZodModel>, unknown, z.output<typeof appEnvVariablesZodModel>>({
         resolver: zodResolver(appEnvVariablesZodModel),
@@ -37,22 +38,23 @@ export default function EnvEdit({ app, readonly }: {
     }, [form, state]);
 
     const buildArgsEnabled = app.appType === 'APP' && app.buildMethod === 'DOCKERFILE';
+    const CardWrapper = hideCard ? 'div' : Card;
 
     return <>
-        <Card>
-            <CardHeader>
+        <CardWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Environment Variables</CardTitle>
                 <CardDescription>
                     Provide optional environment variables for your application.
                     {app.appType !== 'APP' && <div className="text-sm text-red-500 pt-2">You should not change ENV variables for databases.</div>}
 
                 </CardDescription>
-            </CardHeader>
+            </CardHeader>}
             <Form {...form}>
                 <form action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
-                    <CardContent className="space-y-6">
+                    <CardContent className={hideCard ? "space-y-6 px-0" : "space-y-6"}>
                         <FormField
                             control={form.control}
                             name="envVars"
@@ -95,11 +97,11 @@ export default function EnvEdit({ app, readonly }: {
                             )}
                         />
                     </CardContent>
-                    {!readonly && <CardFooter>
+                    {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
                         <SubmitButton>Save</SubmitButton>
                     </CardFooter>}
                 </form>
             </Form >
-        </Card >
+        </CardWrapper>
     </>;
 }

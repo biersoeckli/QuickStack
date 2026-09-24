@@ -23,6 +23,7 @@ export async function POST() {
         const encoder = new TextEncoder();
         let shouldStopStreaming = false;
         let unsubscribe: (() => void) | null = null;
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
 
         // Fetch all projects and apps to build a lookup map
         let appLookup = await deploymentLiveStatusService.getAppLookup(session);
@@ -37,6 +38,10 @@ export async function POST() {
                     } catch (e) {
                         console.error(`[ENQUEUE ERROR] Error while enqueueing Deployment Status data: `, e);
                         shouldStopStreaming = true;
+                        unsubscribe?.();
+                        unsubscribe = null;
+                        if (heartbeat) clearInterval(heartbeat);
+                        heartbeat = null;
                         controller.close();
                     }
                 };
@@ -85,6 +90,21 @@ export async function POST() {
 
                     sendData(status);
                 });
+
+                heartbeat = setInterval(() => {
+                    if (shouldStopStreaming) return;
+                    try {
+                        controller.enqueue(encoder.encode(': ping\n\n'));
+                    } catch (error) {
+                        console.error('[ENQUEUE ERROR] Error while sending deployment status heartbeat:', error);
+                        shouldStopStreaming = true;
+                        unsubscribe?.();
+                        unsubscribe = null;
+                        if (heartbeat) clearInterval(heartbeat);
+                        heartbeat = null;
+                        controller.close();
+                    }
+                }, 25_000);
             },
             cancel() {
                 console.log("[LEAVE] Cancelling deployment status stream");
@@ -93,6 +113,8 @@ export async function POST() {
                     unsubscribe();
                     unsubscribe = null;
                 }
+                if (heartbeat) clearInterval(heartbeat);
+                heartbeat = null;
             }
         });
 

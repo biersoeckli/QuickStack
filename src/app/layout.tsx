@@ -13,6 +13,7 @@ import { BreadcrumbsGenerator } from "../components/custom/breadcrumbs-generator
 import { getUserSession } from "@/server/utils/action-wrapper.utils";
 import { InputDialog } from "@/components/custom/input-dialog";
 import PodsStatusPollingProvider from "@/components/custom/pods-status-polling-provider";
+import BuildStatusPollingProvider from "@/components/custom/build-status-polling-provider";
 import { GenericDialog } from "@/components/custom/generic-dialog";
 
 const inter = Inter({
@@ -50,8 +51,8 @@ export default async function RootLayout({
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
           <main className="flex min-w-0 flex-1 flex-col items-center">
-            <div className="w-full min-w-0 max-w-8xl px-2 lg:px-4">
-              <div className="min-w-0 flex-col p-6 md:flex">
+            <div className="w-full min-w-0 max-w-8xl px-2 has-[[data-project-network-graph]]:max-w-none lg:px-4">
+              <div className="min-w-0 flex-col p-6 md:flex has-[[data-project-network-graph]]:pb-0">
                 {userIsLoggedIn && <BreadcrumbsGenerator />}
                 <Suspense fallback={<FullLoadingSpinner />}>
                   {children}
@@ -66,6 +67,7 @@ export default async function RootLayout({
         <InputDialog />
         <GenericDialog />
         {userIsLoggedIn && <PodsStatusPollingProvider />}
+        {userIsLoggedIn && <BuildStatusPollingProvider />}
       </body>
     </html>
   );

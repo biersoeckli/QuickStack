@@ -10,12 +10,14 @@ import { FileMountEditModel } from "@/shared/model/file-mount-edit.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import FileMountEditOverlay from "@/components/custom/file-mount-edit-overlay";
 import { deleteFileMount } from "@/app/project/actions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly }: {
+export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly, hideCard = false }: {
     fileMounts: FileMountEditModel[];
     workloadId: string;
     workloadType: WorkloadType;
     readonly: boolean;
+    hideCard?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -40,39 +42,41 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
         });
     };
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>File Mounts</CardTitle>
                 <CardDescription>Create files which are mounted into the container.</CardDescription>
             </CardHeader>
-            <CardContent>
+            {fileMounts.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{fileMounts.length} File Mounts</TableCaption>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Mount Path</TableHead>
-                            {!readonly && <TableHead className="w-[100px]">Actions</TableHead>}
+                            {!readonly && <TableHead className="w-[100px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {fileMounts.map(fileMount => (
-                            <TableRow key={fileMount.id ?? fileMount.containerMountPath}>
+                            <TableRow key={fileMount.id ?? fileMount.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{fileMount.containerMountPath}</TableCell>
-                                {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <Button variant="ghost" onClick={() => openEditFileMountDialog(fileMount)}><EditIcon /></Button>
-                                    <Button variant="ghost" onClick={() => asyncDeleteFileMount(fileMount.id!)}>
-                                        <TrashIcon />
-                                    </Button>
+                                {!readonly && <TableCell className="w-[88px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        <TooltipProvider><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" onClick={() => openEditFileMountDialog(fileMount)}><EditIcon /></Button>} /><TooltipContent>Edit file mount</TooltipContent></Tooltip></TooltipProvider>
+                                        <TooltipProvider><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteFileMount(fileMount.id!)}><TrashIcon /></Button>} /><TooltipContent>Delete file mount</TooltipContent></Tooltip></TooltipProvider>
+                                    </div>
                                 </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
-                <Button onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
+                <Button variant="outline" onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
             </CardFooter>}
-        </Card>
+        </CardWrapper>
     </>;
 }

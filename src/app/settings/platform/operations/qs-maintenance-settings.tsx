@@ -57,13 +57,13 @@ export default function QuickStackMaintenanceSettings({
 
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({
-                        title: 'Delete old App logs',
-                        description: 'This action deletes all old app logs. Use this action to free up disk space.',
-                        okButton: "Delete old App logs"
+                        title: 'Delete Deployment Logs',
+                        description: 'This action deletes all stored deployment logs. Use this action to free up disk space.',
+                        okButton: 'Delete Deployment Logs'
                     })) {
                         Toast.fromAction(() => deleteOldAppLogs());
                     }
-                }}><Trash /> Delete old App logs</Button>
+                }}><Trash /> Delete Deployment Logs</Button>
 
                 <Button variant="secondary" onClick={async () => {
                     if (await useConfirm.openConfirmDialog({

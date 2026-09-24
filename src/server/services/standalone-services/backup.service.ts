@@ -216,6 +216,19 @@ class BackupService {
         return { backupInfoModels, backupsVolumesWithoutActualBackups };
     }
 
+    async getBackupsForVolumeSchedule(backupVolumeId: string): Promise<BackupEntry[]> {
+        const backupVolume = await dataAccess.client.volumeBackup.findFirstOrThrow({
+            where: { id: backupVolumeId },
+            include: { target: true },
+        });
+        const backupData = await this.getBackupsFromS3Target(backupVolume.target);
+        const backupInfo = backupData.backupInfoModels.find(
+            (item) => item.backupVolumeId === backupVolumeId,
+        );
+
+        return backupInfo?.backups ?? [];
+    }
+
     private async listAndParseBackupFiles(s3Target: S3Target) {
         const fileKeys = await s3Service.listFiles(s3Target);
         const backupData = fileKeys.filter(x => {

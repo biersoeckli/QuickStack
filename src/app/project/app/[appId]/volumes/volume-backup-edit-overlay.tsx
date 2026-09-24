@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { SubmitButton } from "@/components/custom/submit-button";
 import { AppVolume, S3Target, VolumeBackup } from "@prisma/client"
@@ -27,22 +27,21 @@ import SelectFormField from "@/components/custom/select-form-field"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
+import { useDialog } from "@/frontend/states/zustand.states";
 
 export default function VolumeBackupEditDialog({
-  children,
   volumeBackup,
   s3Targets,
   volumes,
   app
 }: {
-  children: React.ReactNode;
   volumeBackup?: VolumeBackup;
   s3Targets: S3Target[];
   volumes: AppVolume[];
   app: AppExtendedModel;
 }) {
 
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const { closeDialog } = useDialog();
 
   const isDatabaseApp = app.appType !== 'APP';
   const isDatabaseBackupSupported = [
@@ -75,10 +74,10 @@ export default function VolumeBackupEditDialog({
       toast.success('Volume Backup saved successfully', {
         description: "From now on the volume will be backed up according to the new settings.",
       });
-      setIsOpen(false);
+      closeDialog();
     }
     FormUtils.mapValidationErrorsToForm<typeof volumeBackupEditZodModel>(state, form);
-  }, [form, state]);
+  }, [closeDialog, form, state]);
 
   useEffect(() => {
     form.reset(volumeBackup);
@@ -86,11 +85,6 @@ export default function VolumeBackupEditDialog({
 
   return (
     <>
-      <div onClick={() => setIsOpen(true)}>
-        {children}
-      </div>
-      <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Backup Configuration</DialogTitle>
             <DialogDescription>
@@ -188,8 +182,6 @@ export default function VolumeBackupEditDialog({
               </div>
             </form>
           </Form >
-        </DialogContent>
-      </Dialog>
     </>
   )
 

@@ -43,27 +43,23 @@ export default function GeneralAppSource({
         !configured ? (
             <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
         ) : (
-            <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} />
+            <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} readonly={readonly} onConnect={openSourceWizard} />
         )
     );
 
     if (hideCard) {
-        return <div className="pt-4">{cardContent}</div>;
+        return <div className="space-y-4">
+            {cardContent}
+            {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
+        </div>;
     }
 
     return (
         <>
             <Card>
-                <CardHeader className="flex flex-row items-start justify-between gap-4">
-                    <div>
-                        <CardTitle>Source</CardTitle>
-                        <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
-                    </div>
-                    {!readonly && configured && (
-                        <Button type="button" variant="secondary" onClick={openSourceWizard}>
-                            Change source
-                        </Button>
-                    )}
+                <CardHeader >
+                    <CardTitle>Source</CardTitle>
+                    <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {cardContent}
@@ -94,7 +90,7 @@ function EmptySourceState({ readonly, onConnect }: { readonly: boolean; onConnec
     );
 }
 
-function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedModel; gitSshPublicKey?: string }) {
+function ConfiguredSourceSummary({ app, gitSshPublicKey, readonly, onConnect }: { app: AppExtendedModel; gitSshPublicKey?: string; readonly: boolean; onConnect: () => void; }) {
     const { openDialog } = useDialog();
     const sourceType = app.sourceType as SourceType;
     const isGitSource = sourceType === 'GIT' || sourceType === 'GIT_SSH';
@@ -103,7 +99,7 @@ function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedMod
     return (
         <div className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex w-full items-center gap-3 justify-between">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
                         <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
@@ -113,6 +109,12 @@ function ConfiguredSourceSummary({ app, gitSshPublicKey }: { app: AppExtendedMod
                             {isGitSource ? app.gitUrl : app.containerImageSource}
                         </p>
                     </div>
+                    <div className="flex-1"></div>
+                    {!readonly &&
+                        <Button type="button" variant="secondary" onClick={onConnect} >
+                            Change source
+                        </Button>
+                    }
                 </div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">

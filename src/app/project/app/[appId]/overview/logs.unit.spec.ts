@@ -12,7 +12,6 @@ vi.mock('./actions', () => ({
 
 vi.mock('../../../../../components/custom/logs-streamed', () => ({ default: () => null }));
 vi.mock('./terminal-overlay', () => ({ TerminalDialog: () => null }));
-vi.mock('./logs-download-overlay', () => ({ LogsDownloadOverlay: () => null }));
 vi.mock('@/components/custom/logs-overlay', () => ({ LogsDialogContent: () => null }));
 
 const mockedGetPodsForApp = vi.mocked(getPodsForApp);

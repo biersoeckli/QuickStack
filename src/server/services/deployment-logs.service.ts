@@ -5,25 +5,8 @@ import { FsUtils } from '../utils/fs.utils';
 
 class DeploymentLogService {
 
-    async deleteOldDeploymentLogs() {
-        const logDaysThreshold = 30;
-        const expirationTime = Date.now() - logDaysThreshold * 24 * 60 * 60 * 1000;
-
-        await FsUtils.createDirIfNotExistsAsync(PathUtils.deploymentLogsPath, true);
-        const logFiles = await FsUtils.listFilesInDirAsync(PathUtils.deploymentLogsPath);
-
-        for (const logFile of logFiles) {
-            if (!logFile.endsWith('.log')) {
-                continue;
-            }
-
-            const logFilePath = PathUtils.appDeploymentLogFile(logFile.replace(/\.log$/, ''));
-            const stat = await fsPromises.stat(logFilePath);
-
-            if (stat.isFile() && stat.mtimeMs < expirationTime) {
-                await FsUtils.deleteFileIfExists(logFilePath);
-            }
-        }
+    async deleteAllLogs() {
+        await FsUtils.deleteDirIfExistsAsync(PathUtils.deploymentLogsPath, true);
     }
 
     async writeLogs(deploymentId: string, logMessage: string, addDate = true, addNewLine = true) {

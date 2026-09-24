@@ -9,10 +9,9 @@ import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
 import { toast } from "sonner";
 import { LogsDialogContent } from "@/components/custom/logs-overlay";
 import { Button } from "@/components/ui/button";
-import { Download, Expand, Terminal } from "lucide-react";
+import { Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
-import { LogsDownloadOverlay } from "./logs-download-overlay";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 import { cn } from "@/frontend/utils/utils";
@@ -21,10 +20,12 @@ export default function Logs({
     app,
     role,
     hideCard = false,
+    useFullHeight = false,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
     hideCard?: boolean;
+    useFullHeight?: boolean;
 }) {
     const [selectedPod, setSelectedPod] = useState<PodsInfoModel | undefined>(undefined);
     const [appPods, setAppPods] = useState<PodsInfoModel[] | undefined>(undefined);
@@ -111,72 +112,74 @@ export default function Logs({
     }, [appPods, selectedPod]);
 
     const ContentWrapper = hideCard ? Fragment : Card;
+    const content = <>
+        {!hideCard && <CardHeader>
+            <CardTitle>Logs</CardTitle>
+            <CardDescription>Read logs from all running Containers.</CardDescription>
+        </CardHeader>}
+        <CardContent className={cn(
+            'space-y-4',
+            hideCard && 'p-0',
+            useFullHeight && 'flex min-h-0 flex-1 flex-col',
+        )}>
+            {!appPods && <FullLoadingSpinner />}
+            {appPods && appPods.length === 0 && <div>No running pods found for this app.</div>}
+            {selectedPod && appPods && <div className="flex gap-4">
+                <div className="flex-1">
+                    <Select
+                        value={selectedPod.podName}
+                        onValueChange={(val) => setSelectedPod(appPods.find(p => p.podName === val))}
+                        items={appPods.map((pod) => ({ value: pod.podName, label: `${pod.podName} (${pod.status})` }))}
+                    >
+                        <SelectTrigger className="w-full" >
+                            <SelectValue placeholder="Pod wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {appPods.map(pod => <SelectItem key={pod.podName} value={pod.podName}>{pod.podName} ({pod.status})</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {role === RolePermissionEnum.READWRITE && <div>
+                    <TerminalDialog terminalInfo={{
+                        podName: selectedPod.podName,
+                        containerName: selectedPod.containerName,
+                        namespace: app.projectId
+                    }} >
+                        <Button variant="secondary">
+                            <Terminal />  Terminal
+                        </Button>
+                    </TerminalDialog>
+                </div>}
+                <div>
+                    <Tooltip>
+                        <TooltipTrigger delay={300}>
+                            <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
+                                <Expand />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Fullscreen Logs</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
+            </div>}
+            {app.projectId && selectedPod && <div className={cn(useFullHeight && 'min-h-0 flex-1')}>
+                <LogsStreamed
+                    namespace={app.projectId}
+                    podName={selectedPod.podName}
+                    useFullHeight={useFullHeight}
+                />
+            </div>}
+        </CardContent>
+    </>;
+
+    if (hideCard && useFullHeight) {
+        return <div className="flex h-full min-h-0 flex-col">{content}</div>;
+    }
+
     return <>
         <ContentWrapper>
-            {!hideCard && <CardHeader>
-                <CardTitle>Logs</CardTitle>
-                <CardDescription>Read logs from all running Containers.</CardDescription>
-            </CardHeader>}
-            <CardContent className={cn('space-y-4', hideCard ? 'p-0' : '')}>
-                {!appPods && <FullLoadingSpinner />}
-                {appPods && appPods.length === 0 && <div>No running pods found for this app.</div>}
-                {selectedPod && appPods && <div className="flex gap-4">
-                    <div className="flex-1">
-                        <Select
-                            value={selectedPod.podName}
-                            onValueChange={(val) => setSelectedPod(appPods.find(p => p.podName === val))}
-                            items={appPods.map((pod) => ({ value: pod.podName, label: `${pod.podName} (${pod.status})` }))}
-                        >
-                            <SelectTrigger className="w-full" >
-                                <SelectValue placeholder="Pod wählen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {appPods.map(pod => <SelectItem key={pod.podName} value={pod.podName}>{pod.podName} ({pod.status})</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {role === RolePermissionEnum.READWRITE && <div>
-                        <TerminalDialog terminalInfo={{
-                            podName: selectedPod.podName,
-                            containerName: selectedPod.containerName,
-                            namespace: app.projectId
-                        }} >
-                            <Button variant="secondary">
-                                <Terminal />  Terminal
-                            </Button>
-                        </TerminalDialog>
-                    </div>}
-                    <div>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger delay={300}>
-                                    <LogsDownloadOverlay appId={app.id} >
-                                        <Button variant="secondary">
-                                            <Download />
-                                        </Button>
-                                    </LogsDownloadOverlay>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Download Logs</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                    <div>
-                        <Tooltip>
-                            <TooltipTrigger delay={300}>
-                                <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
-                                    <Expand />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Fullscreen Logs</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </div>
-                </div>}
-                {app.projectId && selectedPod && <LogsStreamed namespace={app.projectId} podName={selectedPod.podName} />}
-            </CardContent>
+            {content}
         </ContentWrapper>
     </>;
 }

@@ -372,6 +372,7 @@ class AppService {
             ...existingApp,
             webhookId: randomBytes
         });
+        return randomBytes;
     }
 
     async saveDomain(domainToBeSaved: Prisma.AppDomainUncheckedCreateInput | Prisma.AppDomainUncheckedUpdateInput, tx?: Prisma.TransactionClient) {
@@ -471,6 +472,21 @@ class AppService {
                 id
             }
         });
+    }
+
+    async getVolumeWithAppById(id: string) {
+        return dataAccess.client.appVolume.findFirstOrThrow({
+            where: { id },
+            include: { app: true },
+        });
+    }
+
+    async getFileMountAppId(fileMountId: string) {
+        const fileMount = await dataAccess.client.appFileMount.findFirstOrThrow({
+            where: { id: fileMountId },
+            select: { appId: true },
+        });
+        return fileMount.appId;
     }
 
     async getShareableVolumesByProjectId(projectId: string, appId: string) {

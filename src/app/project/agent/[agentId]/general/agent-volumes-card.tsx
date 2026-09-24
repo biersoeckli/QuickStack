@@ -61,7 +61,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                             <TableHead>Mount Path</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Storage Class</TableHead>
-                            {!readonly && <TableHead className="w-[100px]">Actions</TableHead>}
+                            {!readonly && <TableHead className="w-[100px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>

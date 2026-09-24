@@ -23,12 +23,14 @@ export default function BuildLogsStreamed({
     workloadId,
     workloadType,
     fullHeight = false,
+    useFullHeight = false,
     maxLines = Constants.DEFAULT_MAX_LOG_LINES,
 }: {
     deploymentId?: string;
     workloadId?: string;
     workloadType?: string;
     fullHeight?: boolean;
+    useFullHeight?: boolean;
     maxLines?: number;
 }) {
     const { logs, isConnected, textAreaRef } = useLogStream(
@@ -39,12 +41,15 @@ export default function BuildLogsStreamed({
     );
 
     return <>
-        <div className="space-y-4">
+        <div className={cn(
+            "space-y-4",
+            useFullHeight && "flex h-full min-h-0 flex-col",
+        )}>
             <Textarea ref={textAreaRef} value={logs} readOnly className={cn(
-                (fullHeight ? "h-[80vh]" : "h-[400px]"),
+                (useFullHeight ? "min-h-0 flex-1" : fullHeight ? "h-[80vh]" : "h-[400px]"),
                 " bg-slate-900 text-white",
                 sourceCodePro.className)} />
-            <div className="w-fit">
+            <div className="w-fit shrink-0">
                 <HoverCard>
                     <HoverCardTrigger>
                         {isConnected ? <div className="w-3 h-3 rounded-full bg-green-500"></div> : <div className="w-3 h-3 rounded-full bg-slate-500"></div>}

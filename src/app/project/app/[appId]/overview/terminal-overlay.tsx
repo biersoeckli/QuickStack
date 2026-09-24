@@ -1,37 +1,43 @@
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import React from "react";
+import { useDialog } from "@/frontend/states/zustand.states";
+import { cloneElement, type MouseEvent, type ReactElement } from "react";
 import { TerminalSetupInfoModel } from "@/shared/model/terminal-setup-info.model";
 import TerminalStreamed from "./terminal-streamed";
+
+function TerminalDialogContent({ terminalInfo }: { terminalInfo: TerminalSetupInfoModel }) {
+  return <>
+    <DialogHeader>
+      <DialogTitle>Terminal</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <TerminalStreamed terminalInfo={terminalInfo} />
+    </div>
+  </>;
+}
 
 export function TerminalDialog({
   terminalInfo,
   children
 }: {
   terminalInfo: TerminalSetupInfoModel;
-  children: React.ReactNode;
+  children: ReactElement<{ onClick?: (event: MouseEvent) => void }>;
 }) {
+  const { openDialog } = useDialog();
 
-  const [isOpen, setIsOpen] = React.useState(false);
+  const openTerminalDialog = () => {
+    void openDialog(
+      <TerminalDialogContent terminalInfo={terminalInfo} />,
+      { maxWidth: '1300px' },
+    );
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(isO) => {
-      setIsOpen(isO);
-    }}>
-      <DialogTrigger render={children as React.ReactElement} />
-      <DialogContent className="sm:max-w-[1300px]">
-        <DialogHeader>
-          <DialogTitle>Terminal</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {terminalInfo ? <TerminalStreamed terminalInfo={terminalInfo} /> : 'Currently there is no Terminal available'}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+  return cloneElement(children, {
+    onClick: (event) => {
+      children.props.onClick?.(event);
+      openTerminalDialog();
+    },
+  });
 }

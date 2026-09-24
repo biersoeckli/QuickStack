@@ -36,7 +36,7 @@ export default function DbCredentials({
             </CardHeader>
             <CardContent>
                 {!databaseCredentials ? <FullLoadingSpinner /> : <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {!!databaseCredentials?.databaseName && <>   <CopyInputField
                             label="Database Name"
                             value={databaseCredentials?.databaseName || ''} />

@@ -19,10 +19,11 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
 
-export default function HealthCheckSettings({ workload, readonly, saveHealthCheck }: {
+export default function HealthCheckSettings({ workload, readonly, saveHealthCheck, hideCard = false }: {
     workload: HealthCheckWorkload;
     readonly: boolean;
     saveHealthCheck: (state: ServerActionResult<any, any>, payload: HealthCheckModel) => Promise<ServerActionResult<any, any>>;
+    hideCard?: boolean;
 }) {
 
     const defaultHeaders = workload.healthCheckHttpHeadersJson
@@ -71,20 +72,21 @@ export default function HealthCheckSettings({ workload, readonly, saveHealthChec
         }
         FormUtils.mapValidationErrorsToForm<typeof healthCheckZodModel>(state, form);
     }, [form, state]);
+    const CardWrapper = hideCard ? 'div' : Card;
 
     return (
-        <Card>
-            <CardHeader>
+        <CardWrapper>
+            {!hideCard && <CardHeader>
                 <CardTitle>Health Check Settings</CardTitle>
                 <CardDescription>
                     Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic (In kubernetes terms, startup, readiness and liveness probes).
                 </CardDescription>
-            </CardHeader>
+            </CardHeader>}
             <Form {...form}>
                 <form action={() => form.handleSubmit((data) => {
                     formAction(data);
                 })()}>
-                    <CardContent className="space-y-6">
+                    <CardContent className={hideCard ? "space-y-6 px-0" : "space-y-6"}>
                         <FormField
                             control={form.control}
                             name="enabled"
@@ -329,11 +331,11 @@ export default function HealthCheckSettings({ workload, readonly, saveHealthChec
                             </>
                         )}
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className={hideCard ? "px-0" : undefined}>
                         <SubmitButton>Save</SubmitButton>
                     </CardFooter>
                 </form>
             </Form>
-        </Card>
+        </CardWrapper>
     );
 }

@@ -12,6 +12,7 @@ import { AppBuildMethod } from '@/shared/model/app-source-info.model';
 import appGitSshKeyService from '../app-git-ssh-key.service';
 import { RollbackAnnotationUtils } from '@/shared/utils/rollback-annotation.utils';
 import { AppBuildMethodUtils } from '@/shared/utils/app-build-method.utils';
+import buildStatusService from './build-status-pub-sub.service';
 
 declare global {
     var buildWatchServiceInstance: BuildWatchService | undefined;
@@ -29,6 +30,22 @@ class BuildWatchService {
         this.isWatchRunning = true;
         console.log('[BuildWatch] Starting build job watch...');
 
+        try {
+            await buildStatusService.ensureSeeded();
+        } catch (error) {
+            // The watch must keep processing build completions when its status
+            // cache cannot be rebuilt. The SSE route will surface the seed error.
+            console.error('[BuildWatch] Failed to seed build statuses:', error);
+        }
+
+        try {
+            await this.seedProcessedJobs();
+        } catch (error) {
+            // Without a successful seed a restarted watch would replay every
+            // existing build job as "ADDED" and redeploy old builds.
+            console.error('[BuildWatch] Failed to seed existing build jobs:', error);
+        }
+
         const kc = k3s.getKubeConfig();
         const watch = new k8s.Watch(kc);
 
@@ -36,12 +53,13 @@ class BuildWatchService {
             `/apis/batch/v1/namespaces/${BUILD_NAMESPACE}/jobs`,
             {},
             async (type: string, apiObj: unknown) => {
+                const job = apiObj as V1Job;
                 try {
-                    const job = apiObj as V1Job;
-                    await this.handleJobEvent(job);
+                    await buildStatusService.applyJobEvent(type, job);
                 } catch (e) {
-                    console.error('[BuildWatch] Error handling job event:', e);
+                    console.error('[BuildWatch] Status update failed:', e);
                 }
+                await this.handleJobEvent(type, job);
             },
             (err: unknown) => {
                 if (err) console.error('[BuildWatch] Watch error:', err);
@@ -52,7 +70,33 @@ class BuildWatchService {
         );
     }
 
-    private async handleJobEvent(job: V1Job) {
+    /**
+     * Marks already finished build jobs as processed before the watch starts.
+     *
+     * A watch without a resourceVersion first replays every existing job as a
+     * synthetic ADDED event ("Get State and Start at Most Recent"). Without this
+     * seed, a restart would redeploy old successful builds, and because jobs are
+     * replayed in list order an older build could win over the newest one.
+     *
+     * Running and pending jobs stay unseeded so they still deploy on completion.
+     */
+    private async seedProcessedJobs() {
+        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+        for (const job of jobs.items ?? []) {
+            const jobName = job.metadata?.name;
+            if (!jobName) continue;
+
+            const status = buildService.getJobStatusString(job.status);
+            if (status === 'SUCCEEDED' || status === 'FAILED') {
+                this.processedJobs.add(jobName);
+            }
+        }
+        console.log('[BuildWatch] Seeded existing build jobs.');
+    }
+
+    private async handleJobEvent(type: string, job: V1Job) {
+        if (type === 'DELETED') return;
+
         const jobName = job.metadata?.name;
         if (!jobName || this.processedJobs.has(jobName)) return;
 

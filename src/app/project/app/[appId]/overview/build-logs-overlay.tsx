@@ -8,15 +8,18 @@ import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import BuildLogsStreamed from "@/components/custom/build-logs-streamed";
+import { cn } from "@/frontend/utils/utils";
 
 export function BuildLogsDialogContent({
   deploymentInfo,
   workloadId,
   workloadType,
+  hideHeader = false,
 }: {
   deploymentInfo?: DeploymentInfoModel;
   workloadId?: string;
   workloadType?: WorkloadType;
+  hideHeader?: boolean;
 }) {
 
   if (!deploymentInfo) {
@@ -25,15 +28,22 @@ export function BuildLogsDialogContent({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Deployment Logs</DialogTitle>
-        <DialogDescription>
-          View the logs for the selected deployment {formatDateTime(deploymentInfo.createdAt)}.
-        </DialogDescription>
-      </DialogHeader>
-      <div>
+      {!hideHeader && (
+        <DialogHeader>
+          <DialogTitle>Deployment Logs</DialogTitle>
+          <DialogDescription>
+            View the logs for the selected deployment {formatDateTime(deploymentInfo.createdAt)}.
+          </DialogDescription>
+        </DialogHeader>
+      )}
+      <div className={cn(hideHeader && "h-full min-h-0")}>
         {(!deploymentInfo.deploymentId || !workloadId || !workloadType) && 'For this build is no log available'}
-        {deploymentInfo.deploymentId && workloadId && workloadType && <BuildLogsStreamed deploymentId={deploymentInfo.deploymentId} workloadId={workloadId} workloadType={workloadType} />}
+        {deploymentInfo.deploymentId && workloadId && workloadType && <BuildLogsStreamed
+          deploymentId={deploymentInfo.deploymentId}
+          workloadId={workloadId}
+          workloadType={workloadType}
+          useFullHeight={hideHeader}
+        />}
       </div>
     </>
   )

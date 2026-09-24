@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react';
-import { podsStatusPollingService } from '@/frontend/services/pods-status-polling.service';
+import { podsStatusPollingService } from '@/frontend/services/pods-status-sse.service';
 
 /**
  * Client component that initializes and manages the pods status polling service.

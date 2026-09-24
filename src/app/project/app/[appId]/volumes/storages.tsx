@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink } from "lucide-react";
+import { Download, EditIcon, Folder, TrashIcon, Share2, Unlink, Plus, FolderPlus } from "lucide-react";
 import DialogEditDialog from "./storage-edit-overlay";
 import SharedStorageEditDialog from "./shared-storage-edit-overlay";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { deleteVolume, downloadPvcData, getPvcUsage, openFileBrowserForVolume } from "./actions";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { AppVolume } from "@prisma/client";
 import React from "react";
 import { KubeObjectNameUtils } from "@/server/utils/kube-object-name.utils";
@@ -30,10 +30,11 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedPercentage?: number;
 });
 
-export default function StorageList({ app, readonly, storageClasses }: {
+export default function StorageList({ app, readonly, storageClasses, hideCard = false }: {
     app: AppExtendedModel;
     storageClasses: string[];
     readonly: boolean;
+    hideCard?: boolean;
 }) {
 
     const [volumesWithStorage, setVolumesWithStorage] = React.useState<AppVolumeWithCapacity[]>(app.appVolumes as AppVolumeWithCapacity[]);
@@ -64,6 +65,7 @@ export default function StorageList({ app, readonly, storageClasses }: {
     }, [loadAndMapStorageData]);
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const { openDialog: openGenericDialog } = useDialog();
 
     const asyncDeleteVolume = async (volumeId: string, isBaseVolume: boolean) => {
         try {
@@ -143,31 +145,33 @@ export default function StorageList({ app, readonly, storageClasses }: {
         }
     }
 
+    const CardWrapper = hideCard ? 'div' : Card;
+
     return <>
-        <Card>
+        <CardWrapper>
             <CardHeader>
                 <CardTitle>Volumes</CardTitle>
                 <CardDescription>Add one or more volumes to to configure persistent storage within your container.</CardDescription>
             </CardHeader>
-            <CardContent>
+            {volumesWithStorage.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
                 <Table>
                     <TableCaption>{app.appVolumes.length} Storage</TableCaption>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Mount Path</TableHead>
-                            <TableHead>Storage Size</TableHead>
+                            <TableHead className="hidden xl:table-cell">Storage Size</TableHead>
                             <TableHead>Storage Used</TableHead>
-                            <TableHead>Storage Class</TableHead>
-                            <TableHead>Access Mode</TableHead>
-                            <TableHead>Shared</TableHead>
-                            <TableHead className="w-[100px]">Action</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Storage Class</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Access Mode</TableHead>
+                            <TableHead className="hidden 2xl:table-cell">Shared</TableHead>
+                            <TableHead className="w-[160px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {volumesWithStorage.map(volume => (
-                            <TableRow key={volume.containerMountPath}>
+                            <TableRow key={volume.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="font-medium">{volume.size} MB</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MB</TableCell>
                                 <TableCell className="font-medium space-y-2">
                                     {volume.usedPercentage && <>
                                         <Progress value={volume.usedPercentage}
@@ -177,9 +181,9 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                         </div>
                                     </>}
                                 </TableCell>
-                                <TableCell className="font-medium capitalize">{volume.storageClassName?.replace('-', ' ')}</TableCell>
-                                <TableCell className="font-medium">{volume.accessMode}</TableCell>
-                                <TableCell className="font-medium">
+                                <TableCell className="hidden font-medium capitalize 2xl:table-cell">{volume.storageClassName?.replace('-', ' ')}</TableCell>
+                                <TableCell className="hidden font-medium 2xl:table-cell">{volume.accessMode}</TableCell>
+                                <TableCell className="hidden font-medium 2xl:table-cell">
                                     {volume.shareWithOtherApps && (
                                         <TooltipProvider>
                                             <Tooltip>
@@ -211,34 +215,35 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                         </TooltipProvider>
                                     )}
                                 </TableCell>
-                                <TableCell className="font-medium flex gap-2">
-                                    {!volume.sharedVolumeId && <>
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger delay={200}>
-                                                    <Button variant="ghost" onClick={() => asyncDownloadPvcData(volume.id)} disabled={isLoading}>
-                                                        <Download />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Download volume content</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        {!readonly && <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger delay={200}>
-                                                    <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
-                                                        <Folder />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>View content of Volume</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>}
-                                    </>}
-                                    {/*<StorageRestoreDialog app={app} volume={volume}>
+                                <TableCell className="w-[160px] font-medium">
+                                    <div className="flex gap-2 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        {!volume.sharedVolumeId && <>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200}>
+                                                        <Button variant="ghost" onClick={() => asyncDownloadPvcData(volume.id)} disabled={isLoading}>
+                                                            <Download />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Download volume content</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            {!readonly && <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200}>
+                                                        <Button variant="ghost" onClick={() => openFileBrowserForVolumeAsync(volume.id)} disabled={isLoading}>
+                                                            <Folder />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>View content of Volume</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>}
+                                        </>}
+                                        {/*<StorageRestoreDialog app={app} volume={volume}>
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger delay={200}>
@@ -252,59 +257,77 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                             </Tooltip>
                                         </TooltipProvider>
                                     </StorageRestoreDialog>*/}
-                                    {!readonly && <>
-                                        {volume.sharedVolumeId ? (
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger delay={200}>
-                                                        <Button variant="ghost" disabled={true}><EditIcon /></Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Shared volumes cannot be edited (size and storage class are inherited)</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        ) : (
-                                            <DialogEditDialog app={app} volume={volume} storageClasses={storageClasses}>
+                                        {!readonly && <>
+                                            {volume.sharedVolumeId ? (
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger delay={200}>
-                                                            <Button variant="ghost" disabled={isLoading}><EditIcon /></Button>
+                                                            <Button variant="ghost" disabled={true}><EditIcon /></Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Shared volumes cannot be edited (size and storage class are inherited)</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ) : (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger delay={200}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                disabled={isLoading}
+                                                                onClick={() => void openGenericDialog(
+                                                                    <DialogEditDialog app={app} volume={volume} storageClasses={storageClasses} />,
+                                                                    { maxWidth: '425px' },
+                                                                )}
+                                                            >
+                                                                <EditIcon />
+                                                            </Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <p>Edit volume settings</p>
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
-                                            </DialogEditDialog>
-                                        )}
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger delay={200}>
-                                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
-                                                        {volume.sharedVolumeId ? <Unlink /> : <TrashIcon />}
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{volume.sharedVolumeId ? 'Detach Volume' : 'Delete Volume'}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </>}
+                                            )}
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={200}>
+                                                        <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id, !volume.sharedVolumeId)} disabled={isLoading}>
+                                                            {volume.sharedVolumeId ? <Unlink /> : <TrashIcon />}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{volume.sharedVolumeId ? 'Detach Volume' : 'Delete Volume'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </>}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter className="flex gap-2">
-                <DialogEditDialog app={app} storageClasses={storageClasses}>
-                    <Button>Add Volume</Button>
-                </DialogEditDialog>
-                <SharedStorageEditDialog app={app}>
-                    <Button variant="outline">Add Shared Volume</Button>
-                </SharedStorageEditDialog>
+            </CardContent>}
+            {!readonly && <CardFooter className={hideCard ? "flex gap-2 px-0 mt-4" : "flex gap-2"}>
+                <Button
+                    variant="outline"
+                    onClick={() => void openGenericDialog(
+                        <DialogEditDialog app={app} storageClasses={storageClasses} />,
+                        { maxWidth: '425px' },
+                    )}
+                ><Plus />
+                    Add Volume
+                </Button>
+                <Button
+                    variant="outline"
+                    onClick={() => void openGenericDialog(
+                        <SharedStorageEditDialog app={app} />,
+                        { maxWidth: '425px' },
+                    )}
+                ><FolderPlus /> Add Shared Volume</Button>
             </CardFooter>}
-        </Card >
+        </CardWrapper>
     </>;
 }

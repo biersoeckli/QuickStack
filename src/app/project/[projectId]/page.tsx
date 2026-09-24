@@ -13,6 +13,10 @@ import AgentListClient from "./agent-components/agent-table";
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { ensureReadProject, RequesterIdentity } from '@/server/utils/shared-authorization.utils';
 import paramService, { ParamService } from '@/server/services/param.service';
+import s3TargetService from '@/server/services/s3-target.service';
+import volumeBackupService from '@/server/services/volume-backup.service';
+import clusterService from '@/server/services/cluster.service';
+import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
 
 export default async function AppsPage({
     params
@@ -53,9 +57,26 @@ export default async function AppsPage({
     const data = await appService.getAllAppsByProjectId(projectId);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
-    const [networkGraphPositions, hasAcknowledgedNewNetworkPolicyExplanation] = await Promise.all([
+    const [
+        networkGraphPositions,
+        hasAcknowledgedNewNetworkPolicyExplanation,
+        s3Targets,
+        storageClasses,
+        volumeBackups,
+        gitSshPublicKeys,
+    ] = await Promise.all([
         projectNetworkGraphLayoutService.getPositions(projectId),
         paramService.getBoolean(ParamService.FEATURE_NEW_NETWORK_POLICY_EXPLENATION),
+        s3TargetService.getAll(),
+        clusterService.getStorageClasses(),
+        Promise.all(relevantApps.map(async (app) => [
+            app.id,
+            await volumeBackupService.getForApp(app.id),
+        ] as const)),
+        Promise.all(relevantApps.map(async (app) => [
+            app.id,
+            await appGitSshKeyService.getPublicKey(app.id),
+        ] as const)),
     ]);
 
     return (
@@ -67,6 +88,10 @@ export default async function AppsPage({
                 projectName={project.name}
                 networkGraphPositions={networkGraphPositions}
                 showNewNetworkPolicyExplanation={!hasAcknowledgedNewNetworkPolicyExplanation}
+                s3Targets={s3Targets}
+                storageClasses={storageClasses}
+                volumeBackupsByApp={Object.fromEntries(volumeBackups)}
+                gitSshPublicKeysByApp={Object.fromEntries(gitSshPublicKeys)}
             />
             <ProjectBreadcrumbs project={project} />
         </div>

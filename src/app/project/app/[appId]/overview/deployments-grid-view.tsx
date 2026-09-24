@@ -38,7 +38,7 @@ export function DeploymentsGridView({
         <div className="grid gap-2">
             {deployments.map(deployment => (
                 <Item
-                    key={deployment.deploymentId}
+                    key={deployment.deploymentId + deployment.createdAt?.toISOString()}
                     variant="outline"
                     className="flex-col items-stretch gap-2 p-2.5"
                 >

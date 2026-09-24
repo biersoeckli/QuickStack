@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
     Form,
     FormControl,
@@ -25,6 +25,7 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import SelectFormField from "@/components/custom/select-form-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Info } from "lucide-react"
+import { useDialog } from "@/frontend/states/zustand.states";
 
 type ShareableVolume = {
     id: string;
@@ -35,12 +36,11 @@ type ShareableVolume = {
     app: { name: string };
 };
 
-export default function SharedStorageEditDialog({ children, app }: {
-    children: React.ReactNode;
+export default function SharedStorageEditDialog({ app }: {
     app: AppExtendedModel;
 }) {
 
-    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const { closeDialog } = useDialog();
     const [shareableVolumes, setShareableVolumes] = useState<ShareableVolume[]>([]);
     const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
 
@@ -64,22 +64,20 @@ export default function SharedStorageEditDialog({ children, app }: {
 
     // Fetch shareable volumes when dialog opens
     useEffect(() => {
-        if (isOpen) {
-            setIsLoadingVolumes(true);
-            getShareableVolumes(app.id).then(result => {
-                if (result.status === 'success' && result.data) {
-                    const alreadyAddedSharedVolumes = app.appVolumes
-                        .filter(v => !!v.sharedVolumeId)
-                        .map(v => v.sharedVolumeId);
-                    setShareableVolumes(result.data.filter(v => !alreadyAddedSharedVolumes.includes(v.id)));
-                } else {
-                    setShareableVolumes([]);
-                    toast.error('An error occurred while fetching shareable volumes');
-                }
-                setIsLoadingVolumes(false);
-            });
-        }
-    }, [isOpen, app.id, app.appVolumes]);
+        setIsLoadingVolumes(true);
+        getShareableVolumes(app.id).then(result => {
+            if (result.status === 'success' && result.data) {
+                const alreadyAddedSharedVolumes = app.appVolumes
+                    .filter(v => !!v.sharedVolumeId)
+                    .map(v => v.sharedVolumeId);
+                setShareableVolumes(result.data.filter(v => !alreadyAddedSharedVolumes.includes(v.id)));
+            } else {
+                setShareableVolumes([]);
+                toast.error('An error occurred while fetching shareable volumes');
+            }
+            setIsLoadingVolumes(false);
+        });
+    }, [app.id, app.appVolumes]);
 
     // Watch selected volume and auto-fill fields
     const watchedSharedVolumeId = form.watch("sharedVolumeId");
@@ -100,18 +98,13 @@ export default function SharedStorageEditDialog({ children, app }: {
             toast.success('Shared volume mounted successfully', {
                 description: "Click \"deploy\" to apply the changes to your app.",
             });
-            setIsOpen(false);
+            closeDialog();
         }
         FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
-    }, [form, state]);
+    }, [closeDialog, form, state]);
 
     return (
         <>
-            <div onClick={() => setIsOpen(true)}>
-                {children}
-            </div>
-            <Dialog open={!!isOpen} onOpenChange={() => setIsOpen(false)}>
-                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Mount Shared Volume</DialogTitle>
                         <DialogDescription>
@@ -171,8 +164,6 @@ export default function SharedStorageEditDialog({ children, app }: {
                             </div>
                         </form>
                     </Form >
-                </DialogContent>
-            </Dialog>
         </>
     )
 }
