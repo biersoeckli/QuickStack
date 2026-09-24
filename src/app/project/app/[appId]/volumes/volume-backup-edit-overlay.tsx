@@ -208,7 +208,7 @@ export default function VolumeBackupEditDialog({
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                         <FormLabelWithQuestion hint="Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.">
-                          Fail silently
+                          Fail silently on deployment
                         </FormLabelWithQuestion>
                         <FormControl>
                           <Switch
