@@ -81,7 +81,7 @@ export default function VolumeBackupList({
                             <TableHead>Retention</TableHead>
                             <TableHead className="hidden 2xl:table-cell">Backup Method</TableHead>
                             <TableHead className="hidden xl:table-cell">Backup Location</TableHead>
-                            <TableHead className="hidden lg:table-cell">Before Deployment</TableHead>
+                            <TableHead className="hidden lg:table-cell">Run Before Deployment</TableHead>
                             {(onBackupScheduleClick || !readonly) && <TableHead className="w-[120px]"></TableHead>}
                         </TableRow>
                     </TableHeader>

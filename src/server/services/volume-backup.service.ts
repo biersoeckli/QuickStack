@@ -119,12 +119,14 @@ class VolumeBackupService {
         await dlog(deploymentId, `Running ${backupsToRun.length} automatic backup(s) before deployment...`);
 
         let abortDeployment = false;
+        let successfullBackupsCount = 0;
         for (const backup of backupsToRun) {
             const label = `app "${backup.volume.app.name}" volume "${backup.volume.containerMountPath}"`;
             try {
                 await dlog(deploymentId, `Starting automatic backup before deployment for ${label}...`);
                 await backupService.runBackupForSchedule(backup.id);
                 await dlog(deploymentId, `✓ Automatic backup finished for ${label}.`);
+                successfullBackupsCount++;
             } catch (e) {
                 const message = e instanceof Error ? e.message : String(e);
                 await dlog(deploymentId, `[Error] Automatic backup failed for ${label}: ${message}`);
@@ -137,6 +139,7 @@ class VolumeBackupService {
         if (abortDeployment) {
             throw new ServiceException('Deployment aborted because an automatic pre-deployment backup failed. Enable "fail silently" on the backup schedule to continue anyway.');
         }
+        await dlog(deploymentId, `Successfully created ${successfullBackupsCount} backups before deployment`);
     }
 
     private async getBackupsToRunBeforeDeployment(app: AppExtendedModel) {
