@@ -11,6 +11,9 @@ vi.mock('@/server/services/file-browser-service', () => ({ default: {} }));
 vi.mock('@/server/services/pod.service', () => ({ default: {} }));
 vi.mock('@/server/services/network-policy.service', () => ({ default: {} }));
 vi.mock('@/server/services/deployment-logs.service', () => ({ dlog: vi.fn() }));
+vi.mock('@/server/services/volume-backup.service', () => ({
+    default: { runBackupsBeforeDeployment: vi.fn() },
+}));
 
 import deploymentService from './deployment.service';
 

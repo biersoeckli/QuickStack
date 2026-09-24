@@ -41,12 +41,7 @@ class BackupService {
                 console.log(`Running backup for ${volumeBackups.length} volumes...`);
                 for (const volumeBackup of volumeBackups) {
                     try {
-                        // Use database-specific backup if it's a database app AND useDatabaseBackup is true
-                        if (volumeBackup.volume.app.appType !== 'APP' && volumeBackup.useDatabaseBackup) {
-                            await databaseBackupService.backupDatabase(volumeBackup.id);
-                        } else {
-                            await this.runBackupForVolume(volumeBackup.id);
-                        }
+                        await this.runBackupForSchedule(volumeBackup.id);
                     } catch (e) {
                         console.error(`Error during backup for volume ${volumeBackup.volumeId} and backup ${volumeBackup.id}`);
                         console.error(e);
@@ -258,6 +253,31 @@ class BackupService {
             }
         }).filter(x => !!x);
         return backupData;
+    }
+
+    /**
+     * Runs the backup schedule with the configured method. Database apps with
+     * useDatabaseBackup use their native dump tool, everything else copies the
+     * whole volume as an archive.
+     */
+    async runBackupForSchedule(backupVolumeId: string) {
+        const backupVolume = await dataAccess.client.volumeBackup.findFirstOrThrow({
+            where: {
+                id: backupVolumeId
+            },
+            include: {
+                volume: {
+                    include: {
+                        app: true
+                    }
+                }
+            }
+        });
+
+        if (backupVolume.volume.app.appType !== 'APP' && backupVolume.useDatabaseBackup) {
+            return databaseBackupService.backupDatabase(backupVolumeId);
+        }
+        return this.runBackupForVolume(backupVolumeId);
     }
 
     async runBackupForVolume(backupVolumeId: string) {

@@ -9,6 +9,8 @@ export const volumeBackupEditZodModel = z.object({
   //cron: z.string().trim().min(1),
   retention: stringToNumber,
   useDatabaseBackup: z.boolean().optional(),
+  backupBeforeDeployment: z.boolean().optional(),
+  failSilently: z.boolean().optional(),
 });
 
 export type VolumeBackupEditModel = z.infer<typeof volumeBackupEditZodModel>;

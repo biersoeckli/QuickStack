@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -26,8 +26,11 @@ import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/
 import SelectFormField from "@/components/custom/select-form-field"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
+import FormLabelWithQuestion from "@/components/custom/form-label-with-question"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { useDialog } from "@/frontend/states/zustand.states";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function VolumeBackupEditDialog({
   volumeBackup,
@@ -59,8 +62,12 @@ export default function VolumeBackupEditDialog({
       targetId: volumeBackup?.targetId || (s3Targets.length === 1 ? s3Targets[0].id : undefined),
       volumeId: volumeBackup?.volumeId || (volumes.length === 1 ? volumes[0].id : undefined),
       useDatabaseBackup: volumeBackup?.useDatabaseBackup ?? (isDatabaseApp && isDatabaseBackupSupported),
+      backupBeforeDeployment: volumeBackup?.backupBeforeDeployment ?? false,
+      failSilently: volumeBackup?.failSilently ?? false,
     }
   });
+
+  const backupBeforeDeployment = form.watch('backupBeforeDeployment');
 
   const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: VolumeBackupEditModel) =>
@@ -84,18 +91,22 @@ export default function VolumeBackupEditDialog({
   }, [volumeBackup, volumes, s3Targets, form]);
 
   return (
-    <>
-          <DialogHeader>
-            <DialogTitle>Edit Backup Configuration</DialogTitle>
-            <DialogDescription>
-              Configure the backup settings for this volume.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form action={() => form.handleSubmit((data) => {
-              return formAction(data);
-            }, console.error)()}>
-              <div className="space-y-4">
+    <Form {...form}>
+      <form
+        className="flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden"
+        action={() => form.handleSubmit(
+          (data) => formAction(data),
+          console.error,
+        )()}
+      >
+        <DialogHeader>
+          <DialogTitle>Edit Backup Configuration</DialogTitle>
+          <DialogDescription>
+            Configure the backup settings for this volume.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="mt-4 min-h-0 flex-1">
+          <div className="space-y-4 px-2">
                 <FormField
                   control={form.control}
                   name="cron"
@@ -177,12 +188,52 @@ export default function VolumeBackupEditDialog({
                   />
                 )}
 
-                <p className="text-red-500">{state.message}</p>
-                <SubmitButton>Save</SubmitButton>
-              </div>
-            </form>
-          </Form >
-    </>
+                <FormField
+                  control={form.control}
+                  name="backupBeforeDeployment"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <FormLabelWithQuestion hint="Run this backup automatically before a deployment is applied. This also applies when an app connected through a network policy is deployed.">
+                        Backup before deployment
+                      </FormLabelWithQuestion>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {backupBeforeDeployment && (
+                  <FormField
+                    control={form.control}
+                    name="failSilently"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <FormLabelWithQuestion hint="Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.">
+                          Fail silently on deployment
+                        </FormLabelWithQuestion>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+            <p className="text-red-500">{state.message}</p>
+          </div>
+        </ScrollArea>
+        <DialogFooter className="mt-4">
+          <SubmitButton>Save</SubmitButton>
+        </DialogFooter>
+      </form>
+    </Form>
   )
 
 

@@ -25,6 +25,7 @@ import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { GitHashUtils } from "@/shared/utils/git-hash.utils";
 import { DeploymentSource } from "@/shared/model/deployment-source.model";
 import { RollbackAnnotationUtils } from "@/shared/utils/rollback-annotation.utils";
+import volumeBackupService from "./volume-backup.service";
 
 class DeploymentService {
 
@@ -88,6 +89,8 @@ class DeploymentService {
     ) {
         const { buildJobName, gitCommitHash, gitCommitMessage, buildMethod, isRollback } = source ?? {};
         await this.validateDeployment(app);
+
+        await volumeBackupService.runBackupsBeforeDeployment(deploymentId, app);
 
         dlog(deploymentId, `Shutting down FileBrowsers (if active)`);
         for (let volume of app.appVolumes) {

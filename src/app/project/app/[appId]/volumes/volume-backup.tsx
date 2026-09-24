@@ -81,6 +81,7 @@ export default function VolumeBackupList({
                             <TableHead>Retention</TableHead>
                             <TableHead className="hidden 2xl:table-cell">Backup Method</TableHead>
                             <TableHead className="hidden xl:table-cell">Backup Location</TableHead>
+                            <TableHead className="hidden lg:table-cell">Run Before Deployment</TableHead>
                             {(onBackupScheduleClick || !readonly) && <TableHead className="w-[120px]"></TableHead>}
                         </TableRow>
                     </TableHeader>
@@ -95,6 +96,11 @@ export default function VolumeBackupList({
                                         : 'Archive of Volume'}
                                 </TableCell>
                                 <TableCell className="hidden font-medium xl:table-cell">{volumeBackup.target.name}</TableCell>
+                                <TableCell className="hidden font-medium lg:table-cell">
+                                    {volumeBackup.backupBeforeDeployment
+                                        ? (volumeBackup.failSilently ? 'Yes (silent)' : 'Yes')
+                                        : 'No'}
+                                </TableCell>
                                 {(onBackupScheduleClick || !readonly) && <TableCell className="w-[120px] font-medium">
                                     <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                                     {onBackupScheduleClick && <Button

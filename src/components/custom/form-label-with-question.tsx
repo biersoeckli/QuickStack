@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 export default function FormLabelWithQuestion(
     { children, hint }: { children: React.ReactNode, hint: string | React.ReactNode }
 ) {
-    return <div className="flex gap-1 mt-1 pb-1">
+    return <div className="flex gap-1.5 mt-1 pb-1">
         <FormLabel>{children}</FormLabel>
         <div>
             <TooltipProvider>
