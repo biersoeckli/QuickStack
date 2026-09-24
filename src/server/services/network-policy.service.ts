@@ -1,5 +1,6 @@
 import { AppExtendedModel, AppNetworkPolicyRuleWithTargetModel } from "@/shared/model/app-extended.model";
 import k3s from "../adapter/kubernetes-api.adapter";
+import dataAccess from "../adapter/db.client";
 import { V1NetworkPolicy, V1NetworkPolicyEgressRule, V1NetworkPolicyIngressRule, V1NetworkPolicyPeer } from "@kubernetes/client-node";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import { Constants } from "../../shared/utils/constants";
@@ -63,6 +64,50 @@ class NetworkPolicyService {
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
+    }
+
+    /**
+     * IDs of the apps in the same project that are directly connected to the
+     * given app through the app network policy (1 hop, both directions).
+     * Mirrored rules can live on either side of a connection, so rules are
+     * collected in both directions.
+     */
+    async getDirectlyConnectedAppIds(app: Pick<AppExtendedModel, 'id' | 'projectId'>): Promise<string[]> {
+        const rules = await dataAccess.client.appNetworkPolicyRule.findMany({
+            where: {
+                targetAppId: { not: null },
+                OR: [
+                    { targetAppId: app.id },
+                    { appNetworkPolicy: { is: { appId: app.id } } },
+                ],
+            },
+            select: {
+                targetAppId: true,
+                appNetworkPolicy: { select: { appId: true } },
+            },
+        });
+
+        const peerAppIds = new Set<string>();
+        for (const rule of rules) {
+            const peerAppId = rule.appNetworkPolicy.appId === app.id
+                ? rule.targetAppId
+                : rule.appNetworkPolicy.appId;
+            if (peerAppId && peerAppId !== app.id) {
+                peerAppIds.add(peerAppId);
+            }
+        }
+        if (peerAppIds.size === 0) {
+            return [];
+        }
+
+        const peersInProject = await dataAccess.client.app.findMany({
+            where: {
+                id: { in: [...peerAppIds] },
+                projectId: app.projectId,
+            },
+            select: { id: true },
+        });
+        return peersInProject.map(peer => peer.id);
     }
 
     private getExtendedIngressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], hasDomains: boolean, nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {

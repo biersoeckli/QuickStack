@@ -3,6 +3,11 @@ import dataAccess from "../adapter/db.client";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { Prisma, VolumeBackup } from "@prisma/client";
 import { VolumeBackupExtendedModel } from "@/shared/model/volume-backup-extended.model";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { ServiceException } from "@/shared/model/service.exception.model";
+import { dlog } from "./deployment-logs.service";
+import networkPolicyService from "./network-policy.service";
+import backupService from "./standalone-services/backup.service";
 
 class VolumeBackupService {
 
@@ -44,17 +49,6 @@ class VolumeBackupService {
             where: {
                 id
             }
-        });
-    }
-
-    async getWithVolumeAndAppById(id: string) {
-        return dataAccess.client.volumeBackup.findFirstOrThrow({
-            where: { id },
-            include: {
-                volume: {
-                    include: { app: true },
-                },
-            },
         });
     }
 
@@ -105,6 +99,64 @@ class VolumeBackupService {
         } finally {
             revalidateTag(Tags.volumeBackups());
         }
+    }
+
+    /**
+     * Runs the backups that opted in for automatic pre-deployment execution.
+     *
+     * A backup schedule opts in with `backupBeforeDeployment`. Participating
+     * schedules are the ones of the deployed app itself and of every app that
+     * is directly connected to it through the app network policy (1 hop, both
+     * directions, same project). Backups run one after another. A backup that
+     * fails aborts the deployment unless it is marked `failSilently`.
+     */
+    async runBackupsBeforeDeployment(deploymentId: string, app: AppExtendedModel) {
+        const backupsToRun = await this.getBackupsToRunBeforeDeployment(app);
+        if (backupsToRun.length === 0) {
+            return;
+        }
+
+        await dlog(deploymentId, `Running ${backupsToRun.length} automatic backup(s) before deployment...`);
+
+        let abortDeployment = false;
+        for (const backup of backupsToRun) {
+            const label = `app "${backup.volume.app.name}" volume "${backup.volume.containerMountPath}"`;
+            try {
+                await dlog(deploymentId, `Starting automatic backup before deployment for ${label}...`);
+                await backupService.runBackupForSchedule(backup.id);
+                await dlog(deploymentId, `✓ Automatic backup finished for ${label}.`);
+            } catch (e) {
+                const message = e instanceof Error ? e.message : String(e);
+                await dlog(deploymentId, `[Error] Automatic backup failed for ${label}: ${message}`);
+                if (!backup.failSilently) {
+                    abortDeployment = true;
+                }
+            }
+        }
+
+        if (abortDeployment) {
+            throw new ServiceException('Deployment aborted because an automatic pre-deployment backup failed. Enable "fail silently" on the backup schedule to continue anyway.');
+        }
+    }
+
+    private async getBackupsToRunBeforeDeployment(app: AppExtendedModel) {
+        const connectedAppIds = await networkPolicyService.getDirectlyConnectedAppIds(app);
+        const appIds = [app.id, ...connectedAppIds];
+
+        return dataAccess.client.volumeBackup.findMany({
+            where: {
+                backupBeforeDeployment: true,
+                volume: {
+                    appId: { in: appIds },
+                },
+            },
+            include: {
+                volume: {
+                    include: { app: true },
+                },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
     }
 }
 

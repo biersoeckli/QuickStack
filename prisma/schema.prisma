@@ -616,14 +616,16 @@ model S3Target {
 }
 
 model VolumeBackup {
-  id                String    @id @default(uuid())
-  volumeId          String
-  volume            AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
-  targetId          String
-  target            S3Target  @relation(fields: [targetId], references: [id], onDelete: Cascade)
-  cron              String
-  retention         Int
-  useDatabaseBackup Boolean   @default(false) // decides wether backup whole volume or make a dump of the databse (only for database volumes)
+  id                     String    @id @default(uuid())
+  volumeId               String
+  volume                 AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
+  targetId               String
+  target                 S3Target  @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  cron                   String
+  retention              Int
+  useDatabaseBackup      Boolean   @default(false) // decides wether backup whole volume or make a dump of the databse (only for database volumes)
+  backupBeforeDeployment Boolean   @default(false) // run this backup automatically before a deployment is applied
+  failSilently           Boolean   @default(false) // continue the deployment even if this backup fails
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

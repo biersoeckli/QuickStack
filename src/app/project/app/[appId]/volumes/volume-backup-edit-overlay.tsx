@@ -59,8 +59,12 @@ export default function VolumeBackupEditDialog({
       targetId: volumeBackup?.targetId || (s3Targets.length === 1 ? s3Targets[0].id : undefined),
       volumeId: volumeBackup?.volumeId || (volumes.length === 1 ? volumes[0].id : undefined),
       useDatabaseBackup: volumeBackup?.useDatabaseBackup ?? (isDatabaseApp && isDatabaseBackupSupported),
+      backupBeforeDeployment: volumeBackup?.backupBeforeDeployment ?? false,
+      failSilently: volumeBackup?.failSilently ?? false,
     }
   });
+
+  const backupBeforeDeployment = form.watch('backupBeforeDeployment');
 
   const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
     payload: VolumeBackupEditModel) =>
@@ -170,6 +174,54 @@ export default function VolumeBackupEditDialog({
                             {isDatabaseBackupSupported
                               ? `Use ${app.appType.toLocaleLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
                               : `Database backup for ${app.appType.toLocaleLowerCase()} is not yet implemented. Volume backup will be used.`}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="backupBeforeDeployment"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Backup before deployment
+                        </FormLabel>
+                        <FormDescription>
+                          Run this backup automatically before a deployment. This also applies when a connected app is deployed.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {backupBeforeDeployment && (
+                  <FormField
+                    control={form.control}
+                    name="failSilently"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Fail silently
+                          </FormLabel>
+                          <FormDescription>
+                            Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.
                           </FormDescription>
                         </div>
                       </FormItem>
