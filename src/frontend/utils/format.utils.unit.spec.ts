@@ -32,6 +32,14 @@ describe('format.utils', () => {
             expect(format).toHaveBeenCalledWith(mockDate);
         });
 
+        it('should parse and format a date string', () => {
+            const dateString = '2023-10-10T10:10:10Z';
+            const result = formatDate(dateString);
+
+            expect(result).toBe('formatted date');
+            expect(format).toHaveBeenCalledWith(new Date(dateString));
+        });
+
         it('should return empty string for undefined date', () => {
             const result = formatDate(undefined);
             expect(result).toBe('');
@@ -40,6 +48,12 @@ describe('format.utils', () => {
 
         it('should return empty string for null date', () => {
             const result = formatDate(null);
+            expect(result).toBe('');
+            expect(dateTimeFormat).not.toHaveBeenCalled();
+        });
+
+        it('should return an empty string for an invalid date', () => {
+            const result = formatDate(new Date('invalid'));
             expect(result).toBe('');
             expect(dateTimeFormat).not.toHaveBeenCalled();
         });
@@ -53,6 +67,14 @@ describe('format.utils', () => {
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
             });
             expect(format).toHaveBeenCalledWith(mockDate);
+        });
+
+        it('should parse and format a date-time string', () => {
+            const dateString = '2023-10-10T10:10:10Z';
+            const result = formatDateTime(dateString);
+
+            expect(result).toBe('formatted date');
+            expect(format).toHaveBeenCalledWith(new Date(dateString));
         });
 
         it('should include seconds when requested', () => {
@@ -73,6 +95,12 @@ describe('format.utils', () => {
             expect(result).toBe('');
             expect(dateTimeFormat).not.toHaveBeenCalled();
         });
+
+        it('should return an empty string for an invalid date', () => {
+            const result = formatDateTime(new Date('invalid'));
+            expect(result).toBe('');
+            expect(dateTimeFormat).not.toHaveBeenCalled();
+        });
     });
 
     describe('formatTime', () => {
@@ -85,6 +113,14 @@ describe('format.utils', () => {
             expect(format).toHaveBeenCalledWith(mockDate);
         });
 
+        it('should parse and format a time string', () => {
+            const dateString = '2023-10-10T10:10:10Z';
+            const result = formatTime(dateString);
+
+            expect(result).toBe('formatted date');
+            expect(format).toHaveBeenCalledWith(new Date(dateString));
+        });
+
         it('should return empty string for undefined date', () => {
             const result = formatTime(undefined);
             expect(result).toBe('');
@@ -93,6 +129,12 @@ describe('format.utils', () => {
 
         it('should return empty string for null date', () => {
             const result = formatTime(null);
+            expect(result).toBe('');
+            expect(dateTimeFormat).not.toHaveBeenCalled();
+        });
+
+        it('should return an empty string for an invalid date', () => {
+            const result = formatTime(new Date('invalid'));
             expect(result).toBe('');
             expect(dateTimeFormat).not.toHaveBeenCalled();
         });

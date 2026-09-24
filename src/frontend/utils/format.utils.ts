@@ -3,22 +3,34 @@ function formatLocalDate(date: Date, options: Intl.DateTimeFormatOptions): strin
     return new Intl.DateTimeFormat(undefined, options).format(date);
 }
 
-export function formatDate(date: Date | undefined | null): string {
-    if (!date) {
+type DateInput = Date | string | undefined | null;
+
+function parseDate(date: DateInput): Date | undefined {
+    if (typeof date === 'string') {
+        date = new Date(date);
+    }
+
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : undefined;
+}
+
+export function formatDate(date: DateInput): string {
+    const parsedDate = parseDate(date);
+    if (!parsedDate) {
         return '';
     }
-    return formatLocalDate(date, {
+    return formatLocalDate(parsedDate, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
     });
 }
 
-export function formatDateTime(date: Date | undefined | null, includeSeconds = false): string {
-    if (!date) {
+export function formatDateTime(date: DateInput, includeSeconds = false): string {
+    const parsedDate = parseDate(date);
+    if (!parsedDate) {
         return '';
     }
-    return formatLocalDate(date, {
+    return formatLocalDate(parsedDate, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -28,11 +40,12 @@ export function formatDateTime(date: Date | undefined | null, includeSeconds = f
     });
 }
 
-export function formatTime(date: Date | undefined | null): string {
-    if (!date) {
+export function formatTime(date: DateInput): string {
+    const parsedDate = parseDate(date);
+    if (!parsedDate) {
         return '';
     }
-    return formatLocalDate(date, {
+    return formatLocalDate(parsedDate, {
         hour: '2-digit',
         minute: '2-digit',
     });
