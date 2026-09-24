@@ -1,7 +1,7 @@
 'use client'
 
 import type { z } from "zod";
-import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -30,6 +30,7 @@ import { Switch } from "@/components/ui/switch"
 import FormLabelWithQuestion from "@/components/custom/form-label-with-question"
 import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import { useDialog } from "@/frontend/states/zustand.states";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function VolumeBackupEditDialog({
   volumeBackup,
@@ -90,18 +91,22 @@ export default function VolumeBackupEditDialog({
   }, [volumeBackup, volumes, s3Targets, form]);
 
   return (
-    <>
-          <DialogHeader>
-            <DialogTitle>Edit Backup Configuration</DialogTitle>
-            <DialogDescription>
-              Configure the backup settings for this volume.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form action={() => form.handleSubmit((data) => {
-              return formAction(data);
-            }, console.error)()}>
-              <div className="space-y-4">
+    <Form {...form}>
+      <form
+        className="flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden"
+        action={() => form.handleSubmit(
+          (data) => formAction(data),
+          console.error,
+        )()}
+      >
+        <DialogHeader>
+          <DialogTitle>Edit Backup Configuration</DialogTitle>
+          <DialogDescription>
+            Configure the backup settings for this volume.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="mt-4 min-h-0 flex-1">
+          <div className="space-y-4 px-2">
                 <FormField
                   control={form.control}
                   name="cron"
@@ -221,12 +226,14 @@ export default function VolumeBackupEditDialog({
                   />
                 )}
 
-                <p className="text-red-500">{state.message}</p>
-                <SubmitButton>Save</SubmitButton>
-              </div>
-            </form>
-          </Form >
-    </>
+            <p className="text-red-500">{state.message}</p>
+          </div>
+        </ScrollArea>
+        <DialogFooter className="mt-4">
+          <SubmitButton>Save</SubmitButton>
+        </DialogFooter>
+      </form>
+    </Form>
   )
 
 
