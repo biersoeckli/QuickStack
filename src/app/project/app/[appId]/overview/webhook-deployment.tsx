@@ -22,7 +22,7 @@ export default function WebhookDeploymentInfo({
     const setWebhookId = (webhookId?: string | null | void) => {
         if (webhookId) {
             const hostname = window.location.hostname;
-            const port = [80, 443].includes(Number(window.location.port)) ? '' : `:${window.location.port}`;
+            const port = window.location.port && ![80, 443].includes(Number(window.location.port)) ? `:${window.location.port}` : '';
             const protocol = window.location.protocol;
             setWebhookUrl(`${protocol}//${hostname}${port}/api/v1/webhook/deploy?id=${webhookId}`);
         }
