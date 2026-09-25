@@ -17,6 +17,7 @@ globalThis.quickStackAddonOperations = addonOperations;
  * Add-on-specific services retain their manifest, status and lifecycle logic.
  */
 export abstract class BaseClusterAddon {
+
     protected constructor(private readonly addonId: string) {}
 
     protected getActiveOperation(): ActiveAddonOperation | undefined {
@@ -49,7 +50,11 @@ export abstract class BaseClusterAddon {
             await k3s.applyResource(spec, spec.metadata?.namespace);
             return resource;
         } catch (error) {
-            return { ...resource, status: 'failed', error: AddonKubernetesUtils.errorMessage(error) };
+            return {
+                ...resource,
+                status: 'failed',
+                error: AddonKubernetesUtils.errorMessage(error)
+             };
         }
     }
 

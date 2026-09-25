@@ -50,9 +50,9 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
             title: `${actionLabel} ${addon.displayName}`,
             description: operation === 'remove'
                 ? `Do you want to remove ${addon.displayName}? QuickStack will delete the add-on's Kubernetes resources from this cluster. This cannot be undone.`
-                : operation === 'update' && addon.updateWarning
+                : addon.updateWarning
                     ? <div className="space-y-3">
-                        <p>{`Do you want to update ${addon.displayName}${version}? QuickStack will apply the add-on's Kubernetes resources to this cluster.`}</p>
+                        <p>{`Do you want to ${operation} ${addon.displayName}${version}? QuickStack will apply the add-on's Kubernetes resources to this cluster.`}</p>
                         <div>
                             <p className="text-sm font-semibold text-orange-600">{addon.updateWarning.title}</p>
                             <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
@@ -63,7 +63,9 @@ export default function ClusterAddonUpdateInfo({ addon }: { addon: ClusterAddonU
                 : `Do you want to ${operation} ${addon.displayName}${version}? QuickStack will apply the add-on's Kubernetes resources to this cluster.`,
             okButton: actionLabel,
         });
-        if (!confirmed) return;
+        if (!confirmed) {
+            return;
+        }
 
         try {
             setLoading(true);

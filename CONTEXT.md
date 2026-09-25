@@ -35,6 +35,34 @@ _Avoid_: runtime support
 The shared Add-on state reported as `notInstalled`, `installing`, `ready`, `updating`, `uninstalling`, or `failed`, with an optional detail message and installed version.
 _Avoid_: Add-on-specific status enum
 
+**Non-removable Cluster Add-on**:
+A Cluster Add-on that QuickStack can install, inspect, and update but deliberately cannot remove because removal would leave host-level runtime changes behind. Its lifecycle never enters `uninstalling`.
+_Avoid_: broken Add-on, partially installed Add-on
+
+**gVisor Runtime Add-on**:
+A Trusted, Non-removable Cluster Add-on that makes the gVisor runtime available on supported cluster nodes. It does not select a runtime for Agent Sandboxes.
+_Avoid_: gVisor plugin, Agent runtime selector
+
+**gVisor Release Version**:
+The explicit, date-based gVisor release selected by QuickStack for installation and display, such as `20260921`. It is the version of the gVisor Runtime Add-on.
+_Avoid_: latest, unpinned runtime version, Add-on SemVer
+
+**gVisor RuntimeClass**:
+The optional Kubernetes RuntimeClass named `gvisor`, backed by `io.containerd.runsc.v1`. It is available alongside, and never replaces, the cluster's default runtime class.
+_Avoid_: default runtime, runsc RuntimeClass
+
+**gVisor-ready Node**:
+A schedulable node on which QuickStack has statically verified the pinned gVisor installation, K3s configuration, active K3s service, and node readiness. QuickStack marks it with `quickstack.dev/gvisor=true` and `quickstack.dev/gvisor-version` after success.
+_Avoid_: gVisor-tested node, RuntimeClass-proven node
+
+**gVisor Node Version**:
+The gVisor Release Version actually installed and statically verified on a gVisor-ready Node. It is represented by `quickstack.dev/gvisor-version` and does not change until that node's update succeeds.
+_Avoid_: desired gVisor version, planned node version
+
+**gVisor Add-on Configuration**:
+The Add-on-owned Kubernetes ConfigMap that persistently declares the desired gVisor Release Version for the gVisor Runtime Add-on. It is not part of a generic Add-on configuration store.
+_Avoid_: global Add-on configuration, runtime version cache
+
 **Agent Sandbox Add-on**:
 The Cluster Add-on that installs the Agent Sandbox controller and its extension CRDs, including SandboxTemplate and SandboxWarmPool. It does not create user workload resources.
 _Avoid_: Agent, Agent runtime

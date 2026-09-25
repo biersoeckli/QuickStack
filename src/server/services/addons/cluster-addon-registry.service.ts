@@ -1,13 +1,15 @@
 import { ClusterAddon } from './cluster-addon.interface';
 import agentSandboxAddonService from './agent-sandbox-addon.service';
 import certManagerAddonService from './cert-manager-addon.service';
+import gvisorAddonService from './gvisor-addon.service';
 import longhornAddonService from './longhorn-addon.service';
 
 class ClusterAddonRegistryService {
     private readonly addons: readonly ClusterAddon[] = [
         longhornAddonService,
         agentSandboxAddonService,
-        certManagerAddonService
+        certManagerAddonService,
+        gvisorAddonService,
     ];
 
     getAll(): readonly ClusterAddon[] {
