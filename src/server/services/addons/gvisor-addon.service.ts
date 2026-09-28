@@ -38,6 +38,11 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
         if (active) {
             return { status: active };
         }
+
+        return this.getStatusRaw();
+    }
+
+    private async getStatusRaw(): Promise<AddonStatus> {
         try {
             const config = await k3s.core.readNamespacedConfigMap({
                 name: GvisorAddonService.CONFIG_NAME,
@@ -54,6 +59,15 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
                 name: GvisorAddonService.DAEMON_SET_NAME,
                 namespace: GvisorAddonService.NAMESPACE
             });
+            const desiredPods = daemonSet.status?.desiredNumberScheduled ?? 0;
+            const availablePods = daemonSet.status?.numberAvailable ?? 0;
+            if (availablePods < desiredPods) {
+                return {
+                    status: 'updating',
+                    installedVersion: desired,
+                    message: 'Waiting for the gVisor installer DaemonSet.'
+                };
+            }
             const nodes = (await k3s.core.listNode()).items.filter((node) => !node.spec?.unschedulable);
 
             const missing = nodes.find((node) => node.metadata?.labels?.['quickstack.dev/gvisor'] !== 'true' ||
@@ -63,13 +77,6 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
                     status: 'updating',
                     installedVersion: desired,
                     message: `Waiting for gVisor on node ${missing.metadata?.name ?? '<unknown>'}.`
-                };
-            }
-            if ((daemonSet.status?.numberUnavailable ?? 0) > 0) {
-                return {
-                    status: 'updating',
-                    installedVersion: desired,
-                    message: 'Waiting for the gVisor installer DaemonSet.'
                 };
             }
             return {
@@ -89,7 +96,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
 
     async install(): Promise<AddonOperationResult> {
         return this.runExclusive('installing', async () => {
-            const status = await this.getStatus();
+            const status = await this.getStatusRaw();
             if (status.status !== 'notInstalled') {
                 throw new ServiceException('gVisor is already installed or installation is in progress.');
             }
@@ -98,7 +105,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
     }
 
     async getAvailableUpdate(): Promise<AddonRelease | undefined> {
-        const status = await this.getStatus();
+        const status = await this.getStatusRaw();
         if (!status.installedVersion) {
             return undefined;
         }
@@ -147,7 +154,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
                 },
                 rules: [
                     { apiGroups: [''], resources: ['nodes'], verbs: ['get', 'list', 'patch'] },
-                    { apiGroups: ['coordination.k8s.io'], resources: ['leases'], verbs: ['get', 'create', 'update', 'patch'] },
+                    { apiGroups: ['coordination.k8s.io'], resources: ['leases'], verbs: ['get', 'create', 'update', 'patch', 'delete'] },
                 ],
             },
             {
@@ -266,17 +273,68 @@ token=$(< /var/run/secrets/kubernetes.io/serviceaccount/token)
 ca='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
 namespace='quickstack-gvisor-system'
 lease_name='quickstack-gvisor-installer-lock'
+lease_url="$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases/$lease_name"
 
-api() { curl --fail --silent --show-error --cacert "$ca" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' "$@"; }
+api() { curl --fail --silent --show-error --cacert "$ca" -H "Authorization: Bearer $token" "$@"; }
 
 acquire_lock() {
-  while ! api -X POST "$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases" --data "{\\"metadata\\":{\\"name\\":\\"$lease_name\\"},\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":120}}"; do
+  while true; do
+    now=$(date --utc +%Y-%m-%dT%H:%M:%S.000000Z)
+    lease="{\\"metadata\\":{\\"name\\":\\"$lease_name\\"},\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":120,\\"acquireTime\\":\\"$now\\",\\"renewTime\\":\\"$now\\"}}"
+    create_status=$(curl --silent --output /tmp/quickstack-gvisor-lease-response --write-out '%{http_code}' --cacert "$ca" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -X POST "$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases" --data "$lease")
+    if [[ "$create_status" == '201' ]]; then
+      return
+    fi
+
+    if [[ "$create_status" != '409' ]]; then
+      cat /tmp/quickstack-gvisor-lease-response >&2
+      exit 1
+    fi
+
+    existing=$(api "$lease_url")
+    holder=$(jq -r '.spec.holderIdentity // empty' <<< "$existing")
+    renew_time=$(jq -r '.spec.renewTime // empty' <<< "$existing")
+    creation_time=$(jq -r '.metadata.creationTimestamp // empty' <<< "$existing")
+    duration=$(jq -r '.spec.leaseDurationSeconds // 120' <<< "$existing")
+
+    if [[ "$holder" == "$NODE_NAME" ]]; then
+      return
+    fi
+
+    lease_time="$renew_time"
+    if [[ -z "$lease_time" ]]; then
+      lease_time="$creation_time"
+    fi
+
+    expires_at=$(date -u -d "$lease_time + $duration seconds" +%s 2>/dev/null || echo 0)
+    if (( expires_at > 0 && expires_at < $(date +%s) )); then
+      api -X DELETE "$lease_url" >/dev/null || true
+    fi
+
     sleep 10
   done
 }
 
 release_lock() { api -X DELETE "$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases/$lease_name" >/dev/null || true; }
-trap release_lock EXIT
+renew_lock() {
+  while true; do
+    sleep 30
+    now=$(date --utc +%Y-%m-%dT%H:%M:%S.000000Z)
+    api -X PATCH "$lease_url" -H 'Content-Type: application/merge-patch+json' --data "{\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":120,\\"renewTime\\":\\"$now\\"}}" >/dev/null
+  done
+}
+
+renew_pid=''
+holds_lock=false
+cleanup() {
+  if [[ -n "$renew_pid" ]]; then
+    kill "$renew_pid" 2>/dev/null || true
+  fi
+  if [[ "$holds_lock" == true ]]; then
+    release_lock
+  fi
+}
+trap cleanup EXIT
 
 cordon() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":true}}' >/dev/null; }
 uncordon() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":null}}' >/dev/null; }
@@ -291,30 +349,66 @@ version="$1"
 case "$ID" in debian|ubuntu) ;; *) echo "Unsupported operating system: $ID"; exit 1;; esac
 case "$(uname -m)" in x86_64|aarch64) ;; *) echo "Unsupported architecture"; exit 1;; esac
 test "$(printf '%s\\n' '5.6' "$(uname -r | cut -d- -f1)" | sort -V | head -n1)" = '5.6'
+config_dir=/var/lib/rancher/k3s/agent/etc/containerd
+template="$config_dir/config-v3.toml.tmpl"
+if [[ ! -f "$template" ]]; then
+  template="$config_dir/config.toml.tmpl"
+fi
+
+ensure_base_template() {
+  if [[ ! -f "$template" ]]; then
+    mkdir -p "$config_dir"
+    printf '{{ template "base" . }}\\n' > "$template"
+    return
+  fi
+
+  if grep -q 'quickstack-gvisor-start' "$template" && ! grep -q '{{ template "base" . }}' "$template"; then
+    sed -i '1i {{ template "base" . }}' "$template"
+  fi
+}
+
+runtime_block() {
+  if [[ "$template" == *config-v3.toml.tmpl ]]; then
+    cat <<'TOML'
+# quickstack-gvisor-start
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.gvisor]
+  runtime_type = "io.containerd.runsc.v1"
+# quickstack-gvisor-end
+TOML
+    return
+  fi
+
+  cat <<'TOML'
+# quickstack-gvisor-start
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.gvisor]
+  runtime_type = "io.containerd.runsc.v1"
+# quickstack-gvisor-end
+TOML
+}
+
+ensure_base_template
+if runsc --version 2>/dev/null | grep -q "$version" && grep -q 'quickstack-gvisor-start' "$template"; then
+  exit 0
+fi
 apt-get update
 apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl gnupg
 curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases $version main" > /etc/apt/sources.list.d/gvisor.list
 apt-get update
 apt-get install -y runsc
-config_dir=/var/lib/rancher/k3s/agent/etc/containerd
-template="$config_dir/config-v3.toml.tmpl"
-test -f "$template" || template="$config_dir/config.toml.tmpl"
-mkdir -p "$config_dir"
-touch "$template"
-grep -q 'quickstack-gvisor-start' "$template" || cat >> "$template" <<'TOML'
-# quickstack-gvisor-start
-[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.gvisor]
-  runtime_type = "io.containerd.runsc.v1"
-# quickstack-gvisor-end
-TOML
+if ! grep -q 'quickstack-gvisor-start' "$template"; then
+  runtime_block >> "$template"
+fi
 systemctl restart k3s || systemctl restart k3s-agent
 HOST_SCRIPT
   chmod 700 /host/tmp/quickstack-gvisor-install.sh
-  chroot /host /bin/bash /tmp/quickstack-gvisor-install.sh "$GVISOR_VERSION"
+  nsenter --target 1 --mount --pid --uts --ipc --net /bin/bash /tmp/quickstack-gvisor-install.sh "$GVISOR_VERSION"
 }
 
 acquire_lock
+holds_lock=true
+renew_lock &
+renew_pid=$!
 cordon
 install_host_runtime
 label_ready
