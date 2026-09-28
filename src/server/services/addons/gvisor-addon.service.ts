@@ -268,6 +268,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
         return `#!/usr/bin/env bash
 set -euo pipefail
 
+# Kubernetes API connection for this DaemonSet's ServiceAccount.
 api_server='https://kubernetes.default.svc'
 token=$(< /var/run/secrets/kubernetes.io/serviceaccount/token)
 ca='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
@@ -275,14 +276,21 @@ namespace='quickstack-gvisor-system'
 lease_name='quickstack-gvisor-installer-lock'
 lease_url="$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases/$lease_name"
 
+log() { echo "[$(date --utc +%Y-%m-%dT%H:%M:%SZ)] [gvisor-installer] [$NODE_NAME] $*"; }
+
+# All Kubernetes API calls authenticate with the mounted ServiceAccount token.
 api() { curl --fail --silent --show-error --cacert "$ca" -H "Authorization: Bearer $token" "$@"; }
 
+# Only one node may change its host runtime at a time.
+# A Lease survives a Pod restart long enough for another Installer Pod to recover it.
 acquire_lock() {
+  log 'Waiting to acquire the cluster-wide installation Lease.'
   while true; do
     now=$(date --utc +%Y-%m-%dT%H:%M:%S.000000Z)
-    lease="{\\"metadata\\":{\\"name\\":\\"$lease_name\\"},\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":120,\\"acquireTime\\":\\"$now\\",\\"renewTime\\":\\"$now\\"}}"
+    lease="{\\"metadata\\":{\\"name\\":\\"$lease_name\\"},\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":45,\\"acquireTime\\":\\"$now\\",\\"renewTime\\":\\"$now\\"}}"
     create_status=$(curl --silent --output /tmp/quickstack-gvisor-lease-response --write-out '%{http_code}' --cacert "$ca" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -X POST "$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases" --data "$lease")
     if [[ "$create_status" == '201' ]]; then
+      log 'Acquired installation Lease.'
       return
     fi
 
@@ -291,13 +299,15 @@ acquire_lock() {
       exit 1
     fi
 
+    # Another Pod owns the Lease. Inspect it and take over only after expiry.
     existing=$(api "$lease_url")
     holder=$(jq -r '.spec.holderIdentity // empty' <<< "$existing")
     renew_time=$(jq -r '.spec.renewTime // empty' <<< "$existing")
     creation_time=$(jq -r '.metadata.creationTimestamp // empty' <<< "$existing")
-    duration=$(jq -r '.spec.leaseDurationSeconds // 120' <<< "$existing")
+    duration=$(jq -r '.spec.leaseDurationSeconds // 45' <<< "$existing")
 
     if [[ "$holder" == "$NODE_NAME" ]]; then
+      log 'Recovered the Lease held by this Node.'
       return
     fi
 
@@ -308,22 +318,25 @@ acquire_lock() {
 
     expires_at=$(date -u -d "$lease_time + $duration seconds" +%s 2>/dev/null || echo 0)
     if (( expires_at > 0 && expires_at < $(date +%s) )); then
+      log "Removing expired Lease held by $holder."
       api -X DELETE "$lease_url" >/dev/null || true
     fi
 
-    sleep 10
+    sleep 5
   done
 }
 
+# Renew while apt and K3s work may take longer than the Lease duration.
 release_lock() { api -X DELETE "$api_server/apis/coordination.k8s.io/v1/namespaces/$namespace/leases/$lease_name" >/dev/null || true; }
 renew_lock() {
   while true; do
-    sleep 30
+    sleep 15
     now=$(date --utc +%Y-%m-%dT%H:%M:%S.000000Z)
-    api -X PATCH "$lease_url" -H 'Content-Type: application/merge-patch+json' --data "{\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":120,\\"renewTime\\":\\"$now\\"}}" >/dev/null
+    api -X PATCH "$lease_url" -H 'Content-Type: application/merge-patch+json' --data "{\\"spec\\":{\\"holderIdentity\\":\\"$NODE_NAME\\",\\"leaseDurationSeconds\\":45,\\"renewTime\\":\\"$now\\"}}" >/dev/null
   done
 }
 
+# Cleanup releases only a Lease owned by this Pod.
 renew_pid=''
 holds_lock=false
 cleanup() {
@@ -331,21 +344,34 @@ cleanup() {
     kill "$renew_pid" 2>/dev/null || true
   fi
   if [[ "$holds_lock" == true ]]; then
+    log 'Releasing installation Lease during cleanup.'
     release_lock
   fi
 }
 trap cleanup EXIT
 
-cordon() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":true}}' >/dev/null; }
-uncordon() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":null}}' >/dev/null; }
+# Cordon prevents new workloads during the runtime and K3s changes. It never drains Pods.
+cordon() { log 'Cordoning Node.'; api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":true}}' >/dev/null; }
+uncordon() { log 'Uncordoning Node.'; api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data '{"spec":{"unschedulable":null}}' >/dev/null; }
 label_ready() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data "{\\"metadata\\":{\\"labels\\":{\\"quickstack.dev/gvisor\\":\\"true\\",\\"quickstack.dev/gvisor-version\\":\\"$GVISOR_VERSION\\"}}}" >/dev/null; }
+set_phase() { api -X PATCH "$api_server/api/v1/nodes/$NODE_NAME" -H 'Content-Type: application/merge-patch+json' --data "{\\"metadata\\":{\\"annotations\\":{\\"quickstack.dev/gvisor-phase\\":\\"$1\\"}}}" >/dev/null; }
+mark_failed() { set_phase failed || true; }
 
+# Copy the host script into the mounted host filesystem, then execute it in the host namespaces.
 install_host_runtime() {
+  log 'Starting host runtime installation.'
   cat > /host/tmp/quickstack-gvisor-install.sh <<'HOST_SCRIPT'
 #!/bin/bash
 set -euo pipefail
+
+host_log() { echo "[$(date --utc +%Y-%m-%dT%H:%M:%SZ)] [gvisor-host-installer] $*"; }
+
+# This section runs on the node host, not inside the Installer container.
 version="$1"
 . /etc/os-release
+host_log "Starting preflight for gVisor release $version on $ID."
+
+# gVisor supports only the chosen operating systems, architectures, and kernel baseline.
 case "$ID" in debian|ubuntu) ;; *) echo "Unsupported operating system: $ID"; exit 1;; esac
 case "$(uname -m)" in x86_64|aarch64) ;; *) echo "Unsupported architecture"; exit 1;; esac
 test "$(printf '%s\\n' '5.6' "$(uname -r | cut -d- -f1)" | sort -V | head -n1)" = '5.6'
@@ -355,6 +381,7 @@ if [[ ! -f "$template" ]]; then
   template="$config_dir/config.toml.tmpl"
 fi
 
+# K3s templates must include the generated base configuration. Never overwrite an admin template.
 ensure_base_template() {
   if [[ ! -f "$template" ]]; then
     mkdir -p "$config_dir"
@@ -367,6 +394,7 @@ ensure_base_template() {
   fi
 }
 
+# Containerd 2.x and 1.x use different plugin paths.
 runtime_block() {
   if [[ "$template" == *config-v3.toml.tmpl ]]; then
     cat <<'TOML'
@@ -386,33 +414,51 @@ TOML
 TOML
 }
 
+# A restarted Installer Pod reaches this point after K3s restarted. Avoid a second restart.
 ensure_base_template
 if runsc --version 2>/dev/null | grep -q "$version" && grep -q 'quickstack-gvisor-start' "$template"; then
+  host_log 'Pinned runtime and K3s template already match; skipping installation and restart.'
   exit 0
 fi
+# Configure the official, pinned gVisor apt repository. Do not run apt upgrade.
 apt-get update
 apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl gnupg
 curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases $version main" > /etc/apt/sources.list.d/gvisor.list
 apt-get update
 apt-get install -y runsc
+host_log 'Installed pinned runsc package.'
 if ! grep -q 'quickstack-gvisor-start' "$template"; then
   runtime_block >> "$template"
 fi
+# K3s owns containerd; restart the matching K3s service to load the template.
+host_log 'Restarting K3s to load the gVisor runtime configuration.'
 systemctl restart k3s || systemctl restart k3s-agent
 HOST_SCRIPT
   chmod 700 /host/tmp/quickstack-gvisor-install.sh
   nsenter --target 1 --mount --pid --uts --ipc --net /bin/bash /tmp/quickstack-gvisor-install.sh "$GVISOR_VERSION"
 }
 
+# Reconciliation phases are persisted as Node annotations for the UI and retry diagnostics.
 acquire_lock
 holds_lock=true
 renew_lock &
 renew_pid=$!
+trap mark_failed ERR
+set_phase preflight
 cordon
+set_phase installing
+set_phase restarting
 install_host_runtime
+set_phase verifying
 label_ready
 uncordon
+set_phase ready
+kill "$renew_pid"
+renew_pid=''
+release_lock
+holds_lock=false
+log "Installation completed successfully for gVisor release $GVISOR_VERSION."
 sleep infinity
 `;
     }
