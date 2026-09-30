@@ -440,6 +440,17 @@ describe('agent.service', () => {
             expect(resource.spec.podTemplate.spec.containers[0].name).toBe('agent');
         });
 
+        it('sets the selected RuntimeClass on the SandboxTemplate pod', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                runtimeClassName: 'gvisor',
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.podTemplate.spec.runtimeClassName).toBe('gvisor');
+        });
+
         it('adds HTTP startup and readiness probes to the agent container', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
                 healthChechHttpGetPath: '/healthz',

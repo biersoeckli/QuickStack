@@ -49,7 +49,7 @@ export default async function UpdateInfoPage() {
     }
 
     const addons: ClusterAddonUpdateInfoModel[] = await Promise.all(clusterAddonRegistryService.getAll()
-        .filter((addon) => useCanaryChannel || addon.metadata.id !== 'agent-sandbox')
+        .filter((addon) => useCanaryChannel || !['agent-sandbox', 'gvisor'].includes(addon.metadata.id))
         .map(async (addon) => {
         try {
             const status = await addon.getStatus();
@@ -83,7 +83,9 @@ export default async function UpdateInfoPage() {
                 <p className="text-sm text-muted-foreground">Install and keep optional cluster components up to date.</p>
             </div>
         </div>
-        {addons.map((addon) => <ClusterAddonUpdateInfo key={addon.id} addon={addon} />)}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {addons.map((addon) => <ClusterAddonUpdateInfo key={addon.id} addon={addon} />)}
+        </div>
     </div>;
 
 }

@@ -30,7 +30,7 @@ export default function GeneralAppSource({
 
     const openSourceWizard = () => {
         openDialog(
-            <AppSourceWizardDialog redirectOnDeploy={hideCard} app={app} gitSshPublicKey={gitSshPublicKey} />,
+            <AppSourceWizardDialog app={app} gitSshPublicKey={gitSshPublicKey} />,
             {
                 width: 'calc(100vw - 2rem)',
                 maxWidth: '760px',

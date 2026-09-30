@@ -68,6 +68,10 @@ export class Tags {
         return `storage-classes`;
     }
 
+    static runtimeClasses() {
+        return `runtime-classes`;
+    }
+
     static quickStackVersionInfo() {
         return `quickstack-version-info`;
     }

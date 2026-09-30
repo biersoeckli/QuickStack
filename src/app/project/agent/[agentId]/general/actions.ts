@@ -39,6 +39,7 @@ import { ServiceException } from "@/shared/model/service.exception.model";
 import agentGitSshKeyService from "@/server/services/agent-git-ssh-key.service";
 import gitService from "@/server/services/git.service";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
+import clusterService from "@/server/services/cluster.service";
 import { z } from "zod";
 import { HealthCheckModel, healthCheckZodModel } from "@/shared/model/health-check.model";
 
@@ -176,6 +177,14 @@ export const saveAgentRateLimits = async (prevState: any, inputData: AgentRateLi
 export const saveAgentContainerConfig = async (prevState: any, inputData: AgentContainerConfigModel, agentId: string) =>
     saveFormAction(inputData, agentContainerConfigZodModel, async (validatedData) => {
         await isAuthorizedWriteForWorkload(agentId);
+        if (validatedData.runtimeClassName) {
+            const runtimeClasses = await clusterService.getRuntimeClasses();
+            if (!runtimeClasses.includes(validatedData.runtimeClassName)) {
+                throw new FormValidationException('The selected RuntimeClass is no longer available in the cluster.', {
+                    runtimeClassName: ['Select an available RuntimeClass.'],
+                });
+            }
+        }
         await agentService.saveAgent({
             ...validatedData,
             containerCommand: ContainerCommangArgsUtils.serializeContainerCommandItems(validatedData.containerCommand),

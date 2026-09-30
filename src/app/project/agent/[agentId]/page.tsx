@@ -24,9 +24,10 @@ export default async function AgentDetailPage({
     ensureReadProjectWorkload(identity, resolvedParams.agentId);
 
     const agent = await agentService.getById(resolvedParams.agentId);
-    const [templateDeploymentDetails, storageClasses, agents] = await Promise.all([
+    const [templateDeploymentDetails, storageClasses, runtimeClasses, agents] = await Promise.all([
         CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id)),
         clusterService.getStorageClasses(),
+        clusterService.getRuntimeClasses(),
         agentService.getAllByProjectId(agent.projectId),
     ]);
     const relevantAgents = agents.filter((projectAgent) =>
@@ -56,6 +57,7 @@ export default async function AgentDetailPage({
                 role={role}
                 templateInfo={templateDeploymentDetails ?? undefined}
                 storageClasses={storageClasses}
+                runtimeClasses={runtimeClasses}
             />
         </div>
     );

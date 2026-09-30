@@ -34,6 +34,7 @@ export type AgentSandboxTemplateConfig = {
     containerCommand?: string | null;
     containerArgs?: string | null;
     workingDir?: string | null;
+    runtimeClassName?: string | null;
     deployFileBrowser: boolean;
     healthChechHttpGetPath?: string | null;
     healthCheckHttpScheme?: string | null;
@@ -167,6 +168,7 @@ class AgentSandboxTemplateBuilder {
                     },
                     spec: {
                         volumes,
+                        ...(agent.runtimeClassName ? { runtimeClassName: agent.runtimeClassName } : {}),
                         ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),
                         containers: [{
                             name: 'agent',
