@@ -40,7 +40,7 @@ export function DeploymentsGridView({
                 <Item
                     key={deployment.deploymentId + deployment.createdAt?.toISOString()}
                     variant="outline"
-                    className="flex-col items-stretch gap-2 p-2.5"
+                    className="flex-col items-stretch gap-2 px-4 py-3"
                 >
                     <div className="flex min-w-0 items-start gap-2">
                         <ItemContent>

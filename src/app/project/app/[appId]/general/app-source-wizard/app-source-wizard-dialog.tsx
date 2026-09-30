@@ -27,11 +27,11 @@ import { SourceTypeStep } from "./source-type-step";
 import { defaultDockerfilePath, sourceTypeLabels, SourceType, StepId } from "./types";
 import { WizardProgress } from "./wizard-progress";
 import { deploy } from "../../actions";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
-export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy = true }: {
+export function AppSourceWizardDialog({ app, gitSshPublicKey }: {
     app: AppExtendedModel;
     gitSshPublicKey?: string;
-    redirectOnDeploy?: boolean;
 }) {
     const router = useRouter();
     const { closeDialog } = useDialogContext();
@@ -48,6 +48,7 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     const [dockerfileDetectionResult, setDockerfileDetectionResult] = useState<'detected' | 'not-found' | null>(null);
     const [showGitToken, setShowGitToken] = useState(false);
     const [showRegistryPassword, setShowRegistryPassword] = useState(false);
+    const [showButtonLoading, setShowButtonLoading] = useState(false);
 
     const canUseGitSources = app.appType === 'APP';
     const isGitSource = formData.sourceType === 'GIT' || formData.sourceType === 'GIT_SSH';
@@ -243,19 +244,21 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
     };
 
     const save = async (deployAfterSave: boolean) => {
-        await Toast.fromAction(() => saveGeneralAppSourceInfo(null, formData, app.id), 'Source saved', 'Saving source...');
-        if (deployAfterSave) {
-            await Toast.fromAction(() => deploy(app.id, true), 'Deployment started', 'Staring deployment...');
+        try {
+            setShowButtonLoading(true);
+            await Toast.fromAction(() => saveGeneralAppSourceInfo(null, formData, app.id), 'Source saved', 'Saving source...');
+            if (deployAfterSave) {
+                await Toast.fromAction(() => deploy(app.id, true), 'Deployment started', 'Staring deployment...');
+                closeDialog(true);
+                router.refresh();
+                return;
+            }
+
             closeDialog(true);
             router.refresh();
-            if (redirectOnDeploy) {
-                router.push(`/project/app/${app.id}?tabName=overview`);
-            }
-            return;
+        } finally {
+            setShowButtonLoading(false);
         }
-
-        closeDialog(true);
-        router.refresh();
     };
 
     const nextDisabled = getNextDisabled(step, formData, publicKey, isLoadingBranches, isEnsuringKey, isDetectingDockerfile);
@@ -373,13 +376,21 @@ export function AppSourceWizardDialog({ app, gitSshPublicKey, redirectOnDeploy =
                     <div className="grid md:grid-cols-1 gap-2">
                         {step === 'summary' ? (
                             <>
-                                <Button type="button" variant="secondary" onClick={() => save(false)}>
-                                    <Save className="h-4 w-4" />
-                                    Save
+                                <Button type="button" disabled={showButtonLoading} variant="secondary" onClick={() => save(false)}>
+                                    {showButtonLoading ? <>
+                                        <LoadingSpinner />
+                                    </> : <>
+                                        <Save className="h-4 w-4" />
+                                        Save
+                                    </>}
                                 </Button>
-                                <Button type="button" onClick={() => save(true)}>
-                                    <Rocket className="h-4 w-4" />
-                                    Save & Deploy
+                                <Button type="button" disabled={showButtonLoading} onClick={() => save(true)}>
+                                    {showButtonLoading ? <>
+                                        <LoadingSpinner />
+                                    </> : <>
+                                        <Rocket className="h-4 w-4" />
+                                        Save & Deploy
+                                    </>}
                                 </Button>
                             </>
                         ) : step === 'branch' || step === 'build-method' || step === 'framework-selection' ? (

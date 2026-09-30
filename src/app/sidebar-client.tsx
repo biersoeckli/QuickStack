@@ -1,6 +1,8 @@
 'use client'
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import {
   Sidebar,
   SidebarContent,
@@ -30,7 +32,75 @@ import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
 import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
-import { developerSettingsNavigation, serverSettingsHref, serverSettingsNavigation, settingsNavigation } from "@/shared/utils/settings-navigation"
+import { developerSettingsNavigation, serverSettingsHref, serverSettingsNavigation, settingsNavigation, type SettingsNavigationGroup } from "@/shared/utils/settings-navigation"
+
+function SettingsNavigationContent({
+  path,
+  visibleSettingsGroups,
+  isAdmin,
+  newVersionInfo,
+  onNavigate,
+}: {
+  path: string
+  visibleSettingsGroups: SettingsNavigationGroup[]
+  isAdmin: boolean
+  newVersionInfo?: QuickStackReleaseInfo
+  onNavigate?: () => void
+}) {
+  return <SidebarContent className="gap-0 py-2">
+    {visibleSettingsGroups.map((group) => <SidebarGroup key={group.title}>
+      <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {group.items.map((item) => {
+            const Icon = item.icon
+            return <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href} onClick={onNavigate}>
+                <Icon />
+                <span>{item.title}</span>
+              </Link>} />
+            </SidebarMenuItem>
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>)}
+
+    {isAdmin && <SidebarGroup>
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {serverSettingsNavigation.map((item) => {
+            const Icon = item.icon
+            const href = serverSettingsHref(item.tab)
+            return <SidebarMenuItem key={item.tab}>
+              <SidebarMenuButton isActive={path === href} render={<Link href={href} onClick={onNavigate}>
+                <Icon />
+                <span>{item.title}</span>
+                {item.tab === "updates" && newVersionInfo && <span className="ml-auto size-2 rounded-full bg-orange-500 animate-pulse" />}
+              </Link>} />
+            </SidebarMenuItem>
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>}
+    {isAdmin && <SidebarGroup>
+      <SidebarGroupLabel>Developer</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {developerSettingsNavigation.map((item) => {
+            const Icon = item.icon
+            return <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href} onClick={onNavigate}>
+                <Icon />
+                <span>{item.title}</span>
+              </Link>} />
+            </SidebarMenuItem>
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>}
+  </SidebarContent>
+}
 
 export function SidebarCient({
   projects,
@@ -49,6 +119,7 @@ export function SidebarCient({
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
   const [currentlySelectedAgentId, setCurrentlySelectedAgentId] = useState<string | null>(null);
+  const [settingsNavigationOpen, setSettingsNavigationOpen] = useState(false)
 
   const isAdmin = UserGroupUtils.isAdmin(session)
   const visibleSettingsGroups = settingsNavigation.map((group) => ({
@@ -286,65 +357,40 @@ export function SidebarCient({
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-    {showSettingsNavigation && <aside className="sticky top-0 hidden h-svh w-64 shrink-0 self-start flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+    {showSettingsNavigation && <>
+      <div className="fixed top-18 left-7 md:hidden">
+        <Sheet open={settingsNavigationOpen} onOpenChange={setSettingsNavigationOpen}>
+          <SheetTrigger render={<Button variant="outline" className="bg-white z-10 shadow" size="icon-sm" aria-label="Open settings navigation" />}>
+            <Settings2 />
+            <span className="sr-only">Open settings navigation</span>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-3/4 max-w-sm bg-sidebar p-0 text-sidebar-foreground">
+            <SheetHeader className="border-b">
+              <SheetTitle>Settings</SheetTitle>
+            </SheetHeader>
+            <SettingsNavigationContent
+              path={path}
+              visibleSettingsGroups={visibleSettingsGroups}
+              isAdmin={isAdmin}
+              newVersionInfo={newVersionInfo}
+              onNavigate={() => setSettingsNavigationOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
+      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 self-start flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex h-16 items-center gap-2 border-b px-4 text-sm font-semibold">
         <Settings2 className="size-4" />
         Settings
       </div>
-      <SidebarContent className="gap-0 py-2">
-        {visibleSettingsGroups.map((group) => <SidebarGroup key={group.title}>
-          <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {group.items.map((item) => {
-                const Icon = item.icon
-                return <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href}>
-                    <Icon />
-                    <span>{item.title}</span>
-                  </Link>} />
-                </SidebarMenuItem>
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>)}
-
-        {isAdmin && <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {serverSettingsNavigation.map((item) => {
-                const Icon = item.icon
-                const href = serverSettingsHref(item.tab)
-                return <SidebarMenuItem key={item.tab}>
-                  <SidebarMenuButton isActive={path === href} render={<Link href={href}>
-                    <Icon />
-                    <span>{item.title}</span>
-                    {item.tab === "updates" && newVersionInfo && <span className="ml-auto size-2 rounded-full bg-orange-500 animate-pulse" />}
-                  </Link>} />
-                </SidebarMenuItem>
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>}
-        {isAdmin && <SidebarGroup>
-          <SidebarGroupLabel>Developer</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {developerSettingsNavigation.map((item) => {
-                const Icon = item.icon
-                return <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href}>
-                    <Icon />
-                    <span>{item.title}</span>
-                  </Link>} />
-                </SidebarMenuItem>
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>}
-      </SidebarContent>
-    </aside>}
+      <SettingsNavigationContent
+        path={path}
+        visibleSettingsGroups={visibleSettingsGroups}
+        isAdmin={isAdmin}
+        newVersionInfo={newVersionInfo}
+      />
+    </aside>
+    </>}
     </>
   )
 }
