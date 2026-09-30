@@ -44,7 +44,7 @@ import {
     type ProjectNetworkGraphAppContextMenuProps,
 } from './project-network-graph/project-network-graph-app-context-menu';
 import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/project-network-graph-connection-context-menu';
-import { connectionDeletionProvenance, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
+import { connectionDeletionProvenance, type NetworkGraphEdge, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
 import { getFocusedNodeViewport } from './project-network-graph/project-network-graph-focus';
@@ -53,6 +53,7 @@ import { Toast } from '@/frontend/utils/toast.utils';
 import { AppNetworkPolicyRuleEditModel, NetworkPolicySelectableTarget } from '@/shared/model/app-network-policy-edit.model';
 import { NetworkPolicyRuleUtils } from '@/shared/utils/network-policy-rule.utils';
 import { AppNetworkPolicyDraft, AppNetworkPolicyDraftUtils } from '@/shared/utils/app-network-policy-draft.utils';
+import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
 import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
@@ -77,7 +78,10 @@ type WorkloadNodeData = NetworkGraphNode & {
     connectedToSelection?: boolean;
     contextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
 };
-type ConnectionEdgeData = { onDelete: () => void };
+type ConnectionEdgeData = {
+    onDelete?: () => void;
+    internalHostnames: { hostname: string; port: number }[];
+};
 type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
     projectId: string;
@@ -147,10 +151,38 @@ function ConnectionEdge(props: EdgeProps) {
     const data = props.data as ConnectionEdgeData | undefined;
     if (!data) return <SmoothStepEdge {...props} />;
     return (
-        <ProjectNetworkGraphConnectionContextMenu onDelete={data.onDelete}>
+        <ProjectNetworkGraphConnectionContextMenu
+            onDelete={data.onDelete}
+            internalHostnames={data.internalHostnames}
+        >
             <SmoothStepEdge {...props} />
         </ProjectNetworkGraphConnectionContextMenu>
     );
+}
+
+function getInternalHostnames(
+    edge: NetworkGraphEdge,
+    drafts: Record<string, AppNetworkPolicyDraft>,
+    apps: AppExtendedModel[],
+) {
+    const hostnames = new Map<string, { hostname: string; port: number }>();
+
+    for (const provenance of edge.ruleProvenance) {
+        const rule = drafts[provenance.ownerAppId]?.rules.find(item => item.key === provenance.ruleKey);
+        if (!rule) continue;
+
+        const target = rule.type === 'INGRESS'
+            ? apps.find(app => app.id === provenance.ownerAppId)
+            : rule.targetType === 'APP'
+                ? { id: rule.targetId, projectId: rule.targetProjectId }
+                : undefined;
+        if (!target?.projectId) continue;
+
+        const hostname = InternalHostnameUtils.getInternalBaseUrlForApp(target, rule.port);
+        hostnames.set(hostname, { hostname, port: rule.port });
+    }
+
+    return Array.from(hostnames.values()).sort((left, right) => left.port - right.port);
 }
 const edgeTypes = { connection: ConnectionEdge };
 
@@ -244,6 +276,7 @@ function ProjectNetworkGraphEditor({
     const [saving, setSaving] = useState(false);
     const [connectionSourceNodeId, setConnectionSourceNodeId] = useState<string>();
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string>();
+    const [environmentAppId, setEnvironmentAppId] = useState<string>();
     const [graphHeight, setGraphHeight] = useState<number>();
     const graphContainerRef = useRef<HTMLDivElement>(null);
     const drawerContentRef = useRef<HTMLDivElement>(null);
@@ -385,6 +418,10 @@ function ProjectNetworkGraphEditor({
                 onOpenDrawerTab: (tab: DrawerTab) => {
                     drawerSession.openAppTab(app.id, tab);
                 },
+                onShowEnvironment: () => {
+                    setEnvironmentAppId(app.id);
+                    drawerSession.openAppTab(app.id, 'settings');
+                },
                 onDelete: () => void deleteLocalApp(app.id),
             } : undefined,
             connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
@@ -398,15 +435,22 @@ function ProjectNetworkGraphEditor({
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
     const edges = useMemo(() => (layout?.edges ?? []).map(edge => {
         const presentation = graphEdgePresentation(edge);
+        const deletionProvenance = connectionDeletionProvenance(edge, writableAppIds);
+        const internalHostnames = getInternalHostnames(edge, drafts, apps);
         return {
             id: edge.id,
             source: edge.source,
             target: edge.target,
             sourceHandle: presentation.sourceHandle,
             targetHandle: presentation.targetHandle,
-            type: connectionDeletionProvenance(edge, writableAppIds) ? 'connection' : 'smoothstep',
-            data: connectionDeletionProvenance(edge, writableAppIds)
-                ? { onDelete: () => deleteConnection(edge.id) }
+            type: edge.direction === 'CONNECTION' && (deletionProvenance || internalHostnames.length > 0)
+                ? 'connection'
+                : 'smoothstep',
+            data: edge.direction === 'CONNECTION' && (deletionProvenance || internalHostnames.length > 0)
+                ? {
+                    ...(deletionProvenance ? { onDelete: () => deleteConnection(edge.id) } : {}),
+                    internalHostnames,
+                }
                 : undefined,
             pathOptions: { offset: 20 },
             markerStart: edge.internetIngress ? { type: MarkerType.ArrowClosed, color: presentation.color, width: 16, height: 16 } : undefined,
@@ -425,7 +469,7 @@ function ProjectNetworkGraphEditor({
             labelBgPadding: [6, 3] as [number, number],
             labelBgBorderRadius: 6,
         };
-    }), [deleteConnection, layout?.edges, selectedNodeId, writableAppIds]);
+    }), [apps, deleteConnection, drafts, layout?.edges, selectedNodeId, writableAppIds]);
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
@@ -611,6 +655,8 @@ function ProjectNetworkGraphEditor({
                     onTabChange={tab => {
                         if (selectedApp) drawerSession.openAppTab(selectedApp.id, tab);
                     }}
+                    openEnvironment={environmentAppId === selectedApp?.id}
+                    onEnvironmentOpened={() => setEnvironmentAppId(undefined)}
                 />}
             </div>
         </div>

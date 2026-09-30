@@ -40,6 +40,13 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/components/ui/empty';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
@@ -248,6 +255,8 @@ export function NodeDetailsDrawer({
     onOpenChangeComplete,
     requestedTab,
     onTabChange,
+    openEnvironment,
+    onEnvironmentOpened,
 }: {
     contentRef?: Ref<HTMLDivElement>;
     node: NetworkGraphNode;
@@ -262,8 +271,11 @@ export function NodeDetailsDrawer({
     onOpenChangeComplete: (open: boolean) => void;
     requestedTab?: string | null;
     onTabChange: (tab: DrawerTab) => void;
+    openEnvironment?: boolean;
+    onEnvironmentOpened?: () => void;
 }) {
     const isApp = node.kind === 'APP';
+    const isExternalApp = isApp && node.external;
     const needsSourceConfiguration =
         app &&
         role === RolePermissionEnum.READWRITE &&
@@ -394,7 +406,19 @@ export function NodeDetailsDrawer({
                                 <div className="h-2"></div>
                             )}
                         </DrawerHeader>
-                        {needsSourceConfiguration ? (
+                        {isExternalApp ? (
+                            <Empty className="border-0 rounded-none">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Settings />
+                                    </EmptyMedia>
+                                    <EmptyTitle>Settings unavailable</EmptyTitle>
+                                    <EmptyDescription>
+                                        This app belongs to another project. Its settings can only be edited from that project.
+                                    </EmptyDescription>
+                                </EmptyHeader>
+                            </Empty>
+                        ) : needsSourceConfiguration ? (
                             <DrawerTabScrollArea>
                                 <GeneralAppSource
                                     hideCard
@@ -451,6 +475,8 @@ export function NodeDetailsDrawer({
                                                 role={role}
                                                 storageClasses={storageClasses}
                                                 gitSshPublicKey={gitSshPublicKey}
+                                                openEnvironment={openEnvironment}
+                                                onEnvironmentOpened={onEnvironmentOpened}
                                             />
                                         </div>
                                     </DrawerTabScrollArea>

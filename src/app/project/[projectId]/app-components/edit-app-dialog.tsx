@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { cloneElement, type MouseEvent, type ReactElement } from "react";
 import type { App } from "@prisma/client";
 import { useInputDialog } from "@/frontend/states/zustand.states";
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
 
 export function EditAppDialog({
     children,
@@ -32,7 +33,7 @@ export function EditAppDialog({
         if (!name) { return; }
         const result = await Toast.fromAction(() => createApp(name, projectId, existingItem?.id));
         if (result.status === "success" && !existingItem && openAppAfterCreate) {
-            router.push(existingItem ? `/project/app/${result!.data!.id}` : `/project/app/${result!.data!.id}?tabName=general`);
+            router.push(PathBuilderUtils.projectAppDrawer(projectId, result.data!.id, 'settings'));
         }
     };
 

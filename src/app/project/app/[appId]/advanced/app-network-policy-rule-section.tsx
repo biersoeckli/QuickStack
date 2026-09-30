@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import { NetworkPolicyDirection, NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
 import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
+import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
 export type AppNetworkPolicyDirection = NetworkPolicyDirection;
 
@@ -130,7 +131,7 @@ function RuleRow({ rule, readonly, onDelete, currentProjectId, projects }: {
             <TableCell>
 
                 {rule.targetType === 'APP'
-                    ? <Link href={`/project/app/${rule.targetId}`} className="underline-offset-4 hover:underline">{rule.targetName}</Link>
+                    ? <Link href={PathBuilderUtils.projectAppDrawer(rule.targetProjectId, rule.targetId)} className="underline-offset-4 hover:underline">{rule.targetName}</Link>
                     : rule.targetName}
                 <span className="ml-2 text-muted-foreground">
                     {projectName} · {targetTypeLabel}

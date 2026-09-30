@@ -8,6 +8,7 @@ import {
     SlidersHorizontal,
     Zap,
 } from 'lucide-react';
+import { useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import BasicAuth from '@/app/project/app/[appId]/advanced/basic-auth';
@@ -33,14 +34,31 @@ export function DrawerSettings({
     role,
     storageClasses,
     gitSshPublicKey,
+    openEnvironment = false,
+    onEnvironmentOpened,
 }: {
     app: AppExtendedModel;
     role: RolePermissionEnum;
     storageClasses: string[];
     gitSshPublicKey?: string;
+    openEnvironment?: boolean;
+    onEnvironmentOpened?: () => void;
 }) {
     const readonly = role !== RolePermissionEnum.READWRITE;
     const { openNestedDrawer } = useNestedDrawer();
+    const openEnvironmentEditor = useCallback(() => {
+        openNestedDrawer({
+            title: 'Environment variables',
+            description: <>Values are encrypted at rest and never shown. Names starting with <code className="rounded bg-muted px-1 text-xs">QS_</code> are reserved by QuickStack.</>,
+            content: <EnvEdit app={app} readonly={readonly} hideCard={true} />,
+        });
+    }, [app, openNestedDrawer, readonly]);
+
+    useEffect(() => {
+        if (!openEnvironment) return;
+        openEnvironmentEditor();
+        onEnvironmentOpened?.();
+    }, [onEnvironmentOpened, openEnvironment, openEnvironmentEditor]);
 
     return (
         <div className="relative grid gap-16 grid-cols-1 lg:grid-cols-[1fr_auto]">
@@ -88,18 +106,7 @@ export function DrawerSettings({
                 >
                     <DrawerEnvironment
                         app={app}
-                        onEdit={() =>
-                            openNestedDrawer({
-                                title: 'Environment variables',
-                                content: (
-                                    <EnvEdit
-                                        app={app}
-                                        readonly={readonly}
-                                        hideCard={false}
-                                    />
-                                ),
-                            })
-                        }
+                        onEdit={openEnvironmentEditor}
                     />
                 </SettingsSection>
                 <SettingsSection

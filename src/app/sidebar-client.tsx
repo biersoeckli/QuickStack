@@ -27,12 +27,13 @@ import {
 } from "@/components/ui/avatar"
 import { ProjectNavigationModel } from "@/shared/model/project-extended.model"
 import { UserSession } from "@/shared/model/sim-session.model"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import QuickStackLogo from "@/components/custom/quickstack-logo"
 import { UserGroupUtils } from "@/shared/utils/role.utils"
 import { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
 import { developerSettingsNavigation, serverSettingsHref, serverSettingsNavigation, settingsNavigation, type SettingsNavigationGroup } from "@/shared/utils/settings-navigation"
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils"
 
 function SettingsNavigationContent({
   path,
@@ -115,6 +116,7 @@ export function SidebarCient({
 }) {
 
   const path = usePathname();
+  const searchParams = useSearchParams();
 
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export function SidebarCient({
     } else if (path.startsWith("/project")) {
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
-      setCurrentlySelectedAppId(null);
+      setCurrentlySelectedAppId(searchParams.get('drawerAppId'));
       setCurrentlySelectedAgentId(null);
 
     } else {
@@ -156,7 +158,7 @@ export function SidebarCient({
       setCurrentlySelectedAgentId(null);
 
     }
-  }, [path, projects]);
+  }, [path, projects, searchParams]);
 
   const {
     open,
@@ -222,7 +224,6 @@ export function SidebarCient({
                   {projects.map((item) => {
                     const isAgentProject = item.projectType === 'AGENT';
                     const workloads = isAgentProject ? (item.agents || []) : item.apps;
-                    const workloadPath = isAgentProject ? '/project/agent/' : '/project/app/';
                     const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
 
                     return (
@@ -246,7 +247,7 @@ export function SidebarCient({
                               className="min-w-56 rounded-lg"
                             >
                               {workloads.map((workload) => (
-                                <DropdownMenuItem key={workload.name} className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={`${workloadPath}${workload.id}`}>{workload.name}</a>} />
+                                <DropdownMenuItem key={workload.name} className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={isAgentProject ? `/project/agent/${workload.id}` : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
                               ))}
                             </DropdownMenuContent>
                           </>) : null}
