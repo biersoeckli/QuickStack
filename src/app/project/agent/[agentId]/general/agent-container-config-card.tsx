@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/custom/submit-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -22,9 +23,12 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { saveAgentContainerConfig } from "./actions";
 import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
 
-export default function AgentContainerConfigCard({ agent, readonly }: {
+const DEFAULT_RUNTIME_CLASS = '__quickstack_default__';
+
+export default function AgentContainerConfigCard({ agent, readonly, runtimeClasses }: {
     agent: AgentExtendedModel;
     readonly: boolean;
+    runtimeClasses: string[];
 }) {
     const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
     const form = useForm<z.input<typeof agentContainerConfigZodModel>, unknown, z.output<typeof agentContainerConfigZodModel>>({
@@ -35,6 +39,7 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                 ? JSON.parse(agent.containerArgs).map((arg: string) => ({ value: arg }))
                 : [],
             workingDir: agent.workingDir ?? '',
+            runtimeClassName: agent.runtimeClassName ?? '',
             warmPoolReplicas: agent.warmPoolReplicas ?? 0,
             deployFileBrowser: agent.deployFileBrowser,
         },
@@ -80,6 +85,43 @@ export default function AgentContainerConfigCard({ agent, readonly }: {
                                     argsHint="Overrides the agent sandbox CMD. Add one item per argument in the order the process should receive them."
                                 />
                             </div>
+
+                            <FormField
+                                control={form.control}
+                                name="runtimeClassName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Runtime Class</FormLabel>
+                                        <Select
+                                            value={field.value || DEFAULT_RUNTIME_CLASS}
+                                            onValueChange={(value) => field.onChange(value === DEFAULT_RUNTIME_CLASS ? null : value)}
+                                            disabled={readonly}
+                                            items={[
+                                                { value: DEFAULT_RUNTIME_CLASS, label: 'K3s default runtime' },
+                                                ...runtimeClasses.map((runtimeClass) => ({ value: runtimeClass, label: runtimeClass })),
+                                            ]}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="K3s default runtime" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value={DEFAULT_RUNTIME_CLASS}>K3s default runtime</SelectItem>
+                                                {runtimeClasses.map((runtimeClass) => (
+                                                    <SelectItem key={runtimeClass} value={runtimeClass}>
+                                                        {runtimeClass}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-sm text-muted-foreground">
+                                            Selects the Kubernetes RuntimeClass for new agent sandboxes.
+                                        </p>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}

@@ -27,6 +27,7 @@ export const AgentModel = z.object({
   containerCommand: z.string().nullish(),
   containerArgs: z.string().nullish(),
   workingDir: z.string().nullish(),
+  runtimeClassName: z.string().nullish(),
   warmPoolReplicas: z.number().int(),
   deployFileBrowser: z.boolean(),
   healthChechHttpGetPath: z.string().nullish(),

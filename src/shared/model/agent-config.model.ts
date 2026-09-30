@@ -53,6 +53,13 @@ export const agentConfigZodModel = AgentModel.extend(z.object({
         }
         return val;
     }, z.string().startsWith('/', 'Working directory must be an absolute path.').nullish()),
+    runtimeClassName: z.preprocess((val) => {
+        if (typeof val === 'string') {
+            const trimmed = val.trim();
+            return trimmed || null;
+        }
+        return val;
+    }, z.string().min(1).nullish()),
     warmPoolReplicas: z.preprocess((val) => {
         if (val === null || val === undefined || val === '') {
             return 0;
@@ -158,6 +165,7 @@ export const agentContainerConfigZodModel = agentConfigZodModel.pick({
     containerCommand: true,
     containerArgs: true,
     workingDir: true,
+    runtimeClassName: true,
     warmPoolReplicas: true,
     deployFileBrowser: true,
 });

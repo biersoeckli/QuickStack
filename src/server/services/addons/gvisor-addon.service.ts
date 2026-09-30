@@ -18,7 +18,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
 
     readonly metadata: AddonMetadata = {
         id: 'gvisor', displayName: 'gVisor',
-        description: 'Provides the optional gVisor runtime on supported Ubuntu and Debian cluster nodes.',
+        description: 'Provides the optional gVisor runtime on supported cluster nodes.',
         documentationUrl: 'https://gvisor.dev/docs/user_guide/install/',
         managedNamespaces: [GvisorAddonService.NAMESPACE], canUninstall: false,
         updateWarning: {
@@ -27,6 +27,7 @@ class GvisorAddonService extends BaseClusterAddon implements ClusterAddon {
                 'gVisor cannot be removed through QuickStack once installed.',
                 'Each node is cordoned and K3s is restarted serially. Workloads are not drained.',
                 'A single-server control plane is briefly unavailable while its K3s service restarts.',
+                'You have to restart ALL servers in your cluster after successfull installation.',
             ]
         },
     };

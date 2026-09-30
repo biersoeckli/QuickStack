@@ -62,11 +62,12 @@ const buildAgentTabParams = (tab: string, section: ConfigurationSection) => {
     return params;
 };
 
-export default function AgentDetailClient({ agent, role, templateInfo, storageClasses }: {
+export default function AgentDetailClient({ agent, role, templateInfo, storageClasses, runtimeClasses }: {
     agent: AgentExtendedModel;
     templateInfo?: AgentSandboxTemplateInfo;
     role: RolePermissionEnum | null;
     storageClasses: string[];
+    runtimeClasses: string[];
 }) {
     const searchParams = useSearchParams();
     const rawTabName = searchParams.get('tabName') || 'sandboxes';
@@ -127,7 +128,7 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
             case 'container':
                 return (
                     <div className="space-y-4">
-                        <AgentContainerConfigCard agent={agent} readonly={readonly} />
+                        <AgentContainerConfigCard agent={agent} readonly={readonly} runtimeClasses={runtimeClasses} />
                         <AgentRateLimitsCard agent={agent} readonly={readonly} />
                         <HealthCheckSettings workload={agent} readonly={readonly} saveHealthCheck={saveAgentHealthCheck} />
                     </div>
