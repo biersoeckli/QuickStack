@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { executeOperation } from './operation-executor';
+import operationExecutor from './operation-executor';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
 
 const searchInputSchema = z.object({
@@ -122,7 +122,7 @@ class McpServerFactory {
 
                 let execution;
                 try {
-                    execution = await executeOperation({
+                    execution = await operationExecutor.execute({
                         app,
                         operation,
                         pathParams: pathParams ?? {},

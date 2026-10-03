@@ -6,7 +6,7 @@ import {
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import type { McpAuthResolver } from './mcp-auth';
 import mcpServerFactory from './mcp-server.factory';
-import { buildOperationRegistry } from './operation-registry';
+import operationRegistry from './operation-registry';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
 
 export type QuickStackMcpHandlerOptions = {
@@ -37,7 +37,7 @@ function unauthorizedResponse(): Response {
 
 export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions): QuickStackMcpHandler {
     const { app, resolveAuthInfo, allowedOrigins = [], allowedHosts } = options;
-    const operations = buildOperationRegistry(app);
+    const operations = operationRegistry.build(app);
 
     const handler = createMcpHandler(
         ({ authInfo }) => mcpServerFactory.build({ app, operations, authInfo }),

@@ -38,64 +38,66 @@ type ElysiaRoute = {
     };
 };
 
-function toJsonSchema(schema: unknown): Record<string, unknown> | undefined {
-    if (!schema || typeof schema !== 'object' || !('~standard' in schema)) {
-        return undefined;
-    }
+class OperationRegistry {
 
-    try {
-        return toJsonSchemaUnsafe(schema);
-    } catch {
-        return undefined;
-    }
-}
+    build(app: McpSourceApp): OperationDescriptor[] {
+        const routes = (app.routes ?? []) as ElysiaRoute[];
+        const seen = new Set<string>();
+        const descriptors: OperationDescriptor[] = [];
 
-function toJsonSchemaUnsafe(schema: unknown): Record<string, unknown> {
-    return z.toJSONSchema(schema as z.ZodType, { unrepresentable: 'any' }) as Record<string, unknown>;
-}
+        for (const route of routes) {
+            const detail = route.hooks?.detail;
+            const operationId = detail?.operationId;
+            if (!operationId || seen.has(operationId)) {
+                continue;
+            }
+            seen.add(operationId);
 
-export function buildOperationRegistry(app: McpSourceApp): OperationDescriptor[] {
-    const routes = (app.routes ?? []) as ElysiaRoute[];
-    const seen = new Set<string>();
-    const descriptors: OperationDescriptor[] = [];
+            const responseSchema = route.hooks?.response?.['200'];
+            const manualBodyParsing = (route.hooks?.parse ?? []).some((entry) => entry?.fn === 'none');
 
-    for (const route of routes) {
-        const detail = route.hooks?.detail;
-        const operationId = detail?.operationId;
-        if (!operationId || seen.has(operationId)) {
-            continue;
+            let supported = true;
+            let unsupportedReason: string | undefined;
+
+            if (!responseSchema) {
+                supported = false;
+                unsupportedReason = 'Operation does not declare a JSON response.';
+            } else if (manualBodyParsing) {
+                supported = false;
+                unsupportedReason = 'Operation consumes a non-JSON request body.';
+            }
+
+            descriptors.push({
+                operationId,
+                method: route.method,
+                path: route.path,
+                summary: detail?.summary,
+                description: detail?.description,
+                tags: detail?.tags ?? [],
+                pathParamsSchema: this.toJsonSchema(route.hooks?.params),
+                querySchema: this.toJsonSchema(route.hooks?.query),
+                bodySchema: this.toJsonSchema(route.hooks?.body),
+                responseSchema: this.toJsonSchema(responseSchema),
+                supported,
+                unsupportedReason,
+            });
         }
-        seen.add(operationId);
 
-        const responseSchema = route.hooks?.response?.['200'];
-        const manualBodyParsing = (route.hooks?.parse ?? []).some((entry) => entry?.fn === 'none');
-
-        let supported = true;
-        let unsupportedReason: string | undefined;
-
-        if (!responseSchema) {
-            supported = false;
-            unsupportedReason = 'Operation does not declare a JSON response.';
-        } else if (manualBodyParsing) {
-            supported = false;
-            unsupportedReason = 'Operation consumes a non-JSON request body.';
-        }
-
-        descriptors.push({
-            operationId,
-            method: route.method,
-            path: route.path,
-            summary: detail?.summary,
-            description: detail?.description,
-            tags: detail?.tags ?? [],
-            pathParamsSchema: toJsonSchema(route.hooks?.params),
-            querySchema: toJsonSchema(route.hooks?.query),
-            bodySchema: toJsonSchema(route.hooks?.body),
-            responseSchema: toJsonSchema(responseSchema),
-            supported,
-            unsupportedReason,
-        });
+        return descriptors.sort((left, right) => left.operationId < right.operationId ? -1 : left.operationId > right.operationId ? 1 : 0);
     }
 
-    return descriptors.sort((left, right) => left.operationId < right.operationId ? -1 : left.operationId > right.operationId ? 1 : 0);
+    private toJsonSchema(schema: unknown): Record<string, unknown> | undefined {
+        if (!schema || typeof schema !== 'object' || !('~standard' in schema)) {
+            return undefined;
+        }
+
+        try {
+            return z.toJSONSchema(schema as z.ZodType, { unrepresentable: 'any' }) as Record<string, unknown>;
+        } catch {
+            return undefined;
+        }
+    }
 }
+
+const operationRegistry = new OperationRegistry();
+export default operationRegistry;
