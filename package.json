@@ -26,6 +26,7 @@
     "@elysiajs/openapi": "^1.4.15",
     "@hookform/resolvers": "5.5.7",
     "@kubernetes/client-node": "^1.4.0",
+    "@modelcontextprotocol/server": "^2.3.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/adapter-better-sqlite3": "^7.1.0",
     "@prisma/client": "7.1.0",
