@@ -40,12 +40,14 @@ export function SidebarCient({
   projects,
   session,
   newVersionInfo,
-  agentsAvailable
+  agentsAvailable,
+  canaryEnabled
 }: {
   projects: ProjectNavigationModel[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
   agentsAvailable: boolean;
+  canaryEnabled: boolean;
 }) {
 
   const path = usePathname();
@@ -306,6 +308,7 @@ export function SidebarCient({
               path={path}
               visibleSettingsGroups={visibleSettingsGroups}
               isAdmin={isAdmin}
+              canaryEnabled={canaryEnabled}
               newVersionInfo={newVersionInfo}
               onNavigate={() => setSettingsNavigationOpen(false)}
             />
@@ -321,6 +324,7 @@ export function SidebarCient({
         path={path}
         visibleSettingsGroups={visibleSettingsGroups}
         isAdmin={isAdmin}
+        canaryEnabled={canaryEnabled}
         newVersionInfo={newVersionInfo}
       />
     </aside>

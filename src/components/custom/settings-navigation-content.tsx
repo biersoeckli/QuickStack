@@ -22,12 +22,14 @@ export function SettingsNavigationContent({
     path,
     visibleSettingsGroups,
     isAdmin,
+    canaryEnabled,
     newVersionInfo,
     onNavigate,
 }: {
     path: string;
     visibleSettingsGroups: SettingsNavigationGroup[];
     isAdmin: boolean;
+    canaryEnabled: boolean;
     newVersionInfo?: QuickStackReleaseInfo;
     onNavigate?: () => void;
 }) {
@@ -80,7 +82,7 @@ export function SettingsNavigationContent({
                     <SidebarGroupLabel>Developer</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {developerSettingsNavigation.map((item) => {
+                            {developerSettingsNavigation.filter((item) => !item.canaryOnly || canaryEnabled).map((item) => {
                                 const Icon = item.icon;
                                 return (
                                     <SidebarMenuItem key={item.href}>

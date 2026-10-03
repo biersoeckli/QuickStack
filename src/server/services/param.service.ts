@@ -23,6 +23,7 @@ export class ParamService {
     static readonly MAX_PARALLEL_BUILDS = 'maxParallelBuilds';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
+    static readonly MCP_SERVER_ENABLED = 'mcpServerEnabled';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
     static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
     static readonly FEATURE_NEW_NETWORK_POLICY_EXPLENATION = 'featureNewNetworkPolicyExplenation';
@@ -36,6 +37,7 @@ export class ParamService {
             this.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED, revalidateParam),
             this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS), revalidateParam),
             this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false', revalidateParam),
+            this.getOrCreate(ParamService.MCP_SERVER_ENABLED, 'false', revalidateParam),
         ]);
 
         return { instanceId, registryLocation };

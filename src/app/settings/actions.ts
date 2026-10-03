@@ -272,6 +272,16 @@ export const setOpenApiSpecEnabled = async (enabled: boolean) =>
     return new SuccessActionResult(undefined, `Turned ${enabled ? 'on' : 'off'} OpenAPI spec access.`);
   });
 
+export const setMcpServerEnabled = async (enabled: boolean) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+    await paramService.save({
+      name: ParamService.MCP_SERVER_ENABLED,
+      value: enabled ? 'true' : 'false'
+    });
+    return new SuccessActionResult(undefined, `Turned ${enabled ? 'on' : 'off'} the MCP server.`);
+  });
+
 export const setRegistryStorageLocation = async (prevState: any, inputData: RegistryStorageLocationSettingsModel) =>
   saveFormAction(inputData, registryStorageLocationSettingsZodModel, async (validatedData) => {
     await getAdminUserSession();
