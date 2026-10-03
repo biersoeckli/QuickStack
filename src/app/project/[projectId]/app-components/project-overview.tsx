@@ -1,7 +1,6 @@
 'use client';
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AppTable from "./apps-table";
 import ProjectNetworkGraph from "../app-components/project-network-graph";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { useEffect, useState } from "react";
@@ -13,14 +12,18 @@ import CreateProjectActions from "../create-project-actions";
 import PageTitle from "@/components/custom/page-title";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
-import { useDialog } from '@/frontend/states/zustand.states';
+import { useDialog } from "@/frontend/states/zustand.states";
 import NewNetworkPolicyExplanationDialog from './new-network-policy-explanation-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
+import WorkloadsTable from '../workloads-table';
 
 interface ProjectOverviewProps {
     apps: AppExtendedModel[];
+    agents: AgentExtendedModel[];
+    agentsAvailable: boolean;
     session: UserSession;
     projectId: string;
     projectName: string;
@@ -44,6 +47,8 @@ function tabStorageKey() {
 
 export default function AppProjectOverview({
     apps,
+    agents,
+    agentsAvailable,
     session,
     projectId,
     projectName,
@@ -89,19 +94,20 @@ export default function AppProjectOverview({
     };
 
     const canCreate = UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    const hasWorkloads = apps.length > 0 || agents.length > 0;
 
-    if (apps.length === 0 && !canCreate) {
+    if (!hasWorkloads && !canCreate) {
         return (
             <>
-                <PageTitle title="Apps" subtitle={`App Project "${projectName}"`} />
+                <PageTitle title="Workloads" subtitle={`Project "${projectName}"`} />
                 <Empty className="border border-dashed">
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
                             <Container />
                         </EmptyMedia>
-                        <EmptyTitle>No Apps</EmptyTitle>
+                        <EmptyTitle>No Workloads</EmptyTitle>
                         <EmptyDescription>
-                            No apps available in this project.
+                            No apps or agents available in this project.
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -109,20 +115,20 @@ export default function AppProjectOverview({
         );
     }
 
-    if (apps.length === 0) {
+    if (!hasWorkloads) {
         return (
             <>
-                <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
-                    <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />
+                <PageTitle title="Workloads" subtitle={`Project "${projectName}"`}>
+                    <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} agentsAvailable={agentsAvailable} />
                 </PageTitle>
                 <Empty className="border border-dashed">
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
                             <Container />
                         </EmptyMedia>
-                        <EmptyTitle>No Apps yet</EmptyTitle>
+                        <EmptyTitle>No Workloads yet</EmptyTitle>
                         <EmptyDescription>
-                            Create your first App to get started.
+                            Create your first App or Agent to get started.
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -132,7 +138,7 @@ export default function AppProjectOverview({
 
     return (
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
+            <PageTitle title="Workloads" subtitle={`Project "${projectName}"`}>
                 <div className="flex items-center gap-2">
                     <TabsList>
                         <TabsTrigger value="graph" aria-label="Network graph view" title="Network graph view" className="hidden md:inline-flex">
@@ -142,15 +148,17 @@ export default function AppProjectOverview({
                             <Table className="size-4" />
                         </TabsTrigger>
                     </TabsList>
-                    {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}
+                    {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} agentsAvailable={agentsAvailable} />}
                 </div>
             </PageTitle>
             <div className={currentTab === 'table' ? 'block' : 'block md:hidden'}>
-                <AppTable session={session} app={apps} projectId={projectId} />
+                <WorkloadsTable session={session} apps={apps} agents={agents} projectId={projectId} />
             </div>
             <div className={currentTab === 'graph' ? 'hidden md:block' : 'hidden'} data-project-network-graph>
                 <ProjectNetworkGraph
                     apps={apps}
+                    agents={agents}
+                    agentsAvailable={agentsAvailable}
                     projectId={projectId}
                     session={session}
                     savedPositions={networkGraphPositions}

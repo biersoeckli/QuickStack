@@ -104,21 +104,22 @@ describe('app.service', () => {
         );
     });
 
-    it('rejects App creation in an Agent Project', async () => {
-        vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({
-            id: 'proj-agents',
-            name: 'Agents',
-            projectType: 'AGENT',
-            createdAt: new Date(),
-            updatedAt: new Date(),
+    it('creates an App in any Project', async () => {
+        vi.mocked(dataAccess.client.app.create).mockResolvedValue({ id: 'app-new-app' } as never);
+
+        const saved = await appService.save({
+            name: 'New App',
+            projectId: 'proj-mixed',
         });
 
-        await expect(appService.save({
-            name: 'Wrong Workload',
-            projectId: 'proj-agents',
-        })).rejects.toThrow('Apps can only be created in App Projects.');
-
-        expect(dataAccess.client.app.create).not.toHaveBeenCalled();
+        expect(dataAccess.client.app.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                name: 'New App',
+                projectId: 'proj-mixed',
+                id: expect.stringMatching(/^app-/),
+            }),
+        });
+        expect(saved.id).toBe('app-new-app');
     });
 
     it('rejects moving an App Domain from another App by id', async () => {
@@ -250,7 +251,6 @@ function createApp(overrides: Partial<AppExtendedModel>): AppExtendedModel {
         project: {
             id: 'demo-project',
             name: 'Demo Project',
-            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import { buildProjectNetworkGraph, type NetworkGraphNode, type ProjectNetworkGraphData } from './project-network-graph-projection';
 import type { NetworkGraphPosition, ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import { resetProjectNetworkGraphLayout, saveProjectNetworkGraphPosition } from '../../actions';
@@ -44,10 +45,11 @@ export function applySavedNetworkGraphPositions(
 
 export function useProjectNetworkGraph(
     apps: AppExtendedModel[],
+    agents: AgentExtendedModel[],
     projectId: string,
     savedPositions: ProjectNetworkGraphPositions,
 ) {
-    const graph = useMemo(() => buildProjectNetworkGraph(apps), [apps]);
+    const graph = useMemo(() => buildProjectNetworkGraph(apps, agents), [apps, agents]);
     const [layout, setLayout] = useState<PositionedProjectNetworkGraph>();
     const requestId = useRef(0);
     const persistedPositions = useRef(savedPositions);

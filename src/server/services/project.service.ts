@@ -6,13 +6,10 @@ import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import namespaceService from "./namespace.service";
 import buildService from "./build.service";
 import { ProjectExtendedModel, ProjectNavigationModel, ProjectWithCountsModel } from "@/shared/model/project-extended.model";
-import { ProjectType, ProjectTypeModel } from "@/shared/model/project-type.model";
-import { ServiceException } from "@/shared/model/service.exception.model";
 
 type ProjectSaveInput = {
     id?: string;
     name: string;
-    projectType?: ProjectType;
 };
 
 class ProjectService {
@@ -57,7 +54,6 @@ class ProjectService {
             select: {
                 id: true,
                 name: true,
-                projectType: true,
                 createdAt: true,
                 updatedAt: true,
                 apps: {
@@ -87,7 +83,6 @@ class ProjectService {
             select: {
                 id: true,
                 name: true,
-                projectType: true,
                 createdAt: true,
                 updatedAt: true,
                 _count: {
@@ -126,10 +121,6 @@ class ProjectService {
         let savedItem: Project;
         try {
             if (item.id) {
-                const existingItem = await this.getById(item.id);
-                if (item.projectType && item.projectType !== existingItem.projectType) {
-                    throw new ServiceException("Project Type cannot be changed.");
-                }
                 savedItem = await dataAccess.client.project.update({
                     where: {
                         id: item.id
@@ -137,16 +128,11 @@ class ProjectService {
                     data: { name: item.name }
                 });
             } else {
-                const projectType = ProjectTypeModel.safeParse(item.projectType);
-                if (!projectType.success) {
-                    throw new ServiceException("Project Type is required.");
-                }
                 item.id = KubeObjectNameUtils.toProjectId(item.name);
                 savedItem = await dataAccess.client.project.create({
                     data: {
                         id: item.id,
                         name: item.name,
-                        projectType: projectType.data,
                     }
                 });
             }

@@ -150,16 +150,17 @@ export function SidebarCient({
                     <FolderClosed />
                     <span>Projects</span>
                   </Link>} />
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
+                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
                   <SidebarMenuAction>
                     <Plus />
                   </SidebarMenuAction>
                 </EditProjectDialog>}
                 <SidebarMenu>
                   {projects.map((item) => {
-                    const isAgentProject = item.projectType === 'AGENT';
-                    const workloads = isAgentProject ? (item.agents || []) : item.apps;
-                    const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
+                    const workloads = [
+                      ...(item.apps || []).map(app => ({ ...app, kind: 'APP' as const })),
+                      ...(item.agents || []).map(agent => ({ ...agent, kind: 'AGENT' as const })),
+                    ];
 
                     return (
                       <DropdownMenu key={item.id}>
@@ -181,9 +182,14 @@ export function SidebarCient({
                               align={isMobile ? "end" : "start"}
                               className="min-w-56 rounded-lg"
                             >
-                              {workloads.map((workload) => (
-                                <DropdownMenuItem key={workload.name} className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={isAgentProject ? `/project/agent/${workload.id}` : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
-                              ))}
+                              {workloads.map((workload) => {
+                                const isSelected = workload.kind === 'AGENT'
+                                  ? currentlySelectedAgentId === workload.id
+                                  : currentlySelectedAppId === workload.id;
+                                return (
+                                  <DropdownMenuItem key={`${workload.kind}:${workload.id}`} className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={workload.kind === 'AGENT' ? `/project/agent/${workload.id}` : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
+                                );
+                              })}
                             </DropdownMenuContent>
                           </>) : null}
                         </SidebarMenuItem>

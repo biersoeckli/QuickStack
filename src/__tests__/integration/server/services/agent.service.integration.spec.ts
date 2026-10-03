@@ -19,11 +19,11 @@ describe('agent.service integration - saveAgentExtendedModel', () => {
 
     beforeEach(async () => {
         const agentProject = await dataAccess.client.project.create({
-            data: { name: 'Agent Project', projectType: 'AGENT' },
+            data: { name: 'Agent Project' },
         });
 
         const appProject = await dataAccess.client.project.create({
-            data: { name: 'App Project', projectType: 'APP' },
+            data: { name: 'App Project' },
         });
 
         const gateway = await dataAccess.client.llmGateway.create({

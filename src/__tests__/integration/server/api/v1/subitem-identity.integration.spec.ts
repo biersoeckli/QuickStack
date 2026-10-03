@@ -54,7 +54,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('strips nested App subitem ids when creating from a copied GET payload', async () => {
         const apiKey = await createAdminApiKey();
-        const appProject = await createProject(apiKey, 'APP');
+        const appProject = await createProject(apiKey);
         const sourceApp = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: createAppPayload(undefined, appProject.id, 'API Source App'),
@@ -104,7 +104,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('replaces all App subitem collections through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: createAppPayload(undefined, project.id, 'Full Schema Write App'),
@@ -133,7 +133,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('preserves App network policy rule IDs when updating through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({
             data: { name: 'Policy Target App', projectId: project.id },
         });
@@ -178,7 +178,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects an App write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const { appNetworkPolicy: _appNetworkPolicy, ...payload } = createAppPayload(undefined, project.id, 'Missing Policy App');
 
         const problem = await expectApiProblem(await apiFetch('/api/v1/apps', apiKey, {
@@ -191,7 +191,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('removes an App network policy configuration when the API receives null', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: createAppPayload(undefined, project.id, 'Policy Removal App'),
@@ -215,7 +215,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects an App network policy configuration ID from another App through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
                 method: 'POST',
                 body: createAppPayload(undefined, project.id, 'Policy Owner App'),
@@ -245,7 +245,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects duplicate App network policy rules through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({
             data: { name: 'Policy Target App', projectId: project.id },
         });
@@ -274,7 +274,7 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects self-referencing App network policy rules through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const project = await createProject(apiKey, 'APP');
+        const project = await createProject(apiKey);
         const app = await expectApiJson(await apiFetch('/api/v1/apps', apiKey, {
             method: 'POST',
             body: createAppPayload(undefined, project.id, 'Self Reference Source App'),
@@ -302,8 +302,8 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('strips nested Agent subitem ids when creating from a copied GET payload', async () => {
         const apiKey = await createAdminApiKey();
-        const agentProject = await createProject(apiKey, 'AGENT');
-        const appProject = await createProject(apiKey, 'APP');
+        const agentProject = await createProject(apiKey);
+        const appProject = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({
             data: { name: 'Policy Target App', projectId: appProject.id },
         });
@@ -360,8 +360,8 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects an Agent write when its network policy configuration is omitted', async () => {
         const apiKey = await createAdminApiKey();
-        const agentProject = await createProject(apiKey, 'AGENT');
-        const appProject = await createProject(apiKey, 'APP');
+        const agentProject = await createProject(apiKey);
+        const appProject = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
         const gateway = await dataAccess.client.llmGateway.create({
             data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
@@ -378,8 +378,8 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('removes an Agent network policy configuration when the API receives null', async () => {
         const apiKey = await createAdminApiKey();
-        const agentProject = await createProject(apiKey, 'AGENT');
-        const appProject = await createProject(apiKey, 'APP');
+        const agentProject = await createProject(apiKey);
+        const appProject = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
         const gateway = await dataAccess.client.llmGateway.create({
             data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
@@ -400,8 +400,8 @@ describe('REST API v1 integration - nested subitem identity', () => {
 
     it('rejects an Agent network policy configuration ID from another Agent through the API', async () => {
         const apiKey = await createAdminApiKey();
-        const agentProject = await createProject(apiKey, 'AGENT');
-        const appProject = await createProject(apiKey, 'APP');
+        const agentProject = await createProject(apiKey);
+        const appProject = await createProject(apiKey);
         const targetApp = await dataAccess.client.app.create({ data: { name: 'Policy Target App', projectId: appProject.id } });
         const gateway = await dataAccess.client.llmGateway.create({
             data: { name: 'Agent Policy Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:test-key' },
@@ -435,10 +435,10 @@ async function createAdminApiKey() {
     return restApiKeyService.create(user.id, 'integration-test');
 }
 
-async function createProject(apiKey: string, projectType: 'APP' | 'AGENT') {
+async function createProject(apiKey: string) {
     return await expectApiJson(await apiFetch('/api/v1/projects', apiKey, {
         method: 'POST',
-        body: { name: `${projectType} Project ${crypto.randomUUID()}`, projectType },
+        body: { name: `Project ${crypto.randomUUID()}` },
     })) as Project;
 }
 

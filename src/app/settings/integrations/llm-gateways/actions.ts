@@ -58,18 +58,12 @@ export const deployLiteLlmGatewayInstance = async (inputData: z.infer<typeof dep
         if (newProjectName?.trim()) {
             const project = await projectService.save({
                 name: newProjectName.trim(),
-                projectType: 'APP',
             });
             targetProjectId = project.id;
         }
 
         if (!targetProjectId) {
             throw new ServiceException('Please select a Project or create a new one.');
-        }
-
-        const targetProject = await projectService.getById(targetProjectId);
-        if (targetProject.projectType !== 'APP') {
-            throw new ServiceException('LiteLLM can only be deployed into an App Project.');
         }
 
         const createdAppIds = await appTemplateService.createAppFromTemplate(targetProjectId, structuredClone(litellmAppTemplate));

@@ -5,18 +5,16 @@ import projectService from "@/server/services/project.service";
 import AppProjectOverview from "./app-components/project-overview";
 import appService from "@/server/services/app.service";
 import agentService from "@/server/services/agent.service";
-import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
-import CreateProjectActions from "./create-project-actions";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import AgentListClient from "./agent-components/agent-table";
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { ensureReadProject, RequesterIdentity } from '@/server/utils/shared-authorization.utils';
-import paramService, { ParamService } from '@/server/services/param.service';
-import s3TargetService from '@/server/services/s3-target.service';
-import volumeBackupService from '@/server/services/volume-backup.service';
-import clusterService from '@/server/services/cluster.service';
-import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
+import paramService, { ParamService } from "@/server/services/param.service";
+import s3TargetService from "@/server/services/s3-target.service";
+import volumeBackupService from "@/server/services/volume-backup.service";
+import clusterService from "@/server/services/cluster.service";
+import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
+import agentSandboxAddonService from "@/server/services/addons/agent-sandbox-addon.service";
 
 export default async function AppsPage({
     params
@@ -34,29 +32,17 @@ export default async function AppsPage({
     const identity: RequesterIdentity = { type: 'session', session };
     ensureReadProject(identity, projectId);
     const project = await projectService.getById(projectId);
-    const isAgentProject = project.projectType === 'AGENT';
+    const agentsAvailable = await agentSandboxAddonService.isAvailable();
 
-    if (isAgentProject) {
-        const agents = await agentService.getAllByProjectId(projectId);
-        const relevantAgents = agents.filter((agent) =>
-            UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id));
-        return (
-            <div className="flex-1 space-y-4 pt-6">
-                <PageTitle
-                    title="Agents"
-                    subtitle={`Agent Project "${project.name}"`}>
-                    {UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId) &&
-                        <CreateProjectActions projectId={projectId} projectType="agent" />}
-                </PageTitle>
-                <AgentListClient agents={relevantAgents} session={session} projectId={projectId} />
-                <ProjectBreadcrumbs project={project} />
-            </div>
-        );
-    }
-
-    const data = await appService.getAllAppsByProjectId(projectId);
+    const [data, agents] = await Promise.all([
+        appService.getAllAppsByProjectId(projectId),
+        agentService.getAllByProjectId(projectId),
+    ]);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
+    const relevantAgents = agents.filter((agent) =>
+        UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id));
+
     const [
         networkGraphPositions,
         hasAcknowledgedNewNetworkPolicyExplanation,
@@ -84,6 +70,8 @@ export default async function AppsPage({
             <AppProjectOverview
                 session={session}
                 apps={relevantApps}
+                agents={relevantAgents}
+                agentsAvailable={agentsAvailable}
                 projectId={project.id}
                 projectName={project.name}
                 networkGraphPositions={networkGraphPositions}

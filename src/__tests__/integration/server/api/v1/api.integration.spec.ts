@@ -51,7 +51,7 @@ describe('REST API v1 integration', () => {
         const updatedProject = await expectApiJson(
             await apiFetch('/api/v1/projects', apiKey, {
                 method: 'POST',
-                body: { id: createdProject.id, name: `${projectName} Updated`, projectType: 'APP' },
+                body: { id: createdProject.id, name: `${projectName} Updated` },
             }),
         );
         expect(updatedProject).toMatchObject({
@@ -158,7 +158,7 @@ describe('REST API v1 integration', () => {
     it('create, read, update and delete agent through the api', async () => {
         const apiKey = await createAdminApiKey();
 
-        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const { createdProject } = await createApiProject(apiKey);
         const gateway = await dataAccess.client.llmGateway.create({
             data: {
                 name: 'API Test Gateway',
@@ -208,7 +208,6 @@ describe('REST API v1 integration', () => {
             modelAlias: ['gpt-4o'],
             project: {
                 id: createdProject.id,
-                projectType: 'AGENT',
             },
             llmGateway: {
                 id: gateway.id,
@@ -251,7 +250,7 @@ describe('REST API v1 integration', () => {
 
     it('returns sandbox access URL for existing agent domain', async () => {
         const apiKey = await createAdminApiKey();
-        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const { createdProject } = await createApiProject(apiKey);
         const gateway = await dataAccess.client.llmGateway.create({
             data: {
                 name: 'API Access URL Gateway',
@@ -300,7 +299,7 @@ describe('REST API v1 integration', () => {
 
     it('returns 400 when sandbox access URL is requested with unknown domain for agent', async () => {
         const apiKey = await createAdminApiKey();
-        const { createdProject } = await createApiProject(apiKey, 'AGENT');
+        const { createdProject } = await createApiProject(apiKey);
         const gateway = await dataAccess.client.llmGateway.create({
             data: {
                 name: 'API Missing Domain Gateway',
@@ -417,14 +416,14 @@ async function createGitAppForProject(projectId: string, apiKey: string) {
     return createdApp as AppExtendedModel;
 }
 
-async function createApiProject(apiKey: string, projectType: 'APP' | 'AGENT' = 'APP') {
+async function createApiProject(apiKey: string) {
     const suffix = Date.now();
-    const projectName = `API ${projectType} Project ${suffix}`;
+    const projectName = `API Project ${suffix}`;
 
     const createdProject = await expectApiJson(
         await apiFetch('/api/v1/projects', apiKey, {
             method: 'POST',
-            body: { name: projectName, projectType },
+            body: { name: projectName },
         })
     ) as Project;
     expect(createdProject.name).toBe(projectName);

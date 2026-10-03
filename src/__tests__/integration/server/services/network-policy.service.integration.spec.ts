@@ -236,7 +236,6 @@ function createNetworkPolicyApp(overrides: Pick<AppExtendedModel,
         project: {
             id: overrides.projectId,
             name: overrides.projectId,
-            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },
@@ -260,7 +259,6 @@ function createNginxApp(): AppExtendedModel {
         project: {
             id: 'nginx-node-port-test',
             name: 'Nginx Node Port Test',
-            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

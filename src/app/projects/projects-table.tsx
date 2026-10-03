@@ -13,15 +13,13 @@ import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditProjectDialog } from "./edit-project-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import ProjectStatusIndicator from "@/components/custom/project-status-indicator";
 import { ProjectWithCountsModel } from "@/shared/model/project-extended.model";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 
-export default function ProjectsTable({ data, session, agentsAvailable }: {
+export default function ProjectsTable({ data, session }: {
     data: ProjectWithCountsModel[];
     session: UserSession;
-    agentsAvailable: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -68,7 +66,7 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
                     </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                    <EditProjectDialog agentsAvailable={agentsAvailable}>
+                    <EditProjectDialog>
                         <Button><Plus /> Create Project</Button>
                     </EditProjectDialog>
                 </EmptyContent>
@@ -85,10 +83,11 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
                     {item.name}
                 </Link>
             )],
-            ['projectType', 'Type', true, (item) => item.projectType === 'AGENT' ? 'Agent' : 'App'],
-            ['status', 'Status', true, (item) => item.projectType === 'APP'
-                ? <ProjectStatusIndicator projectId={item.id} />
-                : <span className="text-muted-foreground">{item._count.agents === 0 ? 'No Agents' : item._count.agents + ' Agents'}</span>],
+            ['workloads', 'Workloads', true, (item) => (
+                <span className="text-muted-foreground">
+                    {item._count.apps} {item._count.apps === 1 ? 'App' : 'Apps'}, {item._count.agents} {item._count.agents === 1 ? 'Agent' : 'Agents'}
+                </span>
+            )],
             ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
             ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
         ]}
@@ -109,12 +108,12 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
                                 </DropdownMenuGroup>
                                 <Link href={`/project/${item.id}`}>
                                     <DropdownMenuItem>
-                                        <Eye /> <span>Show {item.projectType === 'AGENT' ? 'Agents' : 'Apps'} of Project</span>
+                                        <Eye /> <span>Show Workloads of Project</span>
                                     </DropdownMenuItem>
                                 </Link>
                                 <DropdownMenuSeparator />
                                 {UserGroupUtils.isAdmin(session) && <>
-                                    <EditProjectDialog agentsAvailable={agentsAvailable} existingItem={item}>
+                                    <EditProjectDialog existingItem={item}>
                                         <DropdownMenuItem>
                                             <Edit2 /> <span>Edit Project Name</span>
                                         </DropdownMenuItem>

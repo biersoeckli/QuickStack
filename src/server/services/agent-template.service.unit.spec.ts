@@ -99,12 +99,11 @@ import agentTemplateService from "./agent-template.service";
 import namespaceService from "./namespace.service";
 import { opencodeAgentTemplate } from "@/shared/templates/agents/opencode.template";
 import { geminiCliAgentTemplate } from "@/shared/templates/agents/gemini-cli.template";
-import { ServiceException } from "@/shared/model/service.exception.model";
 
 describe("agent-template.service", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1", projectType: "AGENT" });
+        dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1" });
         dbGatewayMocks.findUnique.mockResolvedValue({ id: "gateway-1", baseUrl: "https://litellm.example" });
         dbAgentMocks.findUnique.mockResolvedValue(null);
         dbAgentMocks.create.mockResolvedValue({ id: "agent-opencode", projectId: "project-1" });
@@ -152,7 +151,7 @@ describe("agent-template.service", () => {
             healthCheckPeriodSeconds: 15,
             healthCheckTimeoutSeconds: 5,
             healthCheckFailureThreshold: 3,
-            project: { id: "project-1", projectType: "AGENT" },
+            project: { id: "project-1" },
             llmGateway: { id: "gateway-1", baseUrl: "https://litellm.example" },
             agentDomains: [],
             agentVolumes: [],
@@ -218,14 +217,14 @@ describe("agent-template.service", () => {
         expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith("project-1");
     });
 
-    it("rejects non-agent projects", async () => {
-        dbProjectMocks.findUnique.mockResolvedValue({ id: "project-1", projectType: "APP" });
+    it("rejects a missing project", async () => {
+        dbProjectMocks.findUnique.mockResolvedValue(null);
         const template = structuredClone(opencodeAgentTemplate);
         template.templates[0].llmGatewayId = "gateway-1";
         template.templates[0].modelAlias = ["gpt-4o"];
 
         await expect(agentTemplateService.createAgentFromTemplate("project-1", template))
-            .rejects.toThrow(ServiceException);
+            .rejects.toThrow("Project not found.");
         expect(dbAgentMocks.create).not.toHaveBeenCalled();
         expect(dbAgentMocks.update).not.toHaveBeenCalled();
     });
