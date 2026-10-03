@@ -97,7 +97,7 @@ export default function EnvEdit({ app, readonly, hideCard = false }: {
                             )}
                         />
                     </CardContent>
-                    {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
+                    {!readonly && <CardFooter className={hideCard ? "px-0 pt-4 mb-2" : undefined}>
                         <SubmitButton>Save</SubmitButton>
                     </CardFooter>}
                 </form>

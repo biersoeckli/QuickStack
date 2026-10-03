@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Box, Globe2, Hammer, Logs, Play, Rocket, RotateCwClock, Settings, Square, Trash2 } from 'lucide-react';
+import { Box, Globe2, Hammer, Logs, Play, Rocket, RotateCwClock, Settings, Square, Trash2, Zap } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -25,6 +25,7 @@ export type ProjectNetworkGraphAppContextMenuProps = {
     allowInternetAccess: boolean;
     onToggleInternetAccess: () => void;
     onOpenDrawerTab: (tab: 'deployments' | 'logs' | 'backups' | 'settings') => void;
+    onShowEnvironment: () => void;
     onDelete: () => void;
     children: ReactNode;
 };
@@ -36,7 +37,8 @@ export function ProjectNetworkGraphAppContextMenu({
     onToggleInternetAccess,
     onDelete,
     children,
-    onOpenDrawerTab
+    onOpenDrawerTab,
+    onShowEnvironment,
 }: ProjectNetworkGraphAppContextMenuProps) {
     const deploymentStatus = usePodsStatus(
         (state) => state.podsStatus.get(app.id)?.deploymentStatus ?? 'UNKNOWN',
@@ -99,6 +101,10 @@ export function ProjectNetworkGraphAppContextMenu({
                             View Backups
                         </ContextMenuItem>
                     )}
+                    <ContextMenuItem onClick={onShowEnvironment}>
+                        <Zap />
+                        Show Env Variables
+                    </ContextMenuItem>
                     <ContextMenuItem onClick={() => onOpenDrawerTab('settings')}>
                         <Settings />
                         View Settings

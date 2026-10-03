@@ -14,7 +14,7 @@ import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { deleteAgentNetworkPolicyEgressRule, saveAgentNetworkPolicySettings } from "./actions";
 import AgentNetworkPolicyEgressRuleEditOverlay from "./agent-network-policy-egress-rule-edit-overlay";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { InternalHostnameUtils } from "@/server/utils/internal-hostname.utils";
+import { InternalHostnameUtils } from "@/shared/utils/internal-hostname.utils";
 
 type AgentNetworkPolicyRule = NonNullable<AgentExtendedModel['agentNetworkPolicy']>['rules'][number];
 

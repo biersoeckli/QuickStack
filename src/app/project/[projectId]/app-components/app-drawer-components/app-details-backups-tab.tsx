@@ -6,7 +6,7 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import { useNestedDrawer } from './nested-drawer';
-import { DrawerBackupList } from './drawer-backup-list';
+import { DrawerBackupList } from './app-details-backup-list';
 
 export function DrawerBackupsTab({
     app,

@@ -15,6 +15,7 @@ import { EditAppDialog } from "./edit-app-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
 import PodStatusIndicator from "@/components/custom/pod-status-indicator";
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
 
 
 export default function AppTable({
@@ -28,11 +29,13 @@ export default function AppTable({
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
+    const drawerHref = (appId: string) =>
+        PathBuilderUtils.projectAppDrawer(projectId, appId, 'deployments', 'table');
 
     return <>
         <SimpleDataTable columns={[
             ['id', 'ID', false],
-            ['name', 'Name', true, (item) => <Link href={`/project/apps/${item.id}`}
+            ['name', 'Name', true, (item) => <Link href={drawerHref(item.id)}
                 className="font-medium cursor-pointer hover:underline">
                 {item.name}
             </Link>],
@@ -47,7 +50,7 @@ export default function AppTable({
             ['status', 'Status', true, (item) => <PodStatusIndicator appId={item.id} />],
         ]}
             data={apps}
-            onItemClickLink={(item) => `/project/app/${item.id}`}
+            onItemClickLink={(item) => drawerHref(item.id)}
             actionCol={(item) =>
                 <>
                     <div className="flex">
@@ -61,7 +64,7 @@ export default function AppTable({
                                 <DropdownMenuGroup>
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 </DropdownMenuGroup>
-                                <Link href={`/project/app/${item.id}`}>
+                                <Link href={drawerHref(item.id)}>
                                     <DropdownMenuItem>
                                         <Eye /> <span>Show App Details</span>
                                     </DropdownMenuItem>

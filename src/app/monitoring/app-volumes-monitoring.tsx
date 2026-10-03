@@ -16,6 +16,7 @@ import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress"
+import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
 type AppVolumeMonitoringUsageExtendedModel = AppVolumeMonitoringUsageModel & {
     usedPercentage: number;
@@ -92,7 +93,7 @@ export default function AppVolumeMonitoring({
                                     <div className='text-xs text-slate-500'>{KubeSizeConverter.convertBytesToReadableSize(item.usedBytes)} / {KubeSizeConverter.convertBytesToReadableSize(item.capacityBytes)}</div>
                                 </TableCell>
                                 <TableCell>
-                                    <Link href={`/project/app/${item.appId}?tabName=storage`} >
+                                    <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'settings')} >
                                         <Button variant="ghost" size="sm">
                                             <ExternalLink />
                                         </Button>
