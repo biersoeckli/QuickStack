@@ -60,134 +60,148 @@ const EXECUTE_TOOL_DESCRIPTION = [
     'Responses follow the QuickStack REST API. Errors are returned as tool errors.',
 ].join(' ');
 
-function serializeOperation(operation: OperationDescriptor, detail: 'name' | 'summary' | 'full') {
-    const summary = {
-        operationId: operation.operationId,
-        method: operation.method,
-        path: operation.path,
-        tags: operation.tags,
-        supported: operation.supported,
-        ...(detail === 'name' ? {} : {
-            summary: operation.summary,
-            description: operation.description,
-        }),
-    };
-
-    if (detail !== 'full') {
-        return summary;
-    }
-
-    return {
-        ...summary,
-        pathParamsSchema: operation.pathParamsSchema,
-        querySchema: operation.querySchema,
-        bodySchema: operation.bodySchema,
-        responseSchema: operation.responseSchema,
-        unsupportedReason: operation.unsupportedReason,
-    };
-}
-
-function matchesSearch(operation: OperationDescriptor, term: string): boolean {
-    if (!term) {
-        return true;
-    }
-    const haystack = [
-        operation.operationId,
-        operation.summary,
-        operation.description,
-        ...operation.tags,
-    ].filter((value): value is string => !!value);
-    return haystack.some((value) => value.toLowerCase().includes(term));
-}
-
-function errorResult(text: string) {
-    return { isError: true as const, content: [{ type: 'text' as const, text }] };
-}
-
-function describeFailure(status: number, result: unknown): string {
-    if (result && typeof result === 'object') {
-        const problem = result as { detail?: unknown; title?: unknown };
-        const message = typeof problem.detail === 'string' ? problem.detail : problem.title;
-        if (typeof message === 'string') {
-            return `QuickStack returned HTTP ${status}: ${message}`;
-        }
-    }
-    return `QuickStack returned HTTP ${status}.`;
-}
-
-export function buildQuickStackMcpServer(options: {
+export type McpServerBuildOptions = {
     app: McpSourceApp;
     operations: OperationDescriptor[];
     authInfo?: AuthInfo;
-}): McpServer {
-    const { app, operations, authInfo } = options;
-    const server = new McpServer({ name: 'quickstack', version: '1.0.0' });
+};
 
-    server.registerTool(
-        'search_operations',
-        {
-            title: 'Search QuickStack operations',
-            description: SEARCH_TOOL_DESCRIPTION,
-            inputSchema: searchInputSchema,
-            outputSchema: searchOutputSchema,
-            annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-        },
-        async ({ search, detail }) => {
-            const term = search?.trim().toLowerCase() ?? '';
-            const operationList = operations
-                .filter((operation) => matchesSearch(operation, term))
-                .map((operation) => serializeOperation(operation, detail));
+class McpServerFactory {
 
-            return {
-                content: [{ type: 'text' as const, text: JSON.stringify({ operations: operationList }) }],
-                structuredContent: { operations: operationList },
-            };
-        }
-    );
+    build(options: McpServerBuildOptions): McpServer {
+        const server = new McpServer({ name: 'quickstack', version: '1.0.0' });
+        this.registerSearchOperation(server, options.operations);
+        this.registerExecuteOperation(server, options);
+        return server;
+    }
 
-    server.registerTool(
-        'execute_operation',
-        {
-            title: 'Execute QuickStack operation',
-            description: EXECUTE_TOOL_DESCRIPTION,
-            inputSchema: executeInputSchema,
-            outputSchema: executeOutputSchema,
-            annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-        },
-        async ({ operationId, pathParams, query, body }) => {
-            const operation = operations.find((candidate) => candidate.operationId === operationId);
-            if (!operation) {
-                return errorResult(`Unknown operation "${operationId}". Call search_operations to find valid operation ids.`);
-            }
-            if (!operation.supported) {
-                return errorResult(`Operation "${operationId}" is not available over MCP. ${operation.unsupportedReason ?? ''}`.trim());
-            }
+    private registerSearchOperation(server: McpServer, operations: OperationDescriptor[]): void {
+        server.registerTool(
+            'search_operations',
+            {
+                title: 'Search QuickStack operations',
+                description: SEARCH_TOOL_DESCRIPTION,
+                inputSchema: searchInputSchema,
+                outputSchema: searchOutputSchema,
+                annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+            },
+            async ({ search, detail }) => {
+                const term = search?.trim().toLowerCase() ?? '';
+                const operationList = operations
+                    .filter((operation) => this.matchesSearch(operation, term))
+                    .map((operation) => this.serializeOperation(operation, detail));
 
-            let execution;
-            try {
-                execution = await executeOperation({
-                    app,
-                    operation,
-                    pathParams: pathParams ?? {},
-                    query: query ?? {},
-                    body,
-                    bearerToken: authInfo?.token,
-                });
-            } catch (error) {
-                return errorResult(error instanceof Error ? error.message : 'Operation failed.');
-            }
-
-            if (execution.status >= 200 && execution.status < 300) {
-                const result = execution.result ?? null;
                 return {
-                    content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-                    structuredContent: { status: execution.status, result },
+                    content: [{ type: 'text' as const, text: JSON.stringify({ operations: operationList }) }],
+                    structuredContent: { operations: operationList },
                 };
             }
+        );
+    }
 
-            return errorResult(describeFailure(execution.status, execution.result));
+    private registerExecuteOperation(server: McpServer, options: McpServerBuildOptions): void {
+        const { app, operations, authInfo } = options;
+
+        server.registerTool(
+            'execute_operation',
+            {
+                title: 'Execute QuickStack operation',
+                description: EXECUTE_TOOL_DESCRIPTION,
+                inputSchema: executeInputSchema,
+                outputSchema: executeOutputSchema,
+                annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+            },
+            async ({ operationId, pathParams, query, body }) => {
+                const operation = operations.find((candidate) => candidate.operationId === operationId);
+                if (!operation) {
+                    return this.errorResult(`Unknown operation "${operationId}". Call search_operations to find valid operation ids.`);
+                }
+                if (!operation.supported) {
+                    return this.errorResult(`Operation "${operationId}" is not available over MCP. ${operation.unsupportedReason ?? ''}`.trim());
+                }
+
+                let execution;
+                try {
+                    execution = await executeOperation({
+                        app,
+                        operation,
+                        pathParams: pathParams ?? {},
+                        query: query ?? {},
+                        body,
+                        bearerToken: authInfo?.token,
+                    });
+                } catch (error) {
+                    return this.errorResult(error instanceof Error ? error.message : 'Operation failed.');
+                }
+
+                if (execution.status >= 200 && execution.status < 300) {
+                    const result = execution.result ?? null;
+                    return {
+                        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+                        structuredContent: { status: execution.status, result },
+                    };
+                }
+
+                return this.errorResult(this.describeFailure(execution.status, execution.result));
+            }
+        );
+    }
+
+    private serializeOperation(operation: OperationDescriptor, detail: 'name' | 'summary' | 'full') {
+        const summary = {
+            operationId: operation.operationId,
+            method: operation.method,
+            path: operation.path,
+            tags: operation.tags,
+            supported: operation.supported,
+            ...(detail === 'name' ? {} : {
+                summary: operation.summary,
+                description: operation.description,
+            }),
+        };
+
+        if (detail !== 'full') {
+            return summary;
         }
-    );
 
-    return server;
+        return {
+            ...summary,
+            pathParamsSchema: operation.pathParamsSchema,
+            querySchema: operation.querySchema,
+            bodySchema: operation.bodySchema,
+            responseSchema: operation.responseSchema,
+            unsupportedReason: operation.unsupportedReason,
+        };
+    }
+
+    private matchesSearch(operation: OperationDescriptor, term: string): boolean {
+        if (!term) {
+            return true;
+        }
+        const haystack = [
+            operation.operationId,
+            operation.summary,
+            operation.description,
+            ...operation.tags,
+        ].filter((value): value is string => !!value);
+        return haystack.some((value) => value.toLowerCase().includes(term));
+    }
+
+    private errorResult(text: string) {
+        return { isError: true as const, content: [{ type: 'text' as const, text }] };
+    }
+
+    private describeFailure(status: number, result: unknown): string {
+        if (result && typeof result === 'object') {
+            const problem = result as { detail?: unknown; title?: unknown };
+            const message = typeof problem.detail === 'string' ? problem.detail : problem.title;
+            if (typeof message === 'string') {
+                return `QuickStack returned HTTP ${status}: ${message}`;
+            }
+        }
+        return `QuickStack returned HTTP ${status}.`;
+    }
 }
+
+const mcpServerFactory = new McpServerFactory();
+export default mcpServerFactory;

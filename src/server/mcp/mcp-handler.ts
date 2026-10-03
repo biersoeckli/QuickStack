@@ -5,7 +5,7 @@ import {
 } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import type { McpAuthResolver } from './mcp-auth';
-import { buildQuickStackMcpServer } from './mcp-server.factory';
+import mcpServerFactory from './mcp-server.factory';
 import { buildOperationRegistry } from './operation-registry';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
 
@@ -40,7 +40,7 @@ export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions)
     const operations = buildOperationRegistry(app);
 
     const handler = createMcpHandler(
-        ({ authInfo }) => buildQuickStackMcpServer({ app, operations, authInfo }),
+        ({ authInfo }) => mcpServerFactory.build({ app, operations, authInfo }),
         { responseMode: 'json' }
     );
 
