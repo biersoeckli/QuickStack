@@ -115,7 +115,7 @@ A configured domain that exposes an **App** through Traefik.
 _Avoid_: public app address, ingress rule
 
 **Project Network Graph**:
-A visual representation of the effective traffic routes between the Apps and Agents visible from an **App Project**, including Traefik ingress permitted by each **App Domain** even when that App has Network Policies disabled.
+A visual representation of the effective traffic routes between the Apps and Agents visible from a **Project**, including Traefik ingress permitted by each **App Domain** even when that App has Network Policies disabled.
 _Avoid_: network-policy-only graph, deployment topology
 
 **Agent**:
@@ -178,12 +178,8 @@ _Avoid_: agent API key, model API key
 A model name exposed by an **LLM Gateway** for selection by an **Agent**.
 _Avoid_: provider model id when the LiteLLM alias is meant
 
-**Project Type**:
-The workload category a **Project** can contain: either App or Agent.
-_Avoid_: mixed project, project mode
-
 **Project Workload**:
-The kind of deployable resource allowed by a **Project Type**.
+A deployable resource contained in a **Project**: either an **App** or an **Agent**.
 _Avoid_: mixed workload, generic app
 
 **Volume**:
@@ -217,14 +213,6 @@ _Avoid_: app permission when the workload may be an Agent
 **Running Workload**:
 A **Project Workload** whose runtime instance is ready to serve user interaction or traffic.
 _Avoid_: deployed when describing user-visible readiness
-
-**App Project**:
-A **Project** whose **Project Type** allows only **Apps**.
-_Avoid_: normal project, container project
-
-**Agent Project**:
-A **Project** whose **Project Type** allows only **Agents**.
-_Avoid_: agent workspace, agent group
 
 **Source**:
 The origin QuickStack uses to build or run an **App**.
@@ -343,11 +331,9 @@ _Avoid_: manual initial port requirement
 ## Relationships
 
 - An **App** can have zero or one **Configured Source**.
-- A **Project** has exactly one **Project Type**.
-- A **Project Type** is assigned when a **Project** is created and cannot be changed later.
-- An **App Project** can contain zero or more **Apps** and no **Agents**.
-- An **Agent Project** can contain zero or more **Agents** and no **Apps**.
-- An **Agent** belongs to exactly one **Agent Project**.
+- A **Project** can contain zero or more **Apps** and zero or more **Agents**.
+- An **App** belongs to exactly one **Project**.
+- An **Agent** belongs to exactly one **Project**.
 - An **Agent** has exactly one **Agent Name**.
 - An **Agent** has exactly one **Agent Source**.
 - An **Agent** has exactly one **Agent Model Configuration**.
@@ -359,7 +345,7 @@ _Avoid_: manual initial port requirement
 - A running **Agent** has exactly one **Agent Runtime Secret**.
 - An **Agent** uses exactly one **LLM Gateway**.
 - QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
-- A **Project Workload** means an **App** inside an **App Project** or an **Agent** inside an **Agent Project**.
+- A **Project Workload** means an **App** or an **Agent** inside a **Project**.
 - A **Workload Permission** belongs to exactly one **Project Workload**.
 - An **App** can have zero or more **App Environment Variables**.
 - An **App** can have zero or more **App Build Arguments**.

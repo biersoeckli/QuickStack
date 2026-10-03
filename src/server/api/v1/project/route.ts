@@ -7,13 +7,11 @@ import { ProjectModel } from '@/shared/model/generated-zod';
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { Project } from '@prisma/client';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
-import { ProjectTypeModel } from '@/shared/model/project-type.model';
 
 const projectWriteSchema = ProjectModel
     .omit({ createdAt: true, updatedAt: true })
     .extend({
         id: z.string().optional(),
-        projectType: ProjectTypeModel,
     });
 
 export const projectRoutes = new Elysia()
@@ -64,7 +62,6 @@ export const projectRoutes = new Elysia()
         return await projectService.save({
             id: existing?.id,
             name: body.name,
-            projectType: body.projectType,
         });
     }, {
         body: projectWriteSchema,

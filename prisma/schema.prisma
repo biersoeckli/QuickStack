@@ -222,7 +222,6 @@ model RoleAgentPermission {
 model Project {
   id                     String                        @id @default(uuid())
   name                   String
-  projectType            String                        @default("APP") // APP, AGENT
   apps                   App[]
   agents                 Agent[]
   roleProjectPermissions RoleProjectPermission[]

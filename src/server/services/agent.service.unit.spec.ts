@@ -228,7 +228,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
 function mockAgentWithRelations(id: string, name: string, projectId: string = 'proj-test-agent', overrides: Record<string, any> = {}) {
     return {
         ...mockAgent(id, name, projectId),
-        project: { id: projectId, name: 'Test Project', projectType: 'AGENT' },
+        project: { id: projectId, name: 'Test Project' },
         llmGateway: { id: 'gateway-1', name: 'Test Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:gw-key' },
         ...overrides,
     };
@@ -259,7 +259,6 @@ describe('agent.service', () => {
         vi.mocked(ingressService.deleteAgentIngress).mockResolvedValue(undefined);
         vi.mocked(ingressService.createOrUpdateAgentIngress).mockResolvedValue(undefined);
         vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
-        vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({ projectType: 'AGENT' } as any);
     });
 
     describe('saveAgent', () => {
@@ -283,23 +282,6 @@ describe('agent.service', () => {
                     modelAlias: JSON.stringify(['gpt-4o']),
                 }),
             });
-            expect(dataAccess.client.project.findUnique).toHaveBeenCalledWith({
-                where: { id: 'proj-test-agent' },
-                select: { projectType: true },
-            });
-        });
-
-        it('rejects creates in non-Agent projects', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({ projectType: 'APP' } as any);
-
-            await expect(agentService.saveAgent({
-                name: 'My Agent',
-                projectId: 'proj-test-agent',
-                llmGatewayId: 'gateway-1',
-                modelAlias: ['gpt-4o'],
-            })).rejects.toThrow('Agents can only be created in Agent Projects.');
-
-            expect(dataAccess.client.agent.create).not.toHaveBeenCalled();
         });
 
         it('updates an existing agent when id is provided', async () => {
@@ -324,8 +306,8 @@ describe('agent.service', () => {
     describe('getAll', () => {
         it('returns all agents with relations sorted by project and name', async () => {
             const agents = [
-                mockAgentWithRelations('agent-z', 'Zulu', 'project-b', { project: { id: 'project-b', name: 'Beta', projectType: 'AGENT' } }),
-                mockAgentWithRelations('agent-a', 'Alpha', 'project-a', { project: { id: 'project-a', name: 'Alpha', projectType: 'AGENT' } }),
+                mockAgentWithRelations('agent-z', 'Zulu', 'project-b', { project: { id: 'project-b', name: 'Beta' } }),
+                mockAgentWithRelations('agent-a', 'Alpha', 'project-a', { project: { id: 'project-a', name: 'Alpha' } }),
             ];
             vi.mocked(dataAccess.client.agent.findMany).mockResolvedValue(agents as any);
 

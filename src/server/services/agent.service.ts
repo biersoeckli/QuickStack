@@ -250,14 +250,6 @@ class AgentService {
             }
 
             if (isCreate) {
-                const project = await tx.project.findUnique({
-                    where: { id: data.projectId as string },
-                    select: { projectType: true },
-                });
-                if (!project || project.projectType !== 'AGENT') {
-                    throw new ServiceException("Agents can only be created in Agent Projects.");
-                }
-
                 savedItem = await tx.agent.create({
                     data: {
                         id: KubeObjectNameUtils.toAgentId(data.name as string),

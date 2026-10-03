@@ -48,7 +48,7 @@ function makeAgent(overrides: Partial<AgentExtendedModel> = {}): AgentExtendedMo
         warmPoolReplicas: 0,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
-        project: { id: 'proj-test-agent', name: 'Project', projectType: 'AGENT', createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-01T00:00:00Z') },
+        project: { id: 'proj-test-agent', name: 'Project', createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-01T00:00:00Z') },
         llmGateway: { baseUrl: 'https://litellm.example.com' },
         agentDomains: [],
         agentVolumes: [],

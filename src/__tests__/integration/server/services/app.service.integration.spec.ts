@@ -22,7 +22,7 @@ describe('app.service integration - subitem ownership guards', () => {
 
     async function createProjectAndApps() {
         const project = await dataAccess.client.project.create({
-            data: { name: 'App Project', projectType: 'APP' },
+            data: { name: 'App Project' },
         });
         const sourceApp = await dataAccess.client.app.create({
             data: { id: 'source-app', name: 'Source App', projectId: project.id },

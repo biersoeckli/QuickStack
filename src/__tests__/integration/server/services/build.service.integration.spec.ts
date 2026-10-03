@@ -337,7 +337,6 @@ function createBuildApp(input: BuildIntegrationInput & { id: string; projectId: 
         project: {
             id: input.projectId,
             name: input.projectId,
-            projectType: 'APP',
             createdAt: new Date(),
             updatedAt: new Date(),
         },

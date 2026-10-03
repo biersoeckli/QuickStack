@@ -71,7 +71,7 @@ import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
 const AGENT_ID = 'agent-test-runner';
-const PROJECT = { id: 'proj-1', name: 'test-project', projectType: 'AGENT' };
+const PROJECT = { id: 'proj-1', name: 'test-project' };
 const GATEWAY = { id: 'gw-1', name: 'My Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:adminkey' };
 const SANDBOX_NAMESPACE = 'proj-1';
 const USER_ID = 'user-123';

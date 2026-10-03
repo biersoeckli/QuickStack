@@ -1,4 +1,5 @@
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import type { AppNetworkPolicyRuleProvenance } from '@/shared/utils/app-network-policy-draft.utils';
 
 export type WorkloadType = 'APP' | 'AGENT';
@@ -104,9 +105,9 @@ function consolidateConnections(edges: NetworkGraphEdge[]) {
 }
 
 /** Projects effective App Network Policy Configuration and App Domain traffic into graph facts. */
-export function buildProjectNetworkGraph(apps: AppExtendedModel[]): ProjectNetworkGraphData {
-    const projectId = apps[0]?.projectId;
-    const internalAppIds = new Set(apps.map(app => app.id));
+export function buildProjectNetworkGraph(apps: AppExtendedModel[], agents: AgentExtendedModel[] = []): ProjectNetworkGraphData {
+    const projectId = apps[0]?.projectId ?? agents[0]?.projectId;
+    const internalWorkloadIds = new Set([...apps.map(app => app.id), ...agents.map(agent => agent.id)]);
     const nodes = new Map<string, NetworkGraphNode>();
     const edges = new Map<string, NetworkGraphEdge>();
     const addNode = (node: NetworkGraphNode) => { if (!nodes.has(node.id)) nodes.set(node.id, node); };
@@ -138,7 +139,7 @@ export function buildProjectNetworkGraph(apps: AppExtendedModel[]): ProjectNetwo
                 if (!target) continue;
                 const targetType: WorkloadType = rule.targetApp ? 'APP' : 'AGENT';
                 const targetNodeId = workloadNodeId(targetType, target.id);
-                const external = targetType !== 'APP' || !internalAppIds.has(target.id);
+                const external = !internalWorkloadIds.has(target.id);
                 addNode({
                     id: targetNodeId, kind: targetType, name: target.name, projectId: target.projectId, external,
                     caption: external && target.projectId !== projectId ? 'Other project' : targetType === 'AGENT' ? 'Agent sandbox' : undefined,
@@ -159,6 +160,30 @@ export function buildProjectNetworkGraph(apps: AppExtendedModel[]): ProjectNetwo
             for (const domain of app.appDomains) addEdge('INTERNET', appNodeId, 'INTERNET_INGRESS', `${domain.hostname}:${domain.port}`, false);
         }
     }
+
+    for (const agent of agents) {
+        const agentNodeId = workloadNodeId('AGENT', agent.id);
+        addNode({ id: agentNodeId, kind: 'AGENT', name: agent.name, projectId: agent.projectId, external: false, caption: 'Agent sandbox' });
+
+        if (agent.agentNetworkPolicy) {
+            for (const rule of agent.agentNetworkPolicy.rules) {
+                const targetApp = rule.targetApp;
+                if (!targetApp) continue;
+                const targetNodeId = workloadNodeId('APP', targetApp.id);
+                const external = !internalWorkloadIds.has(targetApp.id);
+                addNode({
+                    id: targetNodeId, kind: 'APP', name: targetApp.name, projectId: targetApp.projectId, external,
+                    caption: external && targetApp.projectId !== projectId ? 'Other project' : undefined,
+                });
+                addEdge(agentNodeId, targetNodeId, 'EGRESS', formatRuleLabel(rule.port, rule.protocol), external);
+            }
+            if (agent.agentNetworkPolicy.allowInternetAccess !== false) {
+                addNode({ id: 'INTERNET', kind: 'INTERNET', name: 'Internet', external: false });
+                addEdge(agentNodeId, 'INTERNET', 'INTERNET_EGRESS', '', false);
+            }
+        }
+    }
+
     const rawEdges = Array.from(edges.values()).map(edge => ({ ...edge, labels: aggregateLabels(edge.labels) }));
     return { nodes: Array.from(nodes.values()), edges: consolidateConnections(rawEdges) };
 }

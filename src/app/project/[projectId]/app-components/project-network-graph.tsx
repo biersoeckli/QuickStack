@@ -35,6 +35,7 @@ import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import BuildStatusIndicator from '@/components/custom/build-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
@@ -57,6 +58,7 @@ import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-n
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
 import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
+import { CreateAgentDialog } from '@/app/project/[projectId]/agent-components/create-agent-dialog';
 import ChooseTemplateDialog from '@/app/project/[projectId]/choose-template-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
@@ -86,6 +88,8 @@ type ConnectionEdgeData = {
 
 type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
+    agents: AgentExtendedModel[];
+    agentsAvailable: boolean;
     projectId: string;
     session: UserSession;
     savedPositions: ProjectNetworkGraphPositions;
@@ -94,6 +98,12 @@ type ProjectNetworkGraphProps = {
     volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
     gitSshPublicKeysByApp: Record<string, string | undefined>;
 };
+
+function stripWorkloadPrefix(nodeId: string | undefined) {
+    if (!nodeId) return undefined;
+    const separatorIndex = nodeId.indexOf(':');
+    return separatorIndex >= 0 ? nodeId.slice(separatorIndex + 1) : nodeId;
+}
 
 const WorkloadNode = memo(function WorkloadNode({
     data,
@@ -194,22 +204,24 @@ const edgeTypes = { connection: ConnectionEdge };
 function ProjectNetworkGraphCanvasContextMenu({
     projectId,
     canCreateApps,
+    canCreateAgents,
     children,
 }: {
     projectId: string;
     canCreateApps: boolean;
+    canCreateAgents: boolean;
     children: ReactNode;
 }) {
     const { openDialog } = useDialog();
 
-    const openTemplateDialog = (templateType: 'database' | 'template') => {
+    const openTemplateDialog = (templateType: 'database' | 'template' | 'agent-template') => {
         openDialog(
             <ChooseTemplateDialog projectId={projectId} templateType={templateType} />,
             { maxWidth: '1000px' },
         );
     };
 
-    if (!canCreateApps) return children;
+    if (!canCreateApps && !canCreateAgents) return children;
 
     return (
         <ContextMenu>
@@ -217,20 +229,34 @@ function ProjectNetworkGraphCanvasContextMenu({
                 {children}
             </ContextMenuTrigger>
             <ContextMenuContent>
-                <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
-                    <ContextMenuItem>
-                        <File />
-                        Create Empty App
+                {canCreateApps && <>
+                    <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
+                        <ContextMenuItem>
+                            <File />
+                            Create Empty App
+                        </ContextMenuItem>
+                    </EditAppDialog>
+                    <ContextMenuItem onClick={() => openTemplateDialog('template')}>
+                        <Blocks />
+                        Create App from Template
                     </ContextMenuItem>
-                </EditAppDialog>
-                <ContextMenuItem onClick={() => openTemplateDialog('template')}>
-                    <Blocks />
-                    Create App from Template
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => openTemplateDialog('database')}>
-                    <Database />
-                    Create Database
-                </ContextMenuItem>
+                    <ContextMenuItem onClick={() => openTemplateDialog('database')}>
+                        <Database />
+                        Create Database
+                    </ContextMenuItem>
+                </>}
+                {canCreateAgents && <>
+                    <CreateAgentDialog projectId={projectId}>
+                        <ContextMenuItem>
+                            <Bot />
+                            Create Empty Agent
+                        </ContextMenuItem>
+                    </CreateAgentDialog>
+                    <ContextMenuItem onClick={() => openTemplateDialog('agent-template')}>
+                        <Blocks />
+                        Create Agent from Template
+                    </ContextMenuItem>
+                </>}
             </ContextMenuContent>
         </ContextMenu>
     );
@@ -264,6 +290,8 @@ export default function ProjectNetworkGraph(props: ProjectNetworkGraphProps) {
 
 function ProjectNetworkGraphEditor({
     apps,
+    agents,
+    agentsAvailable,
     projectId,
     session,
     savedPositions,
@@ -290,9 +318,14 @@ function ProjectNetworkGraphEditor({
     const graphApps = useMemo(() => apps.map(app => AppNetworkPolicyDraftUtils.applyToApp(app, drafts[app.id])), [apps, drafts]);
     const canEditLayout = UserGroupUtils.sessionHasWriteAccessToProject(session, projectId);
     const canCreateApps = UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId);
-    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId, savedPositions);
+    const canCreateAgents = agentsAvailable && UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, agents, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
+    const localWorkloadIds = useMemo(() => new Set([
+        ...apps.map(app => app.id),
+        ...agents.map(agent => agent.id),
+    ]), [apps, agents]);
     const drawerSession = useProjectNetworkGraphDrawerSession({
         searchParams,
         appIds: localAppIds,
@@ -322,13 +355,21 @@ function ProjectNetworkGraphEditor({
     const cancelConnectionTargetLeave = () => {
         if (connectionTargetLeaveTimer.current) clearTimeout(connectionTargetLeaveTimer.current);
     };
-    const selectableTargets: NetworkPolicySelectableTarget[] = apps.map(app => ({
-        id: app.id,
-        name: app.name,
-        type: 'APP',
-        appType: app.appType,
-        project: { id: app.projectId, name: app.project.name },
-    }));
+    const selectableTargets: NetworkPolicySelectableTarget[] = [
+        ...apps.map(app => ({
+            id: app.id,
+            name: app.name,
+            type: 'APP' as const,
+            appType: app.appType,
+            project: { id: app.projectId, name: app.project.name },
+        })),
+        ...agents.map(agent => ({
+            id: agent.id,
+            name: agent.name,
+            type: 'AGENT' as const,
+            project: { id: agent.projectId, name: agent.project.name },
+        })),
+    ];
 
     const updateDraft = useCallback((appId: string, update: (draft: AppNetworkPolicyDraft) => AppNetworkPolicyDraft) => {
         setDrafts(current => ({ ...current, [appId]: update(current[appId]) }));
@@ -540,6 +581,7 @@ function ProjectNetworkGraphEditor({
                 <ProjectNetworkGraphCanvasContextMenu
                     projectId={projectId}
                     canCreateApps={canCreateApps}
+                    canCreateAgents={canCreateAgents}
                 >
                     <ReactFlow
                     onInit={instance => { reactFlowRef.current = instance; }}
@@ -560,20 +602,20 @@ function ProjectNetworkGraphEditor({
                     nodesConnectable
                     elementsSelectable={false}
                     isValidConnection={(connection: Connection) => {
-                        const source = connection.source?.replace('APP:', '');
-                        const target = connection.target?.replace('APP:', '');
+                        const source = stripWorkloadPrefix(connection.source);
+                        const target = stripWorkloadPrefix(connection.target);
                         return connection.sourceHandle === 'source-egress'
                             && connection.targetHandle === 'target-ingress'
                             && !!source
                             && !!target
                             && source !== target
                             && localAppIds.has(source)
-                            && localAppIds.has(target)
+                            && localWorkloadIds.has(target)
                             && writable(source);
                     }}
                     onConnect={(connection: Connection) => {
-                        const source = connection.source?.replace('APP:', '');
-                        const target = connection.target?.replace('APP:', '');
+                        const source = stripWorkloadPrefix(connection.source);
+                        const target = stripWorkloadPrefix(connection.target);
                         if (source && target) openConnectionDialog(source, target);
                     }}
                     onConnectStart={(_event, { nodeId, handleId }) => {
@@ -591,9 +633,9 @@ function ProjectNetworkGraphEditor({
                     }}
                     onNodeMouseEnter={(_event, node) => {
                         cancelConnectionTargetLeave();
-                        const source = connectionSourceNodeId?.replace('APP:', '');
-                        const target = node.id.replace('APP:', '');
-                        if (source && source !== target && localAppIds.has(source) && localAppIds.has(target) && writable(source)) {
+                        const source = stripWorkloadPrefix(connectionSourceNodeId);
+                        const target = stripWorkloadPrefix(node.id);
+                        if (source && target && source !== target && localAppIds.has(source) && localWorkloadIds.has(target) && writable(source)) {
                             setConnectionTargetNodeId(node.id);
                         }
                     }}
@@ -613,9 +655,12 @@ function ProjectNetworkGraphEditor({
                     } as CSSProperties}
                     onNodeClick={(_event, node) => {
                         const data = node.data as NetworkGraphNode;
-                        if (data.kind !== 'INTERNET') {
-                            drawerSession.selectNode(data);
+                        if (data.kind === 'INTERNET') return;
+                        if (data.kind === 'AGENT') {
+                            router.push(`/project/agent/${stripWorkloadPrefix(data.id)}`);
+                            return;
                         }
+                        drawerSession.selectNode(data);
                     }}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
