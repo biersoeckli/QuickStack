@@ -49,11 +49,11 @@ export default function CreateProjectActions({
                     {agentsAvailable && (
                         <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                            <DropdownMenuLabel>Agent Sandboxes</DropdownMenuLabel>
                             <CreateAgentDialog projectId={projectId}>
-                                <DropdownMenuItem><Bot /> Empty Agent</DropdownMenuItem>
+                                <DropdownMenuItem><Bot /> Empty Agent Sandbox</DropdownMenuItem>
                             </CreateAgentDialog>
-                            <DropdownMenuItem onClick={() => openTemplateDialog('agent-template')}><Blocks /> Agent Template</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openTemplateDialog('agent-template')}><Blocks /> Agent Sandbox Template</DropdownMenuItem>
                         </>
                     )}
                 </DropdownMenuContent>

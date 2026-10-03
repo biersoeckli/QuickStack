@@ -18,6 +18,7 @@ import { useDialog } from "@/frontend/states/zustand.states";
 import NewNetworkPolicyExplanationDialog from './new-network-policy-explanation-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
+import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
 import WorkloadsTable from '../workloads-table';
 
 interface ProjectOverviewProps {
@@ -31,8 +32,10 @@ interface ProjectOverviewProps {
     showNewNetworkPolicyExplanation: boolean;
     s3Targets: S3Target[];
     storageClasses: string[];
+    runtimeClasses: string[];
     volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
     gitSshPublicKeysByApp: Record<string, string | undefined>;
+    agentTemplateInfoByAgent: Record<string, AgentSandboxTemplateInfo | undefined>;
 }
 
 type ProjectOverviewTab = 'table' | 'graph';
@@ -56,8 +59,10 @@ export default function AppProjectOverview({
     showNewNetworkPolicyExplanation,
     s3Targets,
     storageClasses,
+    runtimeClasses,
     volumeBackupsByApp,
     gitSshPublicKeysByApp,
+    agentTemplateInfoByAgent,
 }: ProjectOverviewProps) {
     const searchParams = useSearchParams();
     const { openDialog } = useDialog();
@@ -164,8 +169,10 @@ export default function AppProjectOverview({
                     savedPositions={networkGraphPositions}
                     s3Targets={s3Targets}
                     storageClasses={storageClasses}
+                    runtimeClasses={runtimeClasses}
                     volumeBackupsByApp={volumeBackupsByApp}
                     gitSshPublicKeysByApp={gitSshPublicKeysByApp}
+                    agentTemplateInfoByAgent={agentTemplateInfoByAgent}
                 />
             </div>
         </Tabs>

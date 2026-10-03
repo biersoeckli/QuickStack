@@ -47,7 +47,7 @@ export default function WorkloadsTable({
     ];
 
     const workloadHref = (item: WorkloadRow) => item.kind === 'AGENT'
-        ? `/project/agent/${item.id}`
+        ? PathBuilderUtils.projectAgentDrawer(projectId, item.id, 'sandboxes', 'table')
         : PathBuilderUtils.projectAppDrawer(projectId, item.id, 'deployments', 'table');
 
     return <SimpleDataTable
@@ -57,7 +57,7 @@ export default function WorkloadsTable({
                     {item.name}
                 </Link>
             )],
-            ['kind', 'Type', true, (item: WorkloadRow) => item.kind === 'AGENT' ? 'Agent' : 'App'],
+            ['kind', 'Type', true, (item: WorkloadRow) => item.kind === 'AGENT' ? 'Agent Sandbox' : 'App'],
             ['status', 'Status', true, (item: WorkloadRow) => item.kind === 'APP'
                 ? <PodStatusIndicator appId={item.id} />
                 : <span className="text-muted-foreground">{item.warmPoolReplicas} warm</span>],
@@ -81,7 +81,7 @@ export default function WorkloadsTable({
                         </DropdownMenuGroup>
                         <Link href={workloadHref(item)}>
                             <DropdownMenuItem>
-                                <Eye /> <span>Show {item.kind === 'AGENT' ? 'Agent' : 'App'} Details</span>
+                                <Eye /> <span>Show {item.kind === 'AGENT' ? 'Agent Sandbox' : 'App'} Details</span>
                             </DropdownMenuItem>
                         </Link>
                         {item.kind === 'APP' ? (

@@ -22,11 +22,14 @@ describe('DrawerSessionUtils.resolveTab', () => {
 });
 
 describe('useProjectNetworkGraphDrawerSession', () => {
+    const noAgentIds = new Set<string>();
+    const noAppIds = new Set<string>();
+
     test('keeps its interface stable across an unrelated parent render', () => {
         const searchParams = new URLSearchParams('drawerTab=deployments');
         const appIds = new Set(['app-1']);
         const { result, rerender } = renderHook(() =>
-            useProjectNetworkGraphDrawerSession({ searchParams, appIds }),
+            useProjectNetworkGraphDrawerSession({ searchParams, appIds, agentIds: noAgentIds }),
         );
 
         const session = result.current;
@@ -39,7 +42,7 @@ describe('useProjectNetworkGraphDrawerSession', () => {
         const searchParams = new URLSearchParams('drawerAppId=app-1&drawerTab=logs');
         const appIds = new Set(['app-1']);
         const { result } = renderHook(() =>
-            useProjectNetworkGraphDrawerSession({ searchParams, appIds }),
+            useProjectNetworkGraphDrawerSession({ searchParams, appIds, agentIds: noAgentIds }),
         );
 
         expect(result.current.selectedNodeId).toBe('APP:app-1');
@@ -60,9 +63,24 @@ describe('useProjectNetworkGraphDrawerSession', () => {
         const searchParams = new URLSearchParams('drawerAppId=missing&drawerTab=logs');
         const appIds = new Set(['app-1']);
         const { result } = renderHook(() =>
-            useProjectNetworkGraphDrawerSession({ searchParams, appIds }),
+            useProjectNetworkGraphDrawerSession({ searchParams, appIds, agentIds: noAgentIds }),
         );
 
         expect(result.current.selectedNodeId).toBeUndefined();
+    });
+
+    test('selects an agent node from the URL', () => {
+        const searchParams = new URLSearchParams('drawerAgentId=agent-1&drawerTab=sandboxes');
+        const agentIds = new Set(['agent-1']);
+        const { result } = renderHook(() =>
+            useProjectNetworkGraphDrawerSession({
+                searchParams,
+                appIds: noAppIds,
+                agentIds,
+            }),
+        );
+
+        expect(result.current.selectedNodeId).toBe('AGENT:agent-1');
+        expect(result.current.requestedTab).toBe('sandboxes');
     });
 });

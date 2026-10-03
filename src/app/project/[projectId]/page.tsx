@@ -15,6 +15,7 @@ import volumeBackupService from "@/server/services/volume-backup.service";
 import clusterService from "@/server/services/cluster.service";
 import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
 import agentSandboxAddonService from "@/server/services/addons/agent-sandbox-addon.service";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 export default async function AppsPage({
     params
@@ -48,13 +49,16 @@ export default async function AppsPage({
         hasAcknowledgedNewNetworkPolicyExplanation,
         s3Targets,
         storageClasses,
+        runtimeClasses,
         volumeBackups,
         gitSshPublicKeys,
+        agentTemplateInfoByAgent,
     ] = await Promise.all([
         projectNetworkGraphLayoutService.getPositions(projectId),
         paramService.getBoolean(ParamService.FEATURE_NEW_NETWORK_POLICY_EXPLENATION),
         s3TargetService.getAll(),
         clusterService.getStorageClasses(),
+        clusterService.getRuntimeClasses(),
         Promise.all(relevantApps.map(async (app) => [
             app.id,
             await volumeBackupService.getForApp(app.id),
@@ -62,6 +66,10 @@ export default async function AppsPage({
         Promise.all(relevantApps.map(async (app) => [
             app.id,
             await appGitSshKeyService.getPublicKey(app.id),
+        ] as const)),
+        Promise.all(relevantAgents.map(async (agent) => [
+            agent.id,
+            await CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id)),
         ] as const)),
     ]);
 
@@ -78,8 +86,10 @@ export default async function AppsPage({
                 showNewNetworkPolicyExplanation={!hasAcknowledgedNewNetworkPolicyExplanation}
                 s3Targets={s3Targets}
                 storageClasses={storageClasses}
+                runtimeClasses={runtimeClasses}
                 volumeBackupsByApp={Object.fromEntries(volumeBackups)}
                 gitSshPublicKeysByApp={Object.fromEntries(gitSshPublicKeys)}
+                agentTemplateInfoByAgent={Object.fromEntries(agentTemplateInfoByAgent)}
             />
             <ProjectBreadcrumbs project={project} />
         </div>
