@@ -142,7 +142,7 @@ export function buildProjectNetworkGraph(apps: AppExtendedModel[], agents: Agent
                 const external = !internalWorkloadIds.has(target.id);
                 addNode({
                     id: targetNodeId, kind: targetType, name: target.name, projectId: target.projectId, external,
-                    caption: external && target.projectId !== projectId ? 'Other project' : targetType === 'AGENT' ? 'Agent sandbox' : undefined,
+                    caption: external && target.projectId !== projectId ? 'Other project' : targetType === 'AGENT' ? 'Agent Sandbox' : undefined,
                 });
                 const label = formatRuleLabel(rule.port, rule.protocol);
                 const ruleProvenance = [{ ownerAppId: app.id, ruleKey: rule.id }];
@@ -163,7 +163,7 @@ export function buildProjectNetworkGraph(apps: AppExtendedModel[], agents: Agent
 
     for (const agent of agents) {
         const agentNodeId = workloadNodeId('AGENT', agent.id);
-        addNode({ id: agentNodeId, kind: 'AGENT', name: agent.name, projectId: agent.projectId, external: false, caption: 'Agent sandbox' });
+        addNode({ id: agentNodeId, kind: 'AGENT', name: agent.name, projectId: agent.projectId, external: false, caption: 'Agent Sandbox' });
 
         if (agent.agentNetworkPolicy) {
             for (const rule of agent.agentNetworkPolicy.rules) {

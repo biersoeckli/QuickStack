@@ -22,6 +22,7 @@ import { Toast } from "@/frontend/utils/toast.utils";
 import { Actions } from "@/frontend/utils/nextjs-actions.utils";
 import { createAgent, getLlmGateways, getModelAliasesForGateway } from "../actions";
 import { useRouter } from "next/navigation";
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
 import { Loader2 } from "lucide-react";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { useDialogContext } from "@/frontend/states/dialog-context";
@@ -97,7 +98,7 @@ function CreateAgentForm({ projectId }: { projectId: string }) {
 
         if (result.status === 'success') {
             closeDialog();
-            router.push(`/project/agent/${result.data!.id}`);
+            router.push(PathBuilderUtils.projectAgentDrawer(projectId, result.data!.id, 'sandboxes'));
         }
         setSubmitting(false);
     };

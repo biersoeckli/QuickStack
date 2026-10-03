@@ -264,10 +264,10 @@ export default function AgentSandboxesCard({
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Agent Sandboxes</CardTitle>
+                    <CardTitle>Sandbox Instances</CardTitle>
                     <CardDescription>
-                        Start and manage agent sandboxes for this agent.
-                        {sandboxes.length > 0 && ` ${sandboxes.length} sandbox${sandboxes.length !== 1 ? 's' : ''} running.`}
+                        Start and manage Sandbox Instances for this Agent Sandbox.
+                        {sandboxes.length > 0 && ` ${sandboxes.length} sandbox instance${sandboxes.length !== 1 ? 's' : ''} running.`}
                     </CardDescription>
                 </div>
                 {!readonly && (
@@ -278,7 +278,7 @@ export default function AgentSandboxesCard({
                         size="sm"
                     >
                         <Play className="h-4 w-4 mr-1" />
-                        Start New Sandbox
+                        Start Sandbox Instance
                     </Button>
                 )}
             </CardHeader>
@@ -290,9 +290,9 @@ export default function AgentSandboxesCard({
                                 <EmptyMedia variant="icon">
                                     <Bot />
                                 </EmptyMedia>
-                                <EmptyTitle>No running Sandboxes</EmptyTitle>
+                                <EmptyTitle>No running Sandbox Instances</EmptyTitle>
                                 <EmptyDescription>
-                                    There are currently no running sandboxes for this agent. Click &quot;Start New Sandbox&quot; to create one.
+                                    There are currently no running Sandbox Instances for this Agent Sandbox. Click &quot;Start Sandbox Instance&quot; to create one.
                                 </EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent className="flex-row justify-center gap-2">
@@ -302,7 +302,7 @@ export default function AgentSandboxesCard({
                                     size="sm"
                                 >
                                     <Play className="h-4 w-4 mr-1" />
-                                    Start New Sandbox
+                                    Start Sandbox Instance
                                 </Button>
                             </EmptyContent>
                         </Empty>

@@ -68,6 +68,8 @@ import {
     useProjectNetworkGraphDrawerSession,
 } from './project-network-graph/project-network-graph-drawer-session';
 import { AppDetailsDrawer } from './app-drawer-components/app-details-drawer';
+import { AgentSandboxDrawer } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-sandbox-drawer';
+import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -95,8 +97,10 @@ type ProjectNetworkGraphProps = {
     savedPositions: ProjectNetworkGraphPositions;
     s3Targets: S3Target[];
     storageClasses: string[];
+    runtimeClasses: string[];
     volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
     gitSshPublicKeysByApp: Record<string, string | undefined>;
+    agentTemplateInfoByAgent: Record<string, AgentSandboxTemplateInfo | undefined>;
 };
 
 function stripWorkloadPrefix(nodeId: string | undefined) {
@@ -249,12 +253,12 @@ function ProjectNetworkGraphCanvasContextMenu({
                     <CreateAgentDialog projectId={projectId}>
                         <ContextMenuItem>
                             <Bot />
-                            Create Empty Agent
+                            Create Empty Agent Sandbox
                         </ContextMenuItem>
                     </CreateAgentDialog>
                     <ContextMenuItem onClick={() => openTemplateDialog('agent-template')}>
                         <Blocks />
-                        Create Agent from Template
+                        Create Agent Sandbox from Template
                     </ContextMenuItem>
                 </>}
             </ContextMenuContent>
@@ -297,8 +301,10 @@ function ProjectNetworkGraphEditor({
     savedPositions,
     s3Targets,
     storageClasses,
+    runtimeClasses,
     volumeBackupsByApp,
     gitSshPublicKeysByApp,
+    agentTemplateInfoByAgent,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -322,6 +328,7 @@ function ProjectNetworkGraphEditor({
     const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, agents, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
+    const localAgentIds = useMemo(() => new Set(agents.map(agent => agent.id)), [agents]);
     const localWorkloadIds = useMemo(() => new Set([
         ...apps.map(app => app.id),
         ...agents.map(agent => agent.id),
@@ -329,6 +336,7 @@ function ProjectNetworkGraphEditor({
     const drawerSession = useProjectNetworkGraphDrawerSession({
         searchParams,
         appIds: localAppIds,
+        agentIds: localAgentIds,
     });
     const { selectedNodeId } = drawerSession;
     const writable = useCallback(
@@ -522,6 +530,8 @@ function ProjectNetworkGraphEditor({
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
+    const selectedAgent = selectedNode?.kind === 'AGENT' ? agents.find(agent => agent.id === selectedNode.id.replace('AGENT:', '')) : undefined;
+    const selectedAgentRole = selectedAgent ? UserGroupUtils.getRolePermissionForProjectWorkload(session, selectedAgent.id) ?? undefined : undefined;
 
     useEffect(() => {
         if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
@@ -656,10 +666,6 @@ function ProjectNetworkGraphEditor({
                     onNodeClick={(_event, node) => {
                         const data = node.data as NetworkGraphNode;
                         if (data.kind === 'INTERNET') return;
-                        if (data.kind === 'AGENT') {
-                            router.push(`/project/agent/${stripWorkloadPrefix(data.id)}`);
-                            return;
-                        }
                         drawerSession.selectNode(data);
                     }}
                 >
@@ -693,7 +699,7 @@ function ProjectNetworkGraphEditor({
                 {edges.length === 0 && nodes.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                     <Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p>
                 </div>}
-                {selectedNode && <AppDetailsDrawer
+                {selectedNode && selectedNode.kind === 'APP' && <AppDetailsDrawer
                     contentRef={drawerContentRef}
                     node={selectedNode}
                     app={selectedApp}
@@ -711,6 +717,21 @@ function ProjectNetworkGraphEditor({
                     }}
                     openEnvironment={environmentAppId === selectedApp?.id}
                     onEnvironmentOpened={() => setEnvironmentAppId(undefined)}
+                />}
+                {selectedNode && selectedNode.kind === 'AGENT' && <AgentSandboxDrawer
+                    contentRef={drawerContentRef}
+                    agent={selectedAgent}
+                    role={selectedAgentRole}
+                    templateInfo={selectedAgent ? agentTemplateInfoByAgent[selectedAgent.id] : undefined}
+                    storageClasses={storageClasses}
+                    runtimeClasses={runtimeClasses}
+                    open={drawerSession.open}
+                    onOpenChange={drawerSession.onOpenChange}
+                    onOpenChangeComplete={drawerSession.onOpenChangeComplete}
+                    requestedTab={drawerSession.requestedTab}
+                    onTabChange={tab => {
+                        if (selectedAgent) drawerSession.openAgentTab(selectedAgent.id, tab);
+                    }}
                 />}
             </div>
         </div>

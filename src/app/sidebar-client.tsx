@@ -85,7 +85,7 @@ export function SidebarCient({
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(searchParams.get('drawerAppId'));
-      setCurrentlySelectedAgentId(null);
+      setCurrentlySelectedAgentId(searchParams.get('drawerAgentId'));
 
     } else {
       setCurrentlySelectedProjectId(null);
@@ -187,7 +187,7 @@ export function SidebarCient({
                                   ? currentlySelectedAgentId === workload.id
                                   : currentlySelectedAppId === workload.id;
                                 return (
-                                  <DropdownMenuItem key={`${workload.kind}:${workload.id}`} className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={workload.kind === 'AGENT' ? `/project/agent/${workload.id}` : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
+                                  <DropdownMenuItem key={`${workload.kind}:${workload.id}`} className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={workload.kind === 'AGENT' ? PathBuilderUtils.projectAgentDrawer(item.id, workload.id) : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
                                 );
                               })}
                             </DropdownMenuContent>
