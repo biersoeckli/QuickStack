@@ -119,12 +119,12 @@ async function callTool(handler: QuickStackMcpHandler, name: string, args: Recor
 }
 
 describe('QuickStack MCP handler', () => {
-    it('lists exactly the two meta tools', async () => {
+    it('lists the search, read and write tools', async () => {
         const { status, body } = await listTools(buildHandler());
 
         expect(status).toBe(200);
         const names = body.result.tools.map((tool: { name: string }) => tool.name).sort();
-        expect(names).toEqual(['execute_operation', 'search_operations']);
+        expect(names).toEqual(['execute_operation', 'execute_read_operation', 'search_operations']);
     });
 
     it('rejects a request with an invalid REST API Key', async () => {
@@ -189,15 +189,25 @@ describe('QuickStack MCP handler', () => {
         expect(listProjects?.supported).toBe(true);
     });
 
+    it('reports readOnly and the matching tool for each operation', async () => {
+        const { body } = await callTool(buildHandler(), 'search_operations', { detail: 'full' });
+        const operations = body.result.structuredContent.operations as Array<{ operationId: string; readOnly: boolean; tool: string }>;
+        const byId = new Map(operations.map((operation) => [operation.operationId, operation]));
+
+        expect(byId.get('listProjects')).toMatchObject({ readOnly: true, tool: 'execute_read_operation' });
+        expect(byId.get('getProject')).toMatchObject({ readOnly: true, tool: 'execute_read_operation' });
+        expect(byId.get('saveProject')).toMatchObject({ readOnly: false, tool: 'execute_operation' });
+    });
+
     it('executes a read operation and returns the REST payload', async () => {
-        const { body } = await callTool(buildHandler(), 'execute_operation', { operationId: 'listProjects' });
+        const { body } = await callTool(buildHandler(), 'execute_read_operation', { operationId: 'listProjects' });
 
         expect(body.result.isError).not.toBe(true);
         expect(body.result.structuredContent.result).toEqual([{ id: 'p1', name: 'Demo' }]);
     });
 
     it('maps path params and query arguments onto the REST route', async () => {
-        const { body } = await callTool(buildHandler(), 'execute_operation', {
+        const { body } = await callTool(buildHandler(), 'execute_read_operation', {
             operationId: 'getProject',
             pathParams: { id: 'p-42' },
             query: { search: 'needle' },
@@ -216,10 +226,24 @@ describe('QuickStack MCP handler', () => {
     });
 
     it('forwards the bearer credential to the REST route', async () => {
-        const { body } = await callTool(buildHandler(), 'execute_operation', { operationId: 'listProjects' });
+        const { body } = await callTool(buildHandler(), 'execute_read_operation', { operationId: 'listProjects' });
 
         expect(body.result.isError).not.toBe(true);
         expect(body.result.structuredContent.result).toHaveLength(1);
+    });
+
+    it('rejects a mutating operation on the read tool', async () => {
+        const { body } = await callTool(buildHandler(), 'execute_read_operation', { operationId: 'saveProject', body: { name: 'x' } });
+
+        expect(body.result.isError).toBe(true);
+        expect(body.result.content[0].text).toContain('execute_operation');
+    });
+
+    it('rejects a read-only operation on the write tool', async () => {
+        const { body } = await callTool(buildHandler(), 'execute_operation', { operationId: 'listProjects' });
+
+        expect(body.result.isError).toBe(true);
+        expect(body.result.content[0].text).toContain('execute_read_operation');
     });
 
     it('returns a tool error for an unknown operation id', async () => {
@@ -230,7 +254,7 @@ describe('QuickStack MCP handler', () => {
     });
 
     it('returns a tool error for an unsupported operation', async () => {
-        const { body } = await callTool(buildHandler(), 'execute_operation', { operationId: 'streamLogs' });
+        const { body } = await callTool(buildHandler(), 'execute_read_operation', { operationId: 'streamLogs' });
 
         expect(body.result.isError).toBe(true);
     });
@@ -242,7 +266,7 @@ describe('QuickStack MCP handler', () => {
             resolveAuthInfo: async () => ({ token: 'wrong', clientId: 'user-1', scopes: [] }),
         });
 
-        const { body } = await callTool(handler, 'execute_operation', { operationId: 'listProjects' });
+        const { body } = await callTool(handler, 'execute_read_operation', { operationId: 'listProjects' });
 
         expect(body.result.isError).toBe(true);
         expect(body.result.content[0].text).toContain('401');

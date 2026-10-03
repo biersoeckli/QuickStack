@@ -104,9 +104,9 @@ describe('QuickStack MCP integration', () => {
 
         const response = await handler.fetch(jsonRpcRequest({
             method: 'tools/call',
-            toolName: 'execute_operation',
+            toolName: 'execute_read_operation',
             apiKey,
-            params: { name: 'execute_operation', arguments: { operationId: 'listProjects' } },
+            params: { name: 'execute_read_operation', arguments: { operationId: 'listProjects' } },
         }));
         const body = await response.json();
 

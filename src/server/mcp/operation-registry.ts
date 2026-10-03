@@ -18,7 +18,12 @@ export type OperationDescriptor = {
     responseSchema?: Record<string, unknown>;
     supported: boolean;
     unsupportedReason?: string;
+    readOnly: boolean;
 };
+
+function isReadOnlyMethod(method: string): boolean {
+    return method === 'GET' || method === 'HEAD';
+}
 
 type ElysiaRoute = {
     method: string;
@@ -80,6 +85,7 @@ class OperationRegistry {
                 responseSchema: this.toJsonSchema(responseSchema),
                 supported,
                 unsupportedReason,
+                readOnly: isReadOnlyMethod(route.method),
             });
         }
 
