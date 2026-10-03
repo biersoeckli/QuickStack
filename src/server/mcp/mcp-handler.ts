@@ -52,7 +52,8 @@ export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions)
             }
         }
 
-        const originRejected = originValidationResponse(request, allowedOrigins);
+        const allowedOriginHostnames = [...allowedOrigins, new URL(request.url).hostname];
+        const originRejected = originValidationResponse(request, allowedOriginHostnames);
         if (originRejected) {
             return originRejected;
         }

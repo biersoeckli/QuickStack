@@ -142,6 +142,11 @@ describe('QuickStack MCP handler', () => {
         expect(response.status).toBe(403);
     });
 
+    it('accepts a same-origin browser request', async () => {
+        const response = await buildHandler().fetch(jsonRpcRequest({ method: 'tools/list', origin: 'http://localhost' }));
+        expect(response.status).toBe(200);
+    });
+
     it('derives operations from the routes in deterministic id order', async () => {
         const { body } = await callTool(buildHandler(), 'search_operations', {});
         const operations = body.result.structuredContent.operations as Array<{ operationId: string }>;

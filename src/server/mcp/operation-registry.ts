@@ -97,5 +97,5 @@ export function buildOperationRegistry(app: McpSourceApp): OperationDescriptor[]
         });
     }
 
-    return descriptors.sort((left, right) => left.operationId.localeCompare(right.operationId));
+    return descriptors.sort((left, right) => left.operationId < right.operationId ? -1 : left.operationId > right.operationId ? 1 : 0);
 }

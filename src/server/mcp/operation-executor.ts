@@ -1,3 +1,4 @@
+import { ServiceException } from '@/shared/model/service.exception.model';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
 
 export type OperationExecutionResult = {
@@ -11,7 +12,7 @@ export function resolveOperationPath(template: string, pathParams: Record<string
     return template.replace(PATH_PARAM_PATTERN, (_match, name: string) => {
         const value = pathParams[name];
         if (value === undefined || value === null || value === '') {
-            throw new Error(`Missing required path parameter "${name}".`);
+            throw new ServiceException(`Missing required path parameter "${name}".`);
         }
         return encodeURIComponent(String(value));
     });
@@ -48,7 +49,7 @@ export async function executeOperation(options: {
     }
 
     let requestBody: string | undefined;
-    if (body !== undefined && operation.method !== 'GET' && operation.method !== 'DELETE') {
+    if (body !== undefined && operation.method !== 'GET' && operation.method !== 'HEAD') {
         headers.set('content-type', 'application/json');
         requestBody = JSON.stringify(body);
     }
