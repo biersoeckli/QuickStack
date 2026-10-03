@@ -15,6 +15,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
 import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 import { cn } from "@/frontend/utils/utils";
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from "@/components/ui/empty";
 
 export default function Logs({
     app,
@@ -123,7 +130,19 @@ export default function Logs({
             useFullHeight && 'flex min-h-0 flex-1 flex-col',
         )}>
             {!appPods && <FullLoadingSpinner />}
-            {appPods && appPods.length === 0 && <div>No running pods found for this app.</div>}
+            {appPods && appPods.length === 0 && (
+                <Empty className={cn(useFullHeight && 'flex-1')}>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <Terminal />
+                        </EmptyMedia>
+                        <EmptyTitle>No running pods found</EmptyTitle>
+                        <EmptyDescription>
+                            This app has no running pods with logs available.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            )}
             {selectedPod && appPods && <div className="flex gap-4">
                 <div className="flex-1">
                     <Select

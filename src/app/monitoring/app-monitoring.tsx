@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { AppMonitoringUsageModel } from '@/shared/model/app-monitoring-usage.model';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
 export default function AppRessourceMonitoring({
     appsRessourceUsage
@@ -74,7 +75,7 @@ export default function AppRessourceMonitoring({
                                 </TableCell>
                                 <TableCell>{KubeSizeConverter.convertBytesToReadableSize(item.ramUsageBytes)}</TableCell>
                                 <TableCell>
-                                    <Link href={`/project/app/${item.appId}`} >
+                                    <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'stats')} >
                                         <Button variant="ghost" size="sm">
                                             <ExternalLink />
                                         </Button>

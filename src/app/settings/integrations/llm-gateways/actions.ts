@@ -10,7 +10,7 @@ import { litellmAppTemplate } from "@/shared/templates/apps/litellm.template";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import appService from "@/server/services/app.service";
 import { EnvVarUtils } from "@/server/utils/env-var.utils";
-import { InternalHostnameUtils } from "@/server/utils/internal-hostname.utils";
+import { InternalHostnameUtils } from "@/shared/utils/internal-hostname.utils";
 import { Constants } from "@/shared/utils/constants";
 
 

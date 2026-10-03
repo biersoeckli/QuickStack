@@ -179,6 +179,23 @@ export const getBackupsForVolumeSchedule = async (backupVolumeId: string) =>
         return new SuccessActionResult<BackupEntry[]>(backups);
     });
 
+export const downloadBackupForVolumeSchedule = async (backupVolumeId: string, backupKey: string) =>
+    simpleAction(async () => {
+        await validateBackupVolumeReadAuthorization(backupVolumeId);
+
+        const validatedData = z.object({
+            backupVolumeId: z.string(),
+            backupKey: z.string(),
+        }).parse({ backupVolumeId, backupKey });
+        const volumeBackup = await volumeBackupService.getById(validatedData.backupVolumeId);
+        const fileName = await backupService.downloadBackupForS3TargetAndKey(
+            volumeBackup.targetId,
+            validatedData.backupKey,
+        );
+
+        return new SuccessActionResult(fileName, 'Starting download...');
+    }) as Promise<ServerActionResult<any, string>>;
+
 export const openFileBrowserForVolume = async (volumeId: string) =>
     simpleAction(async () => {
         await validateVolumeWriteAuthorization(volumeId);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppTable from "./apps-table";
 import ProjectNetworkGraph from "../app-components/project-network-graph";
 import { UserSession } from "@/shared/model/sim-session.model";
@@ -57,7 +57,6 @@ export default function AppProjectOverview({
     const searchParams = useSearchParams();
     const { openDialog } = useDialog();
     const requestedTab = searchParams.get('tab');
-    const requestedDrawerAppId = searchParams.get('drawerAppId');
     const [currentTab, setCurrentTab] = useState<ProjectOverviewTab>('graph');
 
     useEffect(() => {
@@ -72,17 +71,13 @@ export default function AppProjectOverview({
     }, [openDialog, showNewNetworkPolicyExplanation, apps.length]);
 
     useEffect(() => {
-        if (requestedDrawerAppId) {
-            setCurrentTab('graph');
-            return;
-        }
         if (isProjectOverviewTab(requestedTab)) {
             setCurrentTab(requestedTab);
             return;
         }
         const savedTab = window.localStorage.getItem(tabStorageKey());
         setCurrentTab(isProjectOverviewTab(savedTab) ? savedTab : 'graph');
-    }, [projectId, requestedDrawerAppId, requestedTab]);
+    }, [projectId, requestedTab]);
 
     const handleTabChange = (value: string) => {
         if (!isProjectOverviewTab(value)) return;
@@ -140,7 +135,7 @@ export default function AppProjectOverview({
             <PageTitle title="Apps" subtitle={`App Project "${projectName}"`}>
                 <div className="flex items-center gap-2">
                     <TabsList>
-                        <TabsTrigger value="graph" aria-label="Network graph view" title="Network graph view">
+                        <TabsTrigger value="graph" aria-label="Network graph view" title="Network graph view" className="hidden md:inline-flex">
                             <Network className="size-4" />
                         </TabsTrigger>
                         <TabsTrigger value="table" aria-label="Table view" title="Table view">
@@ -150,10 +145,10 @@ export default function AppProjectOverview({
                     {canCreate && <CreateProjectActions currentlyOpenedTab={currentTab} projectId={projectId} projectType="app" />}
                 </div>
             </PageTitle>
-            <TabsContent value="table">
+            <div className={currentTab === 'table' ? 'block' : 'block md:hidden'}>
                 <AppTable session={session} app={apps} projectId={projectId} />
-            </TabsContent>
-            <TabsContent value="graph" data-project-network-graph>
+            </div>
+            <div className={currentTab === 'graph' ? 'hidden md:block' : 'hidden'} data-project-network-graph>
                 <ProjectNetworkGraph
                     apps={apps}
                     projectId={projectId}
@@ -164,7 +159,7 @@ export default function AppProjectOverview({
                     volumeBackupsByApp={volumeBackupsByApp}
                     gitSshPublicKeysByApp={gitSshPublicKeysByApp}
                 />
-            </TabsContent>
+            </div>
         </Tabs>
     );
 }

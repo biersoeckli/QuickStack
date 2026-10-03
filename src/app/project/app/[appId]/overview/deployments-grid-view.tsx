@@ -1,4 +1,4 @@
-import { Boxes, EllipsisVertical, File, GitCommit, LucideTerminal, RotateCcw } from 'lucide-react';
+import { Boxes, EllipsisVertical, File, GitCommit, LucideTerminal, Rocket, RotateCcw } from 'lucide-react';
 import ShortCommitHash from '@/components/custom/short-commit-hash';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,13 @@ import { formatDateTime } from '@/frontend/utils/format.utils';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
 import { appBuildMethodLabels } from '@/shared/model/app-source-info.model';
 import DeploymentStatusBadge from './deployment-status-badge';
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/components/ui/empty';
 
 type DeploymentsGridViewProps = {
     deployments: DeploymentInfoModel[];
@@ -31,7 +38,19 @@ export function DeploymentsGridView({
     onRollback,
 }: DeploymentsGridViewProps) {
     if (deployments.length === 0) {
-        return <p className="py-8 text-center text-sm text-muted-foreground">No deployments yet.</p>;
+        return (
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Rocket />
+                    </EmptyMedia>
+                    <EmptyTitle>No deployments available</EmptyTitle>
+                    <EmptyDescription>
+                        This app has no deployments yet.
+                    </EmptyDescription>
+                </EmptyHeader>
+            </Empty>
+        );
     }
 
     return (

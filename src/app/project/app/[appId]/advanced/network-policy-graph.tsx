@@ -20,6 +20,7 @@ import { Bot, Boxes, Cloud, MoveRight } from 'lucide-react';
 import { cn } from '@/frontend/utils/utils';
 import { AppNetworkPolicyRuleWithTargetAppModel } from '@/shared/model/app-extended.model';
 import { NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
+import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
 type WorkloadType = 'APP' | 'AGENT';
 
@@ -86,6 +87,7 @@ function collectNeighbors(rules: AppNetworkPolicyRuleWithTargetAppModel[], appId
 
 type PeerNodeData = {
     type: WorkloadType;
+    projectId: string;
     name: string;
     side: 'left' | 'right';
     both: boolean;
@@ -248,7 +250,7 @@ export default function NetworkPolicyGraph({
                 id: `${neighbor.type}:${neighbor.id}`,
                 type: 'peer',
                 position: { x: COLUMN_X_LEFT - PEER_WIDTH / 2, y: y - 28 },
-                data: { type: neighbor.type, name: neighbor.name, side: 'left', both: false, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
+                data: { type: neighbor.type, projectId: neighbor.projectId, name: neighbor.name, side: 'left', both: false, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
             });
             edges.push({
                 ...edgeLabelStyle(),
@@ -270,7 +272,7 @@ export default function NetworkPolicyGraph({
                 id: `${neighbor.type}:${neighbor.id}`,
                 type: 'peer',
                 position: { x: COLUMN_X_RIGHT - PEER_WIDTH / 2, y: y - 28 },
-                data: { type: neighbor.type, name: neighbor.name, side: 'right', both: hasIngress, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
+                data: { type: neighbor.type, projectId: neighbor.projectId, name: neighbor.name, side: 'right', both: hasIngress, externalProject: neighbor.projectId !== appProjectId, caption: captionFor(neighbor) },
             });
             edges.push({
                 ...edgeLabelStyle(),
@@ -366,7 +368,10 @@ export default function NetworkPolicyGraph({
                     onNodeClick={(_event, node) => {
                         if (node.type !== 'peer') return;
                         const [workloadType, workloadId] = String(node.id).split(':');
-                        router.push(workloadType === 'AGENT' ? `/project/agent/${workloadId}` : `/project/app/${workloadId}`);
+                        const peer = node.data as PeerNodeData;
+                        router.push(workloadType === 'AGENT'
+                            ? `/project/agent/${workloadId}`
+                            : PathBuilderUtils.projectAppDrawer(peer.projectId, workloadId));
                     }}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--border)" />
