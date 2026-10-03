@@ -1,4 +1,5 @@
 import {
+  Bot,
   Box,
   Boxes,
   ChevronsLeftRightEllipsis,
@@ -62,6 +63,7 @@ export const serverSettingsNavigation: ServerSettingsNavigationItem[] = [
 
 export const developerSettingsNavigation: SettingsNavigationItem[] = [
   { title: "REST API", href: "/settings/developer/rest-api", icon: ChevronsLeftRightEllipsis, adminOnly: true },
+  { title: "MCP Server", href: "/settings/developer/mcp", icon: Bot, adminOnly: true },
 ]
 
 export function serverSettingsHref(tab: string) {

@@ -1,6 +1,7 @@
 import { v1Api } from '@/server/api/v1/api-index';
 import { resolveQuickStackAuthInfo } from '@/server/mcp/mcp-auth';
 import { createQuickStackMcpHandler } from '@/server/mcp/mcp-handler';
+import paramService, { ParamService } from '@/server/services/param.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,21 @@ const mcpHandler = createQuickStackMcpHandler({
     resolveAuthInfo: resolveQuickStackAuthInfo,
 });
 
-export const POST = mcpHandler.fetch;
-export const GET = mcpHandler.fetch;
-export const DELETE = mcpHandler.fetch;
+async function handleRequest(request: Request): Promise<Response> {
+    const enabled = await paramService.getBoolean(ParamService.MCP_SERVER_ENABLED);
+    if (!enabled) {
+        return new Response(
+            JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'MCP server is disabled.' } }),
+            {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            }
+        );
+    }
+
+    return mcpHandler.fetch(request);
+}
+
+export const POST = handleRequest;
+export const GET = handleRequest;
+export const DELETE = handleRequest;
