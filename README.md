@@ -38,6 +38,10 @@ curl -sfL https://get.quickstack.dev/setup.sh | sh -
 
 After installation, open QuickStack in your browser and start deploying your applications. For detailed setup instructions, visit the [docs](https://quickstack.dev/docs).
 
+## ☁️ One-Click Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/QuickStack/)
+
 ## Key Features
 
 - **Flexible deployments:** Deploy from public or private Git repos and registries using Railpack or your own Dockerfile.
