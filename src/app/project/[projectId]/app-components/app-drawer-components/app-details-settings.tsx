@@ -26,7 +26,7 @@ import FileMountsCard from '@/components/custom/file-mounts-card';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import { SettingsSection } from './settings-section';
-import { DrawerEnvironment } from './drawer-environment';
+import { DrawerEnvironment } from './app-details-environment';
 import { useNestedDrawer } from './nested-drawer';
 
 export function DrawerSettings({

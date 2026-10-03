@@ -1,8 +1,10 @@
+import { defaultAppDrawerTab, type AppDrawerTab } from './app-drawer-navigation.utils';
+
 export class PathBuilderUtils {
     static projectAppDrawer(
         projectId: string,
         appId: string,
-        drawerTab = 'deployments',
+        drawerTab: AppDrawerTab = defaultAppDrawerTab,
         projectTab?: string,
     ) {
         const params = new URLSearchParams({

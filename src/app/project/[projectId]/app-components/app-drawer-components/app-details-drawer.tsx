@@ -58,28 +58,27 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import Logs from '@/app/project/app/[appId]/overview/logs';
 import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import type { NetworkGraphNode } from './project-network-graph-projection';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
 import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials';
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
-import { DrawerSettings } from './drawer/drawer-settings';
-import { NestedDrawerProvider } from './drawer/nested-drawer';
-import { DrawerBackupsTab } from './drawer/drawer-backups-tab';
-import { EditAppDialog } from '../edit-app-dialog';
+import { DrawerSettings } from './app-details-settings';
+import { NestedDrawerProvider } from './nested-drawer';
+import { DrawerBackupsTab } from './app-details-backups-tab';
+import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import {
-    DrawerSessionUtils,
-    type DrawerTab,
-} from './project-network-graph-drawer-session';
-import DrawerDeploymentsTab from './drawer/drawer-deployments-tab';
+    AppDrawerNavigationUtils,
+    type AppDrawerTab,
+} from '@/shared/utils/app-drawer-navigation.utils';
+import DrawerDeploymentsTab from './app-details-deployments-tab';
 
-export type PanelConnection = {
+export type AppDetailsDrawerNode = {
     id: string;
+    kind: string;
+    external?: boolean;
     name: string;
-    direction: 'Ingress' | 'Egress';
-    label?: string;
-    copyValue?: string;
+    caption?: string;
 };
 
 function DrawerTabScrollArea({ children }: { children: ReactNode }) {
@@ -241,7 +240,7 @@ function AppStatusActions({
     );
 }
 
-export function NodeDetailsDrawer({
+export function AppDetailsDrawer({
     contentRef,
     node,
     app,
@@ -259,7 +258,7 @@ export function NodeDetailsDrawer({
     onEnvironmentOpened,
 }: {
     contentRef?: Ref<HTMLDivElement>;
-    node: NetworkGraphNode;
+    node: AppDetailsDrawerNode;
     app?: AppExtendedModel;
     role?: RolePermissionEnum;
     s3Targets: S3Target[];
@@ -270,7 +269,7 @@ export function NodeDetailsDrawer({
     onOpenChange: (open: boolean) => void;
     onOpenChangeComplete: (open: boolean) => void;
     requestedTab?: string | null;
-    onTabChange: (tab: DrawerTab) => void;
+    onTabChange: (tab: AppDrawerTab) => void;
     openEnvironment?: boolean;
     onEnvironmentOpened?: () => void;
 }) {
@@ -282,14 +281,14 @@ export function NodeDetailsDrawer({
         !AppSourceUtils.isConfiguredSource(app);
     const hasVolumes = (app?.appVolumes.length ?? 0) > 0;
 
-    const activeTab = DrawerSessionUtils.resolveTab(
+    const activeTab = AppDrawerNavigationUtils.resolveTab(
         app?.appType,
         requestedTab,
         hasVolumes,
     );
 
     const handleTabChange = (tab: string) => {
-        const nextTab = DrawerSessionUtils.resolveTab(app?.appType, tab, hasVolumes);
+        const nextTab = AppDrawerNavigationUtils.resolveTab(app?.appType, tab, hasVolumes);
         onTabChange(nextTab);
     };
 

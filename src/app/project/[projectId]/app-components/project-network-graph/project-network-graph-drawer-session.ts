@@ -2,31 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TabNavigationUtils } from '@/frontend/utils/tab-navigation.utils';
+import {
+    appDrawerTabValues,
+    AppDrawerNavigationUtils,
+    defaultAppDrawerTab,
+    type AppDrawerTab,
+} from '@/shared/utils/app-drawer-navigation.utils';
 import type { NetworkGraphNode } from './project-network-graph-projection';
 
-export const drawerTabValues = [
-    'deployments',
-    'credentials',
-    'logs',
-    'stats',
-    'backups',
-    'settings',
-] as const;
-
-export type DrawerTab = (typeof drawerTabValues)[number];
-
-export class DrawerSessionUtils {
-    static resolveTab(
-        appType: string | undefined,
-        requestedTab: string | null | undefined,
-        hasVolumes = true,
-    ): DrawerTab {
-        if (!drawerTabValues.includes(requestedTab as DrawerTab)) return 'deployments';
-        if (requestedTab === 'credentials' && appType === 'APP') return 'deployments';
-        if (requestedTab === 'backups' && !hasVolumes) return 'deployments';
-        return requestedTab as DrawerTab;
-    }
-}
+export const drawerTabValues = appDrawerTabValues;
+export type DrawerTab = AppDrawerTab;
+export const DrawerSessionUtils = AppDrawerNavigationUtils;
 
 type QueryParams = Pick<URLSearchParams, 'get' | 'toString'>;
 
@@ -49,7 +35,7 @@ export function useProjectNetworkGraphDrawerSession({
             params.delete('drawerTab');
         } else {
             params.set('drawerAppId', appId);
-            params.set('drawerTab', tab ?? 'deployments');
+            params.set('drawerTab', tab ?? defaultAppDrawerTab);
         }
 
         TabNavigationUtils.replaceQuery(params);

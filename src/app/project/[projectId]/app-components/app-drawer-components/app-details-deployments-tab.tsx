@@ -9,9 +9,6 @@ import WebhookDeploymentInfo from "@/app/project/app/[appId]/overview/webhook-de
 import { Button } from "@/components/ui/button";
 import { Webhook } from "lucide-react";
 
-
-
-
 export default function DrawerDeploymentsTab({
     app,
     role,

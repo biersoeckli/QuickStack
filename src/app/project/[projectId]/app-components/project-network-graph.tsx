@@ -38,7 +38,6 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import { NodeDetailsDrawer } from './project-network-graph/node-details-drawer';
 import {
     ProjectNetworkGraphAppContextMenu,
     type ProjectNetworkGraphAppContextMenuProps,
@@ -53,7 +52,7 @@ import { Toast } from '@/frontend/utils/toast.utils';
 import { AppNetworkPolicyRuleEditModel, NetworkPolicySelectableTarget } from '@/shared/model/app-network-policy-edit.model';
 import { NetworkPolicyRuleUtils } from '@/shared/utils/network-policy-rule.utils';
 import { AppNetworkPolicyDraft, AppNetworkPolicyDraftUtils } from '@/shared/utils/app-network-policy-draft.utils';
-import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
+import { InternalHostnameUtils } from '@/shared/utils/internal-hostname.utils';
 import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
@@ -66,6 +65,7 @@ import {
     type DrawerTab,
     useProjectNetworkGraphDrawerSession,
 } from './project-network-graph/project-network-graph-drawer-session';
+import { AppDetailsDrawer } from './app-drawer-components/app-details-drawer';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -78,10 +78,12 @@ type WorkloadNodeData = NetworkGraphNode & {
     connectedToSelection?: boolean;
     contextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
 };
+
 type ConnectionEdgeData = {
     onDelete?: () => void;
     internalHostnames: { hostname: string; port: number }[];
 };
+
 type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
     projectId: string;
@@ -132,6 +134,7 @@ const WorkloadNode = memo(function WorkloadNode({
         ? <ProjectNetworkGraphAppContextMenu {...data.contextMenu}>{node}</ProjectNetworkGraphAppContextMenu>
         : node;
 });
+
 const InternetNode = memo(function InternetNode({
     data,
 }: NodeProps<Node<WorkloadNodeData, 'internet'>>) {
@@ -146,7 +149,9 @@ const InternetNode = memo(function InternetNode({
         </div>
     );
 });
+
 const nodeTypes = { workload: WorkloadNode, internet: InternetNode } satisfies NodeTypes;
+
 function ConnectionEdge(props: EdgeProps) {
     const data = props.data as ConnectionEdgeData | undefined;
     if (!data) return <SmoothStepEdge {...props} />;
@@ -431,8 +436,10 @@ function ProjectNetworkGraphEditor({
         },
     };
     }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
+
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
+
     const edges = useMemo(() => (layout?.edges ?? []).map(edge => {
         const presentation = graphEdgePresentation(edge);
         const deletionProvenance = connectionDeletionProvenance(edge, writableAppIds);
@@ -470,9 +477,11 @@ function ProjectNetworkGraphEditor({
             labelBgBorderRadius: 6,
         };
     }), [apps, deleteConnection, drafts, layout?.edges, selectedNodeId, writableAppIds]);
+
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
+
     useEffect(() => {
         if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
         if (!window.matchMedia('(min-width: 1024px)').matches) return;
@@ -639,7 +648,7 @@ function ProjectNetworkGraphEditor({
                 {edges.length === 0 && nodes.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                     <Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p>
                 </div>}
-                {selectedNode && <NodeDetailsDrawer
+                {selectedNode && <AppDetailsDrawer
                     contentRef={drawerContentRef}
                     node={selectedNode}
                     app={selectedApp}

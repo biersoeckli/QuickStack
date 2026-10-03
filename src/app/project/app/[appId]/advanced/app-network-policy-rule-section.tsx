@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { NetworkPolicyDirection, NetworkPolicyTargetProject } from '@/shared/model/app-network-policy-edit.model';
-import { InternalHostnameUtils } from '@/server/utils/internal-hostname.utils';
+import { InternalHostnameUtils } from '@/shared/utils/internal-hostname.utils';
 import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
 export type AppNetworkPolicyDirection = NetworkPolicyDirection;
