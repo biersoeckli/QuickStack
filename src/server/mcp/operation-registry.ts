@@ -45,6 +45,10 @@ type ElysiaRoute = {
 
 class OperationRegistry {
 
+    private operationExclusionList = new Set([
+        'writeAgentSandboxFile',
+    ]);
+
     build(app: McpSourceApp): OperationDescriptor[] {
         const routes = (app.routes ?? []) as ElysiaRoute[];
         const seen = new Set<string>();
@@ -64,7 +68,10 @@ class OperationRegistry {
             let supported = true;
             let unsupportedReason: string | undefined;
 
-            if (!responseSchema) {
+            if (this.operationExclusionList.has(operationId)) {
+                supported = false;
+                unsupportedReason = 'Operation is excluded from MCP.';
+            } else if (!responseSchema) {
                 supported = false;
                 unsupportedReason = 'Operation does not declare a JSON response.';
             } else if (manualBodyParsing) {

@@ -39,6 +39,14 @@ function buildFixtureApp() {
             response: { 200: z.object({ id: z.string(), name: z.string() }), 401: unauthorizedSchema },
             detail: { operationId: 'saveProject', summary: 'Save project', tags: ['Projects'] },
         })
+        .put('/agents/:agentId/sandboxes/:sandboxName/files/write', ({ body, authenticated }) => {
+            if (!authenticated) return unauthorized();
+            return { path: body.path };
+        }, {
+            body: z.object({ path: z.string() }),
+            response: { 200: z.object({ path: z.string() }), 401: unauthorizedSchema },
+            detail: { operationId: 'writeAgentSandboxFile', summary: 'Write sandbox file', tags: ['Agent Sandboxes'] },
+        })
         .post('/upload', () => new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } }), {
             parse: 'none',
             response: { 200: z.object({ ok: z.boolean() }) },
@@ -176,14 +184,23 @@ describe('QuickStack MCP handler', () => {
         expect(fullOperation.querySchema).toBeDefined();
     });
 
-    it('marks streaming and manually parsed operations as unsupported', async () => {
+    it('marks excluded, streaming, and manually parsed operations as unsupported', async () => {
         const { body } = await callTool(buildHandler(), 'search_operations', { detail: 'full' });
-        const operations = body.result.structuredContent.operations as Array<{ operationId: string; supported: boolean }>;
+        const operations = body.result.structuredContent.operations as Array<{
+            operationId: string;
+            supported: boolean;
+            unsupportedReason?: string;
+        }>;
 
+        const writeAgentSandboxFile = operations.find((operation) => operation.operationId === 'writeAgentSandboxFile');
         const streamLogs = operations.find((operation) => operation.operationId === 'streamLogs');
         const uploadFile = operations.find((operation) => operation.operationId === 'uploadFile');
         const listProjects = operations.find((operation) => operation.operationId === 'listProjects');
 
+        expect(writeAgentSandboxFile).toMatchObject({
+            supported: false,
+            unsupportedReason: 'Operation is excluded from MCP.',
+        });
         expect(streamLogs?.supported).toBe(false);
         expect(uploadFile?.supported).toBe(false);
         expect(listProjects?.supported).toBe(true);

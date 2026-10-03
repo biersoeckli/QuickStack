@@ -117,10 +117,10 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                 <ShieldAlert />
                 <AlertTitle>Canary feature: secrets can flow through MCP</AlertTitle>
                 <AlertDescription>
-                    The MCP server is a canary feature. Tool arguments and results are passed to the AI host and model.
-                    Read operations can return secrets in plaintext, including App environment variables, build arguments,
+                    The MCP server is a canary feature and still in active developement. Tool arguments and results are passed to the AI host and model.
+                    Because the MCP server is currently built ontop of the QuickStack REST API, read operations can return secrets in plaintext, including App environment variables, build arguments,
                     Git tokens, container registry credentials and App basic-auth passwords. Write operations can send the
-                    same values. Agent Git SSH keys are returned encrypted. Only connect trusted clients and use a REST API
+                    same values. Only connect trusted clients and use a REST API
                     Key from a user with the minimum required permissions.
                 </AlertDescription>
             </Alert>
