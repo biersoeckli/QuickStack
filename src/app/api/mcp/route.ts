@@ -11,8 +11,12 @@ const mcpHandler = createQuickStackMcpHandler({
 });
 
 async function handleRequest(request: Request): Promise<Response> {
-    const enabled = await paramService.getBoolean(ParamService.MCP_SERVER_ENABLED);
-    if (!enabled) {
+    const [canaryEnabled, enabled] = await Promise.all([
+        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL),
+        paramService.getBoolean(ParamService.MCP_SERVER_ENABLED),
+    ]);
+
+    if (!canaryEnabled || !enabled) {
         return new Response(
             JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'MCP server is disabled.' } }),
             {

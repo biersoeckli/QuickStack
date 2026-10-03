@@ -37,7 +37,7 @@ export class ParamService {
             this.getOrCreate(ParamService.QS_SYSTEM_BACKUP_LOCATION, Constants.QS_SYSTEM_BACKUP_DEACTIVATED, revalidateParam),
             this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS), revalidateParam),
             this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false', revalidateParam),
-            this.getOrCreate(ParamService.MCP_SERVER_ENABLED, 'true', revalidateParam),
+            this.getOrCreate(ParamService.MCP_SERVER_ENABLED, 'false', revalidateParam),
         ]);
 
         return { instanceId, registryLocation };

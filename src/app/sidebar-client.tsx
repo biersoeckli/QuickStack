@@ -38,12 +38,14 @@ function SettingsNavigationContent({
   path,
   visibleSettingsGroups,
   isAdmin,
+  canaryEnabled,
   newVersionInfo,
   onNavigate,
 }: {
   path: string
   visibleSettingsGroups: SettingsNavigationGroup[]
   isAdmin: boolean
+  canaryEnabled: boolean
   newVersionInfo?: QuickStackReleaseInfo
   onNavigate?: () => void
 }) {
@@ -87,7 +89,7 @@ function SettingsNavigationContent({
       <SidebarGroupLabel>Developer</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {developerSettingsNavigation.map((item) => {
+          {developerSettingsNavigation.filter((item) => !item.canaryOnly || canaryEnabled).map((item) => {
             const Icon = item.icon
             return <SidebarMenuItem key={item.href}>
               <SidebarMenuButton isActive={path === item.href} render={<Link href={item.href} onClick={onNavigate}>
@@ -106,12 +108,14 @@ export function SidebarCient({
   projects,
   session,
   newVersionInfo,
-  agentsAvailable
+  agentsAvailable,
+  canaryEnabled
 }: {
   projects: ProjectNavigationModel[];
   session: UserSession;
   newVersionInfo?: QuickStackReleaseInfo;
   agentsAvailable: boolean;
+  canaryEnabled: boolean;
 }) {
 
   const path = usePathname();
@@ -372,6 +376,7 @@ export function SidebarCient({
               path={path}
               visibleSettingsGroups={visibleSettingsGroups}
               isAdmin={isAdmin}
+              canaryEnabled={canaryEnabled}
               newVersionInfo={newVersionInfo}
               onNavigate={() => setSettingsNavigationOpen(false)}
             />
@@ -387,6 +392,7 @@ export function SidebarCient({
         path={path}
         visibleSettingsGroups={visibleSettingsGroups}
         isAdmin={isAdmin}
+        canaryEnabled={canaryEnabled}
         newVersionInfo={newVersionInfo}
       />
     </aside>

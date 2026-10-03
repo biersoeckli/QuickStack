@@ -2,7 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Copy } from 'lucide-react';
+import { Copy, ShieldAlert } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -112,9 +113,24 @@ Authorization: Bearer <YOUR_REST_API_KEY>
 
     return (
         <div className="space-y-4">
+            <Alert variant="destructive">
+                <ShieldAlert />
+                <AlertTitle>Canary feature: secrets can flow through MCP</AlertTitle>
+                <AlertDescription>
+                    The MCP server is a canary feature. Tool arguments and results are passed to the AI host and model.
+                    Read operations can return secrets in plaintext, including App environment variables, build arguments,
+                    Git tokens, container registry credentials and App basic-auth passwords. Write operations can send the
+                    same values. Agent Git SSH keys are returned encrypted. Only connect trusted clients and use a REST API
+                    Key from a user with the minimum required permissions.
+                </AlertDescription>
+            </Alert>
+
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">MCP Server</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                        MCP Server
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">Canary</span>
+                    </CardTitle>
                     <CardDescription>
                         Expose QuickStack as a remote Model Context Protocol server. AI clients such as Claude Code,
                         Codex and GitHub Copilot can then act on QuickStack through the REST API using a REST API Key.

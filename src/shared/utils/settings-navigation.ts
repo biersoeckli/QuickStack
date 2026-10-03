@@ -20,6 +20,7 @@ export type SettingsNavigationItem = {
   href: string
   icon: LucideIcon
   adminOnly?: boolean
+  canaryOnly?: boolean
 }
 
 export type SettingsNavigationGroup = {
@@ -63,7 +64,7 @@ export const serverSettingsNavigation: ServerSettingsNavigationItem[] = [
 
 export const developerSettingsNavigation: SettingsNavigationItem[] = [
   { title: "REST API", href: "/settings/developer/rest-api", icon: ChevronsLeftRightEllipsis, adminOnly: true },
-  { title: "MCP Server", href: "/settings/developer/mcp", icon: Bot, adminOnly: true },
+  { title: "MCP Server", href: "/settings/developer/mcp", icon: Bot, adminOnly: true, canaryOnly: true },
 ]
 
 export function serverSettingsHref(tab: string) {
