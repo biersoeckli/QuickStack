@@ -25,6 +25,7 @@ import { RenameAgentModel, renameAgentZodModel } from "@/shared/model/rename-age
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { projectNetworkGraphPositionSchema } from '@/shared/model/project-network-graph-layout.model';
 import paramService, { ParamService } from '@/server/services/param.service';
+import agentSandboxAddonService from '@/server/services/addons/agent-sandbox-addon.service';
 
 export const acknowledgeNewNetworkPolicyExplanation = async () => simpleAction(async () => {
     await getAuthUserSession();
@@ -43,6 +44,12 @@ const createAgentSchema = z.object({
     llmGatewayId: z.string().min(1),
     modelAlias: z.array(z.string().min(1)).min(1),
 });
+
+async function ensureAgentSandboxAddonAvailable() {
+    if (!await agentSandboxAddonService.isAvailable()) {
+        throw new ServiceException('The Agent Sandbox Add-on is not available.');
+    }
+}
 
 export const createApp = async (appName: string, projectId: string, appId?: string) =>
     saveFormAction({ appName }, createAppSchema, async (validatedData) => {
@@ -75,6 +82,7 @@ export const createAgentFromTemplate = async (prevState: any, inputData: AgentTe
         const session = await getAuthUserSession();
         const identity: RequesterIdentity = { type: 'session', session };
         ensureCreateProjectWorkloadInProject(identity, projectId);
+        await ensureAgentSandboxAddonAvailable();
         if (validatedData.templates.some(x => x.inputSettings.some(y => !y.randomGeneratedIfEmpty && !y.value))) {
             throw new ServiceException('Please fill out all required fields.');
         }
@@ -89,6 +97,7 @@ export const createAgent = async (agentName: string, projectId: string, llmGatew
         const session = await getAuthUserSession();
         const identity: RequesterIdentity = { type: 'session', session };
         ensureCreateProjectWorkloadInProject(identity, projectId);
+        await ensureAgentSandboxAddonAvailable();
 
         const returnData = await agentService.saveAgent({
             name: validatedData.agentName,

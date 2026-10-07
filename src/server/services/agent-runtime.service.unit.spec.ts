@@ -99,7 +99,6 @@ function mockAgent(overrides: Record<string, any> = {}) {
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: 'You are helpful.',
         encryptedEnvVars: JSON.stringify([
             { name: 'MY_KEY', value: 'encrypted:my-secret' },
         ]),
@@ -160,7 +159,7 @@ describe('agent-runtime.service', () => {
             );
         });
 
-        it('assembles Agent Runtime Secret with gateway URL, virtual key, env vars, and system prompt', async () => {
+        it('assembles Agent Runtime Secret with gateway URL, virtual key, and env vars', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
@@ -173,7 +172,6 @@ describe('agent-runtime.service', () => {
                     QS_GATEWAY_URL: 'https://litellm.example.com',
                     QS_VIRTUAL_KEY: 'sk-v-test-key',
                     MY_KEY: 'my-secret',
-                    QS_SYSTEM_PROMPT: 'You are helpful.',
                 }),
             );
         });
@@ -192,18 +190,8 @@ describe('agent-runtime.service', () => {
             expect(secretData.ANTHROPIC_AUTH_TOKEN).toBe('sk-v-test-key');
         });
 
-        it('omits system prompt from secret when agent has none', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ systemPrompt: null }) as any);
-            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
-
-            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
-
-            const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
-            expect(Object.keys(callArgs)).not.toContain('QS_SYSTEM_PROMPT');
-        });
-
         it('omits env vars from secret when agent has none', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ encryptedEnvVars: null, systemPrompt: null }) as any);
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ encryptedEnvVars: null }) as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);

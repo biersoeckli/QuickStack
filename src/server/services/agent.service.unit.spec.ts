@@ -200,7 +200,6 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: null,
         encryptedEnvVars: null,
         containerCommand: null,
         containerArgs: null,
@@ -847,7 +846,7 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue(existingAgent as any);
         });
 
-        it('saves source image, resources, container command, and system prompt config', async () => {
+        it('saves source image, resources, and container command config', async () => {
             const result = await agentService.saveAgent({
                 id: agentId,
                 containerImageSource: 'my-custom-image:latest',
@@ -859,7 +858,6 @@ describe('agent.service', () => {
                 containerArgs: JSON.stringify([{ value: '-c' }, { value: 'sleep 3600' }].map(arg => arg.value)),
                 workingDir: '/workspace/app',
                 warmPoolReplicas: 3,
-                systemPrompt: 'You are a helpful assistant.',
             });
 
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
@@ -875,7 +873,6 @@ describe('agent.service', () => {
                     containerArgs: '["-c","sleep 3600"]',
                     workingDir: '/workspace/app',
                     warmPoolReplicas: 3,
-                    systemPrompt: 'You are a helpful assistant.',
                 },
             });
             expect(result.containerImageSource).toBe('my-custom-image:latest');
@@ -916,16 +913,6 @@ describe('agent.service', () => {
             const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
             expect((updateCall as any).data.llmGatewayId).toBe('new-gateway');
             expect((updateCall as any).data.modelAlias).toBe(JSON.stringify(['new-model', 'claude-3-5-sonnet']));
-        });
-
-        it('saves only provided fields', async () => {
-            await agentService.saveAgent({
-                id: agentId,
-                systemPrompt: 'new prompt',
-            });
-
-            const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
-            expect(Object.keys((updateCall as any).data)).toEqual(['id', 'systemPrompt']);
         });
 
         it('does not send encryptedEnvVars when envVars is undefined', async () => {

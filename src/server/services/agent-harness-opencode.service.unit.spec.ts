@@ -40,7 +40,6 @@ function makeAgent(overrides: Partial<AgentExtendedModel> = {}): AgentExtendedMo
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: null,
         encryptedEnvVars: null,
         containerCommand: null,
         containerArgs: null,

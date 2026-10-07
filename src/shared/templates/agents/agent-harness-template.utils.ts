@@ -56,7 +56,6 @@ export function createCliAgentTemplate(
             cpuLimit: null,
             memoryRequest: null,
             memoryLimit: null,
-            systemPrompt: null,
             encryptedEnvVars: undefined,
             containerCommand: JSON.stringify(['/bin/sh', '-lc']),
             containerArgs: JSON.stringify([command]),

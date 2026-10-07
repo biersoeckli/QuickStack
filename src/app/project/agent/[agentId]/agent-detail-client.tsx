@@ -5,12 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
-import { Bot, Boxes, Code2, Container, Globe2, Hammer, KeyRound, MessageSquareText, Settings } from "lucide-react";
+import { Bot, Boxes, Code2, Container, Globe2, Hammer, KeyRound, Settings } from "lucide-react";
 import AgentSourceCard from "./general/agent-source-card";
 import AgentModelConfigurationCard from "./general/agent-model-configuration-card";
 import AgentRateLimitsCard from "./general/agent-rate-limits-card";
 import AgentContainerConfigCard from "./general/agent-container-config-card";
-import AgentSystemPromptCard from "./general/agent-system-prompt-card";
 import AgentEnvVarsCard from "./general/agent-env-vars-card";
 import AgentStatusBar from "./general/agent-status-bar";
 import AgentSandboxesCard from "./sandboxes/agent-sandboxes-card";
@@ -27,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/frontend/utils/utils";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";
 
-type ConfigurationSection = "source" | "prompt" | "container" | "storage" | "networking" | "secrets";
+type ConfigurationSection = "source" | "container" | "storage" | "networking" | "secrets";
 type AgentTab = "sandboxes" | "builds" | "configuration";
 
 const configurationSections: {
@@ -36,7 +35,6 @@ const configurationSections: {
     icon: typeof Boxes;
 }[] = [
         { value: "source", label: "Source", icon: Code2 },
-        { value: "prompt", label: "Prompt", icon: MessageSquareText },
         { value: "container", label: "Container", icon: Container },
         { value: "storage", label: "Storage", icon: Boxes },
         { value: "networking", label: "Networking", icon: Globe2 },
@@ -123,8 +121,6 @@ export default function AgentDetailClient({ agent, role, templateInfo, storageCl
                     <AgentSourceCard agent={agent} readonly={readonly} />
                     <AgentModelConfigurationCard agent={agent} readonly={readonly} />
                 </div>
-            case 'prompt':
-                return <AgentSystemPromptCard agent={agent} readonly={readonly} />;
             case 'container':
                 return (
                     <div className="space-y-4">

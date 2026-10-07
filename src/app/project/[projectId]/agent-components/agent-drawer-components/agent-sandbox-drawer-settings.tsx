@@ -5,7 +5,6 @@ import {
     Container,
     HardDrive,
     KeyRound,
-    MessageSquareText,
     Network,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,6 @@ import { SettingsSection } from '@/app/project/[projectId]/app-components/app-dr
 import { useNestedDrawer } from '@/app/project/[projectId]/app-components/app-drawer-components/nested-drawer';
 import AgentSourceCard from '@/app/project/agent/[agentId]/general/agent-source-card';
 import AgentModelConfigurationCard from '@/app/project/agent/[agentId]/general/agent-model-configuration-card';
-import AgentSystemPromptCard from '@/app/project/agent/[agentId]/general/agent-system-prompt-card';
 import AgentContainerConfigCard from '@/app/project/agent/[agentId]/general/agent-container-config-card';
 import AgentRateLimitsCard from '@/app/project/agent/[agentId]/general/agent-rate-limits-card';
 import AgentVolumesCard from '@/app/project/agent/[agentId]/general/agent-volumes-card';
@@ -43,10 +41,6 @@ export default function AgentSandboxDrawerSettings({
             <SettingsSection id="source" title="Source" icon={Boxes}>
                 <AgentSourceCard agent={agent} readonly={readonly} />
                 <AgentModelConfigurationCard agent={agent} readonly={readonly} />
-            </SettingsSection>
-
-            <SettingsSection id="prompt" title="Prompt" icon={MessageSquareText}>
-                <AgentSystemPromptCard agent={agent} readonly={readonly} />
             </SettingsSection>
 
             <SettingsSection id="container" title="Container" icon={Container}>

@@ -29,6 +29,9 @@ import {
     ContextMenu,
     ContextMenuContent,
     ContextMenuItem,
+    ContextMenuSub,
+    ContextMenuSubContent,
+    ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
@@ -43,6 +46,10 @@ import {
     ProjectNetworkGraphAppContextMenu,
     type ProjectNetworkGraphAppContextMenuProps,
 } from './project-network-graph/project-network-graph-app-context-menu';
+import {
+    ProjectNetworkGraphAgentContextMenu,
+    type ProjectNetworkGraphAgentContextMenuProps,
+} from './project-network-graph/project-network-graph-agent-context-menu';
 import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/project-network-graph-connection-context-menu';
 import { connectionDeletionProvenance, type NetworkGraphEdge, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
@@ -80,7 +87,8 @@ type WorkloadNodeData = NetworkGraphNode & {
     connectionTarget?: boolean;
     selected?: boolean;
     connectedToSelection?: boolean;
-    contextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
+    appContextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
+    agentContextMenu?: Omit<ProjectNetworkGraphAgentContextMenuProps, 'children'>;
 };
 
 type ConnectionEdgeData = {
@@ -144,9 +152,13 @@ const WorkloadNode = memo(function WorkloadNode({
             <Handle id="source-egress" type="source" position={Position.Right} title="Drag to create connection" className={cn(data.external ? hiddenHandleClassName : connectionSourceHandleClassName, data.connectionInProgress && 'opacity-0!')} style={{ top: 34, bottom: 'auto' }} />
         </div>
     );
-    return data.contextMenu
-        ? <ProjectNetworkGraphAppContextMenu {...data.contextMenu}>{node}</ProjectNetworkGraphAppContextMenu>
-        : node;
+    if (data.appContextMenu) {
+        return <ProjectNetworkGraphAppContextMenu {...data.appContextMenu}>{node}</ProjectNetworkGraphAppContextMenu>;
+    }
+    if (data.agentContextMenu) {
+        return <ProjectNetworkGraphAgentContextMenu {...data.agentContextMenu}>{node}</ProjectNetworkGraphAgentContextMenu>;
+    }
+    return node;
 });
 
 const InternetNode = memo(function InternetNode({
@@ -234,32 +246,48 @@ function ProjectNetworkGraphCanvasContextMenu({
             </ContextMenuTrigger>
             <ContextMenuContent>
                 {canCreateApps && <>
-                    <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
-                        <ContextMenuItem>
+                    <ContextMenuSub>
+                        <ContextMenuSubTrigger className="gap-2">
                             <File />
-                            Create Empty App
-                        </ContextMenuItem>
-                    </EditAppDialog>
-                    <ContextMenuItem onClick={() => openTemplateDialog('template')}>
-                        <Blocks />
-                        Create App from Template
-                    </ContextMenuItem>
+                            Create App
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                            <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
+                                <ContextMenuItem>
+                                    <File />
+                                    Empty App
+                                </ContextMenuItem>
+                            </EditAppDialog>
+                            <ContextMenuItem onClick={() => openTemplateDialog('template')}>
+                                <Blocks />
+                                App from Template
+                            </ContextMenuItem>
+                        </ContextMenuSubContent>
+                    </ContextMenuSub>
                     <ContextMenuItem onClick={() => openTemplateDialog('database')}>
                         <Database />
                         Create Database
                     </ContextMenuItem>
                 </>}
                 {canCreateAgents && <>
-                    <CreateAgentDialog projectId={projectId}>
-                        <ContextMenuItem>
+                    <ContextMenuSub>
+                        <ContextMenuSubTrigger className="gap-2">
                             <Bot />
-                            Create Empty Agent Sandbox
-                        </ContextMenuItem>
-                    </CreateAgentDialog>
-                    <ContextMenuItem onClick={() => openTemplateDialog('agent-template')}>
-                        <Blocks />
-                        Create Agent Sandbox from Template
-                    </ContextMenuItem>
+                            Create Agent Sandbox
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                            <CreateAgentDialog projectId={projectId}>
+                                <ContextMenuItem>
+                                    <Bot />
+                                    Empty Agent Sandbox
+                                </ContextMenuItem>
+                            </CreateAgentDialog>
+                            <ContextMenuItem onClick={() => openTemplateDialog('agent-template')}>
+                                <Blocks />
+                                Agent Sandbox from Template
+                            </ContextMenuItem>
+                        </ContextMenuSubContent>
+                    </ContextMenuSub>
                 </>}
             </ContextMenuContent>
         </ContextMenu>
@@ -413,6 +441,14 @@ function ProjectNetworkGraphEditor({
         })) return;
         await Toast.fromAction(() => deleteApp(appId));
     }, [openConfirmDialog]);
+    const deleteLocalAgent = useCallback(async (agentId: string) => {
+        if (!await openConfirmDialog({
+            title: 'Delete Agent Sandbox',
+            description: 'Are you sure you want to delete this Agent Sandbox? All data will be lost and this action cannot be undone.',
+            okButton: 'Delete Agent Sandbox',
+        })) return;
+        await Toast.fromAction(() => deleteAgent(agentId), 'Agent Sandbox deleted successfully.');
+    }, [openConfirmDialog]);
     const toggleInternetAccess = useCallback((appId: string) => {
         updateDraft(appId, draft => ({
             ...draft,
@@ -452,39 +488,49 @@ function ProjectNetworkGraphEditor({
         const appId = node.kind === 'APP' ? node.id.replace('APP:', '') : undefined;
         const app = appId ? apps.find(item => item.id === appId) : undefined;
         const draft = app ? drafts[app.id] : undefined;
-        const role = app
+        const appRole = app
             ? UserGroupUtils.getRolePermissionForApp(session, app.id) ?? undefined
             : undefined;
+        const agentId = node.kind === 'AGENT' ? node.id.replace('AGENT:', '') : undefined;
+        const agent = agentId ? agents.find(item => item.id === agentId) : undefined;
+        const agentRole = agent
+            ? UserGroupUtils.getRolePermissionForProjectWorkload(session, agent.id) ?? undefined
+            : undefined;
         return {
-        id: node.id,
-        type: node.kind === 'INTERNET' ? 'internet' : 'workload',
-        position: node.position,
-        data: {
-            ...node,
-            connectionInProgress: !!connectionSourceNodeId,
-            connectionTarget: node.id === connectionTargetNodeId,
-            selected: node.id === selectedNodeId,
-            contextMenu: app && draft && role === RolePermissionEnum.READWRITE ? {
-                app,
-                role,
-                allowInternetAccess: draft.allowInternetAccess,
-                onToggleInternetAccess: () => toggleInternetAccess(app.id),
-                onOpenDrawerTab: (tab: DrawerTab) => {
-                    drawerSession.openAppTab(app.id, tab);
-                },
-                onShowEnvironment: () => {
-                    setEnvironmentAppId(app.id);
-                    drawerSession.openAppTab(app.id, 'settings');
-                },
-                onDelete: () => void deleteLocalApp(app.id),
-            } : undefined,
-            connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
-                (edge.source === selectedNodeId && edge.target === node.id)
-                || (edge.target === selectedNodeId && edge.source === node.id),
-            ),
-        },
-    };
-    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
+            id: node.id,
+            type: node.kind === 'INTERNET' ? 'internet' : 'workload',
+            position: node.position,
+            data: {
+                ...node,
+                connectionInProgress: !!connectionSourceNodeId,
+                connectionTarget: node.id === connectionTargetNodeId,
+                selected: node.id === selectedNodeId,
+                appContextMenu: app && draft && appRole === RolePermissionEnum.READWRITE ? {
+                    app,
+                    role: appRole,
+                    allowInternetAccess: draft.allowInternetAccess,
+                    onToggleInternetAccess: () => toggleInternetAccess(app.id),
+                    onOpenDrawerTab: (tab: DrawerTab) => {
+                        drawerSession.openAppTab(app.id, tab);
+                    },
+                    onShowEnvironment: () => {
+                        setEnvironmentAppId(app.id);
+                        drawerSession.openAppTab(app.id, 'settings');
+                    },
+                    onDelete: () => void deleteLocalApp(app.id),
+                } : undefined,
+                agentContextMenu: agent && agentRole === RolePermissionEnum.READWRITE ? {
+                    agent,
+                    onOpenDrawerTab: tab => drawerSession.openAgentTab(agent.id, tab),
+                    onDelete: () => void deleteLocalAgent(agent.id),
+                } : undefined,
+                connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
+                    (edge.source === selectedNodeId && edge.target === node.id)
+                    || (edge.target === selectedNodeId && edge.source === node.id),
+                ),
+            },
+        };
+    }), [agents, apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalAgent, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
@@ -594,83 +640,83 @@ function ProjectNetworkGraphEditor({
                     canCreateAgents={canCreateAgents}
                 >
                     <ReactFlow
-                    onInit={instance => { reactFlowRef.current = instance; }}
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    fitView
-                    fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
-                    minZoom={0.3}
-                    maxZoom={1.5}
-                    zoomOnScroll
-                    zoomOnPinch={false}
-                    zoomOnDoubleClick={false}
-                    preventScrolling
-                    nodesDraggable={canEditLayout}
-                    nodesConnectable
-                    elementsSelectable={false}
-                    isValidConnection={(connection: Connection) => {
-                        const source = stripWorkloadPrefix(connection.source);
-                        const target = stripWorkloadPrefix(connection.target);
-                        return connection.sourceHandle === 'source-egress'
-                            && connection.targetHandle === 'target-ingress'
-                            && !!source
-                            && !!target
-                            && source !== target
-                            && localAppIds.has(source)
-                            && localWorkloadIds.has(target)
-                            && writable(source);
-                    }}
-                    onConnect={(connection: Connection) => {
-                        const source = stripWorkloadPrefix(connection.source);
-                        const target = stripWorkloadPrefix(connection.target);
-                        if (source && target) openConnectionDialog(source, target);
-                    }}
-                    onConnectStart={(_event, { nodeId, handleId }) => {
-                        if (handleId === 'source-egress') {
+                        onInit={instance => { reactFlowRef.current = instance; }}
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
+                        fitView
+                        fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
+                        minZoom={0.3}
+                        maxZoom={1.5}
+                        zoomOnScroll
+                        zoomOnPinch={false}
+                        zoomOnDoubleClick={false}
+                        preventScrolling
+                        nodesDraggable={canEditLayout}
+                        nodesConnectable
+                        elementsSelectable={false}
+                        isValidConnection={(connection: Connection) => {
+                            const source = stripWorkloadPrefix(connection.source);
+                            const target = stripWorkloadPrefix(connection.target);
+                            return connection.sourceHandle === 'source-egress'
+                                && connection.targetHandle === 'target-ingress'
+                                && !!source
+                                && !!target
+                                && source !== target
+                                && localAppIds.has(source)
+                                && localWorkloadIds.has(target)
+                                && writable(source);
+                        }}
+                        onConnect={(connection: Connection) => {
+                            const source = stripWorkloadPrefix(connection.source);
+                            const target = stripWorkloadPrefix(connection.target);
+                            if (source && target) openConnectionDialog(source, target);
+                        }}
+                        onConnectStart={(_event, { nodeId, handleId }) => {
+                            if (handleId === 'source-egress') {
+                                cancelConnectionTargetLeave();
+                                setConnectionSourceNodeId(nodeId ?? undefined);
+                            }
+                        }}
+                        onConnectEnd={() => {
                             cancelConnectionTargetLeave();
-                            setConnectionSourceNodeId(nodeId ?? undefined);
-                        }
-                    }}
-                    onConnectEnd={() => {
-                        cancelConnectionTargetLeave();
-                        setConnectionSourceNodeId(undefined);
-                        setConnectionTargetNodeId(undefined);
-                    }}
-                    onPaneClick={() => {
-                    }}
-                    onNodeMouseEnter={(_event, node) => {
-                        cancelConnectionTargetLeave();
-                        const source = stripWorkloadPrefix(connectionSourceNodeId);
-                        const target = stripWorkloadPrefix(node.id);
-                        if (source && target && source !== target && localAppIds.has(source) && localWorkloadIds.has(target) && writable(source)) {
-                            setConnectionTargetNodeId(node.id);
-                        }
-                    }}
-                    onNodeMouseLeave={(_event, node) => {
-                        cancelConnectionTargetLeave();
-                        connectionTargetLeaveTimer.current = setTimeout(() => {
-                            setConnectionTargetNodeId(current => current === node.id ? undefined : current);
-                        }, 100);
-                    }}
-                    onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
-                    style={{
-                        '--xy-controls-button-background-color': 'var(--secondary)',
-                        '--xy-controls-button-background-color-hover': 'var(--accent)',
-                        '--xy-controls-button-color': 'var(--secondary-foreground)',
-                        '--xy-controls-button-border-color': 'var(--border)',
-                        '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
-                    } as CSSProperties}
-                    onNodeClick={(_event, node) => {
-                        const data = node.data as NetworkGraphNode;
-                        if (data.kind === 'INTERNET') return;
-                        drawerSession.selectNode(data);
-                    }}
-                >
-                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
-                    <Controls showInteractive={false} />
+                            setConnectionSourceNodeId(undefined);
+                            setConnectionTargetNodeId(undefined);
+                        }}
+                        onPaneClick={() => {
+                        }}
+                        onNodeMouseEnter={(_event, node) => {
+                            cancelConnectionTargetLeave();
+                            const source = stripWorkloadPrefix(connectionSourceNodeId);
+                            const target = stripWorkloadPrefix(node.id);
+                            if (source && target && source !== target && localAppIds.has(source) && localWorkloadIds.has(target) && writable(source)) {
+                                setConnectionTargetNodeId(node.id);
+                            }
+                        }}
+                        onNodeMouseLeave={(_event, node) => {
+                            cancelConnectionTargetLeave();
+                            connectionTargetLeaveTimer.current = setTimeout(() => {
+                                setConnectionTargetNodeId(current => current === node.id ? undefined : current);
+                            }, 100);
+                        }}
+                        onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
+                        style={{
+                            '--xy-controls-button-background-color': 'var(--secondary)',
+                            '--xy-controls-button-background-color-hover': 'var(--accent)',
+                            '--xy-controls-button-color': 'var(--secondary-foreground)',
+                            '--xy-controls-button-border-color': 'var(--border)',
+                            '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+                        } as CSSProperties}
+                        onNodeClick={(_event, node) => {
+                            const data = node.data as NetworkGraphNode;
+                            if (data.kind === 'INTERNET') return;
+                            drawerSession.selectNode(data);
+                        }}
+                    >
+                        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
+                        <Controls showInteractive={false} />
                     </ReactFlow>
                 </ProjectNetworkGraphCanvasContextMenu>
                 {dirty && (

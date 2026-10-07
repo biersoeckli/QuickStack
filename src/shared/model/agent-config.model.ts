@@ -171,11 +171,6 @@ export const agentContainerConfigZodModel = agentConfigZodModel.pick({
 });
 export type AgentContainerConfigModel = z.infer<typeof agentContainerConfigZodModel>;
 
-export const agentSystemPromptZodModel = agentConfigZodModel.pick({
-    systemPrompt: true,
-});
-export type AgentSystemPromptModel = z.infer<typeof agentSystemPromptZodModel>;
-
 export const agentEnvVarsZodModel = agentConfigZodModel.pick({
     envVars: true,
 });

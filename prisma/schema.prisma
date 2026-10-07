@@ -283,7 +283,6 @@ model Agent {
   cpuLimit          Int?
   memoryRequest     Int?
   memoryLimit       Int?
-  systemPrompt      String?
   encryptedEnvVars  String?
   containerCommand  String?
   containerArgs     String?

@@ -9,8 +9,9 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { CreateAgentDialog } from "./agent-components/create-agent-dialog";
@@ -40,21 +41,47 @@ export default function CreateProjectActions({
             <DropdownMenu>
                 <DropdownMenuTrigger render={<Button><Plus /> Create</Button>} />
                 <DropdownMenuContent>
-                    <DropdownMenuLabel>Apps</DropdownMenuLabel>
-                    <EditAppDialog openAppAfterCreate={currentlyOpenedTab === 'table'} projectId={projectId}>
-                        <DropdownMenuItem><File /> Empty App</DropdownMenuItem>
-                    </EditAppDialog>
-                    <DropdownMenuItem onClick={() => openTemplateDialog('database')}><Database /> Database</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openTemplateDialog('template')}><Blocks /> App Template</DropdownMenuItem>
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="gap-2">
+                            <File />
+                            Create App
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <EditAppDialog openAppAfterCreate={currentlyOpenedTab === 'table'} projectId={projectId}>
+                                <DropdownMenuItem>
+                                    <File />
+                                    Empty App
+                                </DropdownMenuItem>
+                            </EditAppDialog>
+                            <DropdownMenuItem onClick={() => openTemplateDialog('template')}>
+                                <Blocks />
+                                App from Template
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuItem onClick={() => openTemplateDialog('database')}>
+                        <Database />
+                        Create Database
+                    </DropdownMenuItem>
                     {agentsAvailable && (
-                        <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Agent Sandboxes</DropdownMenuLabel>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="gap-2">
+                                <Bot />
+                                Create Agent Sandbox
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
                             <CreateAgentDialog projectId={projectId}>
-                                <DropdownMenuItem><Bot /> Empty Agent Sandbox</DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                        <Bot />
+                                        Empty Agent Sandbox
+                                    </DropdownMenuItem>
                             </CreateAgentDialog>
-                            <DropdownMenuItem onClick={() => openTemplateDialog('agent-template')}><Blocks /> Agent Sandbox Template</DropdownMenuItem>
-                        </>
+                                <DropdownMenuItem onClick={() => openTemplateDialog('agent-template')}>
+                                    <Blocks />
+                                    Agent Sandbox from Template
+                                </DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>

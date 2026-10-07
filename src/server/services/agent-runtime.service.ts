@@ -58,16 +58,12 @@ class AgentRuntimeService {
     private buildRuntimeSecretData(
         gatewayBaseUrl: string,
         virtualKey: string,
-        systemPrompt: string | null,
         decryptedEnvVars: Record<string, string>,
     ): Record<string, string> {
         const data: Record<string, string> = {
             QS_GATEWAY_URL: gatewayBaseUrl,
             QS_VIRTUAL_KEY: virtualKey,
         };
-        if (systemPrompt) {
-            data.QS_SYSTEM_PROMPT = systemPrompt;
-        }
         for (const [key, value] of Object.entries(decryptedEnvVars)) {
             data[key] = value === HARNESS_VIRTUAL_KEY_REFERENCE ? virtualKey : value;
         }
@@ -101,7 +97,6 @@ class AgentRuntimeService {
         const secretData = this.buildRuntimeSecretData(
             gateway.baseUrl,
             virtualKey,
-            agent.systemPrompt ?? null,
             decryptedEnvVars,
         );
 

@@ -136,7 +136,6 @@ describe("agent-template.service", () => {
             cpuLimit: null,
             memoryRequest: null,
             memoryLimit: null,
-            systemPrompt: null,
             encryptedEnvVars: null,
             containerCommand: JSON.stringify([
                 "/bin/sh",

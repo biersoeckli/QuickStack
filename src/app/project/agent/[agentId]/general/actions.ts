@@ -16,8 +16,6 @@ import {
     AgentDockerfileDetectionModel,
     agentRateLimitsZodModel,
     AgentRateLimitsModel,
-    agentSystemPromptZodModel,
-    AgentSystemPromptModel,
     agentEnvVarEditZodModel,
     AgentEnvVarEditModel,
     agentContainerConfigZodModel,
@@ -239,15 +237,6 @@ export const saveAgentHealthCheck = async (prevState: any, inputData: HealthChec
             healthCheckHttpHeadersJson: null,
             healthCheckTcpPort: null,
             id: validatedData.workloadId,
-        });
-    });
-
-export const saveAgentSystemPrompt = async (prevState: any, inputData: AgentSystemPromptModel, agentId: string) =>
-    saveFormAction(inputData, agentSystemPromptZodModel, async (validatedData) => {
-        await isAuthorizedWriteForWorkload(agentId);
-        await agentService.saveAgent({
-            ...validatedData,
-            id: agentId,
         });
     });
 

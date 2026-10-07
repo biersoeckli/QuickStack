@@ -22,7 +22,6 @@ export const AgentModel = z.object({
   cpuLimit: z.number().int().nullish(),
   memoryRequest: z.number().int().nullish(),
   memoryLimit: z.number().int().nullish(),
-  systemPrompt: z.string().nullish(),
   encryptedEnvVars: z.string().nullish(),
   containerCommand: z.string().nullish(),
   containerArgs: z.string().nullish(),

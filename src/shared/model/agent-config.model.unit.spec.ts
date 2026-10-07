@@ -22,7 +22,6 @@ function validAgentConfig(overrides: Record<string, unknown> = {}) {
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: null,
         encryptedEnvVars: null,
         containerCommand: undefined,
         containerArgs: undefined,
@@ -158,7 +157,6 @@ describe('agentConfigZodModel', () => {
                 cpuLimit: '500m',
                 memoryRequest: '128Mi',
                 memoryLimit: '512Mi',
-                systemPrompt: 'You are helpful.',
                 envVars: [
                     { name: 'API_KEY', value: 'secret-123' },
                     { name: 'DB_HOST', value: 'localhost' },
