@@ -10,7 +10,7 @@ import {
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { saveAgentNetworkPolicySettings } from '@/app/project/agent/[agentId]/general/actions';
+import { saveAgentNetworkPolicySettings } from '@/app/project/[projectId]/agent-components/agent-drawer-components/configuration/actions';
 import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 
 export type ProjectNetworkGraphAgentContextMenuProps = {

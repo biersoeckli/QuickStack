@@ -19,7 +19,8 @@ import {
     getAgentGitBranches,
     saveAgentSource,
 } from "./actions";
-import { deployAgent } from "../overview/actions";
+import { deployAgent } from "../agent-actions";
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
 import { ContainerImageStep } from "@/app/project/app/[appId]/general/app-source-wizard/container-image-step";
 import { DockerfilePathStep } from "@/app/project/app/[appId]/general/app-source-wizard/dockerfile-path-step";
 import { GitBranchStep } from "@/app/project/app/[appId]/general/app-source-wizard/git-branch-step";
@@ -206,7 +207,7 @@ export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
             await Toast.fromAction(() => deployAgent(agent.id, true), 'Deployment started', 'Starting deployment...');
             closeDialog(true);
             router.refresh();
-            router.push(`/project/agent/${agent.id}?tabName=general`);
+            router.push(PathBuilderUtils.projectAgentDrawer(agent.projectId, agent.id, 'configuration'));
             return;
         }
         closeDialog(true);

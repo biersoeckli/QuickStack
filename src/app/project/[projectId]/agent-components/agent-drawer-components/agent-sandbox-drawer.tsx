@@ -28,7 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDialog } from '@/frontend/states/zustand.states';
 import { DrawerTabScrollArea } from '@/app/project/[projectId]/app-components/app-drawer-components/app-details-drawer';
 import { NestedDrawerProvider } from '@/app/project/[projectId]/app-components/app-drawer-components/nested-drawer';
-import AgentSandboxesCard from '@/app/project/agent/[agentId]/sandboxes/agent-sandboxes-card';
+import AgentSandboxesCard from './sandboxes/agent-sandboxes-card';
 import WorkloadBuildsTable from '@/components/custom/workload-builds-table';
 import { RenameAgentDialog } from '@/app/project/[projectId]/agent-components/rename-agent-dialog';
 import { AgentSandboxStatusActions } from './agent-sandbox-status-actions';

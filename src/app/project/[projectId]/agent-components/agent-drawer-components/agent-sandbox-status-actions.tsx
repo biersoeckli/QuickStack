@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useConfirmDialog } from '@/frontend/states/zustand.states';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { deployAgent, deleteAgent } from '@/app/project/agent/[agentId]/overview/actions';
+import { deployAgent, deleteAgent } from './agent-actions';
 import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 
 export function AgentSandboxStatusActions({
