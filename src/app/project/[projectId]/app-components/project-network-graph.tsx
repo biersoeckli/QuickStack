@@ -76,7 +76,9 @@ import {
 } from './project-network-graph/project-network-graph-drawer-session';
 import { AppDetailsDrawer } from './app-drawer-components/app-details-drawer';
 import { AgentSandboxDrawer } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-sandbox-drawer';
+import { deleteAgent } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-actions';
 import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
+import type { AgentDrawerTab } from '@/shared/utils/agent-drawer-navigation.utils';
 
 const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
 const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
@@ -521,7 +523,7 @@ function ProjectNetworkGraphEditor({
                 } : undefined,
                 agentContextMenu: agent && agentRole === RolePermissionEnum.READWRITE ? {
                     agent,
-                    onOpenDrawerTab: tab => drawerSession.openAgentTab(agent.id, tab),
+                    onOpenDrawerTab: (tab: AgentDrawerTab) => drawerSession.openAgentTab(agent.id, tab),
                     onDelete: () => void deleteLocalAgent(agent.id),
                 } : undefined,
                 connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>

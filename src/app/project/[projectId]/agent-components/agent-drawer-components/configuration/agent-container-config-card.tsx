@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import ContainerCommandArgsFields from "@/components/custom/container-command-args-fields";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -63,14 +63,14 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
         <Form {...form}>
             <TooltipProvider delay={150}>
                 <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Container Configuration</CardTitle>
-                            <CardDescription>
+                    <DrawerCard>
+                        <DrawerCardHeader>
+                            <DrawerCardTitle>Container Configuration</DrawerCardTitle>
+                            <DrawerCardDescription>
                                 Configure agent sandbox startup and pre-warmed sandbox capacity.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
+                            </DrawerCardDescription>
+                        </DrawerCardHeader>
+                        <DrawerCardContent className="space-y-6">
                             <div className="space-y-4">
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium">Runtime</p>
@@ -183,16 +183,16 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
                                     </FormItem>
                                 )}
                             />
-                        </CardContent>
+                        </DrawerCardContent>
                         {!readonly && (
-                            <CardFooter className="gap-4">
+                            <DrawerCardFooter className="gap-4">
                                 <SubmitButton>Save</SubmitButton>
                                 {state?.status === 'error' && !state?.errors && (
                                     <p className="text-sm text-red-500">{state.message}</p>
                                 )}
-                            </CardFooter>
+                            </DrawerCardFooter>
                         )}
-                    </Card>
+                    </DrawerCard>
                 </form>
             </TooltipProvider>
         </Form>

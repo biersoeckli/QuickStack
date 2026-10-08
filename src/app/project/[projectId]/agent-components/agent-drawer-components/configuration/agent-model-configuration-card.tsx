@@ -3,7 +3,7 @@
 import type { z } from "zod";
 import { useActionState, useEffect, useState } from "react";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SelectBox from "@/components/custom/multiselect-field";
@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { saveAgentModelConfiguration } from "./actions";
-import { getLlmGateways, getModelAliasesForGateway } from "../../../[projectId]/actions";
+import { getLlmGateways, getModelAliasesForGateway } from "@/app/project/[projectId]/actions";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { LlmGatewayModel } from "@/shared/model/llm-gateway.model";
 import { Loader2 } from "lucide-react";
@@ -86,14 +86,14 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
     return (
         <Form {...form}>
             <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Model Configuration</CardTitle>
-                        <CardDescription>
+                <DrawerCard>
+                    <DrawerCardHeader>
+                        <DrawerCardTitle>Model Configuration</DrawerCardTitle>
+                        <DrawerCardDescription>
                             Configure the LLM gateway and model for this agent. If set, a Virtual Access Key will be created and mounted as an environment variable <Code>QS_VIRTUAL_KEY</Code> in the agent sandbox.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                        </DrawerCardDescription>
+                    </DrawerCardHeader>
+                    <DrawerCardContent className="space-y-4">
                         <FormField
                             control={form.control}
                             name="llmGatewayId"
@@ -161,16 +161,16 @@ export default function AgentModelConfigurationCard({ agent, readonly }: {
                                 </FormItem>
                             )}
                         />
-                    </CardContent>
+                    </DrawerCardContent>
                     {!readonly && (
-                        <CardFooter className="gap-4">
+                        <DrawerCardFooter className="gap-4">
                             <SubmitButton>Save Model Configuration</SubmitButton>
                             {state?.status === 'error' && !state?.errors && (
                                 <p className="text-sm text-red-500">{state.message}</p>
                             )}
-                        </CardFooter>
+                        </DrawerCardFooter>
                     )}
-                </Card>
+                </DrawerCard>
             </form>
         </Form>
     );

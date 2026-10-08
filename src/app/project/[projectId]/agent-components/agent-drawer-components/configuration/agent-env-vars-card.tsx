@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useConfirmDialog, useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
@@ -38,14 +38,14 @@ export default function AgentEnvVarsCard({ agent, readonly }: { agent: AgentExte
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Environment Variables</CardTitle>
-                <CardDescription>
+        <DrawerCard>
+            <DrawerCardHeader>
+                <DrawerCardTitle>Environment Variables</DrawerCardTitle>
+                <DrawerCardDescription>
                     Values are encrypted at rest and never shown. Names starting with <code className="rounded bg-muted px-1 text-xs">QS_</code> are reserved by QuickStack.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </DrawerCardDescription>
+            </DrawerCardHeader>
+            <DrawerCardContent>
                 <Table>
                     <TableCaption>{environmentVariableNames.length} Environment Variables</TableCaption>
                     <TableHeader><TableRow>
@@ -62,8 +62,8 @@ export default function AgentEnvVarsCard({ agent, readonly }: { agent: AgentExte
                         </TableRow>)}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter><Button onClick={() => openEditDialog()}><Plus /> Add Environment Variable</Button></CardFooter>}
-        </Card>
+            </DrawerCardContent>
+            {!readonly && <DrawerCardFooter><Button onClick={() => openEditDialog()}><Plus /> Add Environment Variable</Button></DrawerCardFooter>}
+        </DrawerCard>
     );
 }

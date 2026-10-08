@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -66,14 +66,14 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
     };
 
     return <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Network Policy</CardTitle>
-                <CardDescription>
+        <DrawerCard>
+            <DrawerCardHeader>
+                <DrawerCardTitle>Network Policy</DrawerCardTitle>
+                <DrawerCardDescription>
                     Control whether this agent has general internet access and define specific egress rules to other apps.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+                </DrawerCardDescription>
+            </DrawerCardHeader>
+            <DrawerCardContent className="space-y-4">
                 <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                     <div className="space-y-0.5">
                         <Label htmlFor="allow-internet-access">Allow internet access</Label>
@@ -129,12 +129,12 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
+            </DrawerCardContent>
             {!readonly && (
-                <CardFooter>
+                <DrawerCardFooter>
                     <Button type="button" onClick={() => openEditRuleDialog()}><Plus /> Add Egress Rule</Button>
-                </CardFooter>
+                </DrawerCardFooter>
             )}
-        </Card>
+        </DrawerCard>
     </>;
 }

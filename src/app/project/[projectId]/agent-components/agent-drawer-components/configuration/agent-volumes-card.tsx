@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { EditIcon, Plus, TrashIcon } from "lucide-react";
@@ -46,14 +46,14 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
     };
 
     return <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Volumes</CardTitle>
-                <CardDescription>
+        <DrawerCard>
+            <DrawerCardHeader>
+                <DrawerCardTitle>Volumes</DrawerCardTitle>
+                <DrawerCardDescription>
                     Persistent storage volumes attached to this workload.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </DrawerCardDescription>
+            </DrawerCardHeader>
+            <DrawerCardContent>
                 <Table>
                     <TableCaption>{volumes.length} Volumes</TableCaption>
                     <TableHeader>
@@ -80,10 +80,10 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-            {!readonly && <CardFooter>
+            </DrawerCardContent>
+            {!readonly && <DrawerCardFooter>
                 <Button onClick={() => openEditVolumeDialog()}><Plus /> Add Volume</Button>
-            </CardFooter>}
-        </Card>
+            </DrawerCardFooter>}
+        </DrawerCard>
     </>;
 }

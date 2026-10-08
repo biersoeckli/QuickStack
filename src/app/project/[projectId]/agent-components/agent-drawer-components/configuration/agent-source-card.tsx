@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
@@ -30,26 +30,26 @@ export default function AgentSourceCard({ agent, readonly }: {
     };
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <DrawerCard>
+            <DrawerCardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
-                    <CardTitle>Source</CardTitle>
-                    <CardDescription>Connect the source QuickStack should build or run.</CardDescription>
+                    <DrawerCardTitle>Source</DrawerCardTitle>
+                    <DrawerCardDescription>Connect the source QuickStack should build or run.</DrawerCardDescription>
                 </div>
                 {!readonly && configured && (
                     <Button type="button" variant="secondary" onClick={openSourceWizard}>
                         Change source
                     </Button>
                 )}
-            </CardHeader>
-            <CardContent>
+            </DrawerCardHeader>
+            <DrawerCardContent>
                 {!configured ? (
                     <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
                 ) : (
                     <ConfiguredSourceSummary agent={agent} gitSshPublicKey={publicKey} />
                 )}
-            </CardContent>
-        </Card>
+            </DrawerCardContent>
+        </DrawerCard>
     );
 }
 

@@ -2,7 +2,7 @@
 
 import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -46,14 +46,14 @@ export default function AgentRateLimitsCard({ agent, readonly }: {
     return (
         <Form {...form}>
             <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Container Rate Limits</CardTitle>
-                        <CardDescription>
+                <DrawerCard>
+                    <DrawerCardHeader>
+                        <DrawerCardTitle>Container Rate Limits</DrawerCardTitle>
+                        <DrawerCardDescription>
                             Configure Kubernetes resource limits per sandbox container instance.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                        </DrawerCardDescription>
+                    </DrawerCardHeader>
+                    <DrawerCardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -124,16 +124,16 @@ export default function AgentRateLimitsCard({ agent, readonly }: {
                                 )}
                             />
                         </div>
-                    </CardContent>
+                    </DrawerCardContent>
                     {!readonly && (
-                        <CardFooter className="gap-4">
+                        <DrawerCardFooter className="gap-4">
                             <SubmitButton>Save</SubmitButton>
                             {state?.status === 'error' && !state?.errors && (
                                 <p className="text-sm text-red-500">{state.message}</p>
                             )}
-                        </CardFooter>
+                        </DrawerCardFooter>
                     )}
-                </Card>
+                </DrawerCard>
             </form>
         </Form>
     );
