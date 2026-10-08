@@ -191,8 +191,24 @@ A **Volume** attached to an **App**, optionally shareable with other Apps in the
 _Avoid_: app storage, app disk
 
 **Agent Volume**:
-A **Volume** attached to an **Agent**, not shareable and without backup scheduling.
+A **Volume** attached to an **Agent**, without backup scheduling. An Agent Volume is not shareable with other Agents or Apps. Its **Volume Type** is either a **Shared Agent Volume** or a **Per-Sandbox Agent Volume**.
 _Avoid_: agent storage, agent disk
+
+**Volume Type**:
+The sharing and provisioning model of an **Agent Volume**: `ALL` (a **Shared Agent Volume**) or `PER_SANDBOX` (a **Per-Sandbox Agent Volume**).
+_Avoid_: volume mode
+
+**Shared Agent Volume**:
+An **Agent Volume** of Volume Type `ALL`. Every Agent Sandbox instance of its Agent mounts the same **Shared Agent Volume**, and it persists independently of any sandbox.
+_Avoid_: shared disk
+
+**Per-Sandbox Agent Volume**:
+An **Agent Volume** of Volume Type `PER_SANDBOX`. It is provisioned for one Agent Sandbox instance and is deleted with that sandbox. A **Custom Tag** distinguishes the sandbox it belonged to.
+_Avoid_: per-tag volume, isolated volume
+
+**Custom Tag**:
+The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes**.
+_Avoid_: sandbox name, label
 
 **File Mount**:
 A text file mounted into an **App** or **Agent** container at a configured container path.
