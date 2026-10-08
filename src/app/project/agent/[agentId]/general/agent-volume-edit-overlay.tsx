@@ -15,6 +15,7 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/volume-edit.model";
 import { useDialogContext } from "@/frontend/states/dialog-context";
 import { saveAgentVolume } from "./actions";
+import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
 
 export default function AgentVolumeEditOverlay({
     existingVolume,
@@ -26,7 +27,7 @@ export default function AgentVolumeEditOverlay({
     storageClasses: string[];
 }) {
     const { closeDialog } = useDialogContext();
-    const defaultStorageClassName = existingVolume?.storageClassName || storageClasses[0] || '';
+    const defaultStorageClassName = existingVolume?.storageClassName || StorageClassUtils.getDefaultStorageClass(storageClasses);
 
     const form = useForm<z.input<typeof agentVolumeEditZodModel>, unknown, z.output<typeof agentVolumeEditZodModel>>({
         resolver: zodResolver(agentVolumeEditZodModel),

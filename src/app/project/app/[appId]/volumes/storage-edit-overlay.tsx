@@ -42,6 +42,7 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 import StorageClassCombobox from "@/components/custom/storage-class-combobox"
 import { useDialog } from "@/frontend/states/zustand.states";
+import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
 
 const accessModes = [
   { label: "ReadWriteOnce", value: "ReadWriteOnce" },
@@ -55,7 +56,7 @@ export default function StorageEditDialog({ volume, app, storageClasses }: {
 }) {
 
   const { closeDialog } = useDialog();
-  const defaultStorageClassName = volume?.storageClassName ?? storageClasses[0] ?? "";
+  const defaultStorageClassName = volume?.storageClassName ?? StorageClassUtils.getDefaultStorageClass(storageClasses);
 
   const form = useForm<z.input<typeof appVolumeEditZodModel>, unknown, z.output<typeof appVolumeEditZodModel>>({
     resolver: zodResolver(appVolumeEditZodModel),

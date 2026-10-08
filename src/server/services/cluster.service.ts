@@ -7,6 +7,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 import { CatchUtils } from "@/shared/utils/catch.utils";
+import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
 
 class ClusterService {
 
@@ -53,11 +54,12 @@ class ClusterService {
     async getStorageClasses(): Promise<string[]> {
         return await unstable_cache(async () => {
             const storageClasses = await k3s.storage.listStorageClass();
-            return storageClasses.items
-                .map((storageClass) => storageClass.metadata?.name)
-                .filter((name): name is string => !!name)
-                .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
-                .sort((a, b) => a.localeCompare(b));
+            return StorageClassUtils.sortStorageClasses(
+                storageClasses.items
+                    .map((storageClass) => storageClass.metadata?.name)
+                    .filter((name): name is string => !!name)
+                    .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
+            );
         },
             [Tags.storageClasses()], {
             revalidate: 60,
