@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { Bot, ExternalLink, Files, Logs, Pause, Play, RotateCcw, Square, Terminal } from "lucide-react";
+import { Bot, ChevronDown, ExternalLink, Files, Filter, Logs, Pause, Play, PlayIcon, Search, Square, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { startSandbox, stopSandbox, suspendSandbox, resumeSandbox } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
@@ -23,10 +21,13 @@ import {
     EmptyTitle,
 } from "@/components/ui/empty"
 import DeploymentStatusBadge from "@/app/project/app/[appId]/overview/deployment-status-badge";
-import { AgentDomain } from "@prisma/client";
+import type { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { toast } from "sonner";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import AgentAccessDialogContent from "./agent-access-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DrawerCard, DrawerCardDescription, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
+import { Input } from "@/components/ui/input";
 
 interface SandboxInfo {
     name: string;
@@ -38,22 +39,35 @@ interface SandboxInfo {
 
 const SSE_RETRY_BASE_DELAY_MS = 1_000;
 const SSE_RETRY_MAX_DELAY_MS = 30_000;
+const SANDBOX_STATUSES: DeploymentStatus[] = ['DEPLOYED', 'DEPLOYING', 'BUILDING', 'PENDING', 'SUSPENDED', 'SHUTTING_DOWN', 'SHUTDOWN', 'ERROR', 'UNKNOWN'];
+
+const SANDBOX_STATUS_LABELS: Record<DeploymentStatus, string> = {
+    DEPLOYED: 'Deployed',
+    DEPLOYING: 'Deploying',
+    BUILDING: 'Building',
+    PENDING: 'Pending',
+    SUSPENDED: 'Suspended',
+    SHUTTING_DOWN: 'Stopping',
+    SHUTDOWN: 'Shutdown',
+    ERROR: 'Error',
+    UNKNOWN: 'Unknown',
+};
 
 export default function AgentSandboxesCard({
-    agentId,
+    agent,
     readonly,
-    namespace,
-    agentDomains,
 }: {
-    agentId: string;
+    agent: AgentExtendedModel;
     readonly: boolean;
-    namespace: string;
-    agentDomains: AgentDomain[];
 }) {
+    const { id: agentId, projectId: namespace, agentDomains, deployFileBrowser } = agent;
     const { openDialog } = useDialog();
     const [sandboxes, setSandboxes] = useState<SandboxInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
+    const [expandedSandboxNames, setExpandedSandboxNames] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<DeploymentStatus[]>([]);
 
     // SSE stream for live sandbox updates
     useEffect(() => {
@@ -209,6 +223,30 @@ export default function AgentSandboxesCard({
         // For now, this is a placeholder — terminal per sandbox needs pod discovery
     };
 
+    const toggleSandboxExpanded = (sandboxName: string, open: boolean) => {
+        setExpandedSandboxNames(current => open
+            ? [...new Set([...current, sandboxName])]
+            : current.filter(name => name !== sandboxName),
+        );
+    };
+
+    const toggleStatusFilter = (status: DeploymentStatus, checked: boolean) => {
+        setStatusFilter(current => checked
+            ? [...current, status]
+            : current.filter(value => value !== status),
+        );
+    };
+
+    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+    const filteredSandboxes = sandboxes.filter(sandbox => {
+        const matchesSearch = normalizedSearchQuery.length === 0
+            || sandbox.name.toLowerCase().includes(normalizedSearchQuery)
+            || sandbox.customTag?.toLowerCase().includes(normalizedSearchQuery);
+        const matchesStatus = statusFilter.length === 0 || statusFilter.includes(sandbox.status);
+
+        return matchesSearch && matchesStatus;
+    });
+
     const handleOpenLogs = (sandboxName: string) => {
         openDialog(<LogsDialogContent namespace={namespace} podName={sandboxName} />, { maxWidth: '1300px' });
     };
@@ -230,18 +268,19 @@ export default function AgentSandboxesCard({
         );
     };
 
-    const renderAccessButton = (sandboxName: string, view: 'agent' | 'files') => {
+    const renderAccessButton = (sandboxName: string, view: 'agent' | 'files', showLabel = false) => {
         const icon = view === 'agent'
             ? <ExternalLink className="h-4 w-4" />
             : <Files className="h-4 w-4" />;
+        const label = view === 'agent' ? 'Open agent' : 'Files';
         const disabled = agentDomains.length === 0;
 
         if (agentDomains.length <= 1) {
             return (
                 <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
+                    size={showLabel ? 'sm' : 'icon'}
+                    className={showLabel ? undefined : 'h-8 w-8'}
                     disabled={disabled}
                     onClick={() => {
                         const domainId = agentDomains[0]?.id;
@@ -253,6 +292,7 @@ export default function AgentSandboxesCard({
                     }}
                 >
                     {icon}
+                    {showLabel && <span className="ml-1.5">{label}</span>}
                 </Button>
             );
         }
@@ -260,12 +300,13 @@ export default function AgentSandboxesCard({
         return (
             <DropdownMenu>
                 <DropdownMenuTrigger render={<Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                    >
-                        {icon}
-                    </Button>} />
+                    variant={showLabel ? 'outline' : 'ghost'}
+                    size={showLabel ? 'sm' : 'icon'}
+                    className={showLabel ? undefined : 'h-8 w-8'}
+                >
+                    {icon}
+                    {showLabel && <span className="ml-1.5">{label}</span>}
+                </Button>} />
                 <DropdownMenuContent align="end">
                     {agentDomains.map((domain) => (
                         <DropdownMenuItem key={domain.id} onClick={() => handleOpenAgentAccess(sandboxName, view, domain.id)}>
@@ -278,170 +319,123 @@ export default function AgentSandboxesCard({
     };
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Sandbox Instances</CardTitle>
-                    <CardDescription>
-                        Start and manage Sandbox Instances for this Agent Sandbox.
-                        {sandboxes.length > 0 && ` ${sandboxes.length} sandbox instance${sandboxes.length !== 1 ? 's' : ''} running.`}
-                    </CardDescription>
-                </div>
+        <DrawerCard className="gap-4 px-1">
+            <div className="flex items-start justify-between gap-4">
+                <DrawerCardHeader>
+                    <DrawerCardTitle>Sandboxes</DrawerCardTitle>
+                    <DrawerCardDescription>
+                        {sandboxes.length === 0
+                            ? 'Start a sandbox to open an agent workspace.'
+                            : `${sandboxes.length} sandbox${sandboxes.length === 1 ? '' : 'es'} · ${sandboxes.filter(sandbox => sandbox.status === 'DEPLOYED').length} running`}
+                    </DrawerCardDescription>
+                </DrawerCardHeader>
                 {!readonly && (
-                    <Button
-                        onClick={handleStartSandbox}
-                        disabled={loading}
-                        variant="secondary"
-                        size="sm"
-                    >
-                        <Play className="h-4 w-4 mr-1" />
-                        Start Sandbox Instance
+                    <Button onClick={handleStartSandbox} disabled={loading} size="sm" className="shrink-0">
+                        <Play className="mr-1 h-4 w-4" />
+                        Start sandbox
                     </Button>
                 )}
-            </CardHeader>
-            <CardContent>
-                {!isConnected ? <FullLoadingSpinner /> : <>
-                    {sandboxes.length === 0 ? (
-                        <Empty>
-                            <EmptyHeader>
-                                <EmptyMedia variant="icon">
-                                    <Bot />
-                                </EmptyMedia>
-                                <EmptyTitle>No running Sandbox Instances</EmptyTitle>
-                                <EmptyDescription>
-                                    There are currently no running Sandbox Instances for this Agent Sandbox. Click &quot;Start Sandbox Instance&quot; to create one.
-                                </EmptyDescription>
-                            </EmptyHeader>
-                            <EmptyContent className="flex-row justify-center gap-2">
-                                <Button
-                                    onClick={handleStartSandbox}
-                                    disabled={loading || readonly}
-                                    size="sm"
-                                >
-                                    <Play className="h-4 w-4 mr-1" />
-                                    Start Sandbox Instance
-                                </Button>
-                            </EmptyContent>
-                        </Empty>
-                    ) : (
-                        <SimpleDataTable
-                            columns={[
-                                ['name', 'Sandbox Name', true, (item: SandboxInfo) => (
-                                    <span className="font-mono text-sm">{item.name}</span>
-                                )],
-                                ['status', 'Status', true, (item: SandboxInfo) => (
-                                    <DeploymentStatusBadge >{item.status}</DeploymentStatusBadge>
-                                )],
-                                ['customTag', 'Custom Tag', true, (item: SandboxInfo) =>
-                                    item.customTag
-                                        ? <span className="font-mono text-sm">{item.customTag}</span>
-                                        : '—'
-                                ],
-                                ['createdAt', 'Created', true, (item: SandboxInfo) =>
-                                    item.createdAt
-                                        ? new Date(item.createdAt).toLocaleString()
-                                        : '—'
-                                ],
-                            ]}
-                            data={sandboxes}
-                            actionCol={(item: SandboxInfo) => (
-                                <TooltipProvider>
-                                    <div className="flex gap-1">
-                                        <Tooltip>
-                                            <TooltipTrigger delay={300} render={<Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => handleOpenLogs(item.name)}
-                                                >
-                                                    <Logs className="h-4 w-4" />
-                                                </Button>} />
-                                            <TooltipContent>
-                                                <p>View Logs</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        {item.status === 'DEPLOYED' && !readonly && (
-                                            <Tooltip>
-                                                <TooltipTrigger delay={300} render={<Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleSuspendSandbox(item.name)}
-                                                    >
-                                                        <Pause className="h-4 w-4" />
-                                                    </Button>} />
-                                                <TooltipContent>
-                                                    <p>Suspend Sandbox</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                        {item.status === 'SUSPENDED' && !readonly && (
-                                            <Tooltip>
-                                                <TooltipTrigger delay={300} render={<Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleResumeSandbox(item.name)}
-                                                    >
-                                                        <RotateCcw className="h-4 w-4" />
-                                                    </Button>} />
-                                                <TooltipContent>
-                                                    <p>Resume Sandbox</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                        {item.status === 'DEPLOYED' && (
-                                            <>
-                                                <Tooltip>
-                                                    <TooltipTrigger delay={300} render={renderAccessButton(item.name, 'agent') as React.ReactElement} />
-                                                    <TooltipContent>
-                                                        <p>Open Agent UI</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger delay={300} render={renderAccessButton(item.name, 'files') as React.ReactElement} />
-                                                    <TooltipContent>
-                                                        <p>Open Files</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger delay={300} render={<Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => handleOpenTerminal()}
-                                                        >
-                                                            <Terminal className="h-4 w-4" />
-                                                        </Button>} />
-                                                    <TooltipContent>
-                                                        <p>Open Terminal</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </>
-                                        )}
-                                        {!readonly && (
-                                            <Tooltip>
-                                                <TooltipTrigger delay={300} render={<Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:text-red-700"
-                                                        onClick={() => handleStopSandbox(item.name)}
-                                                    >
-                                                        <Square className="h-4 w-4" />
-                                                    </Button>} />
-                                                <TooltipContent>
-                                                    <p>Stop Sandbox</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </div>
-                                </TooltipProvider>
+            </div>
+
+            {!isConnected ? <FullLoadingSpinner /> : (
+                sandboxes.length === 0 ? (
+                    <Empty className="border rounded-lg py-10">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon"><Bot /></EmptyMedia>
+                            <EmptyTitle>No sandboxes yet</EmptyTitle>
+                            <EmptyDescription>Start a sandbox to create an agent workspace.</EmptyDescription>
+                        </EmptyHeader>
+                        {!readonly && <EmptyContent className="flex-row justify-center gap-2">
+                            <Button onClick={handleStartSandbox} disabled={loading} size="sm">
+                                <Play className="mr-1 h-4 w-4" />
+                                Start sandbox
+                            </Button>
+                        </EmptyContent>}
+                    </Empty>
+                ) : (
+                    <TooltipProvider>
+                        <div className="space-y-3">
+                            <div className="flex gap-2">
+                                <div className="relative min-w-0 flex-1">
+                                    <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={searchQuery}
+                                        onChange={(event) => setSearchQuery(event.target.value)}
+                                        placeholder="Search name or tag"
+                                        className="pl-9"
+                                    />
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="shrink-0" />}>
+                                        <Filter className="mr-1.5 h-4 w-4" />
+                                        Filter{statusFilter.length > 0 && ` (${statusFilter.length})`}
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-44">
+                                        <DropdownMenuLabel>Status</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {SANDBOX_STATUSES.map((status) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={status}
+                                                checked={statusFilter.includes(status)}
+                                                onCheckedChange={(checked) => toggleStatusFilter(status, checked)}
+                                            >
+                                                {SANDBOX_STATUS_LABELS[status]}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+
+                            {filteredSandboxes.length === 0 && (
+                                <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+                                    No sandboxes match the current search or filter.
+                                </div>
                             )}
-                            hideSearchBar
-                        />
-                    )}
-                </>}
-            </CardContent>
-        </Card>
+
+                            {filteredSandboxes.map((sandbox) => (
+                                <Collapsible
+                                    key={sandbox.name}
+                                    open={expandedSandboxNames.includes(sandbox.name)}
+                                    onOpenChange={(open) => toggleSandboxExpanded(sandbox.name, open)}
+                                    className="overflow-hidden rounded-lg border bg-card"
+                                >
+                                    <CollapsibleTrigger render={<button type="button" className="group flex w-full items-start gap-3 p-3 text-left hover:bg-muted/50" />}>
+                                        <ChevronDown className="my-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[panel-open]:rotate-180" />
+                                        <div className="min-w-0 flex-1">
+                                            <span className="min-w-0 flex-1 truncate">{sandbox.name}</span>
+                                            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                                <span>Tag: <span className="font-mono">{sandbox.customTag ?? '—'}</span></span>
+                                                <span aria-hidden>·</span>
+                                                <span>Created {sandbox.createdAt ? new Date(sandbox.createdAt).toLocaleString() : '—'}</span>
+                                            </div>
+                                        </div>
+                                        <span className="self-center"><DeploymentStatusBadge>{sandbox.status}</DeploymentStatusBadge></span>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="border-t bg-muted/20 p-3">
+                                        <div className="flex flex-wrap gap-2">
+                                            {sandbox.status === 'DEPLOYED' && <>
+                                                <Tooltip>
+                                                    <TooltipTrigger delay={300} render={renderAccessButton(sandbox.name, 'agent', true) as React.ReactElement} />
+                                                    <TooltipContent>Open Agent UI</TooltipContent>
+                                                </Tooltip>
+                                                {deployFileBrowser && <Tooltip>
+                                                    <TooltipTrigger delay={300} render={renderAccessButton(sandbox.name, 'files', true) as React.ReactElement} />
+                                                    <TooltipContent>Open Files</TooltipContent>
+                                                </Tooltip>}
+                                                <Button variant="outline" size="sm" onClick={() => handleOpenLogs(sandbox.name)}><Logs className="mr-1.5 h-4 w-4" />Logs</Button>
+                                                <Button variant="outline" size="sm" onClick={handleOpenTerminal}><Terminal className="mr-1.5 h-4 w-4" />Terminal</Button>
+                                                {!readonly && <Button variant="outline" size="sm" onClick={() => handleSuspendSandbox(sandbox.name)}><Pause className="mr-1.5 h-4 w-4" />Suspend</Button>}
+                                            </>}
+                                            {sandbox.status === 'SUSPENDED' && !readonly && <Button variant="outline" size="sm" onClick={() => handleResumeSandbox(sandbox.name)}><PlayIcon className="mr-1.5 h-4 w-4" />Resume</Button>}
+                                            {!readonly && <Button variant="outline" size="sm" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleStopSandbox(sandbox.name)}><Square className="mr-1.5 h-4 w-4" />Delete</Button>}
+                                        </div>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            ))}
+                        </div>
+                    </TooltipProvider>
+                )
+            )}
+        </DrawerCard>
     );
 }

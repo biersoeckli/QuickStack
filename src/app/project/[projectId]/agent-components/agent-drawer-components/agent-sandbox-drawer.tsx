@@ -142,7 +142,6 @@ export function AgentSandboxDrawer({
                                     <AgentSandboxStatusActions
                                         agent={agent}
                                         readonly={readonly}
-                                        onDeleted={() => onOpenChange(false)}
                                     />
                                 )}
                             </div>
@@ -176,10 +175,8 @@ export function AgentSandboxDrawer({
                                 <TabsContent value="sandboxes" className="flex min-h-0 min-w-0 flex-1 flex-col">
                                     <DrawerTabScrollArea>
                                         <AgentSandboxesCard
-                                            agentId={agent.id}
+                                            agent={agent}
                                             readonly={readonly}
-                                            namespace={agent.projectId}
-                                            agentDomains={agent.agentDomains}
                                         />
                                     </DrawerTabScrollArea>
                                 </TabsContent>

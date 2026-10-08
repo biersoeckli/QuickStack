@@ -103,13 +103,7 @@ class ProjectNetworkGraphLayoutService {
         const agent = await dataAccess.client.agent.findFirst({
             where: {
                 id: workloadId,
-                appNetworkPolicyRules: {
-                    some: {
-                        appNetworkPolicy: {
-                            app: { projectId, useNetworkPolicy: true },
-                        },
-                    },
-                },
+                projectId,
             },
             select: { id: true },
         });
