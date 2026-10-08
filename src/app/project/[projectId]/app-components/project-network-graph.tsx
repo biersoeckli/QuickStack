@@ -1,56 +1,34 @@
 'use client';
 
-import type { CSSProperties, ReactNode } from 'react';
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Background,
     BackgroundVariant,
     Controls,
-    Handle,
     MarkerType,
-    Position,
     ReactFlow,
     SmoothStepEdge,
     useNodesState,
     type Node,
-    type NodeProps,
     type NodeTypes,
     type EdgeProps,
     type Connection,
     type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Blocks, Bot, Boxes, Cloud, Database, File, Info, RotateCcw } from 'lucide-react';
+import { Cloud, Info, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuSub,
-    ContextMenuSubContent,
-    ContextMenuSubTrigger,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import PodStatusIndicator from '@/components/custom/pod-status-indicator';
-import BuildStatusIndicator from '@/components/custom/build-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import {
-    ProjectNetworkGraphAppContextMenu,
-    type ProjectNetworkGraphAppContextMenuProps,
-} from './project-network-graph/project-network-graph-app-context-menu';
-import {
-    ProjectNetworkGraphAgentContextMenu,
-    type ProjectNetworkGraphAgentContextMenuProps,
-} from './project-network-graph/project-network-graph-agent-context-menu';
-import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/project-network-graph-connection-context-menu';
+import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/context-menus/project-network-graph-connection-context-menu';
 import { connectionDeletionProvenance, type NetworkGraphEdge, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
@@ -64,9 +42,6 @@ import { InternalHostnameUtils } from '@/shared/utils/internal-hostname.utils';
 import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
-import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
-import { CreateAgentDialog } from '@/app/project/[projectId]/agent-components/create-agent-dialog';
-import ChooseTemplateDialog from '@/app/project/[projectId]/choose-template-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
@@ -79,19 +54,10 @@ import { AgentSandboxDrawer } from '@/app/project/[projectId]/agent-components/a
 import { deleteAgent } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-actions';
 import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
 import type { AgentDrawerTab } from '@/shared/utils/agent-drawer-navigation.utils';
-
-const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
-const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
-const connectionTargetHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-400! opacity-0! shadow-md! transition-all duration-150 [&.connectingto]:opacity-100! hover:bg-qs-500!';
-
-type WorkloadNodeData = NetworkGraphNode & {
-    connectionInProgress?: boolean;
-    connectionTarget?: boolean;
-    selected?: boolean;
-    connectedToSelection?: boolean;
-    appContextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
-    agentContextMenu?: Omit<ProjectNetworkGraphAgentContextMenuProps, 'children'>;
-};
+import { ProjectNetworkGraphCanvasContextMenu } from './project-network-graph/context-menus/project-network-graph-canvas-context-menu';
+import { ProjectNetworkGraphAppWorkloadNode } from './project-network-graph/nodes/project-network-graph-app-workload-node';
+import { ProjectNetworkGraphAgentWorkloadNode } from './project-network-graph/nodes/project-network-graph-agent-workload-node';
+import { ProjectNetworkGraphInternetNode } from './project-network-graph/nodes/project-network-graph-internet-node';
 
 type ConnectionEdgeData = {
     onDelete?: () => void;
@@ -119,66 +85,11 @@ function stripWorkloadPrefix(nodeId: string | undefined) {
     return separatorIndex >= 0 ? nodeId.slice(separatorIndex + 1) : nodeId;
 }
 
-const WorkloadNode = memo(function WorkloadNode({
-    data,
-}: NodeProps<Node<WorkloadNodeData, 'workload'>>) {
-    const database = !!data.appType && data.appType.toUpperCase() !== 'APP';
-    const Icon = data.kind === 'AGENT' ? Bot : database ? Database : Boxes;
-    const node = (
-        <div className={cn('group relative w-[240px] cursor-pointer transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
-            <div className={cn(
-                'relative z-10 flex items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-xs transition-all duration-150 hover:border-qs-500/50 hover:shadow-md',
-                data.external && 'border-dashed border-amber-500/70 bg-amber-500/5',
-                data.selected && 'border-qs-500 ring-2 ring-qs-500/20 shadow-md',
-            )}>
-                <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg ring-1', data.kind === 'AGENT' ? 'bg-violet-500/15 text-violet-600 ring-violet-500/30' : database ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30' : 'bg-qs-500/10 text-qs-600 ring-qs-500/30')}>
-                    <Icon className="size-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate text-sm font-semibold" title={data.name}>{data.name}</p>
-                        {data.kind === 'APP' && <div className={cn('ml-auto flex shrink-0 transition-opacity', data.connectionTarget && 'opacity-0')}>
-                            <PodStatusIndicator appId={data.id.replace('APP:', '')} />
-                        </div>}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">{data.caption ?? (database ? data.appType : data.kind === 'AGENT' ? 'Agent sandbox' : 'App')}</p>
-                </div>
-            </div>
-            {data.kind === 'APP' && <div className="relative z-0 mx-auto -mt-px hidden w-[184px] justify-center rounded-b-xl border border-t-0 bg-card px-3 pb-2 pt-2 shadow-xs has-[.build-status-indicator]:flex">
-                <BuildStatusIndicator appId={data.id.replace('APP:', '')} showLabel className="build-status-indicator" />
-            </div>}
-            <Handle id="target-ingress" type="target" position={Position.Left} title="Drop connection here" className={cn(data.external ? hiddenHandleClassName : connectionTargetHandleClassName, data.connectionTarget && 'opacity-100!')} style={{ top: 34, bottom: 'auto' }} />
-            <Handle id="source-internet" type="source" position={Position.Top} className={hiddenHandleClassName} />
-            <Handle id="source-ingress" type="source" position={Position.Bottom} className={hiddenHandleClassName} />
-            <Handle id="target-egress" type="target" position={Position.Left} className={hiddenHandleClassName} />
-            <Handle id="source-egress" type="source" position={Position.Right} title="Drag to create connection" className={cn(data.external ? hiddenHandleClassName : connectionSourceHandleClassName, data.connectionInProgress && 'opacity-0!')} style={{ top: 34, bottom: 'auto' }} />
-        </div>
-    );
-    if (data.appContextMenu) {
-        return <ProjectNetworkGraphAppContextMenu {...data.appContextMenu}>{node}</ProjectNetworkGraphAppContextMenu>;
-    }
-    if (data.agentContextMenu) {
-        return <ProjectNetworkGraphAgentContextMenu {...data.agentContextMenu}>{node}</ProjectNetworkGraphAgentContextMenu>;
-    }
-    return node;
-});
-
-const InternetNode = memo(function InternetNode({
-    data,
-}: NodeProps<Node<WorkloadNodeData, 'internet'>>) {
-    return (
-        <div className={cn('flex flex-col items-center gap-1.5 transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
-            <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-xs">
-                <Cloud className="size-7" />
-            </div>
-            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Internet</span>
-            <Handle id="target" type="target" position={Position.Bottom} className={hiddenHandleClassName} style={{ left: '35%' }} />
-            <Handle id="source" type="source" position={Position.Bottom} className={hiddenHandleClassName} style={{ left: '65%' }} />
-        </div>
-    );
-});
-
-const nodeTypes = { workload: WorkloadNode, internet: InternetNode } satisfies NodeTypes;
+const nodeTypes = {
+    'app-workload': ProjectNetworkGraphAppWorkloadNode,
+    'agent-workload': ProjectNetworkGraphAgentWorkloadNode,
+    internet: ProjectNetworkGraphInternetNode,
+} satisfies NodeTypes;
 
 function ConnectionEdge(props: EdgeProps) {
     const data = props.data as ConnectionEdgeData | undefined;
@@ -218,83 +129,6 @@ function getInternalHostnames(
     return Array.from(hostnames.values()).sort((left, right) => left.port - right.port);
 }
 const edgeTypes = { connection: ConnectionEdge };
-
-function ProjectNetworkGraphCanvasContextMenu({
-    projectId,
-    canCreateApps,
-    canCreateAgents,
-    children,
-}: {
-    projectId: string;
-    canCreateApps: boolean;
-    canCreateAgents: boolean;
-    children: ReactNode;
-}) {
-    const { openDialog } = useDialog();
-
-    const openTemplateDialog = (templateType: 'database' | 'template' | 'agent-template') => {
-        openDialog(
-            <ChooseTemplateDialog projectId={projectId} templateType={templateType} />,
-            { maxWidth: '1000px' },
-        );
-    };
-
-    if (!canCreateApps && !canCreateAgents) return children;
-
-    return (
-        <ContextMenu>
-            <ContextMenuTrigger className="block size-full">
-                {children}
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-                {canCreateApps && <>
-                    <ContextMenuSub>
-                        <ContextMenuSubTrigger className="gap-2">
-                            <File />
-                            Create App
-                        </ContextMenuSubTrigger>
-                        <ContextMenuSubContent>
-                            <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
-                                <ContextMenuItem>
-                                    <File />
-                                    Empty App
-                                </ContextMenuItem>
-                            </EditAppDialog>
-                            <ContextMenuItem onClick={() => openTemplateDialog('template')}>
-                                <Blocks />
-                                App from Template
-                            </ContextMenuItem>
-                        </ContextMenuSubContent>
-                    </ContextMenuSub>
-                    <ContextMenuItem onClick={() => openTemplateDialog('database')}>
-                        <Database />
-                        Create Database
-                    </ContextMenuItem>
-                </>}
-                {canCreateAgents && <>
-                    <ContextMenuSub>
-                        <ContextMenuSubTrigger className="gap-2">
-                            <Bot />
-                            Create Agent Sandbox
-                        </ContextMenuSubTrigger>
-                        <ContextMenuSubContent>
-                            <CreateAgentDialog projectId={projectId}>
-                                <ContextMenuItem>
-                                    <Bot />
-                                    Empty Agent Sandbox
-                                </ContextMenuItem>
-                            </CreateAgentDialog>
-                            <ContextMenuItem onClick={() => openTemplateDialog('agent-template')}>
-                                <Blocks />
-                                Agent Sandbox from Template
-                            </ContextMenuItem>
-                        </ContextMenuSubContent>
-                    </ContextMenuSub>
-                </>}
-            </ContextMenuContent>
-        </ContextMenu>
-    );
-}
 
 function Legend() {
     return (
@@ -500,7 +334,11 @@ function ProjectNetworkGraphEditor({
             : undefined;
         return {
             id: node.id,
-            type: node.kind === 'INTERNET' ? 'internet' : 'workload',
+            type: node.kind === 'INTERNET'
+                ? 'internet'
+                : node.kind === 'AGENT'
+                    ? 'agent-workload'
+                    : 'app-workload',
             position: node.position,
             data: {
                 ...node,
