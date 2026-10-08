@@ -29,3 +29,15 @@ export class ApiNotFoundException extends Error {
         Error.captureStackTrace(this, this.constructor);
     }
 }
+
+export class ApiConflictException extends Error {
+    public readonly statusCode = 409;
+    public readonly title: string;
+
+    constructor(title?: string, message?: string) {
+        super(message || 'The request conflicts with the current state of the resource.');
+        this.title = title || 'Conflict';
+        this.name = ApiConflictException.name;
+        Error.captureStackTrace(this, this.constructor);
+    }
+}

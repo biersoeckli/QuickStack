@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ValidationError } from 'elysia';
-import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
+import { ApiConflictException, ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { stringToDate } from '@/shared/utils/zod.utils';
 import { getIdentityFromApiKeyHeader } from './requester-identity.utils';
 import paramService, { ParamService } from '../services/param.service';
@@ -144,6 +144,9 @@ export class ApiUtils {
         if (error instanceof ApiNotFoundException) {
             return ApiUtils.problem(error.statusCode, error.title, error.message);
         }
+        if (error instanceof ApiConflictException) {
+            return ApiUtils.problem(error.statusCode, error.title, error.message);
+        }
         console.error(error);
         return ApiUtils.problem(500, 'Internal Server Error', 'An unknown error occurred.');
     }
@@ -152,8 +155,9 @@ export class ApiUtils {
         return {
             200: ApiUtils.mapDateSchemaToStringDate(schema) as z.ZodType<T>,
             401: problemResponseSchema,
-            422: problemResponseSchema,
             404: problemResponseSchema,
+            409: problemResponseSchema,
+            422: problemResponseSchema,
             500: problemResponseSchema,
         };
     }

@@ -4,7 +4,7 @@ import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import liteLlmApiAdapter from "../adapter/litellm-api.adapter";
 import { CryptoUtils } from "../utils/crypto.utils";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
-import { ServiceException } from "@/shared/model/service.exception.model";
+import { ApiConflictException, ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
@@ -140,49 +140,12 @@ class AgentRuntimeService {
         await this.createRuntimeSecret(agent);
     }
 
-    private resolveClaimStatus(claim: any): DeploymentStatus {
-        if (claim?.metadata?.deletionTimestamp) {
-            return 'SHUTTING_DOWN';
-        }
-
-        const conditions: Array<{ type: string; status: string; reason?: string; message?: string }> =
-            claim?.status?.conditions || [];
-
-        const ready = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
-        );
-        if (ready) {
-            return 'DEPLOYED';
-        }
-
-        const readinessCondition = conditions.find((c) =>
-            c.type === 'Ready' || c.type === 'Available',
-        );
-        if (readinessCondition?.reason === 'ClaimExpired' || readinessCondition?.reason === 'Expired') {
-            return 'SHUTTING_DOWN';
-        }
-
-        const terminalFailureReasons = new Set([
-            'TemplateNotFound',
-            'WarmPoolNotFound',
-            'InvalidMetadata',
-            'EnvVarsInjectionRejected',
-            'VolumeClaimTemplatesError',
-            'ReconcilerError',
-        ]);
-        if (terminalFailureReasons.has(readinessCondition?.reason ?? '')) {
-            return 'ERROR';
-        }
-
-        // Ready=False is the controller's normal state while a claim is being fulfilled.
-        return 'DEPLOYING';
-    }
-
     /**
      * Derives live Agent status from Kubernetes SandboxClaim conditions.
      * - No claim -> SHUTDOWN
      * - Claim exists, Available=True -> DEPLOYED
      * - Claim exists, not yet available -> DEPLOYING
+     * - Claim exists, Sandbox suspended -> SUSPENDED
      * - Never returns BUILDING (App-only status)
      */
     async getAgentStatus(agentId: string): Promise<DeploymentStatus> {
@@ -195,7 +158,7 @@ class AgentRuntimeService {
             return 'SHUTDOWN';
         }
 
-        return this.resolveClaimStatus(claim);
+        return agentSandboxAdapter.resolveSandboxStatus(claim);
     }
 
     statusTextFor(status: DeploymentStatus): string {
@@ -208,6 +171,8 @@ class AgentRuntimeService {
                 return 'Deploying';
             case 'ERROR':
                 return 'Error';
+            case 'SUSPENDED':
+                return 'Suspended';
             default:
                 return status;
         }
@@ -227,8 +192,6 @@ class AgentRuntimeService {
             ? { timeoutMs: options }
             : options ?? {};
 
-        await this.ensureRuntimeSecret(agent);
-
         const sandboxName = KubeObjectNameUtils.toAgentClaimName(agentId);
 
         const rawCustomTag = startOptions.customTag;
@@ -240,6 +203,13 @@ class AgentRuntimeService {
             }
             customTag = parsedTag.data;
         }
+
+        if (customTag) {
+            await this.assertCustomTagAvailable(agentId, namespace, customTag);
+        }
+
+        await this.ensureRuntimeSecret(agent);
+
         const perSandboxVolumes = agent.agentVolumes.filter(volume => volume.volumeType === 'PER_SANDBOX');
         const volumeClaimTemplates = customTag && perSandboxVolumes.length > 0
             ? agentSandboxTemplateBuilder.buildSandboxClaimVolumeTemplates(perSandboxVolumes, customTag)
@@ -308,6 +278,118 @@ class AgentRuntimeService {
         revalidateTag(Tags.agents(agent.projectId));
     }
 
+    private claimMatchesTag(claim: SandboxClaim, agentId: string, customTag: string): boolean {
+        return claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] === agentId
+            && claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] === customTag;
+    }
+
+    private async assertCustomTagAvailable(agentId: string, namespace: string, customTag: string): Promise<void> {
+        const selector = `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`;
+        const claims = await agentSandboxAdapter.listSandboxClaims(namespace, selector);
+        if (claims.some((claim) => this.claimMatchesTag(claim, agentId, customTag))) {
+            throw new ApiConflictException(
+                'Conflict',
+                `Custom Tag "${customTag}" is already used by another sandbox of this Agent.`,
+            );
+        }
+    }
+
+    private async getOwnedClaimOrThrow(agentId: string, namespace: string, sandboxName: string): Promise<SandboxClaim> {
+        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, namespace);
+        if (!claim) {
+            throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
+        }
+        const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
+        if (claimAgentId !== agentId) {
+            throw new ServiceException('Agent sandbox does not belong to this Agent.');
+        }
+        return claim;
+    }
+
+    private async getSandboxObject(namespace: string, claim: SandboxClaim) {
+        const sandboxObjectName = claim.status?.sandbox?.name;
+        if (!sandboxObjectName) {
+            return { sandboxObjectName: null, sandbox: null };
+        }
+        const sandbox = await agentSandboxAdapter.getSandbox(sandboxObjectName, namespace);
+        return { sandboxObjectName, sandbox };
+    }
+
+    /**
+     * Releases the compute of a running sandbox while keeping its Sandbox object,
+     * Service, and per-sandbox volume claims.
+     */
+    async suspendSandbox(agentId: string, sandboxName: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+        const claim = await this.getOwnedClaimOrThrow(agentId, namespace, sandboxName);
+        const { sandboxObjectName, sandbox } = await this.getSandboxObject(namespace, claim);
+        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+
+        if (status === 'SUSPENDED') {
+            return;
+        }
+        if (status !== 'DEPLOYED' || !sandboxObjectName) {
+            throw new ApiConflictException(
+                'Conflict',
+                'Agent sandbox is not ready. Wait until it is running before suspending.',
+            );
+        }
+
+        await agentSandboxAdapter.setSandboxOperatingMode(sandboxObjectName, namespace, 'Suspended');
+        try {
+            await agentSandboxAdapter.waitForSandboxSuspended(sandboxObjectName, namespace);
+        } finally {
+            revalidateTag(Tags.agent(agentId));
+            revalidateTag(Tags.agents(agent.projectId));
+        }
+    }
+
+    /**
+     * Recreates the Pod of a suspended sandbox with the same claims mounted.
+     */
+    async resumeSandbox(agentId: string, sandboxName: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+        const claim = await this.getOwnedClaimOrThrow(agentId, namespace, sandboxName);
+        const { sandboxObjectName, sandbox } = await this.getSandboxObject(namespace, claim);
+        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+
+        if (status === 'DEPLOYED') {
+            return;
+        }
+        if (!sandboxObjectName) {
+            throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
+        }
+
+        await agentSandboxAdapter.setSandboxOperatingMode(sandboxObjectName, namespace, 'Running');
+        try {
+            await agentSandboxAdapter.waitForSandboxReady(sandboxName, namespace);
+        } finally {
+            revalidateTag(Tags.agent(agentId));
+            revalidateTag(Tags.agents(agent.projectId));
+        }
+    }
+
+    /**
+     * Resumes the sandbox of this Agent that carries the given Custom Tag.
+     */
+    async resumeSandboxByTag(agentId: string, customTag: string): Promise<{ sandboxName: string }> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+        const selector = `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`;
+        const claims = await agentSandboxAdapter.listSandboxClaims(namespace, selector);
+        const match = claims.find((claim) => this.claimMatchesTag(claim, agentId, customTag));
+        const sandboxName = match?.metadata?.name;
+
+        if (!sandboxName) {
+            throw new ApiNotFoundException('Not Found', 'No agent sandbox found for the given Custom Tag.');
+        }
+
+        await this.resumeSandbox(agentId, sandboxName);
+        return { sandboxName };
+    }
+
     /**
      * Maps a raw k8s SandboxClaim object to an AgentSandboxInfo DTO.
      * Reusable by both listSandboxes and SSE watch delta events.
@@ -319,7 +401,7 @@ class AgentRuntimeService {
         createdAt: string | null;
         customTag?: string;
     } {
-        const status = this.resolveClaimStatus(claim);
+        const status = agentSandboxAdapter.resolveSandboxStatus(claim);
         return {
             name: claim.metadata?.name || 'unknown',
             status,

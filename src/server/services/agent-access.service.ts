@@ -5,7 +5,6 @@ import agentDomainService from "./agent-domain.service";
 import agentService from "./agent.service";
 import { RequesterIdentity, ensureReadAgent } from "../utils/shared-authorization.utils";
 import { UserSession } from "@/shared/model/sim-session.model";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { AuthProxyJwtUtils } from "../utils/agent-jwt.utils";
 
 export type AgentAccessView = 'agent' | 'files';
@@ -19,25 +18,6 @@ type CreateAgentAccessUrlInput = {
 };
 
 class AgentAccessService {
-    private resolveClaimStatus(claim: any): DeploymentStatus {
-        const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
-        const ready = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
-        );
-        if (ready) {
-            return 'DEPLOYED';
-        }
-
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
-        );
-        if (failed) {
-            return 'ERROR';
-        }
-
-        return 'DEPLOYING';
-    }
-
     async createAccessUrl(input: CreateAgentAccessUrlInput): Promise<{ url: string; expiresAt: number }> {
         const domain = await agentDomainService.getDomainForAgent(input.agentId, input.domainId);
         const target = await this.validateSandboxAccess(input.agentId, input.sandboxName, input.session);
@@ -74,7 +54,16 @@ class AgentAccessService {
         if (claimAgentId !== agentId) {
             throw new ServiceException('Agent sandbox does not belong to this Agent.');
         }
-        if (this.resolveClaimStatus(claim) !== 'DEPLOYED') {
+
+        const sandboxObjectName = claim.status?.sandbox?.name;
+        const sandbox = sandboxObjectName
+            ? await agentSandboxAdapter.getSandbox(sandboxObjectName, agent.projectId)
+            : null;
+        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        if (status === 'SUSPENDED') {
+            throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
+        }
+        if (status !== 'DEPLOYED') {
             throw new ServiceException('Agent sandbox is not deployed.');
         }
         return {

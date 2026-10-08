@@ -3,6 +3,7 @@ import k3s, { kubernetesPatchOptions } from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { Sandbox, SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
 import { ApiException, PatchStrategy } from "@kubernetes/client-node";
+import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 export const BASE_SANDBOX_API_GROUP = 'agents.x-k8s.io';
@@ -11,6 +12,71 @@ export const SANDBOX_PLURAL = 'sandboxes';
 export const TEMPLATE_PLURAL = 'sandboxtemplates';
 export const WARMPOOL_PLURAL = 'sandboxwarmpools';
 export const CLAIM_PLURAL = 'sandboxclaims';
+
+export type SandboxOperatingMode = 'Running' | 'Suspended';
+
+const TERMINAL_CLAIM_FAILURE_REASONS = new Set([
+    'TemplateNotFound',
+    'WarmPoolNotFound',
+    'InvalidMetadata',
+    'EnvVarsInjectionRejected',
+    'VolumeClaimTemplatesError',
+    'ReconcilerError',
+]);
+
+/**
+ * Maps a SandboxClaim (and optionally the Sandbox behind it) to a deployment status.
+ * The Agent Sandbox controller forwards the Sandbox Ready condition onto the claim, so a
+ * suspended Sandbox is visible as Ready=False with reason "SandboxSuspended" even when the
+ * Sandbox object is not loaded.
+ */
+export function resolveSandboxStatus(
+    claim: SandboxClaim | null | undefined,
+    sandbox?: Sandbox | null,
+): DeploymentStatus {
+    if (!claim) {
+        return 'SHUTDOWN';
+    }
+    if (claim.metadata?.deletionTimestamp) {
+        return 'SHUTTING_DOWN';
+    }
+
+    if (sandbox) {
+        const suspendedCondition = (sandbox.status?.conditions ?? []).find(
+            (condition) => condition.type === 'Suspended',
+        );
+        if (suspendedCondition?.status === 'True') {
+            return 'SUSPENDED';
+        }
+        if (sandbox.spec?.operatingMode === 'Suspended') {
+            return 'SUSPENDED';
+        }
+    }
+
+    const conditions = claim.status?.conditions ?? [];
+    const ready = conditions.find(
+        (condition) => (condition.type === 'Ready' || condition.type === 'Available') && condition.status === 'True',
+    );
+    if (ready) {
+        return 'DEPLOYED';
+    }
+
+    const readinessCondition = conditions.find(
+        (condition) => condition.type === 'Ready' || condition.type === 'Available',
+    );
+
+    if (!sandbox && readinessCondition?.reason === 'SandboxSuspended') {
+        return 'SUSPENDED';
+    }
+    if (readinessCondition?.reason === 'ClaimExpired' || readinessCondition?.reason === 'Expired') {
+        return 'SHUTTING_DOWN';
+    }
+    if (TERMINAL_CLAIM_FAILURE_REASONS.has(readinessCondition?.reason ?? '')) {
+        return 'ERROR';
+    }
+
+    return 'DEPLOYING';
+}
 
 class AgentSandboxAdapter {
 
@@ -34,6 +100,72 @@ class AgentSandboxAdapter {
                 `Failed to get Sandbox "${name}": ${error?.message || error}`,
             );
         }
+    }
+
+    /**
+     * Resolves the deployment status of a SandboxClaim, optionally using the Sandbox
+     * behind it to detect a suspended sandbox.
+     */
+    resolveSandboxStatus(claim: SandboxClaim | null | undefined, sandbox?: Sandbox | null): DeploymentStatus {
+        return resolveSandboxStatus(claim, sandbox);
+    }
+
+    /**
+     * Patches the operatingMode of a Sandbox, leaving its Service and PersistentVolumeClaims intact.
+     */
+    async setSandboxOperatingMode(
+        sandboxName: string,
+        namespace: string,
+        operatingMode: SandboxOperatingMode,
+    ): Promise<void> {
+        try {
+            await k3s.customObjects.patchNamespacedCustomObject(
+                {
+                    group: BASE_SANDBOX_API_GROUP,
+                    version: SANDBOX_API_VERSION,
+                    namespace,
+                    plural: SANDBOX_PLURAL,
+                    name: sandboxName,
+                    body: { spec: { operatingMode } },
+                },
+                kubernetesPatchOptions(PatchStrategy.MergePatch),
+            );
+        } catch (err) {
+            const error = err as ApiException<any>;
+            console.error(`Failed to set operatingMode "${operatingMode}" on Sandbox "${sandboxName}":`, error);
+            throw new ServiceException(
+                `Failed to set operatingMode "${operatingMode}" on Sandbox "${sandboxName}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async waitForSandboxSuspended(
+        sandboxName: string,
+        namespace: string,
+        timeoutMs = 120_000,
+        pollIntervalMs = 1_000,
+    ): Promise<void> {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            const sandbox = await this.getSandbox(sandboxName, namespace);
+            if (!sandbox) {
+                throw new ServiceException(`Sandbox "${sandboxName}" not found while waiting for suspension.`);
+            }
+
+            const suspendedCondition = (sandbox.status?.conditions ?? []).find(
+                (condition) => condition.type === 'Suspended',
+            );
+            if (suspendedCondition?.status === 'True') {
+                return;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        }
+
+        throw new ServiceException(
+            `Sandbox "${sandboxName}" did not suspend within ${timeoutMs / 1000}s.`,
+        );
     }
 
     /**

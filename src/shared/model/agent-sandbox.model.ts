@@ -39,6 +39,10 @@ export const createSandboxRequestZodModel = z.object({
     customTag: agentSandboxCustomTagZodModel.optional(),
 }).optional().default({});
 
+export const resumeSandboxByTagRequestZodModel = z.object({
+    customTag: agentSandboxCustomTagZodModel,
+});
+
 export const commandRequestZodModel = z.object({
     command: z.string().min(1),
     cwd: z.string().min(1).optional(),
@@ -56,4 +60,5 @@ export type CommandResultModel = z.infer<typeof commandResultZodModel>;
 export type FileEntryModel = z.infer<typeof fileEntryZodModel>;
 export type FileExistsResultModel = z.infer<typeof fileExistsResultZodModel>;
 export type CreateSandboxRequestModel = z.infer<typeof createSandboxRequestZodModel>;
+export type ResumeSandboxByTagRequestModel = z.infer<typeof resumeSandboxByTagRequestZodModel>;
 export type CommandRequestModel = z.infer<typeof commandRequestZodModel>;

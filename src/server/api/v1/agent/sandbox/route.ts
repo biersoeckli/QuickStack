@@ -18,6 +18,7 @@ import {
     createSandboxRequestZodModel as startSandboxRequestZodModel,
     fileEntryZodModel,
     fileExistsResultZodModel,
+    resumeSandboxByTagRequestZodModel,
 } from '@/shared/model/agent-sandbox.model';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
@@ -95,6 +96,61 @@ export const agentSandboxRoutes = new Elysia()
         detail: {
             summary: 'Start agent sandbox',
             operationId: 'startAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/resume', async ({ params, body, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.resumeSandboxByTag(params.agentId, body.customTag);
+    }, {
+        params: agentSandboxParamsSchema,
+        body: resumeSandboxByTagRequestZodModel,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Resume agent sandbox by Custom Tag',
+            description: 'Resume the suspended Agent Sandbox of this Agent that carries the given Custom Tag.',
+            operationId: 'resumeAgentSandboxByTag',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/:sandboxName/suspend', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.suspendSandbox(params.agentId, params.sandboxName);
+    }, {
+        params: agentSandboxClaimParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Suspend agent sandbox',
+            description: 'Release the compute of a running Agent Sandbox while keeping its volumes and identity.',
+            operationId: 'suspendAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/:sandboxName/resume', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.resumeSandbox(params.agentId, params.sandboxName);
+    }, {
+        params: agentSandboxClaimParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Resume agent sandbox',
+            description: 'Recreate the Pod of a suspended Agent Sandbox with its existing volumes mounted.',
+            operationId: 'resumeAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },

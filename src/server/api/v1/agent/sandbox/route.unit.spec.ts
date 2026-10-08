@@ -2,6 +2,9 @@ const routeMocks = vi.hoisted(() => ({
     identity: null as any,
     getByIdOrUndefined: vi.fn(),
     createSandbox: vi.fn(),
+    suspendSandbox: vi.fn(),
+    resumeSandbox: vi.fn(),
+    resumeSandboxByTag: vi.fn(),
     readFile: vi.fn(),
     writeFile: vi.fn(),
     runCommand: vi.fn(),
@@ -34,6 +37,9 @@ vi.mock('@/server/services/agent-sandbox.service', () => ({
         createSandbox: routeMocks.createSandbox,
         getSandbox: vi.fn(),
         deleteSandbox: vi.fn(),
+        suspendSandbox: routeMocks.suspendSandbox,
+        resumeSandbox: routeMocks.resumeSandbox,
+        resumeSandboxByTag: routeMocks.resumeSandboxByTag,
         runCommand: routeMocks.runCommand,
         readFile: routeMocks.readFile,
         writeFile: routeMocks.writeFile,
@@ -51,7 +57,7 @@ import { Elysia } from 'elysia';
 import { openapi } from '@elysiajs/openapi';
 import stream from 'stream';
 import { ApiUtils } from '@/server/utils/api-response.utils';
-import { ServiceException } from '@/shared/model/service.exception.model';
+import { ServiceException, ApiConflictException } from '@/shared/model/service.exception.model';
 import { agentSandboxRoutes } from './route';
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
@@ -78,6 +84,33 @@ describe('agent sandbox routes', () => {
             namespace: 'proj-1',
             status: 'DEPLOYED',
             customTag: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+        });
+        routeMocks.suspendSandbox.mockResolvedValue({
+            agentId: 'agent-1',
+            sandboxName: 'ac-agent-1',
+            podName: '',
+            namespace: 'proj-1',
+            status: 'SUSPENDED',
+            customTag: 'feature-branch',
+            createdAt: '2026-01-01T00:00:00.000Z',
+        });
+        routeMocks.resumeSandbox.mockResolvedValue({
+            agentId: 'agent-1',
+            sandboxName: 'ac-agent-1',
+            podName: 'pod-1',
+            namespace: 'proj-1',
+            status: 'DEPLOYED',
+            customTag: 'feature-branch',
+            createdAt: '2026-01-01T00:00:00.000Z',
+        });
+        routeMocks.resumeSandboxByTag.mockResolvedValue({
+            agentId: 'agent-1',
+            sandboxName: 'ac-agent-1',
+            podName: 'pod-1',
+            namespace: 'proj-1',
+            status: 'DEPLOYED',
+            customTag: 'feature-branch',
             createdAt: '2026-01-01T00:00:00.000Z',
         });
         routeMocks.runCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
@@ -218,5 +251,78 @@ describe('agent sandbox routes', () => {
 
         expect(routeMocks.ensureWriteAgent).toHaveBeenCalledTimes(3);
         expect(routeMocks.ensureReadAgent).not.toHaveBeenCalled();
+    });
+
+    it('suspends a sandbox and returns the SUSPENDED model', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-agent-1/suspend', {
+            method: 'POST',
+        }));
+
+        expect(response.status).toBe(200);
+        const body = await response.json() as any;
+        expect(body.status).toBe('SUSPENDED');
+        expect(routeMocks.suspendSandbox).toHaveBeenCalledWith('agent-1', 'ac-agent-1');
+        expect(routeMocks.ensureWriteAgent).toHaveBeenCalledWith(routeMocks.identity, 'agent-1');
+    });
+
+    it('resumes a sandbox by name and returns the DEPLOYED model', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-agent-1/resume', {
+            method: 'POST',
+        }));
+
+        expect(response.status).toBe(200);
+        const body = await response.json() as any;
+        expect(body.status).toBe('DEPLOYED');
+        expect(routeMocks.resumeSandbox).toHaveBeenCalledWith('agent-1', 'ac-agent-1');
+    });
+
+    it('resumes a sandbox by Custom Tag', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/resume', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ customTag: 'feature-branch' }),
+        }));
+
+        expect(response.status).toBe(200);
+        expect(routeMocks.resumeSandboxByTag).toHaveBeenCalledWith('agent-1', 'feature-branch');
+    });
+
+    it('rejects a resume-by-tag with an empty Custom Tag', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/resume', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ customTag: '   ' }),
+        }));
+
+        expect(response.status).not.toBe(200);
+        expect(routeMocks.resumeSandboxByTag).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when a start reuses a Custom Tag', async () => {
+        routeMocks.createSandbox.mockRejectedValue(
+            new ApiConflictException('Conflict', 'Custom Tag "feature-branch" is already used.'),
+        );
+
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ customTag: 'feature-branch' }),
+        }));
+
+        expect(response.status).toBe(409);
+    });
+
+    it('surfaces the suspended error for a command on a suspended sandbox', async () => {
+        routeMocks.runCommand.mockRejectedValue(
+            new ServiceException('Agent sandbox is suspended. Resume it before running commands or accessing files.'),
+        );
+
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/commands', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ command: 'ls' }),
+        }));
+
+        expect(response.status).not.toBe(200);
     });
 });

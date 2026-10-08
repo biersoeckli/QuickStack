@@ -7,9 +7,9 @@ import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { useDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { Bot, ExternalLink, Files, Logs, Play, Square, Terminal } from "lucide-react";
+import { Bot, ExternalLink, Files, Logs, Pause, Play, RotateCcw, Square, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { startSandbox, stopSandbox } from "./actions";
+import { startSandbox, stopSandbox, suspendSandbox, resumeSandbox } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
 import { StreamUtils } from "@/shared/utils/stream.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
@@ -33,6 +33,7 @@ interface SandboxInfo {
     status: DeploymentStatus;
     statusText: string;
     createdAt: string | null;
+    customTag?: string;
 }
 
 const SSE_RETRY_BASE_DELAY_MS = 1_000;
@@ -187,6 +188,22 @@ export default function AgentSandboxesCard({
         }
     };
 
+    const handleSuspendSandbox = async (sandboxName: string) => {
+        await Toast.fromAction(
+            () => suspendSandbox(agentId, sandboxName),
+            'Sandbox suspended',
+            'Suspending sandbox...',
+        );
+    };
+
+    const handleResumeSandbox = async (sandboxName: string) => {
+        await Toast.fromAction(
+            () => resumeSandbox(agentId, sandboxName),
+            'Sandbox resumed',
+            'Resuming sandbox...',
+        );
+    };
+
     const handleOpenTerminal = async () => {
         // Terminal opening is delegated to parent component via callback
         // For now, this is a placeholder — terminal per sandbox needs pod discovery
@@ -315,6 +332,11 @@ export default function AgentSandboxesCard({
                                 ['status', 'Status', true, (item: SandboxInfo) => (
                                     <DeploymentStatusBadge >{item.status}</DeploymentStatusBadge>
                                 )],
+                                ['customTag', 'Custom Tag', true, (item: SandboxInfo) =>
+                                    item.customTag
+                                        ? <span className="font-mono text-sm">{item.customTag}</span>
+                                        : '—'
+                                ],
                                 ['createdAt', 'Created', true, (item: SandboxInfo) =>
                                     item.createdAt
                                         ? new Date(item.createdAt).toLocaleString()
@@ -338,6 +360,36 @@ export default function AgentSandboxesCard({
                                                 <p>View Logs</p>
                                             </TooltipContent>
                                         </Tooltip>
+                                        {item.status === 'DEPLOYED' && !readonly && (
+                                            <Tooltip>
+                                                <TooltipTrigger delay={300} render={<Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleSuspendSandbox(item.name)}
+                                                    >
+                                                        <Pause className="h-4 w-4" />
+                                                    </Button>} />
+                                                <TooltipContent>
+                                                    <p>Suspend Sandbox</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        )}
+                                        {item.status === 'SUSPENDED' && !readonly && (
+                                            <Tooltip>
+                                                <TooltipTrigger delay={300} render={<Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleResumeSandbox(item.name)}
+                                                    >
+                                                        <RotateCcw className="h-4 w-4" />
+                                                    </Button>} />
+                                                <TooltipContent>
+                                                    <p>Resume Sandbox</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        )}
                                         {item.status === 'DEPLOYED' && (
                                             <>
                                                 <Tooltip>

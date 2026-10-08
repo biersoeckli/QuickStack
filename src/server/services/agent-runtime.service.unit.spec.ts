@@ -17,22 +17,30 @@ vi.mock('@/server/adapter/db.client', () => ({
         },
     },
 }));
-vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
-    default: {
-        createSandboxClaim: vi.fn(),
-        deleteSandboxClaim: vi.fn(),
-        getSandboxClaim: vi.fn(),
-        listSandboxClaims: vi.fn(),
-        hasActiveClaim: vi.fn(),
-        waitForSandboxReady: vi.fn(),
-        reconcileSandboxTemplate: vi.fn(),
-        reconcileSandboxWarmPool: vi.fn(),
-        deleteSandboxTemplate: vi.fn(),
-        deleteSandboxWarmPool: vi.fn(),
-    },
-    SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
-    SANDBOX_API_VERSION: 'v1beta1',
-}));
+vi.mock('@/server/adapter/agent-sandbox.adapter', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/server/adapter/agent-sandbox.adapter')>();
+    return {
+        default: {
+            createSandboxClaim: vi.fn(),
+            deleteSandboxClaim: vi.fn(),
+            getSandboxClaim: vi.fn(),
+            getSandbox: vi.fn(),
+            listSandboxClaims: vi.fn(),
+            hasActiveClaim: vi.fn(),
+            waitForSandboxReady: vi.fn(),
+            waitForSandboxSuspended: vi.fn(),
+            setSandboxOperatingMode: vi.fn(),
+            reconcileSandboxTemplate: vi.fn(),
+            reconcileSandboxWarmPool: vi.fn(),
+            deleteSandboxTemplate: vi.fn(),
+            deleteSandboxWarmPool: vi.fn(),
+            resolveSandboxStatus: actual.resolveSandboxStatus,
+        },
+        SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
+        SANDBOX_API_VERSION: 'v1beta1',
+        resolveSandboxStatus: actual.resolveSandboxStatus,
+    };
+});
 vi.mock('@/server/services/secret.service', () => ({
     default: {
         getDecodedSecret: vi.fn(),
@@ -539,6 +547,201 @@ describe('agent-runtime.service', () => {
 
         it('never returns BUILDING', () => {
             expect(agentRuntimeService.statusTextFor('BUILDING')).not.toBe('Building');
+        });
+
+        it('returns Suspended for SUSPENDED', () => {
+            expect(agentRuntimeService.statusTextFor('SUSPENDED')).toBe('Suspended');
+        });
+    });
+
+    describe('Custom Tag uniqueness on start', () => {
+        const taggedClaim = (name: string, agentId: string, customTag: string) => ({
+            apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+            kind: 'SandboxClaim',
+            metadata: {
+                name,
+                labels: { 'qs-agent-id': agentId },
+                annotations: { 'qs-custom-tag': customTag },
+            },
+        });
+
+        it('rejects a Custom Tag already used by another sandbox of the same Agent', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
+                taggedClaim('ac-other', AGENT_ID, 'taken'),
+            ] as any);
+
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'taken' }))
+                .rejects.toThrow('already used');
+            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+        });
+
+        it('accepts the same Custom Tag on another Agent', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
+                taggedClaim('ac-other', 'another-agent', 'shared-tag'),
+            ] as any);
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'shared-tag' });
+
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalled();
+        });
+
+        it('leaves untagged starts unaffected', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
+                taggedClaim('ac-other', AGENT_ID, 'taken'),
+            ] as any);
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
+
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalled();
+        });
+    });
+
+    describe('suspendSandbox', () => {
+        const runningClaim = {
+            apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+            kind: 'SandboxClaim',
+            metadata: { name: 'ac-claim', labels: { 'qs-agent-id': AGENT_ID } },
+            status: {
+                sandbox: { name: 'wp-adopted' },
+                conditions: [{ type: 'Ready', status: 'True' }],
+            },
+        } as any;
+        const runningSandbox = { spec: { operatingMode: 'Running' } } as any;
+        const suspendedClaim = {
+            ...runningClaim,
+            status: {
+                sandbox: { name: 'wp-adopted' },
+                conditions: [{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }],
+            },
+        } as any;
+        const suspendedSandbox = { spec: { operatingMode: 'Suspended' } } as any;
+
+        it('patches the Sandbox operatingMode to Suspended and keeps the claim', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(runningClaim);
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue(runningSandbox);
+
+            await agentRuntimeService.suspendSandbox(AGENT_ID, 'ac-claim');
+
+            expect(agentSandboxAdapter.setSandboxOperatingMode).toHaveBeenCalledWith('wp-adopted', SANDBOX_NAMESPACE, 'Suspended');
+            expect(agentSandboxAdapter.waitForSandboxSuspended).toHaveBeenCalledWith('wp-adopted', SANDBOX_NAMESPACE);
+            expect(agentSandboxAdapter.deleteSandboxClaim).not.toHaveBeenCalled();
+        });
+
+        it('is a no-op when the sandbox is already suspended', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(suspendedClaim);
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue(suspendedSandbox);
+
+            await agentRuntimeService.suspendSandbox(AGENT_ID, 'ac-claim');
+
+            expect(agentSandboxAdapter.setSandboxOperatingMode).not.toHaveBeenCalled();
+        });
+
+        it('rejects when the sandbox is not ready yet', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
+                ...runningClaim,
+                status: { conditions: [{ type: 'Ready', status: 'False', reason: 'DependenciesNotReady' }] },
+            } as any);
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue(null);
+
+            await expect(agentRuntimeService.suspendSandbox(AGENT_ID, 'ac-claim')).rejects.toThrow('not ready');
+            expect(agentSandboxAdapter.setSandboxOperatingMode).not.toHaveBeenCalled();
+        });
+
+        it('throws not found when the claim does not exist', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(null);
+
+            await expect(agentRuntimeService.suspendSandbox(AGENT_ID, 'ac-missing')).rejects.toThrow('not found');
+        });
+    });
+
+    describe('resumeSandbox', () => {
+        const suspendedClaim = {
+            apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+            kind: 'SandboxClaim',
+            metadata: { name: 'ac-claim', labels: { 'qs-agent-id': AGENT_ID } },
+            status: {
+                sandbox: { name: 'wp-adopted' },
+                conditions: [{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }],
+            },
+        } as any;
+
+        it('resolves the Sandbox through the claim status and patches Running', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(suspendedClaim);
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue({ spec: { operatingMode: 'Suspended' } } as any);
+
+            await agentRuntimeService.resumeSandbox(AGENT_ID, 'ac-claim');
+
+            expect(agentSandboxAdapter.setSandboxOperatingMode).toHaveBeenCalledWith('wp-adopted', SANDBOX_NAMESPACE, 'Running');
+            expect(agentSandboxAdapter.waitForSandboxReady).toHaveBeenCalledWith('ac-claim', SANDBOX_NAMESPACE);
+        });
+
+        it('is a no-op when the sandbox is already running', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
+                ...suspendedClaim,
+                status: { sandbox: { name: 'wp-adopted' }, conditions: [{ type: 'Ready', status: 'True' }] },
+            } as any);
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue({ spec: { operatingMode: 'Running' } } as any);
+
+            await agentRuntimeService.resumeSandbox(AGENT_ID, 'ac-claim');
+
+            expect(agentSandboxAdapter.setSandboxOperatingMode).not.toHaveBeenCalled();
+        });
+
+        it('throws not found when the claim does not exist', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(null);
+
+            await expect(agentRuntimeService.resumeSandbox(AGENT_ID, 'ac-missing')).rejects.toThrow('not found');
+        });
+    });
+
+    describe('resumeSandboxByTag', () => {
+        const claim = (name: string, agentId: string, customTag: string) => ({
+            apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
+            kind: 'SandboxClaim',
+            metadata: {
+                name,
+                labels: { 'qs-agent-id': agentId },
+                annotations: { 'qs-custom-tag': customTag },
+            },
+            status: { sandbox: { name: `wp-${name}` }, conditions: [{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }] },
+        } as any);
+
+        it('finds the claim with the tag annotation of this Agent only', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
+                claim('ac-other-agent', 'another-agent', 'session-1'),
+                claim('ac-mine', AGENT_ID, 'session-1'),
+            ]);
+            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(
+                claim('ac-mine', AGENT_ID, 'session-1'),
+            );
+            vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue({ spec: { operatingMode: 'Suspended' } } as any);
+
+            const result = await agentRuntimeService.resumeSandboxByTag(AGENT_ID, 'session-1');
+
+            expect(result).toEqual({ sandboxName: 'ac-mine' });
+            expect(agentSandboxAdapter.setSandboxOperatingMode).toHaveBeenCalledWith('wp-ac-mine', SANDBOX_NAMESPACE, 'Running');
+        });
+
+        it('reports not found when no sandbox of this Agent carries the tag', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([
+                claim('ac-other-agent', 'another-agent', 'session-1'),
+            ]);
+
+            await expect(agentRuntimeService.resumeSandboxByTag(AGENT_ID, 'session-1')).rejects.toThrow('No agent sandbox found');
         });
     });
 });

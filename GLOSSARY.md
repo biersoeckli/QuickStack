@@ -207,8 +207,20 @@ An **Agent Volume** of Volume Type `PER_SANDBOX`. It is provisioned for one Agen
 _Avoid_: per-tag volume, isolated volume
 
 **Custom Tag**:
-The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes**.
+The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes**. It is unique per **Agent** among existing sandboxes, so it is also a stable handle for **Resume**. It stays metadata for naming and is never used to derive Kubernetes names.
 _Avoid_: sandbox name, label
+
+**Suspend**:
+Releasing the compute of a running **Agent Sandbox** (its Pod, CPU, and memory) while keeping the Sandbox object, its Service, and its **Per-Sandbox Agent Volumes**. **Stop** keeps its different meaning: delete the sandbox and its per-sandbox data.
+_Avoid_: stop, pause when **Stop** is meant
+
+**Resume**:
+Recreating the Pod of a **Suspended Sandbox** with the same **Per-Sandbox Agent Volumes** and **Shared Agent Volumes** mounted.
+_Avoid_: restart, start when resuming the same sandbox is meant
+
+**Suspended Sandbox**:
+An **Agent Sandbox** whose compute has been released by **Suspend**. It keeps its sandbox name, its **Custom Tag**, and its per-sandbox data, and reports status `SUSPENDED`. A **Suspended Sandbox** is the only way a **Per-Sandbox Agent Volume** outlives a sandbox.
+_Avoid_: stopped sandbox, sleeping sandbox
 
 **File Mount**:
 A text file mounted into an **App** or **Agent** container at a configured container path.
@@ -360,6 +372,9 @@ _Avoid_: manual initial port requirement
 - An **Agent** can have zero or more **Agent Environment Variables**.
 - A running **Agent** has exactly one **Agent Runtime Secret**.
 - An **Agent** uses exactly one **LLM Gateway**.
+- A **Suspended Sandbox** can be **Resumed** by its sandbox name or by its **Custom Tag**.
+- **Suspend** operates on the Sandbox and keeps it; **Stop** deletes the **SandboxClaim** and everything it owns.
+- A **Custom Tag** is unique per **Agent** among existing sandboxes and is reusable after its sandbox is stopped.
 - QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
 - A **Project Workload** means an **App** or an **Agent** inside a **Project**.
 - A **Workload Permission** belongs to exactly one **Project Workload**.

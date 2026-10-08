@@ -31,25 +31,6 @@ class AgentSandboxService {
     // Path validation is not a security boundary: all file/command endpoints require
     // write access to the agent, which already grants unrestricted shell read/write
     // access in this sandbox. Container isolation is the real boundary.
-    private resolveClaimStatus(claim: any): DeploymentStatus {
-        const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
-        const ready = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
-        );
-        if (ready) {
-            return 'DEPLOYED';
-        }
-
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
-        );
-        if (failed) {
-            return 'ERROR';
-        }
-
-        return 'DEPLOYING';
-    }
-
     private shellQuote(value: string): string {
         return `'${value.replace(/'/g, `'\\''`)}'`;
     }
@@ -123,6 +104,14 @@ class AgentSandboxService {
             throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
         }
 
+        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        const createdAt = claim.metadata?.creationTimestamp ?? null;
+        const customTag = claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null;
+
+        if (status === 'SUSPENDED') {
+            return { namespace, sandboxName, sandboxObjectName, podName: '', containerName: '', status, createdAt, customTag };
+        }
+
         const selector = sandbox.status?.selector;
         if (!selector) {
             throw new ServiceException('Agent sandbox pod selector not found.');
@@ -142,10 +131,16 @@ class AgentSandboxService {
             sandboxObjectName,
             podName,
             containerName,
-            status: this.resolveClaimStatus(claim),
-            createdAt: claim.metadata?.creationTimestamp ?? null,
-            customTag: claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
+            status,
+            createdAt,
+            customTag,
         };
+    }
+
+    private assertRunnable(target: ResolvedSandboxTarget): void {
+        if (target.status === 'SUSPENDED') {
+            throw new ServiceException('Agent sandbox is suspended. Resume it before running commands or accessing files.');
+        }
     }
 
     private toSandboxModel(agentId: string, target: ResolvedSandboxTarget): AgentSandboxModel {
@@ -333,14 +328,35 @@ class AgentSandboxService {
         await agentRuntimeService.stopSandbox(agentId, sandboxName);
     }
 
-    async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
+    async suspendSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {
+        await agentRuntimeService.suspendSandbox(agentId, sandboxName);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    async resumeSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {
+        await agentRuntimeService.resumeSandbox(agentId, sandboxName);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    async resumeSandboxByTag(agentId: string, customTag: string): Promise<AgentSandboxModel> {
+        const { sandboxName } = await agentRuntimeService.resumeSandboxByTag(agentId, customTag);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    private async resolveRunnableTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
         const target = await this.resolveTarget(agentId, sandboxName);
+        this.assertRunnable(target);
+        return target;
+    }
+
+    async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const timeoutSec = input.timeoutSec ?? 120;
         return this.execShell(target, this.buildShellScript(input.command, { ...input, timeoutSec }), timeoutSec);
     }
 
     async readFile(agentId: string, sandboxName: string, path: string): Promise<{ stream: stream.PassThrough; size: number }> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const size = await this.getFileSize(target, path);
 
         return {
@@ -350,7 +366,7 @@ class AgentSandboxService {
     }
 
     async writeFile(agentId: string, sandboxName: string, path: string, input: stream.Readable): Promise<void> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const result = await this.execShell(
             target,
             `cat > ${this.shellQuote(path)}`,
@@ -361,7 +377,7 @@ class AgentSandboxService {
     }
 
     async listFiles(agentId: string, sandboxName: string, path: string): Promise<FileEntryModel[]> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const quotedPath = this.shellQuote(path);
         const script = [
             `target=${quotedPath}`,
@@ -401,7 +417,7 @@ class AgentSandboxService {
     }
 
     async fileExists(agentId: string, sandboxName: string, path: string): Promise<FileExistsResultModel> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const result = await this.execShell(target, `test -e ${this.shellQuote(path)}`);
         return { exists: result.exitCode === 0 };
     }

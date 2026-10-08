@@ -16,6 +16,18 @@ export const stopSandbox = async (agentId: string, sandboxName: string) =>
         await agentRuntimeService.stopSandbox(agentId, sandboxName);
     });
 
+export const suspendSandbox = async (agentId: string, sandboxName: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentRuntimeService.suspendSandbox(agentId, sandboxName);
+    });
+
+export const resumeSandbox = async (agentId: string, sandboxName: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentRuntimeService.resumeSandbox(agentId, sandboxName);
+    });
+
 export const getSandboxes = async (agentId: string) =>
     simpleAction(async () => {
         const session = await isAuthorizedWriteForWorkload(agentId);
