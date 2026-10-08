@@ -127,7 +127,7 @@ export default function AgentRateLimitsCard({ agent, readonly }: {
                     </DrawerCardContent>
                     {!readonly && (
                         <DrawerCardFooter className="gap-4">
-                            <SubmitButton>Save</SubmitButton>
+                            <SubmitButton variant="outline">Save</SubmitButton>
                             {state?.status === 'error' && !state?.errors && (
                                 <p className="text-sm text-red-500">{state.message}</p>
                             )}

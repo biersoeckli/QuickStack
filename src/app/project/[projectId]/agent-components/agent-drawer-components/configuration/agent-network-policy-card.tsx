@@ -102,28 +102,30 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
                     </TableHeader>
                     <TableBody>
                         {rules.map(rule => (
-                            <TableRow key={rule.id}>
+                            <TableRow key={rule.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{rule.targetApp.projectId}</TableCell>
                                 <TableCell className="font-medium">{rule.targetApp.name}</TableCell>
                                 <TableCell className="font-medium">{rule.port}</TableCell>
                                 <TableCell className="font-medium">{rule.protocol}</TableCell>
-                                <TableCell className="font-medium flex gap-2">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger delay={300} render={<Button type="button" variant="ghost" title="Copy internal hostname" onClick={() => copyInternalHostname(rule)}>
+                                <TableCell className="w-[130px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger delay={300} render={<Button type="button" variant="ghost" size="icon" title="Copy internal hostname" onClick={() => copyInternalHostname(rule)}>
                                                     <CopyIcon />
                                                 </Button>} />
-                                            <TooltipContent>
-                                                <p>Copy internal hostname to clipboard</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    {!readonly && <>
-                                        <Button type="button" variant="ghost" onClick={() => openEditRuleDialog(rule)}><EditIcon /></Button>
-                                        <Button type="button" variant="ghost" onClick={() => asyncDeleteRule(rule.id)}>
-                                            <TrashIcon />
-                                        </Button>
-                                    </>}
+                                                <TooltipContent>
+                                                    <p>Copy internal hostname to clipboard</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        {!readonly && <>
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => openEditRuleDialog(rule)}><EditIcon /></Button>
+                                            <Button type="button" variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteRule(rule.id)}>
+                                                <TrashIcon />
+                                            </Button>
+                                        </>}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -132,7 +134,7 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
             </DrawerCardContent>
             {!readonly && (
                 <DrawerCardFooter>
-                    <Button type="button" onClick={() => openEditRuleDialog()}><Plus /> Add Egress Rule</Button>
+                    <Button type="button" variant="outline" onClick={() => openEditRuleDialog()}><Plus /> Add Egress Rule</Button>
                 </DrawerCardFooter>
             )}
         </DrawerCard>

@@ -28,6 +28,8 @@ import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
 import { SettingsSection } from './settings-section';
 import { DrawerEnvironment } from './app-details-environment';
 import { useNestedDrawer } from './nested-drawer';
+import { DrawerCard, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from '@/components/custom/drawer-card';
+import { Drawer } from '@/components/ui/drawer';
 
 export function DrawerSettings({
     app,
@@ -81,23 +83,32 @@ export function DrawerSettings({
                     icon={SlidersHorizontal}
                 >
                     <GeneralAppRateLimits app={app} readonly={readonly} hideCard />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                            openNestedDrawer({
-                                title: 'Advanced settings',
-                                content: (
-                                    <GeneralAppContainerConfig
-                                        app={app}
-                                        readonly={readonly}
 
-                                    />
-                                ),
-                            })
-                        }>
-                        Advanced container settings
-                    </Button>
+                    <DrawerCard>
+                        <DrawerCardHeader>
+                            <DrawerCardTitle>Advanced Container Configuration</DrawerCardTitle>
+                            <DrawerCardDescription>Configure the container command, arguments, isolation and other advanced settings.</DrawerCardDescription>
+                        </DrawerCardHeader>
+                        <DrawerCardFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                    openNestedDrawer({
+                                        title: 'Advanced settings',
+                                        content: (
+                                            <GeneralAppContainerConfig
+                                                app={app}
+                                                readonly={readonly}
+
+                                            />
+                                        ),
+                                    })
+                                }>
+                                Advanced container settings
+                            </Button>
+                        </DrawerCardFooter>
+                    </DrawerCard>
                 </SettingsSection>
                 <SettingsSection
                     id="environment"
@@ -122,23 +133,31 @@ export function DrawerSettings({
                         hideCard
                     />
                     <NodePortsCard app={app} readonly={readonly} hideCard />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                            openNestedDrawer({
-                                title: 'Network policies',
-                                content: (
-                                    <NetworkPolicy
-                                        app={app}
-                                        readonly={readonly}
-                                        hideCard={false}
-                                    />
-                                ),
-                            })
-                        }>
-                        Edit network policies
-                    </Button>
+                    <DrawerCard>
+                        <DrawerCardHeader>
+                            <DrawerCardTitle>Network Policies</DrawerCardTitle>
+                            <DrawerCardDescription>Configure network policies to control the traffic flow.</DrawerCardDescription>
+                        </DrawerCardHeader>
+                        <DrawerCardFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                    openNestedDrawer({
+                                        title: 'Network policies',
+                                        content: (
+                                            <NetworkPolicy
+                                                app={app}
+                                                readonly={readonly}
+                                                hideCard={false}
+                                            />
+                                        ),
+                                    })
+                                }>
+                                Edit network policies
+                            </Button>
+                        </DrawerCardFooter>
+                    </DrawerCard>
                 </SettingsSection>
                 <SettingsSection id="storage" title="Storage" icon={HardDrive}>
                     <StorageList

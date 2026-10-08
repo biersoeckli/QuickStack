@@ -45,7 +45,7 @@ function DrawerCardDescription({ className, ...props }: React.ComponentProps<"di
 }
 
 function DrawerCardContent({ className, ...props }: React.ComponentProps<"div">) {
-    return <div data-slot="drawer-card-content" className={cn(className)} {...props} />;
+    return <div data-slot="drawer-card-content" className={cn(className, '')} {...props} />;
 }
 
 function DrawerCardFooter({ className, ...props }: React.ComponentProps<"div">) {

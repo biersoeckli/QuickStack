@@ -68,17 +68,19 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                     </TableHeader>
                     <TableBody>
                         {volumes.map(volume => (
-                            <TableRow key={volume.id}>
+                            <TableRow key={volume.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
                                 <TableCell className="font-medium">{volume.volumeType === 'PER_SANDBOX' ? 'Per Sandbox' : 'All (Shared)'}</TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium">{formatSize(volume.size)}</TableCell>
                                 <TableCell className="font-medium">{volume.storageClassName}</TableCell>
-                                {!readonly && <TableCell className="font-medium flex gap-2">
-                                    <Button variant="ghost" onClick={() => openEditVolumeDialog(volume)}><EditIcon /></Button>
-                                    <Button variant="ghost" onClick={() => asyncDeleteVolume(volume.id)}>
-                                        <TrashIcon />
-                                    </Button>
+                                {!readonly && <TableCell className="w-[88px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        <Button variant="ghost" size="icon" onClick={() => openEditVolumeDialog(volume)}><EditIcon /></Button>
+                                        <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => asyncDeleteVolume(volume.id)}>
+                                            <TrashIcon />
+                                        </Button>
+                                    </div>
                                 </TableCell>}
                             </TableRow>
                         ))}
@@ -86,7 +88,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                 </Table>
             </DrawerCardContent>
             {!readonly && <DrawerCardFooter>
-                <Button onClick={() => openEditVolumeDialog()}><Plus /> Add Volume</Button>
+                <Button variant="outline" onClick={() => openEditVolumeDialog()}><Plus /> Add Volume</Button>
             </DrawerCardFooter>}
         </DrawerCard>
     </>;

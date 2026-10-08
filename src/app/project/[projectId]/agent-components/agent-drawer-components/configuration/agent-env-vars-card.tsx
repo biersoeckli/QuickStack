@@ -45,25 +45,28 @@ export default function AgentEnvVarsCard({ agent, readonly }: { agent: AgentExte
                     Values are encrypted at rest and never shown. Names starting with <code className="rounded bg-muted px-1 text-xs">QS_</code> are reserved by QuickStack.
                 </DrawerCardDescription>
             </DrawerCardHeader>
-            <DrawerCardContent>
-                <Table>
-                    <TableCaption>{environmentVariableNames.length} Environment Variables</TableCaption>
-                    <TableHeader><TableRow>
-                        <TableHead>Key</TableHead>
-                        {!readonly && <TableHead className="w-[100px]">Actions</TableHead>}
-                    </TableRow></TableHeader>
-                    <TableBody>
-                        {environmentVariableNames.map((name) => <TableRow key={name}>
-                            <TableCell className="font-medium">{name}</TableCell>
-                            {!readonly && <TableCell className="flex gap-2">
-                                <Button variant="ghost" onClick={() => openEditDialog(name)}><EditIcon /></Button>
-                                <Button variant="ghost" onClick={() => deleteEnvironmentVariable(name)}><TrashIcon /></Button>
-                            </TableCell>}
-                        </TableRow>)}
-                    </TableBody>
-                </Table>
-            </DrawerCardContent>
-            {!readonly && <DrawerCardFooter><Button onClick={() => openEditDialog()}><Plus /> Add Environment Variable</Button></DrawerCardFooter>}
+            {environmentVariableNames.length > 0 &&
+                <DrawerCardContent>
+                    <Table>
+                        <TableCaption>{environmentVariableNames.length} Environment Variables</TableCaption>
+                        <TableHeader><TableRow>
+                            <TableHead>Key</TableHead>
+                            {!readonly && <TableHead className="w-[88px]"></TableHead>}
+                        </TableRow></TableHeader>
+                        <TableBody>
+                            {environmentVariableNames.map((name) => <TableRow key={name} className="group transition-colors duration-150 hover:bg-muted/30">
+                                <TableCell className="font-medium">{name}</TableCell>
+                                {!readonly && <TableCell className="w-[88px] font-medium">
+                                    <div className="flex gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(name)}><EditIcon /></Button>
+                                        <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => deleteEnvironmentVariable(name)}><TrashIcon /></Button>
+                                    </div>
+                                </TableCell>}
+                            </TableRow>)}
+                        </TableBody>
+                    </Table>
+                </DrawerCardContent>}
+            {!readonly && <DrawerCardFooter><Button variant="outline" onClick={() => openEditDialog()}><Plus /> Add Environment Variable</Button></DrawerCardFooter>}
         </DrawerCard>
     );
 }
