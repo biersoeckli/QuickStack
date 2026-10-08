@@ -284,6 +284,72 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('sends claim template overrides with the custom tag for PER_SANDBOX volumes', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                agentVolumes: [
+                    { id: 'vol-shared', agentId: AGENT_ID, containerMountPath: '/shared', size: 1024, volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() },
+                    { id: 'vol-scratch', agentId: AGENT_ID, containerMountPath: '/scratch', size: 2048, volumeType: 'PER_SANDBOX', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() },
+                ],
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            const claim = vi.mocked(agentSandboxAdapter.createSandboxClaim).mock.calls[0][0] as any;
+            expect(claim.spec.volumeClaimTemplates).toEqual([{
+                metadata: {
+                    name: 'vol-scratch',
+                    annotations: {
+                        'qs-agent-volume-id': 'vol-scratch',
+                        'qs-custom-tag': 'feature-branch',
+                    },
+                },
+                spec: {
+                    accessModes: ['ReadWriteOnce'],
+                    storageClassName: 'longhorn',
+                    resources: { requests: { storage: '2Gi' } },
+                },
+            }]);
+        });
+
+        it('sends no claim template overrides when no custom tag is provided', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                agentVolumes: [
+                    { id: 'vol-scratch', agentId: AGENT_ID, containerMountPath: '/scratch', size: 2048, volumeType: 'PER_SANDBOX', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() },
+                ],
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
+
+            const claim = vi.mocked(agentSandboxAdapter.createSandboxClaim).mock.calls[0][0] as any;
+            expect(claim.spec.volumeClaimTemplates).toBeUndefined();
+            expect(claim.metadata.annotations['qs-custom-tag']).toBeUndefined();
+        });
+
+        it('sends no claim template overrides when the agent has no PER_SANDBOX volumes', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                agentVolumes: [
+                    { id: 'vol-shared', agentId: AGENT_ID, containerMountPath: '/shared', size: 1024, volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() },
+                ],
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            const claim = vi.mocked(agentSandboxAdapter.createSandboxClaim).mock.calls[0][0] as any;
+            expect(claim.spec.volumeClaimTemplates).toBeUndefined();
+            expect(claim.metadata.annotations['qs-custom-tag']).toBe('feature-branch');
+        });
+
+        it('rejects a custom tag that is empty after trimming', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: '   ' }))
+                .rejects.toThrow('Custom Tag');
+            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+        });
+
         it('waits for sandbox readiness', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');

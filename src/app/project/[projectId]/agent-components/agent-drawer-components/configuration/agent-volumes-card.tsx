@@ -59,6 +59,8 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                     <TableHeader>
                         <TableRow>
                             <TableHead>Mount Path</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Access Mode</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Storage Class</TableHead>
                             {!readonly && <TableHead className="w-[100px]"></TableHead>}
@@ -68,6 +70,8 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         {volumes.map(volume => (
                             <TableRow key={volume.id}>
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
+                                <TableCell className="font-medium">{volume.volumeType === 'PER_SANDBOX' ? 'Per Sandbox' : 'All (Shared)'}</TableCell>
+                                <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium">{formatSize(volume.size)}</TableCell>
                                 <TableCell className="font-medium">{volume.storageClassName}</TableCell>
                                 {!readonly && <TableCell className="font-medium flex gap-2">

@@ -14,11 +14,22 @@ import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.s
 import type { LiteLlmModelMetadata } from "../adapter/litellm-api.adapter";
 import { AgentDomain } from "@prisma/client";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
 
 const FILEBROWSER_PORT = 80;
 const FILEBROWSER_BASE_URL = '/files';
 type SandboxContainer = SandboxTemplate['spec']['podTemplate']['spec']['containers'][number];
 type SandboxProbe = NonNullable<SandboxContainer['readinessProbe']>;
+type SandboxClaimVolumeClaimTemplate = NonNullable<SandboxClaim['spec']['volumeClaimTemplates']>[number];
+type SandboxTemplateVolumeClaimTemplate = NonNullable<SandboxTemplate['spec']['volumeClaimTemplates']>[number];
+
+export type AgentSandboxVolumeTemplateInput = {
+    id: string;
+    containerMountPath: string;
+    accessMode: string;
+    storageClassName: string;
+    size: number;
+};
 
 export type AgentSandboxTemplateConfig = {
     id: string;
@@ -48,6 +59,7 @@ export type AgentSandboxTemplateConfig = {
         volume: V1Volume;
         volumeMount: V1VolumeMount;
     }[];
+    perSandboxVolumes: AgentSandboxVolumeTemplateInput[];
     fileVolumes: V1Volume[];
     fileVolumeMounts: V1VolumeMount[];
     agentDomains: AgentDomain[];
@@ -94,6 +106,37 @@ class AgentSandboxTemplateBuilder {
         };
     }
 
+    private buildVolumeClaimTemplate(
+        volume: AgentSandboxVolumeTemplateInput,
+        annotations: Record<string, string>,
+    ): SandboxTemplateVolumeClaimTemplate & SandboxClaimVolumeClaimTemplate {
+        return {
+            metadata: {
+                name: volume.id,
+                annotations,
+            },
+            spec: {
+                accessModes: [volume.accessMode],
+                storageClassName: volume.storageClassName,
+                resources: {
+                    requests: {
+                        storage: KubeSizeConverter.megabytesToKubeFormat(volume.size),
+                    },
+                },
+            },
+        };
+    }
+
+    buildSandboxClaimVolumeTemplates(
+        volumes: AgentSandboxVolumeTemplateInput[],
+        customTag?: string,
+    ): SandboxClaimVolumeClaimTemplate[] {
+        return volumes.map(volume => this.buildVolumeClaimTemplate(volume, {
+            [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: volume.id,
+            ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
+        }));
+    }
+
     buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
         const effectiveImage = agent.containerImageSource;
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
@@ -102,7 +145,8 @@ class AgentSandboxTemplateBuilder {
         const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
         const workingDir = agent.workingDir?.trim() || '/workspace';
 
-        const hasCustomVolumes = agent.volumePvcData.length > 0;
+        const perSandboxVolumes = agent.perSandboxVolumes;
+        const hasCustomVolumes = agent.volumePvcData.length > 0 || perSandboxVolumes.length > 0;
 
         type SandboxVolumes = SandboxTemplate['spec']['podTemplate']['spec']['volumes']
         const workspaceVolumes = hasCustomVolumes
@@ -113,8 +157,12 @@ class AgentSandboxTemplateBuilder {
             }];
         const volumes = [...workspaceVolumes, ...agent.fileVolumes] as SandboxVolumes;
 
+        const perSandboxVolumeMounts: V1VolumeMount[] = perSandboxVolumes.map(volume => ({
+            name: volume.id,
+            mountPath: volume.containerMountPath,
+        }));
         const agentWorkspaceVolumeMounts = hasCustomVolumes
-            ? agent.volumePvcData.map(v => v.volumeMount)
+            ? [...agent.volumePvcData.map(v => v.volumeMount), ...perSandboxVolumeMounts]
             : [{
                 name: 'workspace',
                 mountPath: workingDir,
@@ -122,14 +170,23 @@ class AgentSandboxTemplateBuilder {
         const agentVolumeMounts = [...agentWorkspaceVolumeMounts, ...agent.fileVolumeMounts] as V1VolumeMount[];
 
         const filebrowserVolumeMounts = hasCustomVolumes
-            ? agent.volumePvcData.map(v => ({
-                name: v.volume.name,
-                mountPath: `/srv/${v.volumeMount.name}`,
-            }))
+            ? [
+                ...agent.volumePvcData.map(v => ({
+                    name: v.volume.name,
+                    mountPath: `/srv/${v.volumeMount.name}`,
+                })),
+                ...perSandboxVolumes.map(volume => ({
+                    name: volume.id,
+                    mountPath: `/srv/${volume.id}`,
+                })),
+            ]
             : [{
                 name: 'workspace',
                 mountPath: '/srv',
             }];
+        const volumeClaimTemplates = perSandboxVolumes.map(volume => this.buildVolumeClaimTemplate(volume, {
+            [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: volume.id,
+        }));
         const networkPolicy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy(agent.agentNetworkPolicy);
         const healthCheckProbe = this.buildHealthCheckProbe(agent);
         const annotations = {
@@ -156,7 +213,8 @@ class AgentSandboxTemplateBuilder {
                 labels
             },
             spec: {
-                volumeClaimTemplatesPolicy: 'Disallowed', // Default by CRD
+                volumeClaimTemplatesPolicy: perSandboxVolumes.length > 0 ? 'Overrides' : 'Disallowed',
+                ...(perSandboxVolumes.length > 0 ? { volumeClaimTemplates } : {}),
                 envVarsInjectionPolicy: 'Disallowed',
                 networkPolicyManagement: 'Managed',
                 ...(networkPolicy ? { networkPolicy } : {}),
@@ -270,6 +328,7 @@ class AgentSandboxTemplateBuilder {
         options?: {
             env?: Record<string, string>;
             idleTimeoutMinutes?: number;
+            volumeClaimTemplates?: SandboxClaimVolumeClaimTemplate[];
         },
     ): SandboxClaim {
         return {
@@ -285,6 +344,9 @@ class AgentSandboxTemplateBuilder {
                 warmPoolRef: {
                     name: warmPoolName,
                 },
+                ...(options?.volumeClaimTemplates ? {
+                    volumeClaimTemplates: options.volumeClaimTemplates,
+                } : {}),
                 ...(options?.env ? {
                     env: Object.entries(options.env).map(([name, value]) => ({ name, value })),
                 } : {}),

@@ -73,10 +73,16 @@ export class KubeObjectNameUtils {
         return `pvc-${volumeId}`;
     }
 
+    private static readonly AGENT_WORKSPACE_PVC_PREFIX = 'aw-';
+
     static toAgentWorkspacePvcName(agentId: string, agentVolumeId: string): string {
-        const raw = `aw-${agentId}-${agentVolumeId}`;
+        const raw = `${KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX}${agentId}-${agentVolumeId}`;
         const hash = crypto.createHash('sha256').update(raw).digest('hex');
-        return `aw-${hash.substring(0, 60)}`;
+        return `${KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX}${hash.substring(0, 60)}`;
+    }
+
+    static isAgentWorkspacePvcName(name: string): boolean {
+        return name.startsWith(KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX);
     }
 
     static toAgentClaimName(agentId: string): string {

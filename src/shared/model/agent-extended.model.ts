@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AgentDomainModel, AgentFileMountModel, AgentGitSshKeyModel, AgentModel, AgentNetworkPolicyModel, AgentNetworkPolicyRuleModel, AgentVolumeModel, LlmGatewayModel, ProjectModel } from "./generated-zod";
+import { agentVolumeEditZodModel } from "./volume-edit.model";
 import { Agent, Project } from "@prisma/client";
 
 export const AgentNetworkPolicyRuleWithTargetAppZodModel = AgentNetworkPolicyRuleModel.extend({
@@ -92,7 +93,14 @@ export const AgentExtendedWriteZodModel = AgentModel
         id: z.string().optional(),
         modelAlias: z.array(z.string().trim().min(1)),
         agentDomains: AgentDomainModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
-        agentVolumes: AgentVolumeModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
+        agentVolumes: agentVolumeEditZodModel
+            .extend({
+                volumeType: z.string().optional(),
+                accessMode: z.string().optional(),
+            })
+            .merge(agentSubItemWriteMeta)
+            .omit(agentWriteOmitFieldsSubItems)
+            .array(),
         agentFileMounts: AgentFileMountModel.merge(agentSubItemWriteMeta).omit(agentWriteOmitFieldsSubItems).array(),
         agentNetworkPolicy: AgentNetworkPolicyWriteZodModel.nullable(),
     });

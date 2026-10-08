@@ -6,6 +6,8 @@ export const AgentVolumeModel = z.object({
   id: z.string(),
   containerMountPath: z.string(),
   size: z.number().int(),
+  volumeType: z.string(),
+  accessMode: z.string(),
   storageClassName: z.string(),
   agentId: z.string(),
   createdAt: z.date(),

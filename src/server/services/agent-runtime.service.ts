@@ -13,6 +13,7 @@ import secretService from "./secret.service";
 import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import { SandboxClaim } from "../adapter/api-clients/types/agents.models";
+import { agentSandboxCustomTagZodModel } from "@/shared/model/agent-sandbox.model";
 
 const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
 
@@ -230,16 +231,31 @@ class AgentRuntimeService {
 
         const sandboxName = KubeObjectNameUtils.toAgentClaimName(agentId);
 
+        const rawCustomTag = startOptions.customTag;
+        let customTag: string | undefined;
+        if (rawCustomTag !== undefined) {
+            const parsedTag = agentSandboxCustomTagZodModel.safeParse(rawCustomTag);
+            if (!parsedTag.success) {
+                throw new ServiceException('Custom Tag must be between 1 and 63 characters after trimming.');
+            }
+            customTag = parsedTag.data;
+        }
+        const perSandboxVolumes = agent.agentVolumes.filter(volume => volume.volumeType === 'PER_SANDBOX');
+        const volumeClaimTemplates = customTag && perSandboxVolumes.length > 0
+            ? agentSandboxTemplateBuilder.buildSandboxClaimVolumeTemplates(perSandboxVolumes, customTag)
+            : undefined;
+
         await agentSandboxAdapter.createSandboxClaim(
             agentSandboxTemplateBuilder.buildSandboxClaimResource(sandboxName, namespace, agentId, {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_ANNOTATION_PROJECT_ID]: namespace,
                 [Constants.QS_ANNOTATION_USER_ID]: userId,
             }, {
-                ...(startOptions.customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: startOptions.customTag } : {}),
+                ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
             }, {
                 env: startOptions.env,
                 idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
+                volumeClaimTemplates,
             }),
         );
 

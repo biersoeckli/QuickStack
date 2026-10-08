@@ -747,6 +747,113 @@ describe('agent.service', () => {
                 expect.objectContaining({ name: 'cm-file-mount-1' }),
             ]));
         });
+
+        it('mounts an ALL agent volume as a static shared claim with no claim template', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [{
+                    id: 'vol-shared',
+                    agentId: 'agent-1',
+                    containerMountPath: '/workspace',
+                    size: 1024,
+                    volumeType: 'ALL',
+                    accessMode: 'ReadWriteMany',
+                    storageClassName: 'longhorn',
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                }],
+            }) as any);
+            vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({
+                volume: { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+                volumeMount: { name: 'vol-shared', mountPath: '/workspace' },
+            } as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Disallowed');
+            expect(resource.spec.volumeClaimTemplates).toBeUndefined();
+            expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/workspace' },
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).toHaveBeenCalledTimes(1);
+        });
+
+        it('mounts a PER_SANDBOX agent volume as a claim template with no static volume', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [{
+                    id: 'vol-scratch',
+                    agentId: 'agent-1',
+                    containerMountPath: '/scratch',
+                    size: 2048,
+                    volumeType: 'PER_SANDBOX',
+                    accessMode: 'ReadWriteOnce',
+                    storageClassName: 'longhorn',
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                }],
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Overrides');
+            expect(resource.spec.volumeClaimTemplates).toEqual([{
+                metadata: {
+                    name: 'vol-scratch',
+                    annotations: { 'qs-agent-volume-id': 'vol-scratch' },
+                },
+                spec: {
+                    accessModes: ['ReadWriteOnce'],
+                    storageClassName: 'longhorn',
+                    resources: { requests: { storage: '2Gi' } },
+                },
+            }]);
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-scratch', mountPath: '/scratch' },
+            ]));
+            expect(resource.spec.podTemplate.spec.volumes).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({ name: 'vol-scratch' }),
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).not.toHaveBeenCalled();
+        });
+
+        it('mixes ALL and PER_SANDBOX agent volumes and allows overrides', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [
+                    {
+                        id: 'vol-shared', agentId: 'agent-1', containerMountPath: '/workspace', size: 1024,
+                        volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn',
+                        createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01'),
+                    },
+                    {
+                        id: 'vol-scratch', agentId: 'agent-1', containerMountPath: '/scratch', size: 2048,
+                        volumeType: 'PER_SANDBOX', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn',
+                        createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01'),
+                    },
+                ],
+            }) as any);
+            vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({
+                volume: { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+                volumeMount: { name: 'vol-shared', mountPath: '/workspace' },
+            } as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Overrides');
+            expect(resource.spec.volumeClaimTemplates).toHaveLength(1);
+            expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/workspace' },
+                { name: 'vol-scratch', mountPath: '/scratch' },
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('deleteById', () => {

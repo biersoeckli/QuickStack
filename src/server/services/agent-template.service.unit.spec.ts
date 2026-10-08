@@ -186,6 +186,8 @@ describe("agent-template.service", () => {
                 containerMountPath: "/workspace",
                 size: 5120,
                 storageClassName: "longhorn",
+                volumeType: "ALL",
+                accessMode: "ReadWriteMany",
                 agentId: "agent-opencode",
             },
         });

@@ -303,10 +303,21 @@ class PvcService {
 
     async deleteUnusedPvcForAgent(projectId: string, agentId: string, currentAgentVolumes: AgentVolume[]) {
         const existingPvcs = await this.getAllPvcForAgent(projectId, agentId);
+        const sharedVolumeIds = new Set(
+            currentAgentVolumes
+                .filter(volume => volume.volumeType === 'ALL')
+                .map(volume => volume.id),
+        );
 
         for (const pvc of existingPvcs) {
+            // Only QuickStack-owned shared claims are cleaned up here.
+            // Per-sandbox claims from claim templates are controller-owned.
+            if (!pvc.metadata?.name || !KubeObjectNameUtils.isAgentWorkspacePvcName(pvc.metadata.name)) {
+                continue;
+            }
+
             const volumeIdFromAnnotation = pvc.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_VOLUME_ID];
-            if (currentAgentVolumes.some(volume => volume.id === volumeIdFromAnnotation)) {
+            if (volumeIdFromAnnotation && sharedVolumeIds.has(volumeIdFromAnnotation)) {
                 continue;
             }
 

@@ -26,7 +26,7 @@ import crypto from "crypto";
 import buildService from "./build.service";
 import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
-import agentSandboxTemplateBuilder from "./agent-sandbox-template-builder.service";
+import agentSandboxTemplateBuilder, { AgentSandboxVolumeTemplateInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 
 type AgentSaveInput =
@@ -188,6 +188,8 @@ class AgentService {
                     containerMountPath: volume.containerMountPath,
                     size: volume.size,
                     storageClassName: volume.storageClassName,
+                    volumeType: volume.volumeType,
+                    accessMode: volume.accessMode,
                     agentId: savedAgentId,
                 }, tx);
             }
@@ -360,13 +362,23 @@ class AgentService {
             volume: V1Volume;
             volumeMount: V1VolumeMount;
         }[] = [];
-        for (const volume of agent.agentVolumes) {
+        for (const volume of agent.agentVolumes.filter(volume => volume.volumeType === 'ALL')) {
             const volumePvcDataItem = await pvcService.ensurePvcForUserAgent(
                 agent.project.id,
                 volume,
             );
             volumePvcData.push(volumePvcDataItem);
         }
+
+        const perSandboxVolumes: AgentSandboxVolumeTemplateInput[] = agent.agentVolumes
+            .filter(volume => volume.volumeType === 'PER_SANDBOX')
+            .map(volume => ({
+                id: volume.id,
+                containerMountPath: volume.containerMountPath,
+                accessMode: volume.accessMode,
+                storageClassName: volume.storageClassName,
+                size: volume.size,
+            }));
 
         await pvcService.deleteUnusedPvcForAgent(
             agent.project.id,
@@ -413,6 +425,7 @@ class AgentService {
                 healthCheckFailureThreshold: agent.healthCheckFailureThreshold,
                 healthCheckTcpPort: agent.healthCheckTcpPort ?? null,
                 volumePvcData,
+                perSandboxVolumes,
                 fileVolumes,
                 fileVolumeMounts,
                 agentDomains: agent.agentDomains,

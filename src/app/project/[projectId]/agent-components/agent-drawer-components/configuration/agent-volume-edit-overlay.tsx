@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/custom/submit-button";
 import StorageClassCombobox from "@/components/custom/storage-class-combobox";
 import { FormUtils } from "@/frontend/utils/form.utilts";
@@ -35,8 +36,18 @@ export default function AgentVolumeEditOverlay({
             containerMountPath: existingVolume?.containerMountPath || '',
             size: existingVolume?.size || 1024,
             storageClassName: defaultStorageClassName,
+            volumeType: existingVolume?.volumeType || 'ALL',
+            accessMode: existingVolume?.accessMode || 'ReadWriteMany',
         } as AgentVolumeEditModel,
     });
+
+    const volumeType = form.watch('volumeType');
+
+    useEffect(() => {
+        if (volumeType === 'ALL') {
+            form.setValue('accessMode', 'ReadWriteMany');
+        }
+    }, [form, volumeType]);
 
     const [state, formAction] = useActionState(
         (state: ServerActionResult<AgentVolumeEditModel, void>, payload: AgentVolumeEditModel) =>
@@ -59,6 +70,8 @@ export default function AgentVolumeEditOverlay({
                 containerMountPath: existingVolume.containerMountPath || '',
                 size: existingVolume.size || 1024,
                 storageClassName: defaultStorageClassName,
+                volumeType: existingVolume.volumeType || 'ALL',
+                accessMode: existingVolume.accessMode || 'ReadWriteMany',
             } as AgentVolumeEditModel);
         }
     }, [defaultStorageClassName, existingVolume, form]);
@@ -121,6 +134,68 @@ export default function AgentVolumeEditOverlay({
                             </FormControl>
                             <FormDescription>
                                 This cannot be changed after creation.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="volumeType"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Volume Type</FormLabel>
+                            <FormControl>
+                                <Select
+                                    value={field.value}
+                                    disabled={!!existingVolume}
+                                    onValueChange={(value) => form.setValue("volumeType", value as AgentVolumeEditModel['volumeType'])}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select volume type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">All (Shared)</SelectItem>
+                                        <SelectItem value="PER_SANDBOX">Per Sandbox</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormControl>
+                            <FormDescription>
+                                {volumeType === 'ALL'
+                                    ? 'Shared by every sandbox and persists after the sandbox is deleted.'
+                                    : 'Private to each sandbox and deleted with it.'}
+                                {' '}This cannot be changed after creation.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="accessMode"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Access Mode</FormLabel>
+                            <FormControl>
+                                <Select
+                                    value={field.value}
+                                    disabled={!!existingVolume || volumeType === 'ALL'}
+                                    onValueChange={(value) => form.setValue("accessMode", value as AgentVolumeEditModel['accessMode'])}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select access mode" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ReadWriteMany">ReadWriteMany</SelectItem>
+                                        {volumeType !== 'ALL' && <SelectItem value="ReadWriteOnce">ReadWriteOnce</SelectItem>}
+                                    </SelectContent>
+                                </Select>
+                            </FormControl>
+                            <FormDescription>
+                                {volumeType === 'ALL'
+                                    ? 'Shared volumes require ReadWriteMany.'
+                                    : 'Per-sandbox volumes may use ReadWriteOnce.'}
+                                {' '}This cannot be changed after creation.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>

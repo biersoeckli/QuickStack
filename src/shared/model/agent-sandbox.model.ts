@@ -31,10 +31,12 @@ export const fileExistsResultZodModel = z.object({
 
 const envNameZodModel = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 
+export const agentSandboxCustomTagZodModel = z.string().trim().min(1).max(63);
+
 export const createSandboxRequestZodModel = z.object({
     env: z.record(envNameZodModel, z.string()).optional(),
     idleTimeoutMinutes: z.number().int().positive().max(1440).optional(),
-    customTag: z.string().min(1).optional(),
+    customTag: agentSandboxCustomTagZodModel.optional(),
 }).optional().default({});
 
 export const commandRequestZodModel = z.object({

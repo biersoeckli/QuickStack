@@ -106,6 +106,28 @@ describe('agent sandbox routes', () => {
         });
     });
 
+    it('rejects a custom tag that is empty after trimming', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ customTag: '   ' }),
+        }));
+
+        expect(response.status).not.toBe(200);
+        expect(routeMocks.createSandbox).not.toHaveBeenCalled();
+    });
+
+    it('rejects a custom tag longer than 63 characters', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ customTag: 'a'.repeat(64) }),
+        }));
+
+        expect(response.status).not.toBe(200);
+        expect(routeMocks.createSandbox).not.toHaveBeenCalled();
+    });
+
     it('passes command options to service', async () => {
         const body = {
             command: 'npm test',

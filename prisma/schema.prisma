@@ -372,6 +372,8 @@ model AgentVolume {
   id                 String @id @default(uuid())
   containerMountPath String
   size               Int
+  volumeType         String @default("ALL")
+  accessMode         String @default("ReadWriteMany")
   storageClassName   String @default("longhorn")
   agentId            String
   agent              Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
