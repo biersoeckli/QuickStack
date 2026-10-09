@@ -82,6 +82,30 @@ describe('DockerfileBuildJobBuilder', () => {
         expect(imageOutputArg).not.toContain(':latest');
     });
 
+    it('pushes Agent images to the internal registry service', async () => {
+        const job = await dockerfileBuildJobBuilder.buildJobDefinition({
+            workload: {
+                id: 'agent-1',
+                projectId: 'project-1',
+                gitUrl: 'https://github.com/example/agent.git',
+                gitBranch: 'main',
+                dockerfilePath: './Dockerfile',
+            } as any,
+            workloadType: 'agent',
+            buildName: 'build-1',
+            deploymentId: 'deployment-1',
+            latestRemoteGitHash: 'abc123',
+            latestRemoteGitCommitMessage: 'feat: test',
+            queuedAt: '123',
+            maxParallelBuilds: 2,
+        });
+
+        const imageOutputArg = job.spec?.template?.spec?.containers[0]?.args?.find((arg) => arg.includes('type=image'));
+
+        expect(imageOutputArg).toContain('registry-svc.registry-and-build.svc.cluster.local:5000/agent-1:latest');
+        expect(imageOutputArg).not.toContain('localhost:30100');
+    });
+
     it('passes build arguments to BuildKit as build-arg options', async () => {
         const job = await dockerfileBuildJobBuilder.buildJobDefinition({
             workload: {

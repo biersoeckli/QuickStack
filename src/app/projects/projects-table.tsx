@@ -13,13 +13,16 @@ import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { EditProjectDialog } from "./edit-project-dialog";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
+import ProjectStatusIndicator from "@/components/custom/project-status-indicator";
 import { ProjectWithCountsModel } from "@/shared/model/project-extended.model";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { ReactNode } from "react";
 
 
-export default function ProjectsTable({ data, session }: {
+export default function ProjectsTable({ data, session, agentsAvailable }: {
     data: ProjectWithCountsModel[];
     session: UserSession;
+    agentsAvailable: boolean;
 }) {
 
     const { openConfirmDialog: openDialog } = useConfirmDialog();
@@ -36,6 +39,24 @@ export default function ProjectsTable({ data, session }: {
     };
 
     const isAdmin = UserGroupUtils.isAdmin(session);
+    const columns: ([string, string, boolean, (item: ProjectWithCountsModel) => ReactNode] | [string, string, boolean])[] = [
+        ['id', 'ID', false],
+        ['name', 'Name', true, (item) => (
+            <Link href={`/project/${item.id}`}
+                className="font-medium cursor-pointer hover:underline">
+                {item.name}
+            </Link>
+        )],
+        ['apps', 'Apps', true, (item) => (
+            <ProjectStatusIndicator projectId={item.id} />
+        )],
+        ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
+        ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
+    ];
+
+    if (agentsAvailable) {
+        columns.splice(3, 0, ['agents', 'Agents', true, (item) => item._count.agents]);
+    }
 
     if (data.length === 0 && !isAdmin) {
         return (
@@ -75,22 +96,7 @@ export default function ProjectsTable({ data, session }: {
     }
 
     return <>
-        <SimpleDataTable columns={[
-            ['id', 'ID', false],
-            ['name', 'Name', true, (item) => (
-                <Link href={`/project/${item.id}`}
-                    className="font-medium cursor-pointer hover:underline">
-                    {item.name}
-                </Link>
-            )],
-            ['workloads', 'Workloads', true, (item) => (
-                <span className="text-muted-foreground">
-                    {item._count.apps} {item._count.apps === 1 ? 'App' : 'Apps'}, {item._count.agents} {item._count.agents === 1 ? 'Agent' : 'Agents'}
-                </span>
-            )],
-            ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
-            ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
-        ]}
+        <SimpleDataTable columns={columns}
             data={data}
             onItemClickLink={(item) => `/project/${item.id}`}
             actionCol={(item) =>

@@ -76,7 +76,7 @@ class RegistryService {
 
     createBuildImageNames(appId: string, workloadType: WorkloadType, commitHash?: string | null, isRollback = false) {
         if (workloadType === 'agent') {
-            return this.createContainerRegistryUrlForAppId(appId);
+            return this.createInternalContainerRegistryUrlForAppId(appId);
         }
         const latestTag = this.createInternalContainerRegistryUrlForAppId(appId);
         const commitTag = GitHashUtils.shortGitHash(commitHash);
