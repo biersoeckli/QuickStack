@@ -17,7 +17,7 @@ class PostgresBackupService {
 
         await namespaceService.createNamespaceIfNotExists(backupNamespace);
 
-        const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-postgres-${app.id}`);
+        const jobName = KubeObjectNameUtils.toDatabaseBackupJobName('postgres', app.id);
         console.log(`Creating PostgreSQL backup job with name: ${jobName}`);
 
         const dbCredentials = AppTemplateUtils.getDatabaseModelFromApp(app);

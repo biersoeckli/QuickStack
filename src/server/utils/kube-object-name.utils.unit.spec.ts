@@ -63,6 +63,26 @@ describe('KubeObjectNameUtils', () => {
         });
     });
 
+    describe('toDatabaseBackupJobName', () => {
+        it.each(['postgres', 'mongodb', 'mariadb'] as const)(
+            'should keep %s backup job names within the Kubernetes label and container name limit',
+            (database) => {
+                const result = KubeObjectNameUtils.toDatabaseBackupJobName(database, 'a'.repeat(100));
+
+                expect(result).toMatch(new RegExp(`^backup-${database}-a+-[a-f0-9]{8}$`));
+                expect(result.length).toBeLessThanOrEqual(63);
+            }
+        );
+
+        it('should preserve the random suffix when truncating an app ID', () => {
+            const appId = 'app-ericdaniellwebsitepostgres-b744d884';
+            const result = KubeObjectNameUtils.toDatabaseBackupJobName('postgres', appId);
+
+            expect(result).toMatch(new RegExp(`^backup-postgres-${appId.substring(0, 38)}-[a-f0-9]{8}$`));
+            expect(result).toHaveLength(63);
+        });
+    });
+
     describe('addRandomSuffix', () => {
         it('should add a random suffix to the string', () => {
             const result = KubeObjectNameUtils.addRandomSuffix('baseString');

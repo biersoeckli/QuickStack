@@ -17,7 +17,7 @@ class MariaDbBackupService {
 
         await namespaceService.createNamespaceIfNotExists(backupNamespace);
 
-        const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-mariadb-${app.id}`);
+        const jobName = KubeObjectNameUtils.toDatabaseBackupJobName('mariadb', app.id);
         console.log(`Creating MariaDB/MySQL backup job with name: ${jobName}`);
 
         const dbCredentials = AppTemplateUtils.getDatabaseModelFromApp(app);
