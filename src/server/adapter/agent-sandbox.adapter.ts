@@ -22,6 +22,7 @@ const TERMINAL_CLAIM_FAILURE_REASONS = new Set([
     'EnvVarsInjectionRejected',
     'VolumeClaimTemplatesError',
     'ReconcilerError',
+    'InvalidConfiguration',
 ]);
 
 /**

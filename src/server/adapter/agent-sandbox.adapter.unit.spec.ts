@@ -407,6 +407,10 @@ describe('AgentSandboxAdapter', () => {
             expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'WarmPoolNotFound' }]))).toBe('ERROR');
         });
 
+        it('returns ERROR for InvalidConfiguration', () => {
+            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'InvalidConfiguration' }]))).toBe('ERROR');
+        });
+
         it('returns SHUTTING_DOWN for an expired claim', () => {
             expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'ClaimExpired' }]))).toBe('SHUTTING_DOWN');
         });

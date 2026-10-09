@@ -627,6 +627,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -650,6 +651,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -670,6 +672,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -683,6 +686,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -718,6 +722,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -731,6 +736,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -814,6 +820,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -827,6 +834,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -854,6 +862,7 @@ export interface components {
                                 name: string;
                             }[];
                             volumeMounts?: {
+                                bindMountOptions?: string[];
                                 mountPath: string;
                                 mountPropagation?: string;
                                 name: string;
@@ -939,6 +948,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -962,6 +972,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -982,6 +993,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -995,6 +1007,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1030,6 +1043,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -1043,6 +1057,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1126,6 +1141,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -1139,6 +1155,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1167,6 +1184,7 @@ export interface components {
                                 name: string;
                             }[];
                             volumeMounts?: {
+                                bindMountOptions?: string[];
                                 mountPath: string;
                                 mountPropagation?: string;
                                 name: string;
@@ -1176,6 +1194,11 @@ export interface components {
                                 subPathExpr?: string;
                             }[];
                             workingDir?: string;
+                        }[];
+                        evictionResponders?: {
+                            name: string;
+                            /** Format: int32 */
+                            priority: number;
                         }[];
                         hostAliases?: {
                             hostnames?: string[];
@@ -1256,6 +1279,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -1279,6 +1303,7 @@ export interface components {
                                         }[];
                                         path?: string;
                                         port: number | string;
+                                        protocol?: string;
                                         scheme?: string;
                                     };
                                     sleep?: {
@@ -1299,6 +1324,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -1312,6 +1338,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1347,6 +1374,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -1360,6 +1388,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1443,6 +1472,7 @@ export interface components {
                                 /** Format: int32 */
                                 failureThreshold?: number;
                                 grpc?: {
+                                    mode?: string;
                                     /** Format: int32 */
                                     port: number;
                                     /** @default  */
@@ -1456,6 +1486,7 @@ export interface components {
                                     }[];
                                     path?: string;
                                     port: number | string;
+                                    protocol?: string;
                                     scheme?: string;
                                 };
                                 /** Format: int32 */
@@ -1483,6 +1514,7 @@ export interface components {
                                 name: string;
                             }[];
                             volumeMounts?: {
+                                bindMountOptions?: string[];
                                 mountPath: string;
                                 mountPropagation?: string;
                                 name: string;
@@ -1655,11 +1687,15 @@ export interface components {
                             configMap?: {
                                 /** Format: int32 */
                                 defaultMode?: number;
+                                /** Format: int64 */
+                                defaultUser?: number;
                                 items?: {
                                     key: string;
                                     /** Format: int32 */
                                     mode?: number;
                                     path: string;
+                                    /** Format: int64 */
+                                    user?: number;
                                 }[];
                                 /** @default  */
                                 name: string;
@@ -1680,6 +1716,8 @@ export interface components {
                             downwardAPI?: {
                                 /** Format: int32 */
                                 defaultMode?: number;
+                                /** Format: int64 */
+                                defaultUser?: number;
                                 items?: {
                                     fieldRef?: {
                                         apiVersion?: string;
@@ -1693,10 +1731,14 @@ export interface components {
                                         divisor?: number | string;
                                         resource: string;
                                     };
+                                    /** Format: int64 */
+                                    user?: number;
                                 }[];
                             };
                             emptyDir?: {
                                 medium?: string;
+                                /** Format: int32 */
+                                mode?: number;
                                 sizeLimit?: number | string;
                             };
                             ephemeral?: {
@@ -1829,6 +1871,8 @@ export interface components {
                             projected?: {
                                 /** Format: int32 */
                                 defaultMode?: number;
+                                /** Format: int64 */
+                                defaultUser?: number;
                                 sources?: {
                                     clusterTrustBundle?: {
                                         labelSelector?: {
@@ -1845,6 +1889,8 @@ export interface components {
                                         optional?: boolean;
                                         path: string;
                                         signerName?: string;
+                                        /** Format: int64 */
+                                        user?: number;
                                     };
                                     configMap?: {
                                         items?: {
@@ -1852,6 +1898,8 @@ export interface components {
                                             /** Format: int32 */
                                             mode?: number;
                                             path: string;
+                                            /** Format: int64 */
+                                            user?: number;
                                         }[];
                                         /** @default  */
                                         name: string;
@@ -1871,6 +1919,8 @@ export interface components {
                                                 divisor?: number | string;
                                                 resource: string;
                                             };
+                                            /** Format: int64 */
+                                            user?: number;
                                         }[];
                                     };
                                     podCertificate?: {
@@ -1881,6 +1931,8 @@ export interface components {
                                         /** Format: int32 */
                                         maxExpirationSeconds?: number;
                                         signerName: string;
+                                        /** Format: int64 */
+                                        user?: number;
                                         userAnnotations?: {
                                             [key: string]: string;
                                         };
@@ -1891,6 +1943,8 @@ export interface components {
                                             /** Format: int32 */
                                             mode?: number;
                                             path: string;
+                                            /** Format: int64 */
+                                            user?: number;
                                         }[];
                                         /** @default  */
                                         name: string;
@@ -1901,6 +1955,8 @@ export interface components {
                                         /** Format: int64 */
                                         expirationSeconds?: number;
                                         path: string;
+                                        /** Format: int64 */
+                                        user?: number;
                                     };
                                 }[];
                             };
@@ -1948,11 +2004,15 @@ export interface components {
                             secret?: {
                                 /** Format: int32 */
                                 defaultMode?: number;
+                                /** Format: int64 */
+                                defaultUser?: number;
                                 items?: {
                                     key: string;
                                     /** Format: int32 */
                                     mode?: number;
                                     path: string;
+                                    /** Format: int64 */
+                                    user?: number;
                                 }[];
                                 optional?: boolean;
                                 secretName?: string;

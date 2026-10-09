@@ -29,7 +29,6 @@ import { SettingsSection } from './settings-section';
 import { DrawerEnvironment } from './app-details-environment';
 import { useNestedDrawer } from './nested-drawer';
 import { DrawerCard, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from '@/components/custom/drawer-card';
-import { Drawer } from '@/components/ui/drawer';
 
 export function DrawerSettings({
     app,
