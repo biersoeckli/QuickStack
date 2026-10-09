@@ -16,7 +16,7 @@ class MongoDbBackupService {
 
         await namespaceService.createNamespaceIfNotExists(backupNamespace);
 
-        const jobName = KubeObjectNameUtils.addRandomSuffix(`backup-mongodb-${app.id}`);
+        const jobName = KubeObjectNameUtils.toDatabaseBackupJobName('mongodb', app.id);
         console.log(`Creating MongoDB backup job with name: ${jobName}`);
 
         const dbCredentials = AppTemplateUtils.getDatabaseModelFromApp(app);

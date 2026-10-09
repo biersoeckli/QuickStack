@@ -3,6 +3,8 @@ import * as crypto from 'crypto';
 export class KubeObjectNameUtils {
 
     private static readonly MAX_OBJECT_NAME_LENGTH = 30; // in Kubernetes, the maximum length of an object name is 63 characters
+    private static readonly MAX_LABEL_VALUE_LENGTH = 63;
+    private static readonly RANDOM_SUFFIX_LENGTH = 9; // "-" + 8 hexadecimal characters
 
     static toSnakeCase(str: string): string {
         if (!str) {
@@ -42,6 +44,15 @@ export class KubeObjectNameUtils {
 
     static toJobName(appId: string): `build-${string}` {
         return `build-${appId}`;
+    }
+
+    static toDatabaseBackupJobName(database: 'postgres' | 'mongodb' | 'mariadb', appId: string): string {
+        const prefix = `backup-${database}-`;
+        const maxAppIdLength = KubeObjectNameUtils.MAX_LABEL_VALUE_LENGTH
+            - prefix.length
+            - KubeObjectNameUtils.RANDOM_SUFFIX_LENGTH;
+
+        return KubeObjectNameUtils.addRandomSuffix(`${prefix}${appId.substring(0, maxAppIdLength)}`);
     }
 
     static addRandomSuffix(str: string): string {
