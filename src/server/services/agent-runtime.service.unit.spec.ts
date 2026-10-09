@@ -46,6 +46,7 @@ vi.mock('@/server/services/secret.service', () => ({
         getDecodedSecret: vi.fn(),
         createOrReplaceGenericSecret: vi.fn(),
         deleteSecretSafe: vi.fn(),
+        listDecodedSecretsByLabels: vi.fn(),
     },
 }));
 vi.mock('@/server/services/pvc.service', () => ({
@@ -164,6 +165,7 @@ describe('agent-runtime.service', () => {
                 'https://litellm.example.com',
                 'adminkey',
                 ['gpt-4o', 'claude-3-5-sonnet'],
+                { quickstack: { agentId: AGENT_ID, scope: 'agent' } },
             );
         });
 
@@ -290,6 +292,52 @@ describe('agent-runtime.service', () => {
                     }),
                 }),
             );
+        });
+
+        it('creates a tagged key once, stores it, and injects it into a tagged SandboxClaim', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey)
+                .mockResolvedValueOnce('sk-v-agent-key')
+                .mockResolvedValueOnce('sk-v-feature-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenLastCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                ['gpt-4o', 'claude-3-5-sonnet'],
+                { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } },
+            );
+            expect(secretService.createOrReplaceGenericSecret).toHaveBeenLastCalledWith(
+                expect.stringMatching(/^tagkey-[a-f0-9]{64}$/),
+                SANDBOX_NAMESPACE,
+                { QS_VIRTUAL_KEY: 'sk-v-feature-key' },
+                {
+                    'qs-agent-id': AGENT_ID,
+                    'qs-agent-tagged-virtual-key': 'true',
+                },
+            );
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
+                spec: expect.objectContaining({
+                    env: [{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }],
+                }),
+            }));
+        });
+
+        it('reuses the tagged key from its Secret', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(secretService.getDecodedSecret)
+                .mockResolvedValueOnce({ QS_VIRTUAL_KEY: 'sk-v-agent-key' })
+                .mockResolvedValueOnce({ QS_VIRTUAL_KEY: 'sk-v-feature-key' });
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
+                spec: expect.objectContaining({
+                    env: [{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }],
+                }),
+            }));
         });
 
         it('sends claim template overrides with the custom tag for PER_SANDBOX volumes', async () => {
@@ -438,6 +486,25 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.stopAllSandboxes(AGENT_ID);
 
             expect(agentSandboxAdapter.deleteSandboxClaim).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('deleteTaggedVirtualKeys', () => {
+        it('deletes each tagged key and its Secret', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(secretService.listDecodedSecretsByLabels).mockResolvedValue([{
+                name: 'tagkey-abc',
+                data: { QS_VIRTUAL_KEY: 'sk-v-feature-key' },
+            }]);
+
+            await agentRuntimeService.deleteTaggedVirtualKeys(AGENT_ID);
+
+            expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'sk-v-feature-key',
+            );
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('tagkey-abc', SANDBOX_NAMESPACE);
         });
     });
 

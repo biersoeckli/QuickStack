@@ -135,6 +135,7 @@ class SecretService {
         name: string,
         namespace: string,
         data: Record<string, string>,
+        labels?: Record<string, string>,
     ): Promise<void> {
         const base64Data: Record<string, string> = {};
         for (const [key, value] of Object.entries(data)) {
@@ -142,7 +143,7 @@ class SecretService {
         }
 
         const secretManifest: V1Secret = {
-            metadata: { name },
+            metadata: { name, ...(labels ? { labels } : {}) },
             data: base64Data,
         };
 
@@ -185,6 +186,24 @@ class SecretService {
                 `Failed to read Secret "${name}": ${error?.message || error}`,
             );
         }
+    }
+
+    async listDecodedSecretsByLabels(namespace: string, labels: Record<string, string>): Promise<Array<{
+        name: string;
+        data: Record<string, string>;
+    }>> {
+        const response = await k3s.core.listNamespacedSecret({ namespace });
+        return response.items.flatMap((secret) => {
+            if (!secret.metadata?.name || !Object.entries(labels).every(([key, value]) => secret.metadata?.labels?.[key] === value)) {
+                return [];
+            }
+
+            const data = Object.fromEntries(Object.entries(secret.data ?? {}).map(([key, value]) => [
+                key,
+                value ? Buffer.from(value, 'base64').toString('utf-8') : '',
+            ]));
+            return [{ name: secret.metadata.name, data }];
+        });
     }
 
     /**

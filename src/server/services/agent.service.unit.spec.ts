@@ -55,6 +55,7 @@ const namespaceServiceMocks = vi.hoisted(() => ({
 const agentRuntimeServiceMocks = vi.hoisted(() => ({
     listSandboxes: vi.fn(),
     stopAllSandboxes: vi.fn(),
+    deleteTaggedVirtualKeys: vi.fn(),
     refreshRuntimeSecret: vi.fn(),
 }));
 
@@ -872,6 +873,7 @@ describe('agent.service', () => {
                 'proj-test-agent',
             );
             expect(agentRuntimeService.stopAllSandboxes).toHaveBeenCalledWith('agent-1');
+            expect(agentRuntimeService.deleteTaggedVirtualKeys).toHaveBeenCalledWith('agent-1');
             expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',

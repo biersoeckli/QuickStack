@@ -105,6 +105,11 @@ export class KubeObjectNameUtils {
         return `secret-${id}`;
     }
 
+    static toAgentTaggedVirtualKeySecretId(agentId: string, customTag: string): `tagkey-${string}` {
+        const identifier = crypto.createHash('sha256').update(`${agentId}:${customTag}`).digest('hex');
+        return `tagkey-${identifier}`;
+    }
+
     static toPullSecretId(id: string): `pullsec-${string}` {
         return `pullsec-${id.substring(0, 55)}`;
     }

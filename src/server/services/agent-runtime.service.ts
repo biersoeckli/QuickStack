@@ -44,6 +44,10 @@ class AgentRuntimeService {
         return KubeObjectNameUtils.toSecretId(agentId);
     }
 
+    private toTaggedVirtualKeySecretName(agentId: string, customTag: string): string {
+        return KubeObjectNameUtils.toAgentTaggedVirtualKeySecretId(agentId, customTag);
+    }
+
     private decryptEnvVars(encryptedEnvVarsJson: string | null): Record<string, string> {
         if (!encryptedEnvVarsJson) {
             return {};
@@ -92,6 +96,7 @@ class AgentRuntimeService {
             gateway.baseUrl,
             adminKey,
             modelAliases,
+            { quickstack: { agentId: agent.id, scope: 'agent' } },
         );
 
         const decryptedEnvVars = this.decryptEnvVars(agent.encryptedEnvVars ?? null);
@@ -102,6 +107,51 @@ class AgentRuntimeService {
         );
 
         await secretService.createOrReplaceGenericSecret(secretName, namespace, secretData);
+    }
+
+    private async ensureTaggedVirtualKey(agent: AgentExtendedModel, customTag: string): Promise<string> {
+        const namespace = agent.project.id;
+        const secretName = this.toTaggedVirtualKeySecretName(agent.id, customTag);
+        const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
+        if (existingSecret?.QS_VIRTUAL_KEY) {
+            return existingSecret.QS_VIRTUAL_KEY;
+        }
+
+        if (!agent.llmGateway) {
+            throw new ServiceException('LLM Gateway not found for Agent.');
+        }
+        if (!agent.llmGateway.encryptedAdminKey) {
+            throw new ServiceException('LLM Gateway admin key is missing.');
+        }
+
+        const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
+        if (modelAliases.length === 0) {
+            throw new ServiceException('At least one model alias must be selected for Agent.');
+        }
+
+        const virtualKey = await liteLlmApiAdapter.createVirtualKey(
+            agent.llmGateway.baseUrl,
+            CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey),
+            modelAliases,
+            { quickstack: { agentId: agent.id, customTag, scope: 'agent-sandbox' } },
+        );
+        await secretService.createOrReplaceGenericSecret(secretName, namespace, {
+            QS_VIRTUAL_KEY: virtualKey,
+        }, {
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
+        });
+        return virtualKey;
+    }
+
+    private buildTaggedVirtualKeyEnvOverrides(agent: AgentExtendedModel, virtualKey: string): Record<string, string> {
+        const overrides: Record<string, string> = { QS_VIRTUAL_KEY: virtualKey };
+        for (const [name, value] of Object.entries(this.decryptEnvVars(agent.encryptedEnvVars ?? null))) {
+            if (value === HARNESS_VIRTUAL_KEY_REFERENCE) {
+                overrides[name] = virtualKey;
+            }
+        }
+        return overrides;
     }
 
     /**
@@ -210,6 +260,13 @@ class AgentRuntimeService {
 
         await this.ensureRuntimeSecret(agent);
 
+        const taggedVirtualKey = customTag
+            ? await this.ensureTaggedVirtualKey(agent, customTag)
+            : undefined;
+        const env = taggedVirtualKey
+            ? { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, taggedVirtualKey) }
+            : startOptions.env;
+
         const perSandboxVolumes = agent.agentVolumes.filter(volume => volume.volumeType === 'PER_SANDBOX');
         const volumeClaimTemplates = customTag && perSandboxVolumes.length > 0
             ? agentSandboxTemplateBuilder.buildSandboxClaimVolumeTemplates(perSandboxVolumes, customTag)
@@ -223,7 +280,7 @@ class AgentRuntimeService {
             }, {
                 ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
             }, {
-                env: startOptions.env,
+                env,
                 idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
                 volumeClaimTemplates,
             }),
@@ -276,6 +333,43 @@ class AgentRuntimeService {
 
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.agents(agent.projectId));
+    }
+
+    async deleteTaggedVirtualKeys(agentId: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        const namespace = agent.project.id;
+        let taggedSecrets: Array<{ name: string; data: Record<string, string> }>;
+
+        try {
+            taggedSecrets = await secretService.listDecodedSecretsByLabels(namespace, {
+                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
+            });
+        } catch (error) {
+            console.warn(`Failed to list tagged LiteLLM virtual keys during Agent cleanup (agentId=${agentId}):`, error);
+            return;
+        }
+
+        for (const secret of taggedSecrets) {
+            try {
+                const virtualKey = secret.data.QS_VIRTUAL_KEY;
+                if (virtualKey && agent.llmGateway?.encryptedAdminKey) {
+                    await liteLlmApiAdapter.deleteVirtualKey(
+                        agent.llmGateway.baseUrl,
+                        CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey),
+                        virtualKey,
+                    );
+                }
+            } catch (error) {
+                console.warn(`Failed to delete tagged LiteLLM virtual key during Agent cleanup (agentId=${agentId}, secret=${secret.name}):`, error);
+            }
+
+            try {
+                await secretService.deleteSecretSafe(secret.name, namespace);
+            } catch (error) {
+                console.warn(`Failed to delete tagged virtual key Secret during Agent cleanup (agentId=${agentId}, secret=${secret.name}):`, error);
+            }
+        }
     }
 
     private claimMatchesTag(claim: SandboxClaim, agentId: string, customTag: string): boolean {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useDialog } from "@/frontend/states/zustand.states";
+import { useDialog, useInputDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Bot, ChevronDown, ExternalLink, Files, Filter, Logs, Pause, Play, PlayIcon, Search, Square, Terminal } from "lucide-react";
@@ -23,11 +23,12 @@ import {
 import DeploymentStatusBadge from "@/app/project/app/[appId]/overview/deployment-status-badge";
 import type { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { toast } from "sonner";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import AgentAccessDialogContent from "./agent-access-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DrawerCard, DrawerCardDescription, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
 import { Input } from "@/components/ui/input";
+import { SplitButton } from "@/components/custom/split-button";
 
 interface SandboxInfo {
     name: string;
@@ -62,6 +63,7 @@ export default function AgentSandboxesCard({
 }) {
     const { id: agentId, projectId: namespace, agentDomains, deployFileBrowser } = agent;
     const { openDialog } = useDialog();
+    const { openInputDialog } = useInputDialog();
     const [sandboxes, setSandboxes] = useState<SandboxInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -188,6 +190,47 @@ export default function AgentSandboxesCard({
             // SSE will push updated list automatically
         }
     };
+
+    const handleStartSandboxWithCustomTag = async () => {
+        const customTag = await openInputDialog({
+            title: 'Start sandbox with custom tag',
+            description: 'The tag identifies this sandbox and must be unique for this Sandbox Instance (1–63 characters).',
+            fieldName: 'Custom tag',
+            okButton: 'Start sandbox',
+        });
+        if (!customTag) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await Toast.fromAction(
+                () => startSandbox(agentId, customTag),
+                'Sandbox started',
+                'Starting sandbox...',
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderStartSandboxActions = () => (
+        <SplitButton
+            onClick={handleStartSandbox}
+            disabled={loading}
+            size="sm"
+            containerClassName="shrink-0"
+            dropdownLabel="More sandbox start options"
+            dropdownContent={<DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => void handleStartSandboxWithCustomTag()}>
+                    Start with custom tag
+                </DropdownMenuItem>
+            </DropdownMenuGroup>}
+        >
+            <Play data-icon="inline-start" />
+            Start sandbox
+        </SplitButton>
+    );
 
     const handleStopSandbox = async (sandboxName: string) => {
         try {
@@ -330,10 +373,7 @@ export default function AgentSandboxesCard({
                     </DrawerCardDescription>
                 </DrawerCardHeader>
                 {!readonly && (
-                    <Button onClick={handleStartSandbox} disabled={loading} size="sm" className="shrink-0">
-                        <Play className="mr-1 h-4 w-4" />
-                        Start sandbox
-                    </Button>
+                    renderStartSandboxActions()
                 )}
             </div>
 
@@ -346,10 +386,7 @@ export default function AgentSandboxesCard({
                             <EmptyDescription>Start a sandbox to create an agent workspace.</EmptyDescription>
                         </EmptyHeader>
                         {!readonly && <EmptyContent className="flex-row justify-center gap-2">
-                            <Button onClick={handleStartSandbox} disabled={loading} size="sm">
-                                <Play className="mr-1 h-4 w-4" />
-                                Start sandbox
-                            </Button>
+                            {renderStartSandboxActions()}
                         </EmptyContent>}
                     </Empty>
                 ) : (

@@ -215,7 +215,7 @@ class AgentSandboxTemplateBuilder {
             spec: {
                 volumeClaimTemplatesPolicy: perSandboxVolumes.length > 0 ? 'Overrides' : 'Disallowed',
                 ...(perSandboxVolumes.length > 0 ? { volumeClaimTemplates } : {}),
-                envVarsInjectionPolicy: 'Disallowed',
+                envVarsInjectionPolicy: 'Overrides', // allow overriding env vars and creating new ones for each sandbox claim
                 networkPolicyManagement: 'Managed',
                 ...(networkPolicy ? { networkPolicy } : {}),
                 service: true,

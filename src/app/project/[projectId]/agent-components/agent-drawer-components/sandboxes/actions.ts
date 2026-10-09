@@ -4,10 +4,10 @@ import { simpleAction, isAuthorizedWriteForWorkload, isAuthorizedReadForWorkload
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentAccessService, { AgentAccessView } from "@/server/services/agent-access.service";
 
-export const startSandbox = async (agentId: string) =>
+export const startSandbox = async (agentId: string, customTag?: string) =>
     simpleAction(async () => {
         const session = await isAuthorizedWriteForWorkload(agentId);
-        return agentRuntimeService.startSandbox(agentId, session.userId);
+        return agentRuntimeService.startSandbox(agentId, session.userId, { customTag });
     });
 
 export const stopSandbox = async (agentId: string, sandboxName: string) =>
