@@ -29,7 +29,7 @@ import { useDialog } from '@/frontend/states/zustand.states';
 import { DrawerTabScrollArea } from '@/app/project/[projectId]/app-components/app-drawer-components/app-details-drawer';
 import { NestedDrawerProvider } from '@/app/project/[projectId]/app-components/app-drawer-components/nested-drawer';
 import AgentSandboxesCard from './sandboxes/agent-sandboxes-card';
-import WorkloadBuildsTable from '@/components/custom/workload-builds-table';
+import { AgentBuildsGrid } from './agent-builds-grid';
 import { RenameAgentDialog } from '@/app/project/[projectId]/agent-components/rename-agent-dialog';
 import { AgentSandboxStatusActions } from './agent-sandbox-status-actions';
 import AgentSandboxDrawerSettings from './agent-sandbox-drawer-settings';
@@ -183,14 +183,7 @@ export function AgentSandboxDrawer({
                                 {!readonly && hasGitSource && (
                                     <TabsContent value="builds" className="flex min-h-0 min-w-0 flex-1 flex-col">
                                         <DrawerTabScrollArea>
-                                            <WorkloadBuildsTable
-                                                workloadId={agent.id}
-                                                workloadType="agent"
-                                                card
-                                                title="Builds"
-                                                description="Overview of build jobs for this Agent Sandbox."
-                                                hideSearchBar
-                                            />
+                                            <AgentBuildsGrid agentId={agent.id} />
                                         </DrawerTabScrollArea>
                                     </TabsContent>
                                 )}
