@@ -109,8 +109,8 @@ export function SidebarCient({
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuButton size="lg"
                   className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-qs-500 text-sidebar-primary-foreground">
-                    <QuickStackLogo className="size-5" color="light-all" />
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-gray-100 text-sidebar-primary-foreground">
+                    <QuickStackLogo className="h-5 w-auto" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight my-4 pl-1">
                     <span className="truncate font-semibold">QuickStack</span>

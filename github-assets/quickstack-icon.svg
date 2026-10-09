@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="226 256.5 796 840.5">
+  <title id="title">QuickStack icon — light mode</title>
+  <defs>
+    <linearGradient id="turquoise" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00D6C9"/>
+      <stop offset="1" stop-color="#00BFAF"/>
+    </linearGradient>
+    <linearGradient id="charcoal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#404B57"/>
+      <stop offset="1" stop-color="#28333F"/>
+    </linearGradient>
+  </defs>
+  <!-- Bottom layer -->
+  <path fill="url(#charcoal)" d="M 355 807 Q 339 799 322 807 L 246 848 Q 209 869 246 893 L 599 1090 Q 624 1104 649 1090 L 1002 893 Q 1039 869 1002 848 L 926 807 Q 909 799 893 807 L 649 941 Q 624 955 599 941 Z"/>
+  <!-- Middle layer -->
+  <path fill="url(#charcoal)" d="M 355 611 Q 339 603 322 611 L 246 653 Q 209 674 246 698 L 599 894 Q 624 908 649 894 L 1002 698 Q 1039 674 1002 653 L 926 611 Q 909 603 893 611 L 649 746 Q 624 760 599 746 Z"/>
+  <!-- Top layer -->
+  <path fill="url(#turquoise)" d="M 600 263 Q 624 250 648 263 L 1000 448 Q 1044 471 1000 496 L 648 695 Q 624 709 600 695 L 248 496 Q 204 471 248 448 Z"/>
+</svg>
