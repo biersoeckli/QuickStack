@@ -16,6 +16,8 @@ import { Sandbox, SandboxClaim } from "../adapter/api-clients/types/agents.model
 import { agentSandboxCustomTagZodModel } from "@/shared/model/agent-sandbox.model";
 import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
+import networkPolicyService from "./network-policy.service";
+import { AgentVolumeUtils } from "../utils/agent-volume.utils";
 
 const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
 
@@ -23,6 +25,14 @@ export type StartAgentSandboxOptions = {
     timeoutMs?: number;
     env?: Record<string, string>;
     idleTimeoutMinutes?: number;
+    customTag?: string;
+};
+
+export type AgentSandboxInfo = {
+    name: string;
+    status: DeploymentStatus;
+    namespace: string;
+    createdAt: string | null;
     customTag?: string;
 };
 
@@ -69,7 +79,7 @@ class AgentRuntimeService {
      * PER_CUSTOM_TAG Agent Volume. Agents without one keep the SandboxClaim path.
      */
     private usesDirectSandbox(agent: AgentExtendedModel): boolean {
-        return agent.agentVolumes.some(volume => volume.volumeType === 'PER_CUSTOM_TAG');
+        return AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
     }
 
     private sandboxMatchesTag(sandbox: Sandbox, agentId: string, customTag: string): boolean {
@@ -433,6 +443,12 @@ class AgentRuntimeService {
         const config = await this.buildStartSandboxConfig(agent, customTag);
         const sandboxName = KubeObjectNameUtils.toAgentSandboxName(agent.id, customTag);
 
+        await networkPolicyService.reconcileAgentSandboxNetworkPolicy(
+            agent.id,
+            namespace,
+            agent.agentNetworkPolicy ?? null,
+        );
+
         await agentSandboxAdapter.createSandbox(
             agentSandboxTemplateBuilder.buildSandboxResource(config, customTag, {
                 sandboxName,
@@ -728,13 +744,7 @@ class AgentRuntimeService {
      * Maps a raw k8s SandboxClaim object to an AgentSandboxInfo DTO.
      * Reusable by both listSandboxes and SSE watch delta events.
      */
-    mapClaimToSandbox(claim: SandboxClaim, namespace: string): {
-        name: string;
-        status: DeploymentStatus;
-        namespace: string;
-        createdAt: string | null;
-        customTag?: string;
-    } {
+    mapClaimToSandbox(claim: SandboxClaim, namespace: string): AgentSandboxInfo {
         const status = agentSandboxAdapter.resolveSandboxStatus(claim);
         return {
             name: claim.metadata?.name || 'unknown',
@@ -748,13 +758,7 @@ class AgentRuntimeService {
     /**
      * Maps a directly created base Sandbox object to an AgentSandboxInfo DTO.
      */
-    mapSandboxToSandbox(sandbox: Sandbox, namespace: string): {
-        name: string;
-        status: DeploymentStatus;
-        namespace: string;
-        createdAt: string | null;
-        customTag?: string;
-    } {
+    mapSandboxToSandbox(sandbox: Sandbox, namespace: string): AgentSandboxInfo {
         return {
             name: sandbox.metadata?.name || 'unknown',
             status: agentSandboxAdapter.resolveSandboxObjectStatus(sandbox),

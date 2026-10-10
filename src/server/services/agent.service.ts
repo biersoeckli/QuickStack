@@ -21,6 +21,7 @@ import agentDomainService from "./agent-domain.service";
 import agentVolumeService from "./agent-volume.service";
 import agentFileMountService from "./agent-file-mount.service";
 import agentNetworkPolicyService from "./agent-network-policy.service";
+import networkPolicyService from "./network-policy.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import crypto from "crypto";
 import buildService from "./build.service";
@@ -28,6 +29,7 @@ import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import agentSandboxTemplateBuilder, { AgentSandboxVolumeTemplateInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+import { AgentVolumeUtils } from "../utils/agent-volume.utils";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -443,7 +445,7 @@ class AgentService {
 
             // Agents with a PER_CUSTOM_TAG volume are cold-started by creating a
             // Sandbox directly, so they never use a warm pool.
-            const usesDirectSandbox = agent.agentVolumes.some(volume => volume.volumeType === 'PER_CUSTOM_TAG');
+            const usesDirectSandbox = AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
             await agentSandboxAdapter.reconcileSandboxWarmPool(
                 agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(
                     agent.id,
@@ -564,6 +566,7 @@ class AgentService {
         await secretService.deleteSecretSafe(KubeObjectNameUtils.toPullSecretId(agentId), namespace);
         await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
         await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
+        await networkPolicyService.deleteAgentSandboxNetworkPolicy(agentId, namespace);
 
         // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
         await dataAccess.client.$transaction(async (tx) => {

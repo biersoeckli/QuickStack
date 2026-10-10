@@ -15,6 +15,7 @@ import {
 import { ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
 import { Constants } from "@/shared/utils/constants";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
+import { AgentVolumeUtils } from "../utils/agent-volume.utils";
 
 type ResolvedSandboxTarget = {
     namespace: string;
@@ -142,7 +143,7 @@ class AgentSandboxService {
         }
         const namespace = agent.projectId;
 
-        if (agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG')) {
+        if (AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
             return await this.resolveDirectTarget(agentId, sandboxName, namespace);
         }
 

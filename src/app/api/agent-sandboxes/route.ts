@@ -1,7 +1,15 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
+import {
+    BASE_SANDBOX_API_GROUP,
+    CLAIM_PLURAL,
+    SANDBOX_API_GROUP,
+    SANDBOX_API_VERSION,
+    SANDBOX_PLURAL,
+} from "@/server/adapter/agent-sandbox.adapter";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
 import { isAuthorizedReadForWorkload, simpleRoute } from "@/server/utils/action-wrapper.utils";
+import { AgentVolumeUtils } from "@/server/utils/agent-volume.utils";
 import { Constants } from "@/shared/utils/constants";
 import * as k8s from '@kubernetes/client-node';
 import z from "zod";
@@ -45,10 +53,10 @@ export async function POST(request: Request) {
 
 
                 // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
-                const usesDirectSandbox = agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG');
+                const usesDirectSandbox = AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
                 const watchPath = usesDirectSandbox
-                    ? `/apis/agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxes`
-                    : `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`;
+                    ? `/apis/${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${SANDBOX_PLURAL}`
+                    : `/apis/${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${CLAIM_PLURAL}`;
                 const kc = k3s.getKubeConfig();
                 const watch = new k8s.Watch(kc);
                 console.log("[START] Starting watch for agent sandboxes in namespace", namespace);

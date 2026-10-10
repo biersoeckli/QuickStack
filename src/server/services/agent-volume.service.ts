@@ -31,10 +31,12 @@ class AgentVolumeService {
         existingVolumeTypes: string[],
         newVolumeType: AgentVolumeType,
     ) {
-        if (newVolumeType === 'PER_CUSTOM_TAG' && existingVolumeTypes.includes('PER_SANDBOX')) {
-            throw new ServiceException('Agent Volumes with Volume Type PER_SANDBOX and PER_CUSTOM_TAG cannot be combined on one Agent.');
-        }
-        if (newVolumeType === 'PER_SANDBOX' && existingVolumeTypes.includes('PER_CUSTOM_TAG')) {
+        const conflictingType = newVolumeType === 'PER_CUSTOM_TAG'
+            ? 'PER_SANDBOX'
+            : newVolumeType === 'PER_SANDBOX'
+                ? 'PER_CUSTOM_TAG'
+                : null;
+        if (conflictingType && existingVolumeTypes.includes(conflictingType)) {
             throw new ServiceException('Agent Volumes with Volume Type PER_SANDBOX and PER_CUSTOM_TAG cannot be combined on one Agent.');
         }
     }

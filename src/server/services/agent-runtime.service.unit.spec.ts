@@ -72,6 +72,12 @@ vi.mock('@/server/services/config-map.service', () => ({
         createOrUpdateConfigMapForAgent: vi.fn().mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] }),
     },
 }));
+vi.mock('@/server/services/network-policy.service', () => ({
+    default: {
+        reconcileAgentSandboxNetworkPolicy: vi.fn(),
+        deleteAgentSandboxNetworkPolicy: vi.fn(),
+    },
+}));
 vi.mock('@/server/adapter/litellm-api.adapter', () => ({
     default: {
         createVirtualKey: vi.fn(),
@@ -93,6 +99,7 @@ import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
 import secretService from '@/server/services/secret.service';
 import pvcService from '@/server/services/pvc.service';
 import configMapService from '@/server/services/config-map.service';
+import networkPolicyService from '@/server/services/network-policy.service';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
@@ -518,6 +525,7 @@ describe('agent-runtime.service', () => {
 
             expect(pvcService.ensureAgentTagPvc).toHaveBeenCalledWith(SANDBOX_NAMESPACE, tagVolume, 'alice');
             expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+            expect(networkPolicyService.reconcileAgentSandboxNetworkPolicy).toHaveBeenCalledWith(AGENT_ID, SANDBOX_NAMESPACE, null);
 
             const sandbox = vi.mocked(agentSandboxAdapter.createSandbox).mock.calls[0][0] as any;
             expect(sandbox.apiVersion).toBe('agents.x-k8s.io/v1beta1');

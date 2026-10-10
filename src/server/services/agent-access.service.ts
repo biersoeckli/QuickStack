@@ -6,6 +6,7 @@ import agentService from "./agent.service";
 import { RequesterIdentity, ensureReadAgent } from "../utils/shared-authorization.utils";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AuthProxyJwtUtils } from "../utils/agent-jwt.utils";
+import { AgentVolumeUtils } from "../utils/agent-volume.utils";
 
 export type AgentAccessView = 'agent' | 'files';
 
@@ -47,7 +48,7 @@ class AgentAccessService {
 
         const agent = await agentService.getById(agentId);
 
-        if (agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG')) {
+        if (AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
             const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, agent.projectId);
             if (!sandbox) {
                 throw new ServiceException('Agent sandbox not found.');
