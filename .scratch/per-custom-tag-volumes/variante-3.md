@@ -4,7 +4,7 @@ Status: ready-for-agent
 Variant: 3 (chosen)
 Branch: `feat/unify-project-workloads`
 
-> Variante 3 keeps the durable copy entirely inside the cluster: no S3, no restore/upload container, no SDK copy. A **Custom Tag** gets a stable PersistentVolumeClaim that survives the sandbox, implemented by creating the `Sandbox` directly instead of through `SandboxClaim` + `SandboxTemplate`. Variante 1 (S3 + init/sidecar) and Variante 2 (QuickStack SDK copy) are rejected; see [variante-1.md](./variante-1.md) and [variante-2.md](./variante-2.md).
+> Variante 3 keeps the durable copy entirely inside the cluster: no S3, no restore/upload container, no SDK copy. A **Custom Tag** gets a stable PersistentVolumeClaim that survives the sandbox, implemented by creating the `Sandbox` directly instead of through `SandboxClaim` + `SandboxTemplate`. Variante 1 (S3 + init/sidecar) and Variante 2 (QuickStack SDK copy) were rejected; ADR 0013 records the decision.
 
 ## Problem Statement
 
