@@ -157,13 +157,16 @@ export default function AgentVolumeEditOverlay({
                                     <SelectContent>
                                         <SelectItem value="ALL">All (Shared)</SelectItem>
                                         <SelectItem value="PER_SANDBOX">Per Sandbox</SelectItem>
+                                        <SelectItem value="PER_CUSTOM_TAG">Per Custom Tag</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormControl>
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared by every sandbox and persists after the sandbox is deleted.'
-                                    : 'Private to each sandbox and deleted with it.'}
+                                    : volumeType === 'PER_CUSTOM_TAG'
+                                        ? 'Private to each Custom Tag and persists across sandbox restarts, deletion and idle expiry.'
+                                        : 'Private to each sandbox and deleted with it.'}
                                 {' '}This cannot be changed after creation.
                             </FormDescription>
                             <FormMessage />
@@ -194,7 +197,9 @@ export default function AgentVolumeEditOverlay({
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared volumes require ReadWriteMany.'
-                                    : 'Per-sandbox volumes may use ReadWriteOnce.'}
+                                    : volumeType === 'PER_CUSTOM_TAG'
+                                        ? 'Per-Custom-Tag volumes may use ReadWriteOnce or ReadWriteMany.'
+                                        : 'Per-sandbox volumes may use ReadWriteOnce.'}
                                 {' '}This cannot be changed after creation.
                             </FormDescription>
                             <FormMessage />

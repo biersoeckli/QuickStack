@@ -1,9 +1,10 @@
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import {
+    BASE_SANDBOX_API_GROUP,
     SANDBOX_API_GROUP,
     SANDBOX_API_VERSION,
 } from "../adapter/agent-sandbox.adapter";
-import { SandboxClaim, SandboxTemplate, SandboxWarmPool } from "../adapter/api-clients/types/agents.models";
+import { Sandbox, SandboxClaim, SandboxTemplate, SandboxWarmPool } from "../adapter/api-clients/types/agents.models";
 import { Constants } from "@/shared/utils/constants";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import {
@@ -137,9 +138,17 @@ class AgentSandboxTemplateBuilder {
         }));
     }
 
-    buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
+    private buildPodTemplate(
+        agent: AgentSandboxTemplateConfig,
+        deploymentInfo: SandboxTemplateDeploymentInfo | undefined,
+        options: {
+            secretName: string;
+            env?: Record<string, string>;
+            annotations: Record<string, string>;
+            labels: Record<string, string>;
+        },
+    ): SandboxTemplate['spec']['podTemplate'] {
         const effectiveImage = agent.containerImageSource;
-        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const customCommand = ContainerCommangArgsUtils.parseStoredContainerCommandArray(agent.containerCommand);
         const customArgs = agent.containerArgs ? JSON.parse(agent.containerArgs) : null;
         const usesDefaultOpenCodeStartup = !agent.containerCommand && !customArgs;
@@ -184,11 +193,97 @@ class AgentSandboxTemplateBuilder {
                 name: 'workspace',
                 mountPath: '/srv',
             }];
+        const healthCheckProbe = this.buildHealthCheckProbe(agent);
+
+        return {
+            metadata: {
+                annotations: options.annotations,
+                labels: options.labels
+            },
+            spec: {
+                volumes,
+                ...(agent.runtimeClassName ? { runtimeClassName: agent.runtimeClassName } : {}),
+                ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),
+                containers: [{
+                    name: 'agent',
+                    image: effectiveImage,
+                    imagePullPolicy: 'Always',
+                    ...(usesDefaultOpenCodeStartup
+                        ? {}
+                        : {
+                            ...(customCommand ? { command: customCommand } : {}),
+                            ...(customArgs ? { args: customArgs } : {}),
+                        }),
+                    workingDir: workingDir,
+                    ports: agent.agentDomains.map((domain, index) => ({
+                        name: `port-${index + 1}`,
+                        containerPort: domain.port,
+                        protocol: 'TCP',
+                    })),
+                    volumeMounts: agentVolumeMounts,
+                    envFrom: [{ secretRef: { name: options.secretName } }],
+                    ...(options.env ? {
+                        env: Object.entries(options.env).map(([name, value]) => ({ name, value })),
+                    } : {}),
+                    ...(healthCheckProbe ? {
+                        // Agent sandboxes intentionally use startup and readiness probes only.
+                        // A liveness probe is not needed: startup gates initialization and
+                        // readiness controls when sandbox traffic may be routed.
+                        startupProbe: {
+                            ...healthCheckProbe,
+                            periodSeconds: 10,
+                            failureThreshold: 30,
+                            timeoutSeconds: 3,
+                        },
+                        readinessProbe: healthCheckProbe,
+                    } : {}),
+                    resources: {
+                        requests: {
+                            ...(agent.cpuRequest ? {
+                                cpu: `${agent.cpuRequest}m`,
+                            } : {}),
+                            ...(agent.memoryRequest ? {
+                                memory: `${agent.memoryRequest}M`,
+                            } : {}),
+                        },
+                        limits: {
+                            ...(agent.cpuLimit ? {
+                                cpu: `${agent.cpuLimit}m`,
+                            } : {}),
+                            ...(agent.memoryLimit ? {
+                                memory: `${agent.memoryLimit}M`,
+                            } : {}),
+                        },
+                    },
+                }, ...(agent.deployFileBrowser ? [{
+                    name: 'filebrowser',
+                    image: 'filebrowser/filebrowser:v2.31.2',
+                    imagePullPolicy: 'Always',
+                    args: [
+                        '--noauth',
+                        '--root', '/srv',
+                        '--baseurl', FILEBROWSER_BASE_URL,
+                        '--port', `${FILEBROWSER_PORT}`,
+                    ],
+                    ports: [{
+                        name: 'filebrowser-web',
+                        containerPort: FILEBROWSER_PORT,
+                        protocol: 'TCP',
+                    }],
+                    volumeMounts: filebrowserVolumeMounts,
+                }] : [])]
+            }
+        };
+    }
+
+    buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+
+        const perSandboxVolumes = agent.perSandboxVolumes;
         const volumeClaimTemplates = perSandboxVolumes.map(volume => this.buildVolumeClaimTemplate(volume, {
             [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: volume.id,
         }));
         const networkPolicy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy(agent.agentNetworkPolicy);
-        const healthCheckProbe = this.buildHealthCheckProbe(agent);
         const annotations = {
             [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
             [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
@@ -219,82 +314,67 @@ class AgentSandboxTemplateBuilder {
                 networkPolicyManagement: 'Managed',
                 ...(networkPolicy ? { networkPolicy } : {}),
                 service: true,
-                podTemplate: {
-                    metadata: {
-                        annotations,
-                        labels
-                    },
-                    spec: {
-                        volumes,
-                        ...(agent.runtimeClassName ? { runtimeClassName: agent.runtimeClassName } : {}),
-                        ...(deploymentInfo?.dockerPullSecretName ? { imagePullSecrets: [{ name: deploymentInfo.dockerPullSecretName }] } : {}),
-                        containers: [{
-                            name: 'agent',
-                            image: effectiveImage,
-                            imagePullPolicy: 'Always',
-                            ...(usesDefaultOpenCodeStartup
-                                ? {}
-                                : {
-                                    ...(customCommand ? { command: customCommand } : {}),
-                                    ...(customArgs ? { args: customArgs } : {}),
-                                }),
-                            workingDir: workingDir,
-                            ports: agent.agentDomains.map((domain, index) => ({
-                                name: `port-${index + 1}`,
-                                containerPort: domain.port,
-                                protocol: 'TCP',
-                            })),
-                            volumeMounts: agentVolumeMounts,
-                            envFrom: [{ secretRef: { name: secretName } }],
-                            ...(healthCheckProbe ? {
-                                // Agent sandboxes intentionally use startup and readiness probes only.
-                                // A liveness probe is not needed: startup gates initialization and
-                                // readiness controls when sandbox traffic may be routed.
-                                startupProbe: {
-                                    ...healthCheckProbe,
-                                    periodSeconds: 10,
-                                    failureThreshold: 30,
-                                    timeoutSeconds: 3,
-                                },
-                                readinessProbe: healthCheckProbe,
-                            } : {}),
-                            resources: {
-                                requests: {
-                                    ...(agent.cpuRequest ? {
-                                        cpu: `${agent.cpuRequest}m`,
-                                    } : {}),
-                                    ...(agent.memoryRequest ? {
-                                        memory: `${agent.memoryRequest}M`,
-                                    } : {}),
-                                },
-                                limits: {
-                                    ...(agent.cpuLimit ? {
-                                        cpu: `${agent.cpuLimit}m`,
-                                    } : {}),
-                                    ...(agent.memoryLimit ? {
-                                        memory: `${agent.memoryLimit}M`,
-                                    } : {}),
-                                },
-                            },
-                        }, ...(agent.deployFileBrowser ? [{
-                            name: 'filebrowser',
-                            image: 'filebrowser/filebrowser:v2.31.2',
-                            imagePullPolicy: 'Always',
-                            args: [
-                                '--noauth',
-                                '--root', '/srv',
-                                '--baseurl', FILEBROWSER_BASE_URL,
-                                '--port', `${FILEBROWSER_PORT}`,
-                            ],
-                            ports: [{
-                                name: 'filebrowser-web',
-                                containerPort: FILEBROWSER_PORT,
-                                protocol: 'TCP',
-                            }],
-                            volumeMounts: filebrowserVolumeMounts,
-                        }] : [])]
-                    }
-                }
+                podTemplate: this.buildPodTemplate(agent, deploymentInfo, { secretName, annotations, labels }),
+            }
+        };
+    }
+
+    /**
+     * Builds a directly created base Sandbox for an Agent that carries a PER_CUSTOM_TAG
+     * Agent Volume. Static PersistentVolumeClaims (shared ALL volumes and the ensured
+     * per-Custom-Tag claims) are attached through podTemplate.spec.volumes.
+     */
+    buildSandboxResource(
+        agent: AgentSandboxTemplateConfig,
+        customTag: string,
+        options: {
+            sandboxName: string;
+            idleTimeoutMinutes?: number;
+            env?: Record<string, string>;
+            deploymentInfo?: SandboxTemplateDeploymentInfo;
+        },
+    ): Sandbox {
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
+        const deploymentInfo = options.deploymentInfo;
+        const annotations = {
+            [Constants.QS_ANNOTATION_UPDATED_AT]: `${new Date().toISOString()}`,
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+            [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag,
+            ...(deploymentInfo?.deploymentId ? { [Constants.QS_ANNOTATION_DEPLOYMENT_ID]: deploymentInfo.deploymentId } : {}),
+            ...(deploymentInfo?.buildJobName ? { buildJobName: deploymentInfo.buildJobName } : {}),
+            ...(deploymentInfo?.gitCommitHash ? { [Constants.QS_ANNOTATION_GIT_COMMIT]: deploymentInfo.gitCommitHash } : {}),
+            ...(deploymentInfo?.gitCommitMessage ? { [Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE]: deploymentInfo.gitCommitMessage } : {}),
+        };
+        const labels = {
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
+            [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag,
+        };
+        const podTemplate = this.buildPodTemplate(agent, deploymentInfo, {
+            secretName,
+            env: options.env,
+            annotations,
+            labels,
+        });
+
+        return {
+            apiVersion: `${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`,
+            kind: 'Sandbox',
+            metadata: {
+                name: options.sandboxName,
+                namespace: agent.projectId,
+                annotations,
+                labels
+            },
+            spec: {
+                operatingMode: 'Running',
+                shutdownPolicy: 'Delete',
+                ...(options.idleTimeoutMinutes ? {
+                    shutdownTime: new Date(Date.now() + options.idleTimeoutMinutes * 60_000).toISOString(),
+                } : {}),
+                service: true,
+                podTemplate: podTemplate as Sandbox['spec']['podTemplate'],
             }
         };
     }

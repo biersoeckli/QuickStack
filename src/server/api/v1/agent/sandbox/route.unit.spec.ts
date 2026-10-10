@@ -2,6 +2,7 @@ const routeMocks = vi.hoisted(() => ({
     identity: null as any,
     getByIdOrUndefined: vi.fn(),
     createSandbox: vi.fn(),
+    deleteTag: vi.fn(),
     suspendSandbox: vi.fn(),
     resumeSandbox: vi.fn(),
     resumeSandboxByTag: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@/server/services/agent-sandbox.service', () => ({
         createSandbox: routeMocks.createSandbox,
         getSandbox: vi.fn(),
         deleteSandbox: vi.fn(),
+        deleteTag: routeMocks.deleteTag,
         suspendSandbox: routeMocks.suspendSandbox,
         resumeSandbox: routeMocks.resumeSandbox,
         resumeSandboxByTag: routeMocks.resumeSandboxByTag,
@@ -310,6 +312,37 @@ describe('agent sandbox routes', () => {
         }));
 
         expect(response.status).toBe(409);
+    });
+
+    it('deletes all data of a Custom Tag', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/tags/feature-branch', {
+            method: 'DELETE',
+        }));
+
+        expect(response.status).toBe(200);
+        expect(routeMocks.deleteTag).toHaveBeenCalledWith('agent-1', 'feature-branch');
+        expect(routeMocks.ensureWriteAgent).toHaveBeenCalledWith(routeMocks.identity, 'agent-1');
+    });
+
+    it('returns 409 when deleting a Custom Tag that still has a sandbox', async () => {
+        routeMocks.deleteTag.mockRejectedValue(
+            new ApiConflictException('Conflict', 'Custom Tag "feature-branch" is currently used by a running sandbox.'),
+        );
+
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/tags/feature-branch', {
+            method: 'DELETE',
+        }));
+
+        expect(response.status).toBe(409);
+    });
+
+    it('rejects a delete-tag with an empty Custom Tag', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/tags/%20%20', {
+            method: 'DELETE',
+        }));
+
+        expect(response.status).not.toBe(200);
+        expect(routeMocks.deleteTag).not.toHaveBeenCalled();
     });
 
     it('surfaces the suspended error for a command on a suspended sandbox', async () => {

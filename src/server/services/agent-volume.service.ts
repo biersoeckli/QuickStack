@@ -9,6 +9,7 @@ import {
     agentVolumeEditZodModel,
 } from "@/shared/model/volume-edit.model";
 import { Prisma } from "@prisma/client";
+import pvcService from "./pvc.service";
 
 class AgentVolumeService {
 
@@ -23,6 +24,18 @@ class AgentVolumeService {
     private assertAccessModeAllowed(volumeType: AgentVolumeType, accessMode: AgentVolumeAccessMode) {
         if (volumeType === 'ALL' && accessMode !== 'ReadWriteMany') {
             throw new ServiceException('Agent Volumes with Volume Type ALL require ReadWriteMany access mode.');
+        }
+    }
+
+    private assertVolumeTypesCompatible(
+        existingVolumeTypes: string[],
+        newVolumeType: AgentVolumeType,
+    ) {
+        if (newVolumeType === 'PER_CUSTOM_TAG' && existingVolumeTypes.includes('PER_SANDBOX')) {
+            throw new ServiceException('Agent Volumes with Volume Type PER_SANDBOX and PER_CUSTOM_TAG cannot be combined on one Agent.');
+        }
+        if (newVolumeType === 'PER_SANDBOX' && existingVolumeTypes.includes('PER_CUSTOM_TAG')) {
+            throw new ServiceException('Agent Volumes with Volume Type PER_SANDBOX and PER_CUSTOM_TAG cannot be combined on one Agent.');
         }
     }
 
@@ -57,6 +70,13 @@ class AgentVolumeService {
                 if (existing.accessMode !== accessMode) {
                     throw new ServiceException('Access mode cannot be changed for existing volumes');
                 }
+
+                const siblingVolumes = await db.agentVolume.findMany({
+                    where: { agentId: input.agentId, id: { not: input.id } },
+                    select: { volumeType: true },
+                });
+                this.assertVolumeTypesCompatible(siblingVolumes.map(v => v.volumeType), volumeType);
+
                 await db.agentVolume.update({
                     where: { id: input.id },
                     data: {
@@ -71,6 +91,13 @@ class AgentVolumeService {
                 const volumeType = (parsed.volumeType ?? 'ALL') as AgentVolumeType;
                 const accessMode = (parsed.accessMode ?? 'ReadWriteMany') as AgentVolumeAccessMode;
                 this.assertAccessModeAllowed(volumeType, accessMode);
+
+                const siblingVolumes = await db.agentVolume.findMany({
+                    where: { agentId: input.agentId },
+                    select: { volumeType: true },
+                });
+                this.assertVolumeTypesCompatible(siblingVolumes.map(v => v.volumeType), volumeType);
+
                 await db.agentVolume.create({
                     data: {
                         containerMountPath: parsed.containerMountPath,
@@ -103,6 +130,9 @@ class AgentVolumeService {
             await db.agentVolume.delete({
                 where: { id: volumeId },
             });
+            if (volume.volumeType === 'PER_CUSTOM_TAG') {
+                await pvcService.deletePvcsForAgentVolume(volume.agent.projectId, volume.agentId, volume.id);
+            }
         } finally {
             if (!tx) {
                 revalidateTag(Tags.agent(volume.agentId));

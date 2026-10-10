@@ -46,6 +46,29 @@ class AgentAccessService {
         ensureReadAgent(identity, agentId);
 
         const agent = await agentService.getById(agentId);
+
+        if (agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG')) {
+            const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, agent.projectId);
+            if (!sandbox) {
+                throw new ServiceException('Agent sandbox not found.');
+            }
+            if (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] !== agentId) {
+                throw new ServiceException('Agent sandbox does not belong to this Agent.');
+            }
+            const directStatus = agentSandboxAdapter.resolveSandboxObjectStatus(sandbox);
+            if (directStatus === 'SUSPENDED') {
+                throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
+            }
+            if (directStatus !== 'DEPLOYED') {
+                throw new ServiceException('Agent sandbox is not deployed.');
+            }
+            return {
+                agentId,
+                sandboxName,
+                namespace: agent.projectId,
+            };
+        }
+
         const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, agent.projectId);
         if (!claim) {
             throw new ServiceException('Agent sandbox not found.');

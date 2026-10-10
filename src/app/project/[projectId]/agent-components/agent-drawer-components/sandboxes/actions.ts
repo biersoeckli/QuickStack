@@ -28,6 +28,12 @@ export const resumeSandbox = async (agentId: string, sandboxName: string) =>
         await agentRuntimeService.resumeSandbox(agentId, sandboxName);
     });
 
+export const deleteAgentTag = async (agentId: string, customTag: string) =>
+    simpleAction(async () => {
+        await isAuthorizedWriteForWorkload(agentId);
+        await agentRuntimeService.deleteTag(agentId, customTag);
+    });
+
 export const getSandboxes = async (agentId: string) =>
     simpleAction(async () => {
         const session = await isAuthorizedWriteForWorkload(agentId);

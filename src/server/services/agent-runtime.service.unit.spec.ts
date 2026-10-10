@@ -26,6 +26,10 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', async (importOriginal) => {
             getSandboxClaim: vi.fn(),
             getSandbox: vi.fn(),
             listSandboxClaims: vi.fn(),
+            createSandbox: vi.fn(),
+            deleteSandbox: vi.fn(),
+            listSandboxes: vi.fn(),
+            waitForSandboxObjectReady: vi.fn(),
             hasActiveClaim: vi.fn(),
             waitForSandboxReady: vi.fn(),
             waitForSandboxSuspended: vi.fn(),
@@ -35,10 +39,13 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', async (importOriginal) => {
             deleteSandboxTemplate: vi.fn(),
             deleteSandboxWarmPool: vi.fn(),
             resolveSandboxStatus: actual.resolveSandboxStatus,
+            resolveSandboxObjectStatus: actual.resolveSandboxObjectStatus,
         },
         SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
         SANDBOX_API_VERSION: 'v1beta1',
+        BASE_SANDBOX_API_GROUP: 'agents.x-k8s.io',
         resolveSandboxStatus: actual.resolveSandboxStatus,
+        resolveSandboxObjectStatus: actual.resolveSandboxObjectStatus,
     };
 });
 vi.mock('@/server/services/secret.service', () => ({
@@ -52,9 +59,17 @@ vi.mock('@/server/services/secret.service', () => ({
 vi.mock('@/server/services/pvc.service', () => ({
     default: {
         ensurePvcForUserAgent: vi.fn(),
+        ensureAgentTagPvc: vi.fn(),
         ensureWorkspacePvcForUserAgent: vi.fn(),
         deleteAllPvcForAgent: vi.fn(),
         deleteUnusedPvcForAgent: vi.fn(),
+        deletePvcForAgentTag: vi.fn(),
+        deletePvcsForAgentVolume: vi.fn(),
+    },
+}));
+vi.mock('@/server/services/config-map.service', () => ({
+    default: {
+        createOrUpdateConfigMapForAgent: vi.fn().mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] }),
     },
 }));
 vi.mock('@/server/adapter/litellm-api.adapter', () => ({
@@ -76,6 +91,8 @@ import dataAccess from '@/server/adapter/db.client';
 import agentSandboxAdapter from '@/server/adapter/agent-sandbox.adapter';
 import liteLlmApiAdapter from '@/server/adapter/litellm-api.adapter';
 import secretService from '@/server/services/secret.service';
+import pvcService from '@/server/services/pvc.service';
+import configMapService from '@/server/services/config-map.service';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
@@ -142,7 +159,10 @@ describe('agent-runtime.service', () => {
         vi.resetAllMocks();
         vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
         vi.mocked(agentSandboxAdapter.listSandboxClaims).mockResolvedValue([] as any);
+        vi.mocked(agentSandboxAdapter.listSandboxes).mockResolvedValue([] as any);
         vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
+        vi.mocked(agentSandboxAdapter.waitForSandboxObjectReady).mockResolvedValue(undefined);
+        vi.mocked(configMapService.createOrUpdateConfigMapForAgent).mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] });
     });
 
     describe('startSandbox', () => {
@@ -457,6 +477,159 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalled();
+        });
+    });
+
+    describe('PER_CUSTOM_TAG direct Sandbox path', () => {
+        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
+        const sharedVolume = { id: 'vol-shared', agentId: AGENT_ID, containerMountPath: '/shared', size: 2048, volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
+
+        function mockDirectAgent() {
+            return mockAgent({ containerImageSource: 'registry.example.com/agent:latest', agentVolumes: [sharedVolume, tagVolume] });
+        }
+
+        function stubPvcs() {
+            vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({
+                volume: { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } } as any,
+                volumeMount: { name: 'vol-shared', mountPath: '/shared' } as any,
+            });
+            vi.mocked(pvcService.ensureAgentTagPvc).mockResolvedValue({
+                volume: { name: 'vol-tag', persistentVolumeClaim: { claimName: 'aw-tag-alice' } } as any,
+                volumeMount: { name: 'vol-tag', mountPath: '/workspace' } as any,
+            });
+        }
+
+        it('rejects a start without a Custom Tag before creating any resource', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+
+            await expect(agentRuntimeService.startSandbox(AGENT_ID, USER_ID)).rejects.toThrow('A Custom Tag is required');
+
+            expect(agentSandboxAdapter.createSandbox).not.toHaveBeenCalled();
+            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+            expect(pvcService.ensureAgentTagPvc).not.toHaveBeenCalled();
+        });
+
+        it('ensures per-Custom-Tag PVCs, builds a static-PVC Sandbox, and waits for readiness', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            stubPvcs();
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice' });
+
+            expect(pvcService.ensureAgentTagPvc).toHaveBeenCalledWith(SANDBOX_NAMESPACE, tagVolume, 'alice');
+            expect(agentSandboxAdapter.createSandboxClaim).not.toHaveBeenCalled();
+
+            const sandbox = vi.mocked(agentSandboxAdapter.createSandbox).mock.calls[0][0] as any;
+            expect(sandbox.apiVersion).toBe('agents.x-k8s.io/v1beta1');
+            expect(sandbox.kind).toBe('Sandbox');
+            expect(sandbox.metadata.name).toMatch(/^as-/);
+            expect(sandbox.metadata.labels).toEqual(expect.objectContaining({
+                'qs-agent-id': AGENT_ID,
+                'qs-custom-tag': 'alice',
+            }));
+            expect(sandbox.spec.operatingMode).toBe('Running');
+            expect(sandbox.spec.shutdownPolicy).toBe('Delete');
+            expect(sandbox.spec.service).toBe(true);
+            expect(sandbox.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+                { name: 'vol-tag', persistentVolumeClaim: { claimName: 'aw-tag-alice' } },
+            ]));
+            expect(sandbox.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/shared' },
+                { name: 'vol-tag', mountPath: '/workspace' },
+            ]));
+            expect(sandbox.spec.podTemplate.spec.containers[0].envFrom).toEqual([
+                { secretRef: { name: expect.stringContaining('secret-') } },
+            ]);
+            expect(sandbox.spec.podTemplate.spec.containers[0].env).toEqual(expect.arrayContaining([
+                { name: 'QS_VIRTUAL_KEY', value: 'sk-v-test-key' },
+            ]));
+            expect(agentSandboxAdapter.waitForSandboxObjectReady).toHaveBeenCalledWith(
+                expect.stringMatching(/^as-/),
+                SANDBOX_NAMESPACE,
+            );
+        });
+
+        it('mounts ALL and PER_CUSTOM_TAG volumes into the filebrowser sidecar', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                containerImageSource: 'registry.example.com/agent:latest',
+                deployFileBrowser: true,
+                agentVolumes: [sharedVolume, tagVolume],
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            stubPvcs();
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice' });
+
+            const sandbox = vi.mocked(agentSandboxAdapter.createSandbox).mock.calls[0][0] as any;
+            const filebrowser = sandbox.spec.podTemplate.spec.containers.find((container: any) => container.name === 'filebrowser');
+            expect(filebrowser.volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/srv/vol-shared' },
+                { name: 'vol-tag', mountPath: '/srv/vol-tag' },
+            ]));
+        });
+
+        it('sets the Sandbox shutdownTime from the idle timeout', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            stubPvcs();
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice', idleTimeoutMinutes: 30 });
+
+            const sandbox = vi.mocked(agentSandboxAdapter.createSandbox).mock.calls[0][0] as any;
+            expect(new Date(sandbox.spec.shutdownTime).getTime()).toBeGreaterThan(Date.now());
+        });
+
+        it('deletes the direct Sandbox on stop without touching the per-Custom-Tag PVCs', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+
+            await agentRuntimeService.stopSandbox(AGENT_ID, 'as-abc');
+
+            expect(agentSandboxAdapter.deleteSandbox).toHaveBeenCalledWith('as-abc', SANDBOX_NAMESPACE);
+            expect(agentSandboxAdapter.deleteSandboxClaim).not.toHaveBeenCalled();
+            expect(pvcService.deletePvcForAgentTag).not.toHaveBeenCalled();
+            expect(pvcService.deleteAllPvcForAgent).not.toHaveBeenCalled();
+        });
+
+        it('maps direct Sandboxes in listSandboxes', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+            vi.mocked(agentSandboxAdapter.listSandboxes).mockResolvedValue([
+                {
+                    metadata: {
+                        name: 'as-abc',
+                        labels: { 'qs-agent-id': AGENT_ID, 'qs-custom-tag': 'alice' },
+                        creationTimestamp: '2026-01-01T00:00:00Z',
+                    },
+                },
+            ] as any);
+
+            const sandboxes = await agentRuntimeService.listSandboxes(AGENT_ID);
+
+            expect(sandboxes).toHaveLength(1);
+            expect(sandboxes[0].name).toBe('as-abc');
+            expect(sandboxes[0].customTag).toBe('alice');
+        });
+    });
+
+    describe('deleteTag', () => {
+        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
+
+        it('rejects while a sandbox with the tag exists', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ agentVolumes: [tagVolume] }) as any);
+            vi.mocked(agentSandboxAdapter.listSandboxes).mockResolvedValue([
+                { metadata: { name: 'as-abc', labels: { 'qs-agent-id': AGENT_ID, 'qs-custom-tag': 'alice' } } },
+            ] as any);
+
+            await expect(agentRuntimeService.deleteTag(AGENT_ID, 'alice')).rejects.toThrow('currently used');
+            expect(pvcService.deletePvcForAgentTag).not.toHaveBeenCalled();
+        });
+
+        it('deletes the tag PVCs when no sandbox with the tag exists', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ agentVolumes: [tagVolume] }) as any);
+
+            await agentRuntimeService.deleteTag(AGENT_ID, 'alice');
+
+            expect(pvcService.deletePvcForAgentTag).toHaveBeenCalledWith(SANDBOX_NAMESPACE, AGENT_ID, 'alice');
         });
     });
 

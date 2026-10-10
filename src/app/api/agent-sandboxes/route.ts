@@ -44,12 +44,16 @@ export async function POST(request: Request) {
                 send({ type: 'FULL', data: agentSandboxes });
 
 
-                // 2. Watch for changes — only for labeled claims of this agent
+                // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
+                const usesDirectSandbox = agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG');
+                const watchPath = usesDirectSandbox
+                    ? `/apis/agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxes`
+                    : `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`;
                 const kc = k3s.getKubeConfig();
                 const watch = new k8s.Watch(kc);
                 console.log("[START] Starting watch for agent sandboxes in namespace", namespace);
                 watchRequest = await watch.watch(
-                    `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`,
+                    watchPath,
                     { labelSelector: `${Constants.QS_ANNOTATION_AGENT_ID}=${inputParam.agentId}` },
                     async (type, apiObj) => {
                         if (shouldStopStreaming) return;
@@ -63,8 +67,10 @@ export async function POST(request: Request) {
                             return;
                         }
 
-                        // ADDED / MODIFIED: map full claim to sandbox DTO
-                        const sandbox = agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
+                        // ADDED / MODIFIED: map full object to sandbox DTO
+                        const sandbox = usesDirectSandbox
+                            ? agentRuntimeService.mapSandboxToSandbox(apiObj, namespace)
+                            : agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
                         send({ type, sandbox });
                     },
                     (err) => {

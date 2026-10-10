@@ -91,8 +91,61 @@ class AgentSandboxService {
         return claim;
     }
 
+    private async resolveDirectTarget(agentId: string, sandboxName: string, namespace: string): Promise<ResolvedSandboxTarget> {
+        const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, namespace);
+        if (!sandbox) {
+            throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
+        }
+        if (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] !== agentId) {
+            throw new ServiceException('Agent sandbox does not belong to this Agent.');
+        }
+
+        const status = agentSandboxAdapter.resolveSandboxObjectStatus(sandbox);
+        const createdAt = sandbox.metadata?.creationTimestamp ?? null;
+        const customTag = sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
+            ?? sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
+            ?? null;
+
+        if (status === 'SUSPENDED') {
+            return { namespace, sandboxName, sandboxObjectName: sandboxName, podName: '', containerName: '', status, createdAt, customTag };
+        }
+
+        const selector = sandbox.status?.selector;
+        if (!selector) {
+            throw new ServiceException('Agent sandbox pod selector not found.');
+        }
+
+        const pods = await k3s.core.listNamespacedPod({ namespace, labelSelector: selector });
+        const pod = pods.items.find((item) => item.status?.phase === 'Running') ?? pods.items[0];
+        const podName = pod?.metadata?.name;
+        const containerName = pod?.spec?.containers?.[0]?.name;
+        if (!podName || !containerName) {
+            throw new ApiNotFoundException('Not Found', 'Agent sandbox pod not found.');
+        }
+
+        return {
+            namespace,
+            sandboxName,
+            sandboxObjectName: sandboxName,
+            podName,
+            containerName,
+            status,
+            createdAt,
+            customTag,
+        };
+    }
+
     private async resolveTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
-        const namespace = await this.getAgentNamespace(agentId);
+        const agent = await agentService.getByIdOrUndefined(agentId);
+        if (!agent) {
+            throw new ApiNotFoundException('Not Found', 'Agent not found.');
+        }
+        const namespace = agent.projectId;
+
+        if (agent.agentVolumes.some((volume) => volume.volumeType === 'PER_CUSTOM_TAG')) {
+            return await this.resolveDirectTarget(agentId, sandboxName, namespace);
+        }
+
         const claim = await this.getClaimForAgent(agentId, sandboxName, namespace);
         const sandboxObjectName = claim.status?.sandbox?.name;
         if (!sandboxObjectName) {
@@ -326,6 +379,10 @@ class AgentSandboxService {
     async deleteSandbox(agentId: string, sandboxName: string): Promise<void> {
         await this.getSandbox(agentId, sandboxName);
         await agentRuntimeService.stopSandbox(agentId, sandboxName);
+    }
+
+    async deleteTag(agentId: string, customTag: string): Promise<void> {
+        await agentRuntimeService.deleteTag(agentId, customTag);
     }
 
     async suspendSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {

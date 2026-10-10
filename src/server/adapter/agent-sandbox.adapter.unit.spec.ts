@@ -6,13 +6,14 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
             createNamespacedCustomObject: vi.fn(),
             patchNamespacedCustomObject: vi.fn(),
             deleteNamespacedCustomObject: vi.fn(),
+            listNamespacedCustomObject: vi.fn(),
         },
     },
     kubernetesPatchOptions: vi.fn((strategy: unknown) => strategy),
 }));
 
 import k3s from '@/server/adapter/kubernetes-api.adapter';
-import agentSandboxAdapter from './agent-sandbox.adapter';
+import agentSandboxAdapter, { resolveSandboxObjectStatus } from './agent-sandbox.adapter';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
 describe('AgentSandboxAdapter', () => {
@@ -308,6 +309,86 @@ describe('AgentSandboxAdapter', () => {
             const result = await agentSandboxAdapter.getSandbox(name, namespace);
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('direct Sandbox operations', () => {
+        const baseSandbox = {
+            apiVersion: 'agents.x-k8s.io/v1beta1',
+            kind: 'Sandbox',
+            metadata: { name, namespace },
+            spec: { operatingMode: 'Running', shutdownPolicy: 'Delete' },
+        } as any;
+
+        it('creates a base Sandbox in the agents.x-k8s.io group', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { code: 404 }),
+            );
+
+            await agentSandboxAdapter.createSandbox(baseSandbox);
+
+            expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    group: 'agents.x-k8s.io',
+                    version: 'v1beta1',
+                    namespace,
+                    plural: 'sandboxes',
+                    body: baseSandbox,
+                }),
+            );
+        });
+
+        it('rejects creating a base Sandbox that already exists', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue(baseSandbox as any);
+
+            await expect(agentSandboxAdapter.createSandbox(baseSandbox)).rejects.toThrow('already exists');
+            expect(k3s.customObjects.createNamespacedCustomObject).not.toHaveBeenCalled();
+        });
+
+        it('lists base Sandboxes in the agents.x-k8s.io group', async () => {
+            vi.mocked(k3s.customObjects.listNamespacedCustomObject).mockResolvedValue({ items: [baseSandbox] } as any);
+
+            const result = await agentSandboxAdapter.listSandboxes(namespace, 'qs-agent-id=agent-test');
+
+            expect(result).toEqual([baseSandbox]);
+            expect(k3s.customObjects.listNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    group: 'agents.x-k8s.io',
+                    version: 'v1beta1',
+                    namespace,
+                    plural: 'sandboxes',
+                    labelSelector: 'qs-agent-id=agent-test',
+                }),
+            );
+        });
+
+        it('deletes a base Sandbox and tolerates a missing one', async () => {
+            vi.mocked(k3s.customObjects.deleteNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { code: 404 }),
+            );
+
+            await expect(agentSandboxAdapter.deleteSandbox(name, namespace)).resolves.toBeUndefined();
+
+            expect(k3s.customObjects.deleteNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({ group: 'agents.x-k8s.io', namespace, plural: 'sandboxes', name }),
+            );
+        });
+
+        it('waits for a base Sandbox Ready condition', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
+                ...baseSandbox,
+                status: { conditions: [{ type: 'Ready', status: 'True' }] },
+            } as any);
+
+            await expect(
+                agentSandboxAdapter.waitForSandboxObjectReady(name, namespace, 5_000, 100),
+            ).resolves.toBeUndefined();
+        });
+
+        it('resolves the status of a base Sandbox', () => {
+            expect(resolveSandboxObjectStatus({ ...baseSandbox, spec: { operatingMode: 'Suspended' } } as any)).toBe('SUSPENDED');
+            expect(resolveSandboxObjectStatus({ ...baseSandbox, status: { conditions: [{ type: 'Ready', status: 'True' }] } } as any)).toBe('DEPLOYED');
+            expect(resolveSandboxObjectStatus(null)).toBe('SHUTDOWN');
         });
     });
 

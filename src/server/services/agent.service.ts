@@ -441,8 +441,15 @@ class AgentService {
                 gitCommitMessage,
             }));
 
+            // Agents with a PER_CUSTOM_TAG volume are cold-started by creating a
+            // Sandbox directly, so they never use a warm pool.
+            const usesDirectSandbox = agent.agentVolumes.some(volume => volume.volumeType === 'PER_CUSTOM_TAG');
             await agentSandboxAdapter.reconcileSandboxWarmPool(
-                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
+                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(
+                    agent.id,
+                    agent.project.id,
+                    usesDirectSandbox ? 0 : agent.warmPoolReplicas,
+                ),
             );
 
             // Reconcile agent domain ingresses — clean up orphaned, then ensure current
