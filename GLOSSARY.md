@@ -191,11 +191,11 @@ A **Volume** attached to an **App**, optionally shareable with other Apps in the
 _Avoid_: app storage, app disk
 
 **Agent Volume**:
-A **Volume** attached to an **Agent**, without backup scheduling. An Agent Volume is not shareable with other Agents or Apps. Its **Volume Type** is either a **Shared Agent Volume** or a **Per-Sandbox Agent Volume**.
+A **Volume** attached to an **Agent**, without backup scheduling. An Agent Volume is not shareable with other Agents or Apps. Its **Volume Type** is a **Shared Agent Volume**, a **Per-Sandbox Agent Volume**, or a **Per-Custom-Tag Agent Volume**.
 _Avoid_: agent storage, agent disk
 
 **Volume Type**:
-The sharing and provisioning model of an **Agent Volume**: `ALL` (a **Shared Agent Volume**) or `PER_SANDBOX` (a **Per-Sandbox Agent Volume**).
+The sharing and provisioning model of an **Agent Volume**: `ALL` (a **Shared Agent Volume**), `PER_SANDBOX` (a **Per-Sandbox Agent Volume**), or `PER_CUSTOM_TAG` (a **Per-Custom-Tag Agent Volume**).
 _Avoid_: volume mode
 
 **Shared Agent Volume**:
@@ -204,10 +204,14 @@ _Avoid_: shared disk
 
 **Per-Sandbox Agent Volume**:
 An **Agent Volume** of Volume Type `PER_SANDBOX`. It is provisioned for one Agent Sandbox instance and is deleted with that sandbox. A **Custom Tag** distinguishes the sandbox it belonged to.
-_Avoid_: per-tag volume, isolated volume
+_Avoid_: isolated volume
+
+**Per-Custom-Tag Agent Volume**:
+An **Agent Volume** of Volume Type `PER_CUSTOM_TAG`. Its data belongs to a **Custom Tag** rather than to a sandbox, backed by a QuickStack-managed PersistentVolumeClaim per tag that outlives the sandbox.
+_Avoid_: per-tag volume, tag storage
 
 **Custom Tag**:
-The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes**. It is unique per **Agent** among existing sandboxes, so it is also a stable handle for **Resume**. It stays metadata for naming and is never used to derive Kubernetes names.
+The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes** and **Per-Custom-Tag Agent Volumes**. It is unique per **Agent** among existing sandboxes, so it is also a stable handle for **Resume**. It is encoded to derive the per-tag PersistentVolumeClaim name and is never used raw in a Kubernetes name.
 _Avoid_: sandbox name, label
 
 **Suspend**:
@@ -375,6 +379,7 @@ _Avoid_: manual initial port requirement
 - A **Suspended Sandbox** can be **Resumed** by its sandbox name or by its **Custom Tag**.
 - **Suspend** operates on the Sandbox and keeps it; **Stop** deletes the **SandboxClaim** and everything it owns.
 - A **Custom Tag** is unique per **Agent** among existing sandboxes and is reusable after its sandbox is stopped.
+- A **Per-Custom-Tag Agent Volume** is backed by one PersistentVolumeClaim per **Custom Tag**, owned by QuickStack and not deleted with the sandbox.
 - QuickStack uses a **LiteLLM Admin Key** to list **LiteLLM Model Aliases** and manage Agent virtual keys.
 - A **Project Workload** means an **App** or an **Agent** inside a **Project**.
 - A **Workload Permission** belongs to exactly one **Project Workload**.
@@ -451,6 +456,9 @@ _Avoid_: manual initial port requirement
 
 > **Dev:** "If an **App** uses an **App Node Port**, should a restrictive ingress policy still block that node-level traffic?"
 > **Domain expert:** "No — creating the **App Node Port** is the explicit decision to expose that one container port/protocol through the cluster node."
+
+> **Dev:** "When I Stop a sandbox with tag `alice`, is its workspace gone?"
+> **Domain expert:** "No. A **Per-Custom-Tag Agent Volume** is backed by a per-tag PersistentVolumeClaim that outlives the sandbox, so starting tag `alice` again reuses the same workspace."
 
 ## Flagged Ambiguities
 

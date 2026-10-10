@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useDialog, useInputDialog } from "@/frontend/states/zustand.states";
+import { useConfirmDialog, useDialog, useInputDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { Bot, ChevronDown, ExternalLink, Files, Filter, Logs, Pause, Play, PlayIcon, Search, Square, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { startSandbox, stopSandbox, suspendSandbox, resumeSandbox } from "./actions";
+import { startSandbox, stopSandbox, suspendSandbox, resumeSandbox, deleteAgentTag } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
 import { StreamUtils } from "@/shared/utils/stream.utils";
 import FullLoadingSpinner from "@/components/ui/full-loading-spinnter";
@@ -64,6 +64,7 @@ export default function AgentSandboxesCard({
     const { id: agentId, projectId: namespace, agentDomains, deployFileBrowser } = agent;
     const { openDialog } = useDialog();
     const { openInputDialog } = useInputDialog();
+    const { openConfirmDialog } = useConfirmDialog();
     const [sandboxes, setSandboxes] = useState<SandboxInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -214,6 +215,33 @@ export default function AgentSandboxesCard({
         }
     };
 
+    const handleDeleteTagData = async () => {
+        const customTag = await openInputDialog({
+            title: 'Delete Custom Tag data',
+            description: 'Deletes all stored data of this Custom Tag. The tag must not have a running sandbox. 1–63 characters.',
+            fieldName: 'Custom tag',
+            okButton: 'Continue',
+        });
+        if (!customTag) {
+            return;
+        }
+
+        const confirmed = await openConfirmDialog({
+            title: 'Delete Custom Tag data',
+            description: `All stored data of Custom Tag "${customTag}" will be deleted permanently. This cannot be undone.`,
+            okButton: 'Delete data',
+        });
+        if (!confirmed) {
+            return;
+        }
+
+        await Toast.fromAction(
+            () => deleteAgentTag(agentId, customTag),
+            'Custom Tag data deleted',
+            'Deleting Custom Tag data...',
+        );
+    };
+
     const renderStartSandboxActions = () => (
         <SplitButton
             onClick={handleStartSandbox}
@@ -224,6 +252,9 @@ export default function AgentSandboxesCard({
             dropdownContent={<DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => void handleStartSandboxWithCustomTag()}>
                     Start with custom tag
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void handleDeleteTagData()}>
+                    Delete custom tag data
                 </DropdownMenuItem>
             </DropdownMenuGroup>}
         >

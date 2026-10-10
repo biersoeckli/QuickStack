@@ -65,6 +65,11 @@ const pvcServiceMocks = vi.hoisted(() => ({
     deleteAllPvcForAgent: vi.fn(),
 }));
 
+const networkPolicyServiceMocks = vi.hoisted(() => ({
+    reconcileAgentSandboxNetworkPolicy: vi.fn(),
+    deleteAgentSandboxNetworkPolicy: vi.fn(),
+}));
+
 const configMapServiceMocks = vi.hoisted(() => ({
     createOrUpdateConfigMapForAgent: vi.fn(),
     deleteUnusedConfigMapsForAgent: vi.fn(),
@@ -131,6 +136,15 @@ vi.mock('@/server/services/agent-runtime.service', () => ({
 vi.mock('@/server/services/pvc.service', () => ({
     default: pvcServiceMocks,
 }));
+vi.mock('@/server/services/network-policy.service', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/server/services/network-policy.service')>();
+    return {
+        default: {
+            ...networkPolicyServiceMocks,
+            buildAgentSandboxTemplateNetworkPolicy: actual.default.buildAgentSandboxTemplateNetworkPolicy.bind(actual.default),
+        },
+    };
+});
 vi.mock('@/server/services/config-map.service', () => ({
     default: configMapServiceMocks,
 }));

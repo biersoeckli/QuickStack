@@ -251,28 +251,18 @@ class PvcService {
         const existing = await this.getAgentWorkspacePvc(projectId, pvcName);
         // todo needs handling for resize of existing pvc -> and what if multiple claims for one user and resize wanted? -> fails?
         if (!existing) {
-            const pvcDefinition: V1PersistentVolumeClaim = {
-                apiVersion: 'v1',
-                kind: 'PersistentVolumeClaim',
-                metadata: {
-                    name: pvcName,
-                    namespace: projectId,
-                    annotations: {
-                        [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
-                        [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
-                        [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: agentVolume.id,
-                    },
+            const pvcDefinition = this.buildAgentPvcDefinition(
+                projectId,
+                pvcName,
+                'ReadWriteMany',
+                agentVolume.storageClassName,
+                agentVolume.size,
+                {
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                    [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                    [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: agentVolume.id,
                 },
-                spec: {
-                    accessModes: ['ReadWriteMany'],
-                    storageClassName: agentVolume.storageClassName,
-                    resources: {
-                        requests: {
-                            storage: KubeSizeConverter.megabytesToKubeFormat(agentVolume.size),
-                        },
-                    },
-                },
-            };
+            );
 
             await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: projectId, body: pvcDefinition });
             console.log(`Created workspace PVC ${pvcName} for agent ${agentId}`);
@@ -301,6 +291,120 @@ class PvcService {
         }
     }
 
+    async ensureAgentTagPvc(projectId: string, agentVolume: AgentVolume, customTag: string): Promise<{
+        volume: V1Volume;
+        volumeMount: V1VolumeMount;
+    }> {
+        const agentId = agentVolume.agentId;
+        const pvcName = KubeObjectNameUtils.toAgentTagPvcName(agentId, agentVolume.id, customTag);
+        const desiredStorage = KubeSizeConverter.megabytesToKubeFormat(agentVolume.size);
+        const existing = await this.getAgentWorkspacePvc(projectId, pvcName);
+
+        if (!existing) {
+            const annotations = {
+                [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: agentVolume.id,
+                [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag,
+            };
+            const pvcDefinition = this.buildAgentPvcDefinition(
+                projectId,
+                pvcName,
+                agentVolume.accessMode,
+                agentVolume.storageClassName,
+                agentVolume.size,
+                annotations,
+                annotations,
+            );
+
+            await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: projectId, body: pvcDefinition });
+            console.log(`Created per-custom-tag PVC ${pvcName} for agent ${agentId} and Custom Tag "${customTag}"`);
+        } else {
+            const currentStorage = existing.spec?.resources?.requests?.storage;
+            const needsGrowth = currentStorage
+                && KubeSizeConverter.fromKubeSizeToBytes(currentStorage) < KubeSizeConverter.fromMegabytesToBytes(agentVolume.size);
+            if (needsGrowth) {
+                existing.spec!.resources!.requests!.storage = desiredStorage;
+                await k3s.core.replaceNamespacedPersistentVolumeClaim({ name: pvcName, namespace: projectId, body: existing });
+                console.log(`Grew per-custom-tag PVC ${pvcName} to ${desiredStorage}`);
+                if (existing.spec?.volumeName) {
+                    await this.waitUntilPvResized(existing.spec.volumeName, agentVolume.size);
+                }
+            }
+        }
+
+        const volume = {
+            name: agentVolume.id,
+            persistentVolumeClaim: {
+                claimName: pvcName
+            }
+        };
+
+        const volumeMount = {
+            name: agentVolume.id,
+            mountPath: agentVolume.containerMountPath
+        };
+
+        return { volume, volumeMount };
+    }
+
+    async deletePvcsForAgentVolume(projectId: string, agentId: string, agentVolumeId: string) {
+        await this.deleteAgentPvcs(projectId, agentId, (pvc) => (
+            pvc.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_VOLUME_ID] === agentVolumeId
+        ));
+    }
+
+    async deletePvcForAgentTag(projectId: string, agentId: string, customTag: string) {
+        await this.deleteAgentPvcs(projectId, agentId, (pvc) => (
+            pvc.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] === customTag
+        ));
+    }
+
+    private async deleteAgentPvcs(
+        projectId: string,
+        agentId: string,
+        matches: (pvc: V1PersistentVolumeClaim) => boolean,
+    ) {
+        const pvcs = await this.getAllPvcForAgent(projectId, agentId);
+        for (const pvc of pvcs) {
+            if (!pvc.metadata?.name || !matches(pvc)) {
+                continue;
+            }
+            await k3s.core.deleteNamespacedPersistentVolumeClaim({ name: pvc.metadata.name, namespace: projectId });
+            console.log(`Deleted PVC ${pvc.metadata.name} for agent ${agentId}`);
+        }
+    }
+
+    private buildAgentPvcDefinition(
+        projectId: string,
+        pvcName: string,
+        accessMode: string,
+        storageClassName: string,
+        size: number,
+        annotations: Record<string, string>,
+        labels?: Record<string, string>,
+    ): V1PersistentVolumeClaim {
+        return {
+            apiVersion: 'v1',
+            kind: 'PersistentVolumeClaim',
+            metadata: {
+                name: pvcName,
+                namespace: projectId,
+                annotations,
+                ...(labels ? { labels } : {}),
+            },
+            spec: {
+                accessModes: [accessMode],
+                storageClassName,
+                resources: {
+                    requests: {
+                        storage: KubeSizeConverter.megabytesToKubeFormat(size),
+                    },
+                },
+            },
+        };
+    }
+
     async deleteUnusedPvcForAgent(projectId: string, agentId: string, currentAgentVolumes: AgentVolume[]) {
         const existingPvcs = await this.getAllPvcForAgent(projectId, agentId);
         const sharedVolumeIds = new Set(
@@ -313,6 +417,12 @@ class PvcService {
             // Only QuickStack-owned shared claims are cleaned up here.
             // Per-sandbox claims from claim templates are controller-owned.
             if (!pvc.metadata?.name || !KubeObjectNameUtils.isAgentWorkspacePvcName(pvc.metadata.name)) {
+                continue;
+            }
+
+            // Per-custom-tag claims belong to a Custom Tag and are only removed by the
+            // delete-tag operation or by Agent / Agent Volume deletion, never on deploy.
+            if (pvc.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]) {
                 continue;
             }
 

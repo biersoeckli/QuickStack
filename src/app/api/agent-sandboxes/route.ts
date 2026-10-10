@@ -1,7 +1,15 @@
 import k3s from "@/server/adapter/kubernetes-api.adapter";
+import {
+    BASE_SANDBOX_API_GROUP,
+    CLAIM_PLURAL,
+    SANDBOX_API_GROUP,
+    SANDBOX_API_VERSION,
+    SANDBOX_PLURAL,
+} from "@/server/adapter/agent-sandbox.adapter";
 import agentRuntimeService from "@/server/services/agent-runtime.service";
 import agentService from "@/server/services/agent.service";
 import { isAuthorizedReadForWorkload, simpleRoute } from "@/server/utils/action-wrapper.utils";
+import { AgentVolumeUtils } from "@/server/utils/agent-volume.utils";
 import { Constants } from "@/shared/utils/constants";
 import * as k8s from '@kubernetes/client-node';
 import z from "zod";
@@ -44,12 +52,16 @@ export async function POST(request: Request) {
                 send({ type: 'FULL', data: agentSandboxes });
 
 
-                // 2. Watch for changes — only for labeled claims of this agent
+                // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
+                const usesDirectSandbox = AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
+                const watchPath = usesDirectSandbox
+                    ? `/apis/${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${SANDBOX_PLURAL}`
+                    : `/apis/${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${CLAIM_PLURAL}`;
                 const kc = k3s.getKubeConfig();
                 const watch = new k8s.Watch(kc);
                 console.log("[START] Starting watch for agent sandboxes in namespace", namespace);
                 watchRequest = await watch.watch(
-                    `/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/${namespace}/sandboxclaims`,
+                    watchPath,
                     { labelSelector: `${Constants.QS_ANNOTATION_AGENT_ID}=${inputParam.agentId}` },
                     async (type, apiObj) => {
                         if (shouldStopStreaming) return;
@@ -63,8 +75,10 @@ export async function POST(request: Request) {
                             return;
                         }
 
-                        // ADDED / MODIFIED: map full claim to sandbox DTO
-                        const sandbox = agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
+                        // ADDED / MODIFIED: map full object to sandbox DTO
+                        const sandbox = usesDirectSandbox
+                            ? agentRuntimeService.mapSandboxToSandbox(apiObj, namespace)
+                            : agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
                         send({ type, sandbox });
                     },
                     (err) => {

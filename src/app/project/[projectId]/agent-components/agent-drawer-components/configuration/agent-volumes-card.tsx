@@ -16,6 +16,17 @@ function formatSize(mb: number): string {
     return `${mb} MB`;
 }
 
+function volumeTypeLabel(volumeType: string): string {
+    switch (volumeType) {
+        case 'PER_SANDBOX':
+            return 'Per Sandbox';
+        case 'PER_CUSTOM_TAG':
+            return 'Per Custom Tag';
+        default:
+            return 'All (Shared)';
+    }
+}
+
 export default function AgentVolumesCard({ volumes, projectId, readonly, storageClasses }: {
     volumes: AgentVolume[];
     projectId: string;
@@ -70,7 +81,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         {volumes.map(volume => (
                             <TableRow key={volume.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="font-medium">{volume.volumeType === 'PER_SANDBOX' ? 'Per Sandbox' : 'All (Shared)'}</TableCell>
+                                <TableCell className="font-medium">{volumeTypeLabel(volume.volumeType)}</TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium">{formatSize(volume.size)}</TableCell>
                                 <TableCell className="font-medium">{volume.storageClassName}</TableCell>

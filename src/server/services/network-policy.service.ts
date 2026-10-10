@@ -224,6 +224,63 @@ class NetworkPolicyService {
         };
     }
 
+    /**
+     * Builds a standalone NetworkPolicy for a directly created Agent Sandbox.
+     * The base Sandbox CRD does not carry network policy configuration, so for
+     * PER_CUSTOM_TAG Agents QuickStack manages the policy itself, selecting the
+     * sandbox Pods by the qs-agent-id label.
+     */
+    buildAgentSandboxNetworkPolicy(
+        agentId: string,
+        projectId: string,
+        agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig,
+    ): V1NetworkPolicy | null {
+        const embedded = this.buildAgentSandboxTemplateNetworkPolicy(agentNetworkPolicy);
+        if (!embedded) {
+            return null;
+        }
+
+        return {
+            apiVersion: 'networking.k8s.io/v1',
+            kind: 'NetworkPolicy',
+            metadata: {
+                name: KubeObjectNameUtils.toNetworkPolicyName(agentId),
+                namespace: projectId,
+                annotations: {
+                    [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                },
+            },
+            spec: {
+                podSelector: {
+                    matchLabels: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                    },
+                },
+                policyTypes: ['Ingress', 'Egress'],
+                ingress: embedded.ingress,
+                egress: embedded.egress,
+            },
+        };
+    }
+
+    async reconcileAgentSandboxNetworkPolicy(
+        agentId: string,
+        projectId: string,
+        agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig,
+    ): Promise<void> {
+        const policy = this.buildAgentSandboxNetworkPolicy(agentId, projectId, agentNetworkPolicy);
+        if (!policy) {
+            await this.deleteAgentSandboxNetworkPolicy(agentId, projectId);
+            return;
+        }
+        await this.applyNetworkPolicy(projectId, policy.metadata!.name!, policy);
+    }
+
+    async deleteAgentSandboxNetworkPolicy(agentId: string, projectId: string): Promise<void> {
+        await this.deleteNetworkPolicy(agentId, projectId);
+    }
+
     async deleteNetworkPolicy(appId: string, projectId: string) {
         const policyName = KubeObjectNameUtils.toNetworkPolicyName(appId);
         const existingNetworkPolicy = await this.getExistingNetworkPolicy(projectId, policyName);

@@ -4,7 +4,7 @@ QuickStack lets a user **Suspend** a running **Agent Sandbox** and later **Resum
 
 Suspend and resume act on the Sandbox, not the SandboxClaim. The Agent Sandbox controller exposes the native `Sandbox.spec.operatingMode` (`Running` | `Suspended`); the SandboxClaim has no equivalent field, so QuickStack resolves the Sandbox behind a claim (the claim status records the Sandbox name, which differs from the claim name for warm-pool-adopted sandboxes) and patches `operatingMode` there directly. No new Kubernetes resource types and no RBAC beyond updating Sandboxes are needed.
 
-A **Suspended Sandbox** is the only way a **Per-Sandbox Agent Volume** outlives a sandbox. This refines ADR 0011: "tag-scoped data does not survive sandbox deletion" still holds, but it does survive suspension.
+A **Suspended Sandbox** is the only way a **Per-Sandbox Agent Volume** outlives a sandbox. This refines ADR 0011: "tag-scoped data does not survive sandbox deletion" still holds, but it does survive suspension. (See ADR 0013: a **Per-Custom-Tag Agent Volume** is durable through a per-tag PersistentVolumeClaim regardless of suspension, so it also survives Stop and deletion.)
 
 A **Custom Tag** becomes a stable handle: it is unique per Agent among existing sandboxes, so resume-by-tag is unambiguous. Uniqueness is a best-effort check at start time; a lost race is acceptable because starts are low-contention and API-only. Stopping a sandbox frees its tag for reuse. Untagged sandboxes are unaffected.
 

@@ -12,6 +12,7 @@ import agentDomainService from '@/server/services/agent-domain.service';
 
 import {
     agentSandboxAccessUrlZodModel,
+    agentSandboxCustomTagZodModel,
     agentSandboxZodModel,
     commandRequestZodModel,
     commandResultZodModel,
@@ -32,6 +33,11 @@ const agentSandboxParamsSchema = z.object({
 const agentSandboxClaimParamsSchema = z.object({
     agentId: z.string(),
     sandboxName: z.string(),
+});
+
+const agentTagParamsSchema = z.object({
+    agentId: z.string(),
+    customTag: agentSandboxCustomTagZodModel,
 });
 
 const agentSandboxAccessUrlParamsSchema = z.object({
@@ -215,6 +221,25 @@ export const agentSandboxRoutes = new Elysia()
         detail: {
             summary: 'Delete agent sandbox',
             operationId: 'deleteAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .delete('/agents/:agentId/tags/:customTag', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        await agentSandboxService.deleteTag(params.agentId, params.customTag);
+        return undefined;
+    }, {
+        params: agentTagParamsSchema,
+        response: ApiUtils.mapResponseModel(z.undefined()),
+        detail: {
+            summary: 'Delete Custom Tag data',
+            description: 'Delete all stored data of one Custom Tag across the Agent\'s PER_CUSTOM_TAG volumes. Rejected while a sandbox with that tag exists.',
+            operationId: 'deleteAgentTag',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
