@@ -17,6 +17,7 @@ import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/vo
 import { useDialogContext } from "@/frontend/states/dialog-context";
 import { saveAgentVolume } from "./actions";
 import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
+import { Constants } from "@/shared/utils/constants";
 
 export default function AgentVolumeEditOverlay({
     existingVolume,
@@ -152,18 +153,34 @@ export default function AgentVolumeEditOverlay({
                                     onValueChange={(value) => form.setValue("volumeType", value as AgentVolumeEditModel['volumeType'])}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select volume type" />
+                                        <SelectValue placeholder="Select volume type">
+                                            {(value) => {
+                                                switch (value) {
+                                                    case 'ALL':
+                                                        return 'All (Shared)';
+                                                    case 'PER_SANDBOX':
+                                                        return 'Per Sandbox';
+                                                    case Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG:
+                                                        return 'Per Custom Tag';
+                                                    default:
+                                                        return value;
+                                                }
+                                            }}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">All (Shared)</SelectItem>
                                         <SelectItem value="PER_SANDBOX">Per Sandbox</SelectItem>
+                                        <SelectItem value="PER_CUSTOM_TAG">Per Custom Tag</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormControl>
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared by every sandbox and persists after the sandbox is deleted.'
-                                    : 'Private to each sandbox and deleted with it.'}
+                                    : volumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
+                                        ? 'Private to each Custom Tag and persists across sandbox restarts, deletion and idle expiry.'
+                                        : 'Private to each sandbox and deleted with it.'}
                                 {' '}This cannot be changed after creation.
                             </FormDescription>
                             <FormMessage />
@@ -194,7 +211,9 @@ export default function AgentVolumeEditOverlay({
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared volumes require ReadWriteMany.'
-                                    : 'Per-sandbox volumes may use ReadWriteOnce.'}
+                                    : volumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
+                                        ? 'Per-Custom-Tag volumes may use ReadWriteOnce or ReadWriteMany.'
+                                        : 'Per-sandbox volumes may use ReadWriteOnce.'}
                                 {' '}This cannot be changed after creation.
                             </FormDescription>
                             <FormMessage />

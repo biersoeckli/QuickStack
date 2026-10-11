@@ -21,6 +21,7 @@ import agentDomainService from "./agent-domain.service";
 import agentVolumeService from "./agent-volume.service";
 import agentFileMountService from "./agent-file-mount.service";
 import agentNetworkPolicyService from "./agent-network-policy.service";
+import networkPolicyService from "./network-policy.service";
 import { V1Volume, V1VolumeMount } from "@kubernetes/client-node";
 import crypto from "crypto";
 import buildService from "./build.service";
@@ -28,6 +29,7 @@ import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import agentSandboxTemplateBuilder, { AgentSandboxVolumeTemplateInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
+import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -402,37 +404,14 @@ class AgentService {
             await agentRuntimeService.deleteTaggedVirtualKeys(agent.id);
             await agentRuntimeService.refreshRuntimeSecret(agent.id);
             const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
-            const modelMetadata = await this.loadLiteLlmModelMetadata(agent, modelAliases);
+            await this.loadLiteLlmModelMetadata(agent, modelAliases);
             await agentSandboxAdapter.reconcileSandboxTemplate(agentSandboxTemplateBuilder.buildSandboxTemplateResource({
-                id: agent.id,
-                projectId: agent.project.id,
+                agent,
                 containerImageSource,
-                modelAlias: modelAliases,
-                modelMetadata,
-                llmGateway: agent.llmGateway,
-                cpuRequest: agent.cpuRequest ?? null,
-                cpuLimit: agent.cpuLimit ?? null,
-                memoryRequest: agent.memoryRequest ?? null,
-                memoryLimit: agent.memoryLimit ?? null,
-                containerCommand: agent.containerCommand ?? null,
-                containerArgs: agent.containerArgs ?? null,
-                workingDir: agent.workingDir ?? null,
-                runtimeClassName: agent.runtimeClassName ?? null,
-                deployFileBrowser: agent.deployFileBrowser,
-                healthChechHttpGetPath: agent.healthChechHttpGetPath ?? null,
-                healthCheckHttpScheme: agent.healthCheckHttpScheme ?? null,
-                healthCheckHttpHeadersJson: agent.healthCheckHttpHeadersJson ?? null,
-                healthCheckHttpPort: agent.healthCheckHttpPort ?? null,
-                healthCheckPeriodSeconds: agent.healthCheckPeriodSeconds,
-                healthCheckTimeoutSeconds: agent.healthCheckTimeoutSeconds,
-                healthCheckFailureThreshold: agent.healthCheckFailureThreshold,
-                healthCheckTcpPort: agent.healthCheckTcpPort ?? null,
                 volumePvcData,
                 perSandboxVolumes,
                 fileVolumes,
                 fileVolumeMounts,
-                agentDomains: agent.agentDomains,
-                agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
             }, {
                 dockerPullSecretName,
                 deploymentId,
@@ -441,8 +420,15 @@ class AgentService {
                 gitCommitMessage,
             }));
 
+            // Agents with a PER_CUSTOM_TAG volume are cold-started by creating a
+            // Sandbox directly, so they never use a warm pool.
+            const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
             await agentSandboxAdapter.reconcileSandboxWarmPool(
-                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(agent.id, agent.project.id, agent.warmPoolReplicas),
+                agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(
+                    agent.id,
+                    agent.project.id,
+                    usesDirectSandbox ? 0 : agent.warmPoolReplicas,
+                ),
             );
 
             // Reconcile agent domain ingresses — clean up orphaned, then ensure current
@@ -557,6 +543,7 @@ class AgentService {
         await secretService.deleteSecretSafe(KubeObjectNameUtils.toPullSecretId(agentId), namespace);
         await agentSandboxAdapter.deleteSandboxWarmPool(agentId, namespace);
         await agentSandboxAdapter.deleteSandboxTemplate(agentId, namespace);
+        await networkPolicyService.deleteAgentSandboxNetworkPolicy(agentId, namespace);
 
         // 5. Transactional DB delete — re-reads inside tx to prevent TOCTOU races
         await dataAccess.client.$transaction(async (tx) => {

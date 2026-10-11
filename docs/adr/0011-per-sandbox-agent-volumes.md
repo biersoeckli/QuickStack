@@ -2,7 +2,7 @@
 
 An **Agent Volume** now has a **Volume Type**. `ALL` keeps the existing **Shared Agent Volume**: one shared, persistent `ReadWriteMany` claim per Agent Volume, mounted by every Agent Sandbox instance and surviving sandbox deletion. `PER_SANDBOX` gives each Agent Sandbox instance its own claim, provisioned from the Agent Volume's configuration and deleted with the sandbox.
 
-PER_SANDBOX is built on the Agent Sandbox controller's native `volumeClaimTemplates`: the Agent's SandboxTemplate declares one claim template per PER_SANDBOX Agent Volume and allows start-time overrides, and a start that carries a **Custom Tag** sends the matching claim templates so the controller cold-starts a Sandbox and creates a per-sandbox claim it owns and deletes. The consequence, accepted deliberately, is that tag-scoped data does not survive sandbox deletion.
+PER_SANDBOX is built on the Agent Sandbox controller's native `volumeClaimTemplates`: the Agent's SandboxTemplate declares one claim template per PER_SANDBOX Agent Volume and allows start-time overrides, and a start that carries a **Custom Tag** sends the matching claim templates so the controller cold-starts a Sandbox and creates a per-sandbox claim it owns and deletes. The consequence, accepted deliberately, is that tag-scoped data does not survive sandbox deletion. (See ADR 0013: a `PER_CUSTOM_TAG` Agent Volume instead uses a stable per-tag PersistentVolumeClaim on a directly created Sandbox, so it survives deletion.)
 
 ## Considered Options
 

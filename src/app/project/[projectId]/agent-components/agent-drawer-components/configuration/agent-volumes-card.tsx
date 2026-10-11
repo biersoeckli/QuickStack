@@ -10,10 +10,22 @@ import AgentVolumeEditOverlay from "./agent-volume-edit-overlay";
 import { AgentVolume } from "@prisma/client";
 import { AgentVolumeEditModel } from "@/shared/model/volume-edit.model";
 import { deleteAgentVolume } from "./actions";
+import { Constants } from "@/shared/utils/constants";
 
 function formatSize(mb: number): string {
     if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
     return `${mb} MB`;
+}
+
+function volumeTypeLabel(volumeType: string): string {
+    switch (volumeType) {
+        case 'PER_SANDBOX':
+            return 'Per Sandbox';
+        case Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG:
+            return 'Per Custom Tag';
+        default:
+            return 'All (Shared)';
+    }
 }
 
 export default function AgentVolumesCard({ volumes, projectId, readonly, storageClasses }: {
@@ -53,7 +65,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                     Persistent storage volumes attached to this workload.
                 </DrawerCardDescription>
             </DrawerCardHeader>
-            <DrawerCardContent>
+            {volumes.length > 0 && <DrawerCardContent>
                 <Table>
                     <TableCaption>{volumes.length} Volumes</TableCaption>
                     <TableHeader>
@@ -70,7 +82,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         {volumes.map(volume => (
                             <TableRow key={volume.id} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="font-medium">{volume.volumeType === 'PER_SANDBOX' ? 'Per Sandbox' : 'All (Shared)'}</TableCell>
+                                <TableCell className="font-medium">{volumeTypeLabel(volume.volumeType)}</TableCell>
                                 <TableCell className="font-medium">{volume.accessMode}</TableCell>
                                 <TableCell className="font-medium">{formatSize(volume.size)}</TableCell>
                                 <TableCell className="font-medium">{volume.storageClassName}</TableCell>
@@ -86,7 +98,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         ))}
                     </TableBody>
                 </Table>
-            </DrawerCardContent>
+            </DrawerCardContent>}
             {!readonly && <DrawerCardFooter>
                 <Button variant="outline" onClick={() => openEditVolumeDialog()}><Plus /> Add Volume</Button>
             </DrawerCardFooter>}

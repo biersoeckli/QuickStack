@@ -6,6 +6,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
             createNamespacedCustomObject: vi.fn(),
             patchNamespacedCustomObject: vi.fn(),
             deleteNamespacedCustomObject: vi.fn(),
+            listNamespacedCustomObject: vi.fn(),
         },
     },
     kubernetesPatchOptions: vi.fn((strategy: unknown) => strategy),
@@ -311,6 +312,81 @@ describe('AgentSandboxAdapter', () => {
         });
     });
 
+    describe('direct Sandbox operations', () => {
+        const baseSandbox = {
+            apiVersion: 'agents.x-k8s.io/v1beta1',
+            kind: 'Sandbox',
+            metadata: { name, namespace },
+            spec: { operatingMode: 'Running', shutdownPolicy: 'Delete' },
+        } as any;
+
+        it('creates a base Sandbox in the agents.x-k8s.io group', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { code: 404 }),
+            );
+
+            await agentSandboxAdapter.createSandbox(baseSandbox);
+
+            expect(k3s.customObjects.createNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    group: 'agents.x-k8s.io',
+                    version: 'v1beta1',
+                    namespace,
+                    plural: 'sandboxes',
+                    body: baseSandbox,
+                }),
+            );
+        });
+
+        it('rejects creating a base Sandbox that already exists', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue(baseSandbox as any);
+
+            await expect(agentSandboxAdapter.createSandbox(baseSandbox)).rejects.toThrow('already exists');
+            expect(k3s.customObjects.createNamespacedCustomObject).not.toHaveBeenCalled();
+        });
+
+        it('lists base Sandboxes in the agents.x-k8s.io group', async () => {
+            vi.mocked(k3s.customObjects.listNamespacedCustomObject).mockResolvedValue({ items: [baseSandbox] } as any);
+
+            const result = await agentSandboxAdapter.listSandboxes(namespace, 'qs-agent-id=agent-test');
+
+            expect(result).toEqual([baseSandbox]);
+            expect(k3s.customObjects.listNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    group: 'agents.x-k8s.io',
+                    version: 'v1beta1',
+                    namespace,
+                    plural: 'sandboxes',
+                    labelSelector: 'qs-agent-id=agent-test',
+                }),
+            );
+        });
+
+        it('deletes a base Sandbox and tolerates a missing one', async () => {
+            vi.mocked(k3s.customObjects.deleteNamespacedCustomObject).mockRejectedValue(
+                Object.assign(new Error('Not Found'), { code: 404 }),
+            );
+
+            await expect(agentSandboxAdapter.deleteSandbox(name, namespace)).resolves.toBeUndefined();
+
+            expect(k3s.customObjects.deleteNamespacedCustomObject).toHaveBeenCalledWith(
+                expect.objectContaining({ group: 'agents.x-k8s.io', namespace, plural: 'sandboxes', name }),
+            );
+        });
+
+        it('waits for a base Sandbox Ready condition', async () => {
+            vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
+                ...baseSandbox,
+                status: { conditions: [{ type: 'Ready', status: 'True' }] },
+            } as any);
+
+            await expect(
+                agentSandboxAdapter.waitForSandboxObjectReady(name, namespace, 5_000, 100),
+            ).resolves.toBeUndefined();
+        });
+
+    });
+
     describe('waitForSandboxReady', () => {
         it('resolves when SandboxClaim returns Ready=True', async () => {
             vi.mocked(k3s.customObjects.getNamespacedCustomObject).mockResolvedValue({
@@ -375,73 +451,6 @@ describe('AgentSandboxAdapter', () => {
             await expect(
                 agentSandboxAdapter.waitForSandboxReady(name, namespace, 200, 50),
             ).rejects.toThrow('not found while waiting for readiness');
-        });
-    });
-
-    describe('resolveSandboxStatus', () => {
-        const claimWith = (conditions: any[], metadata: Record<string, any> = { metadata: { name } }) =>
-            ({ metadata, status: { conditions } }) as any;
-
-        it('returns SHUTDOWN when there is no claim', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(null)).toBe('SHUTDOWN');
-        });
-
-        it('returns SHUTTING_DOWN while the claim is terminating', () => {
-            const claim = claimWith(
-                [{ type: 'Ready', status: 'True' }],
-                { name, deletionTimestamp: '2026-08-31T12:00:00Z' },
-            );
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claim)).toBe('SHUTTING_DOWN');
-        });
-
-        it('returns DEPLOYED when the claim reports Ready=True', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'True' }]))).toBe('DEPLOYED');
-        });
-
-        it('returns DEPLOYING while the claim is provisioning', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'DependenciesNotReady' }]))).toBe('DEPLOYING');
-        });
-
-        it('returns ERROR for terminal reconciliation failures', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'WarmPoolNotFound' }]))).toBe('ERROR');
-        });
-
-        it('returns ERROR for InvalidConfiguration', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'InvalidConfiguration' }]))).toBe('ERROR');
-        });
-
-        it('returns SHUTTING_DOWN for an expired claim', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'ClaimExpired' }]))).toBe('SHUTTING_DOWN');
-        });
-
-        it('returns SUSPENDED when the claim forwards the SandboxSuspended reason', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]))).toBe('SUSPENDED');
-        });
-
-        it('returns SUSPENDED when the Sandbox operatingMode is Suspended', () => {
-            const sandbox = { spec: { operatingMode: 'Suspended' } } as any;
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]), sandbox)).toBe('SUSPENDED');
-        });
-
-        it('returns SUSPENDED when the Sandbox reports the Suspended condition', () => {
-            const sandbox = {
-                spec: { operatingMode: 'Suspended' },
-                status: { conditions: [{ type: 'Suspended', status: 'True', reason: 'PodTerminated' }] },
-            } as any;
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]), sandbox)).toBe('SUSPENDED');
-        });
-
-        it('does not report SUSPENDED when the Sandbox has already resumed Running', () => {
-            const sandbox = {
-                spec: { operatingMode: 'Running' },
-                status: { conditions: [{ type: 'Suspended', status: 'False', reason: 'NotSuspended' }] },
-            } as any;
-            const claim = claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]);
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claim, sandbox)).toBe('DEPLOYING');
         });
     });
 

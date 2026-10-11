@@ -5,7 +5,7 @@ export const appVolumeTypeZodModel = z.enum(["ReadWriteOnce", "ReadWriteMany"]);
 export const appStorageClassNameZodModel = z.string().trim().min(1);
 export const agentStorageClassNameZodModel = z.string().trim().min(1);
 
-export const agentVolumeTypeZodModel = z.enum(["ALL", "PER_SANDBOX"]);
+export const agentVolumeTypeZodModel = z.enum(["ALL", "PER_SANDBOX", "PER_CUSTOM_TAG"]);
 export const agentVolumeAccessModeZodModel = z.enum(["ReadWriteOnce", "ReadWriteMany"]);
 
 export const agentVolumeEditZodModel = z.object({

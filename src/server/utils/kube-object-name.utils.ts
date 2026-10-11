@@ -73,20 +73,35 @@ export class KubeObjectNameUtils {
         return `pvc-${volumeId}`;
     }
 
-    private static readonly AGENT_WORKSPACE_PVC_PREFIX = 'aw-';
+    private static readonly AGENT_WORKSPACE_PVC_PREFIX = 'av-';
 
-    static toAgentWorkspacePvcName(agentId: string, agentVolumeId: string): string {
-        const raw = `${KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX}${agentId}-${agentVolumeId}`;
+    static toAgentPvcName(agentId: string, agentVolumeId: string): string {
+        const raw = `${agentId}-${agentVolumeId}`;
         const hash = crypto.createHash('sha256').update(raw).digest('hex');
         return `${KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX}${hash.substring(0, 60)}`;
     }
 
-    static isAgentWorkspacePvcName(name: string): boolean {
+    static isAgentPvcName(name: string): boolean {
         return name.startsWith(KubeObjectNameUtils.AGENT_WORKSPACE_PVC_PREFIX);
     }
 
     static toAgentClaimName(agentId: string): string {
         return `ac-${this.addRandomSuffix(agentId.substring(0, 52))}`;
+    }
+
+    private static readonly AGENT_TAG_PVC_PREFIX = 'av-';
+
+    static toAgentTagPvcName(agentId: string, agentVolumeId: string, customTag: string): string {
+        const raw = `${agentId}:${agentVolumeId}:${customTag}`;
+        const hash = crypto.createHash('sha256').update(raw).digest('hex');
+        return `${KubeObjectNameUtils.AGENT_TAG_PVC_PREFIX}${hash.substring(0, 60)}`;
+    }
+
+    private static readonly AGENT_SANDBOX_PREFIX = 'as-';
+
+    static toAgentSandboxName(agentId: string, customTag: string): string {
+        const identifier = crypto.createHash('sha256').update(`${agentId}:${customTag}`).digest('hex');
+        return `${KubeObjectNameUtils.AGENT_SANDBOX_PREFIX}${identifier.substring(0, 60)}`;
     }
 
     static toRestorePodName(volumeId: string): `restore-${string}` {
