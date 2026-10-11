@@ -12,12 +12,15 @@ import agentDomainService from '@/server/services/agent-domain.service';
 
 import {
     agentSandboxAccessUrlZodModel,
+    agentSandboxApiTokenZodModel,
+    agentSandboxCustomTagZodModel,
     agentSandboxZodModel,
     commandRequestZodModel,
     commandResultZodModel,
     createSandboxRequestZodModel as startSandboxRequestZodModel,
     fileEntryZodModel,
     fileExistsResultZodModel,
+    resumeSandboxByTagRequestZodModel,
 } from '@/shared/model/agent-sandbox.model';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
@@ -31,6 +34,11 @@ const agentSandboxParamsSchema = z.object({
 const agentSandboxClaimParamsSchema = z.object({
     agentId: z.string(),
     sandboxName: z.string(),
+});
+
+const agentTagParamsSchema = z.object({
+    agentId: z.string(),
+    customTag: agentSandboxCustomTagZodModel,
 });
 
 const agentSandboxAccessUrlParamsSchema = z.object({
@@ -99,6 +107,61 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
+    .post('/agents/:agentId/sandboxes/resume', async ({ params, body, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.resumeSandboxByTag(params.agentId, body.customTag);
+    }, {
+        params: agentSandboxParamsSchema,
+        body: resumeSandboxByTagRequestZodModel,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Resume agent sandbox by Custom Tag',
+            description: 'Resume the suspended Agent Sandbox of this Agent that carries the given Custom Tag.',
+            operationId: 'resumeAgentSandboxByTag',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/:sandboxName/suspend', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.suspendSandbox(params.agentId, params.sandboxName);
+    }, {
+        params: agentSandboxClaimParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Suspend agent sandbox',
+            description: 'Release the compute of a running Agent Sandbox while keeping its volumes and identity.',
+            operationId: 'suspendAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/:sandboxName/resume', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        return agentSandboxService.resumeSandbox(params.agentId, params.sandboxName);
+    }, {
+        params: agentSandboxClaimParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxZodModel),
+        detail: {
+            summary: 'Resume agent sandbox',
+            description: 'Recreate the Pod of a suspended Agent Sandbox with its existing volumes mounted.',
+            operationId: 'resumeAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
     .get('/agents/:agentId/sandboxes/:sandboxName', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
@@ -145,6 +208,29 @@ export const agentSandboxRoutes = new Elysia()
             security: [{ bearerAuth: [] }],
         },
     })
+    .post('/agents/:agentId/sandboxes/:sandboxName/apiToken/:domainId', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureReadAgent(identity, params.agentId);
+
+        return agentAccessService.createApiToken({
+            agentId: params.agentId,
+            sandboxName: params.sandboxName,
+            domainId: params.domainId,
+            session: identity.session,
+        });
+    }, {
+        params: agentSandboxAccessUrlParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxApiTokenZodModel),
+        detail: {
+            summary: 'Create agent sandbox API token',
+            description: 'Create a bearer token for direct API access to this Agent Sandbox through a configured domain. The token expires after 15 minutes.',
+            operationId: 'createAgentSandboxApiToken',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
     .delete('/agents/:agentId/sandboxes/:sandboxName', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
@@ -159,6 +245,25 @@ export const agentSandboxRoutes = new Elysia()
         detail: {
             summary: 'Delete agent sandbox',
             operationId: 'deleteAgentSandbox',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .delete('/agents/:agentId/tags/:customTag', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureWriteAgent(identity, params.agentId);
+
+        await agentSandboxService.deleteTag(params.agentId, params.customTag);
+        return undefined;
+    }, {
+        params: agentTagParamsSchema,
+        response: ApiUtils.mapResponseModel(z.undefined()),
+        detail: {
+            summary: 'Delete Custom Tag data',
+            description: 'Delete all stored data of one Custom Tag across the Agent\'s PER_CUSTOM_TAG volumes. Rejected while a sandbox with that tag exists.',
+            operationId: 'deleteAgentTag',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },

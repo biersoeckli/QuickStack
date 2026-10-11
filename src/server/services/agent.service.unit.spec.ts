@@ -55,6 +55,7 @@ const namespaceServiceMocks = vi.hoisted(() => ({
 const agentRuntimeServiceMocks = vi.hoisted(() => ({
     listSandboxes: vi.fn(),
     stopAllSandboxes: vi.fn(),
+    deleteTaggedVirtualKeys: vi.fn(),
     refreshRuntimeSecret: vi.fn(),
 }));
 
@@ -62,6 +63,11 @@ const pvcServiceMocks = vi.hoisted(() => ({
     ensurePvcForUserAgent: vi.fn(),
     deleteUnusedPvcForAgent: vi.fn(),
     deleteAllPvcForAgent: vi.fn(),
+}));
+
+const networkPolicyServiceMocks = vi.hoisted(() => ({
+    reconcileAgentSandboxNetworkPolicy: vi.fn(),
+    deleteAgentSandboxNetworkPolicy: vi.fn(),
 }));
 
 const configMapServiceMocks = vi.hoisted(() => ({
@@ -130,6 +136,15 @@ vi.mock('@/server/services/agent-runtime.service', () => ({
 vi.mock('@/server/services/pvc.service', () => ({
     default: pvcServiceMocks,
 }));
+vi.mock('@/server/services/network-policy.service', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/server/services/network-policy.service')>();
+    return {
+        default: {
+            ...networkPolicyServiceMocks,
+            buildAgentSandboxTemplateNetworkPolicy: actual.default.buildAgentSandboxTemplateNetworkPolicy.bind(actual.default),
+        },
+    };
+});
 vi.mock('@/server/services/config-map.service', () => ({
     default: configMapServiceMocks,
 }));
@@ -200,7 +215,6 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: null,
         encryptedEnvVars: null,
         containerCommand: null,
         containerArgs: null,
@@ -228,7 +242,7 @@ function mockAgent(id: string, name: string, projectId: string = 'proj-test-agen
 function mockAgentWithRelations(id: string, name: string, projectId: string = 'proj-test-agent', overrides: Record<string, any> = {}) {
     return {
         ...mockAgent(id, name, projectId),
-        project: { id: projectId, name: 'Test Project', projectType: 'AGENT' },
+        project: { id: projectId, name: 'Test Project' },
         llmGateway: { id: 'gateway-1', name: 'Test Gateway', baseUrl: 'https://litellm.example.com', encryptedAdminKey: 'encrypted:gw-key' },
         ...overrides,
     };
@@ -259,7 +273,6 @@ describe('agent.service', () => {
         vi.mocked(ingressService.deleteAgentIngress).mockResolvedValue(undefined);
         vi.mocked(ingressService.createOrUpdateAgentIngress).mockResolvedValue(undefined);
         vi.mocked(secretService.getDecodedSecret).mockResolvedValue(null);
-        vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({ projectType: 'AGENT' } as any);
     });
 
     describe('saveAgent', () => {
@@ -283,23 +296,6 @@ describe('agent.service', () => {
                     modelAlias: JSON.stringify(['gpt-4o']),
                 }),
             });
-            expect(dataAccess.client.project.findUnique).toHaveBeenCalledWith({
-                where: { id: 'proj-test-agent' },
-                select: { projectType: true },
-            });
-        });
-
-        it('rejects creates in non-Agent projects', async () => {
-            vi.mocked(dataAccess.client.project.findUnique).mockResolvedValue({ projectType: 'APP' } as any);
-
-            await expect(agentService.saveAgent({
-                name: 'My Agent',
-                projectId: 'proj-test-agent',
-                llmGatewayId: 'gateway-1',
-                modelAlias: ['gpt-4o'],
-            })).rejects.toThrow('Agents can only be created in Agent Projects.');
-
-            expect(dataAccess.client.agent.create).not.toHaveBeenCalled();
         });
 
         it('updates an existing agent when id is provided', async () => {
@@ -324,8 +320,8 @@ describe('agent.service', () => {
     describe('getAll', () => {
         it('returns all agents with relations sorted by project and name', async () => {
             const agents = [
-                mockAgentWithRelations('agent-z', 'Zulu', 'project-b', { project: { id: 'project-b', name: 'Beta', projectType: 'AGENT' } }),
-                mockAgentWithRelations('agent-a', 'Alpha', 'project-a', { project: { id: 'project-a', name: 'Alpha', projectType: 'AGENT' } }),
+                mockAgentWithRelations('agent-z', 'Zulu', 'project-b', { project: { id: 'project-b', name: 'Beta' } }),
+                mockAgentWithRelations('agent-a', 'Alpha', 'project-a', { project: { id: 'project-a', name: 'Alpha' } }),
             ];
             vi.mocked(dataAccess.client.agent.findMany).mockResolvedValue(agents as any);
 
@@ -766,6 +762,113 @@ describe('agent.service', () => {
                 expect.objectContaining({ name: 'cm-file-mount-1' }),
             ]));
         });
+
+        it('mounts an ALL agent volume as a static shared claim with no claim template', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [{
+                    id: 'vol-shared',
+                    agentId: 'agent-1',
+                    containerMountPath: '/workspace',
+                    size: 1024,
+                    volumeType: 'ALL',
+                    accessMode: 'ReadWriteMany',
+                    storageClassName: 'longhorn',
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                }],
+            }) as any);
+            vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({
+                volume: { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+                volumeMount: { name: 'vol-shared', mountPath: '/workspace' },
+            } as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Disallowed');
+            expect(resource.spec.volumeClaimTemplates).toBeUndefined();
+            expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/workspace' },
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).toHaveBeenCalledTimes(1);
+        });
+
+        it('mounts a PER_SANDBOX agent volume as a claim template with no static volume', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [{
+                    id: 'vol-scratch',
+                    agentId: 'agent-1',
+                    containerMountPath: '/scratch',
+                    size: 2048,
+                    volumeType: 'PER_SANDBOX',
+                    accessMode: 'ReadWriteOnce',
+                    storageClassName: 'longhorn',
+                    createdAt: new Date('2025-01-01'),
+                    updatedAt: new Date('2025-01-01'),
+                }],
+            }) as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Overrides');
+            expect(resource.spec.volumeClaimTemplates).toEqual([{
+                metadata: {
+                    name: 'vol-scratch',
+                    annotations: { 'qs-agent-volume-id': 'vol-scratch' },
+                },
+                spec: {
+                    accessModes: ['ReadWriteOnce'],
+                    storageClassName: 'longhorn',
+                    resources: { requests: { storage: '2Gi' } },
+                },
+            }]);
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-scratch', mountPath: '/scratch' },
+            ]));
+            expect(resource.spec.podTemplate.spec.volumes).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({ name: 'vol-scratch' }),
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).not.toHaveBeenCalled();
+        });
+
+        it('mixes ALL and PER_SANDBOX agent volumes and allows overrides', async () => {
+            vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
+                agentVolumes: [
+                    {
+                        id: 'vol-shared', agentId: 'agent-1', containerMountPath: '/workspace', size: 1024,
+                        volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn',
+                        createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01'),
+                    },
+                    {
+                        id: 'vol-scratch', agentId: 'agent-1', containerMountPath: '/scratch', size: 2048,
+                        volumeType: 'PER_SANDBOX', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn',
+                        createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01'),
+                    },
+                ],
+            }) as any);
+            vi.mocked(pvcService.ensurePvcForUserAgent).mockResolvedValue({
+                volume: { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+                volumeMount: { name: 'vol-shared', mountPath: '/workspace' },
+            } as any);
+
+            await agentService.deploy('agent-1');
+
+            const { resource } = getSandboxTemplateResourceFromTemplateCall();
+            expect(resource.spec.volumeClaimTemplatesPolicy).toBe('Overrides');
+            expect(resource.spec.volumeClaimTemplates).toHaveLength(1);
+            expect(resource.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
+            ]));
+            expect(resource.spec.podTemplate.spec.containers[0].volumeMounts).toEqual(expect.arrayContaining([
+                { name: 'vol-shared', mountPath: '/workspace' },
+                { name: 'vol-scratch', mountPath: '/scratch' },
+            ]));
+            expect(pvcService.ensurePvcForUserAgent).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('deleteById', () => {
@@ -784,6 +887,7 @@ describe('agent.service', () => {
                 'proj-test-agent',
             );
             expect(agentRuntimeService.stopAllSandboxes).toHaveBeenCalledWith('agent-1');
+            expect(agentRuntimeService.deleteTaggedVirtualKeys).toHaveBeenCalledWith('agent-1');
             expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
@@ -865,7 +969,7 @@ describe('agent.service', () => {
             vi.mocked(dataAccess.client.agent.findUniqueOrThrow).mockResolvedValue(existingAgent as any);
         });
 
-        it('saves source image, resources, container command, and system prompt config', async () => {
+        it('saves source image, resources, and container command config', async () => {
             const result = await agentService.saveAgent({
                 id: agentId,
                 containerImageSource: 'my-custom-image:latest',
@@ -877,7 +981,6 @@ describe('agent.service', () => {
                 containerArgs: JSON.stringify([{ value: '-c' }, { value: 'sleep 3600' }].map(arg => arg.value)),
                 workingDir: '/workspace/app',
                 warmPoolReplicas: 3,
-                systemPrompt: 'You are a helpful assistant.',
             });
 
             expect(dataAccess.client.agent.update).toHaveBeenCalledWith({
@@ -893,7 +996,6 @@ describe('agent.service', () => {
                     containerArgs: '["-c","sleep 3600"]',
                     workingDir: '/workspace/app',
                     warmPoolReplicas: 3,
-                    systemPrompt: 'You are a helpful assistant.',
                 },
             });
             expect(result.containerImageSource).toBe('my-custom-image:latest');
@@ -934,16 +1036,6 @@ describe('agent.service', () => {
             const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
             expect((updateCall as any).data.llmGatewayId).toBe('new-gateway');
             expect((updateCall as any).data.modelAlias).toBe(JSON.stringify(['new-model', 'claude-3-5-sonnet']));
-        });
-
-        it('saves only provided fields', async () => {
-            await agentService.saveAgent({
-                id: agentId,
-                systemPrompt: 'new prompt',
-            });
-
-            const updateCall = vi.mocked(dataAccess.client.agent.update).mock.calls[0][0];
-            expect(Object.keys((updateCall as any).data)).toEqual(['id', 'systemPrompt']);
         });
 
         it('does not send encryptedEnvVars when envVars is undefined', async () => {

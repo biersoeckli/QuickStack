@@ -12,6 +12,18 @@ export const TEMPLATE_PLURAL = 'sandboxtemplates';
 export const WARMPOOL_PLURAL = 'sandboxwarmpools';
 export const CLAIM_PLURAL = 'sandboxclaims';
 
+export type SandboxOperatingMode = 'Running' | 'Suspended';
+
+const TERMINAL_CLAIM_FAILURE_REASONS = new Set([
+    'TemplateNotFound',
+    'WarmPoolNotFound',
+    'InvalidMetadata',
+    'EnvVarsInjectionRejected',
+    'VolumeClaimTemplatesError',
+    'ReconcilerError',
+    'InvalidConfiguration',
+]);
+
 class AgentSandboxAdapter {
 
     async getSandbox(name: string, namespace: string): Promise<Sandbox | null> {
@@ -34,6 +46,165 @@ class AgentSandboxAdapter {
                 `Failed to get Sandbox "${name}": ${error?.message || error}`,
             );
         }
+    }
+
+    /**
+     * Patches the operatingMode of a Sandbox, leaving its Service and PersistentVolumeClaims intact.
+     */
+    async setSandboxOperatingMode(
+        sandboxName: string,
+        namespace: string,
+        operatingMode: SandboxOperatingMode,
+    ): Promise<void> {
+        try {
+            await k3s.customObjects.patchNamespacedCustomObject(
+                {
+                    group: BASE_SANDBOX_API_GROUP,
+                    version: SANDBOX_API_VERSION,
+                    namespace,
+                    plural: SANDBOX_PLURAL,
+                    name: sandboxName,
+                    body: { spec: { operatingMode } },
+                },
+                kubernetesPatchOptions(PatchStrategy.MergePatch),
+            );
+        } catch (err) {
+            const error = err as ApiException<any>;
+            console.error(`Failed to set operatingMode "${operatingMode}" on Sandbox "${sandboxName}":`, error);
+            throw new ServiceException(
+                `Failed to set operatingMode "${operatingMode}" on Sandbox "${sandboxName}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async waitForSandboxSuspended(
+        sandboxName: string,
+        namespace: string,
+        timeoutMs = 120_000,
+        pollIntervalMs = 1_000,
+    ): Promise<void> {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            const sandbox = await this.getSandbox(sandboxName, namespace);
+            if (!sandbox) {
+                throw new ServiceException(`Sandbox "${sandboxName}" not found while waiting for suspension.`);
+            }
+
+            const suspendedCondition = (sandbox.status?.conditions ?? []).find(
+                (condition) => condition.type === 'Suspended',
+            );
+            if (suspendedCondition?.status === 'True') {
+                return;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        }
+
+        throw new ServiceException(
+            `Sandbox "${sandboxName}" did not suspend within ${timeoutMs / 1000}s.`,
+        );
+    }
+
+    /**
+     * Creates a directly created base Sandbox custom resource.
+     * Fails when a Sandbox with the same name already exists.
+     */
+    async createSandbox(resource: Sandbox): Promise<void> {
+        this.assertResourceKind(resource, 'Sandbox', SANDBOX_PLURAL, BASE_SANDBOX_API_GROUP);
+        const name = resource.metadata!.name!;
+        const namespace = resource.metadata!.namespace!;
+
+        try {
+            await k3s.customObjects.getNamespacedCustomObject({ group: BASE_SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural: SANDBOX_PLURAL, name });
+            throw new ServiceException(
+                `Sandbox "${name}" already exists. Stop the sandbox with this Custom Tag before starting again.`,
+            );
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error instanceof ServiceException) {
+                throw error;
+            }
+            if (error?.code !== 404) {
+                console.error(`Failed to check existing Sandbox "${name}":`, error);
+                throw new ServiceException(
+                    `Failed to check existing Sandbox "${name}": ${error?.message || error}`,
+                );
+            }
+        }
+
+        try {
+            await k3s.customObjects.createNamespacedCustomObject({ group: BASE_SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural: SANDBOX_PLURAL, body: resource });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            console.error(`Failed to create Sandbox "${name}":`, error);
+            throw new ServiceException(
+                `Failed to create Sandbox "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    /**
+     * Lists directly created base Sandboxes in a namespace, optionally filtered by label selector.
+     */
+    async listSandboxes(namespace: string, labelSelector?: string): Promise<Sandbox[]> {
+        try {
+            const response = await k3s.customObjects.listNamespacedCustomObject({ group: BASE_SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural: SANDBOX_PLURAL, labelSelector });
+            return (response as any).items || [];
+        } catch (err) {
+            const error = err as ApiException<any>;
+            console.error(`Failed to list Sandboxes in namespace "${namespace}":`, error);
+            throw new ServiceException(
+                `Failed to list Sandboxes: ${error?.message || error}`,
+            );
+        }
+    }
+
+    /**
+     * Deletes a directly created base Sandbox custom resource. Missing resources are ignored.
+     */
+    async deleteSandbox(name: string, namespace: string): Promise<void> {
+        try {
+            await k3s.customObjects.deleteNamespacedCustomObject({ group: BASE_SANDBOX_API_GROUP, version: SANDBOX_API_VERSION, namespace, plural: SANDBOX_PLURAL, name });
+        } catch (err) {
+            const error = err as ApiException<any>;
+            if (error?.code === 404) {
+                return;
+            }
+            console.error(`Failed to delete Sandbox "${name}":`, error);
+            throw new ServiceException(
+                `Failed to delete Sandbox "${name}": ${error?.message || error}`,
+            );
+        }
+    }
+
+    async waitForSandboxObjectReady(name: string, namespace: string, timeoutMs = 300_000, pollIntervalMs = 2_000): Promise<void> {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            const sandbox = await this.getSandbox(name, namespace);
+            if (!sandbox) {
+                throw new ServiceException(`Sandbox "${name}" not found while waiting for readiness.`);
+            }
+
+            const conditions = sandbox.status?.conditions ?? [];
+            const ready = conditions.find((c) => c.type === 'Ready' || c.type === 'Available');
+            if (ready?.status === 'True') {
+                return;
+            }
+            if (ready?.status === 'False' && ready.reason && TERMINAL_CLAIM_FAILURE_REASONS.has(ready.reason)) {
+                throw new ServiceException(
+                    `Sandbox "${name}" failed to become ready: ${ready.message || ready.reason}`,
+                );
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        }
+
+        throw new ServiceException(
+            `Sandbox "${name}" did not become ready within ${timeoutMs / 1000}s. ` +
+            `Check sandbox controller logs and Pod events for details.`,
+        );
     }
 
     /**
@@ -276,8 +447,9 @@ class AgentSandboxAdapter {
         resource: KubernetesResource,
         expectedKind: string,
         displayName: string,
+        apiGroup: string = SANDBOX_API_GROUP,
     ): void {
-        const expectedApiVersion = `${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}`;
+        const expectedApiVersion = `${apiGroup}/${SANDBOX_API_VERSION}`;
         if (resource.apiVersion !== expectedApiVersion) {
             throw new ServiceException(
                 `Invalid apiVersion for ${displayName}: expected "${expectedApiVersion}", got "${resource.apiVersion}".`,

@@ -87,7 +87,7 @@ describe('volume-backup.service pre-deployment backups integration', () => {
     }
 
     it('runs opted-in backups of the app and its directly connected apps in the same project', async () => {
-        const project = await dataAccess.client.project.create({ data: { name: 'P', projectType: 'APP' } });
+        const project = await dataAccess.client.project.create({ data: { name: 'P' } });
         const app = await createApp(project.id, 'app-target');
         const connectedViaIncoming = await createApp(project.id, 'app-incoming');
         const connectedViaOutgoing = await createApp(project.id, 'app-outgoing');
@@ -115,8 +115,8 @@ describe('volume-backup.service pre-deployment backups integration', () => {
     });
 
     it('ignores connected apps from other projects', async () => {
-        const project = await dataAccess.client.project.create({ data: { name: 'P', projectType: 'APP' } });
-        const otherProject = await dataAccess.client.project.create({ data: { name: 'Other', projectType: 'APP' } });
+        const project = await dataAccess.client.project.create({ data: { name: 'P' } });
+        const otherProject = await dataAccess.client.project.create({ data: { name: 'Other' } });
         const app = await createApp(project.id, 'app-target');
         const foreignApp = await createApp(otherProject.id, 'app-foreign');
 
@@ -132,7 +132,7 @@ describe('volume-backup.service pre-deployment backups integration', () => {
     });
 
     it('aborts the deployment when a non-silent backup fails, after running the remaining backups', async () => {
-        const project = await dataAccess.client.project.create({ data: { name: 'P', projectType: 'APP' } });
+        const project = await dataAccess.client.project.create({ data: { name: 'P' } });
         const app = await createApp(project.id, 'app-target');
 
         const base = Date.now();
@@ -155,7 +155,7 @@ describe('volume-backup.service pre-deployment backups integration', () => {
     });
 
     it('continues the deployment when a silent backup fails', async () => {
-        const project = await dataAccess.client.project.create({ data: { name: 'P', projectType: 'APP' } });
+        const project = await dataAccess.client.project.create({ data: { name: 'P' } });
         const app = await createApp(project.id, 'app-target');
 
         const failing = await createBackup(app.id, { createdAt: new Date(), backupBeforeDeployment: true, failSilently: true });
@@ -170,7 +170,7 @@ describe('volume-backup.service pre-deployment backups integration', () => {
     });
 
     it('does nothing when no schedule opted in', async () => {
-        const project = await dataAccess.client.project.create({ data: { name: 'P', projectType: 'APP' } });
+        const project = await dataAccess.client.project.create({ data: { name: 'P' } });
         const app = await createApp(project.id, 'app-target');
         await createBackup(app.id, { createdAt: new Date(), backupBeforeDeployment: false });
 

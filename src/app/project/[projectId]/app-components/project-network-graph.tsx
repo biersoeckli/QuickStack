@@ -1,48 +1,34 @@
 'use client';
 
-import type { CSSProperties, ReactNode } from 'react';
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Background,
     BackgroundVariant,
     Controls,
-    Handle,
     MarkerType,
-    Position,
     ReactFlow,
     SmoothStepEdge,
     useNodesState,
     type Node,
-    type NodeProps,
     type NodeTypes,
     type EdgeProps,
     type Connection,
     type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Blocks, Bot, Boxes, Cloud, Database, File, Info, RotateCcw } from 'lucide-react';
+import { Cloud, Info, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import PodStatusIndicator from '@/components/custom/pod-status-indicator';
-import BuildStatusIndicator from '@/components/custom/build-status-indicator';
 import { cn } from '@/frontend/utils/utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
+import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
-import {
-    ProjectNetworkGraphAppContextMenu,
-    type ProjectNetworkGraphAppContextMenuProps,
-} from './project-network-graph/project-network-graph-app-context-menu';
-import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/project-network-graph-connection-context-menu';
+import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/context-menus/project-network-graph-connection-context-menu';
 import { connectionDeletionProvenance, type NetworkGraphEdge, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
 import { graphEdgePresentation, graphLegendItems, NETWORK_GRAPH_COLORS } from './project-network-graph/project-network-graph-visual-semantics';
@@ -56,8 +42,6 @@ import { InternalHostnameUtils } from '@/shared/utils/internal-hostname.utils';
 import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
 import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
-import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
-import ChooseTemplateDialog from '@/app/project/[projectId]/choose-template-dialog';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
@@ -66,18 +50,14 @@ import {
     useProjectNetworkGraphDrawerSession,
 } from './project-network-graph/project-network-graph-drawer-session';
 import { AppDetailsDrawer } from './app-drawer-components/app-details-drawer';
-
-const hiddenHandleClassName = 'size-1.5! border-0! bg-transparent! opacity-0! pointer-events-none';
-const connectionSourceHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-500! opacity-0! shadow-md! transition-all duration-150 group-hover:opacity-100! [&.connectingfrom]:opacity-0! hover:bg-qs-600!';
-const connectionTargetHandleClassName = 'z-20! size-4! border-2! border-background! bg-qs-400! opacity-0! shadow-md! transition-all duration-150 [&.connectingto]:opacity-100! hover:bg-qs-500!';
-
-type WorkloadNodeData = NetworkGraphNode & {
-    connectionInProgress?: boolean;
-    connectionTarget?: boolean;
-    selected?: boolean;
-    connectedToSelection?: boolean;
-    contextMenu?: Omit<ProjectNetworkGraphAppContextMenuProps, 'children'>;
-};
+import { AgentSandboxDrawer } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-sandbox-drawer';
+import { deleteAgent } from '@/app/project/[projectId]/agent-components/agent-drawer-components/agent-actions';
+import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
+import type { AgentDrawerTab } from '@/shared/utils/agent-drawer-navigation.utils';
+import { ProjectNetworkGraphCanvasContextMenu } from './project-network-graph/context-menus/project-network-graph-canvas-context-menu';
+import { ProjectNetworkGraphAppWorkloadNode } from './project-network-graph/nodes/project-network-graph-app-workload-node';
+import { ProjectNetworkGraphAgentWorkloadNode } from './project-network-graph/nodes/project-network-graph-agent-workload-node';
+import { ProjectNetworkGraphInternetNode } from './project-network-graph/nodes/project-network-graph-internet-node';
 
 type ConnectionEdgeData = {
     onDelete?: () => void;
@@ -86,71 +66,30 @@ type ConnectionEdgeData = {
 
 type ProjectNetworkGraphProps = {
     apps: AppExtendedModel[];
+    agents: AgentExtendedModel[];
+    agentsAvailable: boolean;
     projectId: string;
     session: UserSession;
     savedPositions: ProjectNetworkGraphPositions;
     s3Targets: S3Target[];
     storageClasses: string[];
+    runtimeClasses: string[];
     volumeBackupsByApp: Record<string, VolumeBackupExtendedModel[]>;
     gitSshPublicKeysByApp: Record<string, string | undefined>;
+    agentTemplateInfoByAgent: Record<string, AgentSandboxTemplateInfo | undefined>;
 };
 
-const WorkloadNode = memo(function WorkloadNode({
-    data,
-}: NodeProps<Node<WorkloadNodeData, 'workload'>>) {
-    const database = !!data.appType && data.appType.toUpperCase() !== 'APP';
-    const Icon = data.kind === 'AGENT' ? Bot : database ? Database : Boxes;
-    const node = (
-        <div className={cn('group relative w-[240px] cursor-pointer transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
-            <div className={cn(
-                'relative z-10 flex items-center gap-3 rounded-xl border bg-card px-4 py-3.5 shadow-xs transition-all duration-150 hover:border-qs-500/50 hover:shadow-md',
-                data.external && 'border-dashed border-amber-500/70 bg-amber-500/5',
-                data.selected && 'border-qs-500 ring-2 ring-qs-500/20 shadow-md',
-            )}>
-                <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg ring-1', data.kind === 'AGENT' ? 'bg-violet-500/15 text-violet-600 ring-violet-500/30' : database ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30' : 'bg-qs-500/10 text-qs-600 ring-qs-500/30')}>
-                    <Icon className="size-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate text-sm font-semibold" title={data.name}>{data.name}</p>
-                        {data.kind === 'APP' && <div className={cn('ml-auto flex shrink-0 transition-opacity', data.connectionTarget && 'opacity-0')}>
-                            <PodStatusIndicator appId={data.id.replace('APP:', '')} />
-                        </div>}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">{data.caption ?? (database ? data.appType : data.kind === 'AGENT' ? 'Agent sandbox' : 'App')}</p>
-                </div>
-            </div>
-            {data.kind === 'APP' && <div className="relative z-0 mx-auto -mt-px hidden w-[184px] justify-center rounded-b-xl border border-t-0 bg-card px-3 pb-2 pt-2 shadow-xs has-[.build-status-indicator]:flex">
-                <BuildStatusIndicator appId={data.id.replace('APP:', '')} showLabel className="build-status-indicator" />
-            </div>}
-            <Handle id="target-ingress" type="target" position={Position.Left} title="Drop connection here" className={cn(data.external ? hiddenHandleClassName : connectionTargetHandleClassName, data.connectionTarget && 'opacity-100!')} style={{ top: 34, bottom: 'auto' }} />
-            <Handle id="source-internet" type="source" position={Position.Top} className={hiddenHandleClassName} />
-            <Handle id="source-ingress" type="source" position={Position.Bottom} className={hiddenHandleClassName} />
-            <Handle id="target-egress" type="target" position={Position.Left} className={hiddenHandleClassName} />
-            <Handle id="source-egress" type="source" position={Position.Right} title="Drag to create connection" className={cn(data.external ? hiddenHandleClassName : connectionSourceHandleClassName, data.connectionInProgress && 'opacity-0!')} style={{ top: 34, bottom: 'auto' }} />
-        </div>
-    );
-    return data.contextMenu
-        ? <ProjectNetworkGraphAppContextMenu {...data.contextMenu}>{node}</ProjectNetworkGraphAppContextMenu>
-        : node;
-});
+function stripWorkloadPrefix(nodeId: string | undefined) {
+    if (!nodeId) return undefined;
+    const separatorIndex = nodeId.indexOf(':');
+    return separatorIndex >= 0 ? nodeId.slice(separatorIndex + 1) : nodeId;
+}
 
-const InternetNode = memo(function InternetNode({
-    data,
-}: NodeProps<Node<WorkloadNodeData, 'internet'>>) {
-    return (
-        <div className={cn('flex flex-col items-center gap-1.5 transition-opacity duration-150', !data.selected && !data.connectedToSelection && 'opacity-40')}>
-            <div className="flex size-16 items-center justify-center rounded-full border-2 border-dashed border-violet-400 bg-card text-violet-500 shadow-xs">
-                <Cloud className="size-7" />
-            </div>
-            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Internet</span>
-            <Handle id="target" type="target" position={Position.Bottom} className={hiddenHandleClassName} style={{ left: '35%' }} />
-            <Handle id="source" type="source" position={Position.Bottom} className={hiddenHandleClassName} style={{ left: '65%' }} />
-        </div>
-    );
-});
-
-const nodeTypes = { workload: WorkloadNode, internet: InternetNode } satisfies NodeTypes;
+const nodeTypes = {
+    'app-workload': ProjectNetworkGraphAppWorkloadNode,
+    'agent-workload': ProjectNetworkGraphAgentWorkloadNode,
+    internet: ProjectNetworkGraphInternetNode,
+} satisfies NodeTypes;
 
 function ConnectionEdge(props: EdgeProps) {
     const data = props.data as ConnectionEdgeData | undefined;
@@ -191,51 +130,6 @@ function getInternalHostnames(
 }
 const edgeTypes = { connection: ConnectionEdge };
 
-function ProjectNetworkGraphCanvasContextMenu({
-    projectId,
-    canCreateApps,
-    children,
-}: {
-    projectId: string;
-    canCreateApps: boolean;
-    children: ReactNode;
-}) {
-    const { openDialog } = useDialog();
-
-    const openTemplateDialog = (templateType: 'database' | 'template') => {
-        openDialog(
-            <ChooseTemplateDialog projectId={projectId} templateType={templateType} />,
-            { maxWidth: '1000px' },
-        );
-    };
-
-    if (!canCreateApps) return children;
-
-    return (
-        <ContextMenu>
-            <ContextMenuTrigger className="block size-full">
-                {children}
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-                <EditAppDialog projectId={projectId} openAppAfterCreate={false}>
-                    <ContextMenuItem>
-                        <File />
-                        Create Empty App
-                    </ContextMenuItem>
-                </EditAppDialog>
-                <ContextMenuItem onClick={() => openTemplateDialog('template')}>
-                    <Blocks />
-                    Create App from Template
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => openTemplateDialog('database')}>
-                    <Database />
-                    Create Database
-                </ContextMenuItem>
-            </ContextMenuContent>
-        </ContextMenu>
-    );
-}
-
 function Legend() {
     return (
         <div className="flex flex-wrap items-center gap-x-[18px] gap-y-1.5 text-xs text-muted-foreground">
@@ -264,13 +158,17 @@ export default function ProjectNetworkGraph(props: ProjectNetworkGraphProps) {
 
 function ProjectNetworkGraphEditor({
     apps,
+    agents,
+    agentsAvailable,
     projectId,
     session,
     savedPositions,
     s3Targets,
     storageClasses,
+    runtimeClasses,
     volumeBackupsByApp,
     gitSshPublicKeysByApp,
+    agentTemplateInfoByAgent,
 }: ProjectNetworkGraphProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -290,12 +188,19 @@ function ProjectNetworkGraphEditor({
     const graphApps = useMemo(() => apps.map(app => AppNetworkPolicyDraftUtils.applyToApp(app, drafts[app.id])), [apps, drafts]);
     const canEditLayout = UserGroupUtils.sessionHasWriteAccessToProject(session, projectId);
     const canCreateApps = UserGroupUtils.sessionCanCreateNewAppsForProject(session, projectId);
-    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, projectId, savedPositions);
+    const canCreateAgents = agentsAvailable && UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId);
+    const { layout, saveNodePosition, resetLayout } = useProjectNetworkGraph(graphApps, agents, projectId, savedPositions);
     const dirty = Object.keys(drafts).some(appId => !AppNetworkPolicyDraftUtils.equals(drafts[appId], baseline[appId]));
     const localAppIds = useMemo(() => new Set(apps.map(app => app.id)), [apps]);
+    const localAgentIds = useMemo(() => new Set(agents.map(agent => agent.id)), [agents]);
+    const localWorkloadIds = useMemo(() => new Set([
+        ...apps.map(app => app.id),
+        ...agents.map(agent => agent.id),
+    ]), [apps, agents]);
     const drawerSession = useProjectNetworkGraphDrawerSession({
         searchParams,
         appIds: localAppIds,
+        agentIds: localAgentIds,
     });
     const { selectedNodeId } = drawerSession;
     const writable = useCallback(
@@ -322,13 +227,21 @@ function ProjectNetworkGraphEditor({
     const cancelConnectionTargetLeave = () => {
         if (connectionTargetLeaveTimer.current) clearTimeout(connectionTargetLeaveTimer.current);
     };
-    const selectableTargets: NetworkPolicySelectableTarget[] = apps.map(app => ({
-        id: app.id,
-        name: app.name,
-        type: 'APP',
-        appType: app.appType,
-        project: { id: app.projectId, name: app.project.name },
-    }));
+    const selectableTargets: NetworkPolicySelectableTarget[] = [
+        ...apps.map(app => ({
+            id: app.id,
+            name: app.name,
+            type: 'APP' as const,
+            appType: app.appType,
+            project: { id: app.projectId, name: app.project.name },
+        })),
+        ...agents.map(agent => ({
+            id: agent.id,
+            name: agent.name,
+            type: 'AGENT' as const,
+            project: { id: agent.projectId, name: agent.project.name },
+        })),
+    ];
 
     const updateDraft = useCallback((appId: string, update: (draft: AppNetworkPolicyDraft) => AppNetworkPolicyDraft) => {
         setDrafts(current => ({ ...current, [appId]: update(current[appId]) }));
@@ -363,6 +276,14 @@ function ProjectNetworkGraphEditor({
             description: 'Are you sure you want to delete this app? All data will be lost and this action cannot be undone.',
         })) return;
         await Toast.fromAction(() => deleteApp(appId));
+    }, [openConfirmDialog]);
+    const deleteLocalAgent = useCallback(async (agentId: string) => {
+        if (!await openConfirmDialog({
+            title: 'Delete Agent Sandbox',
+            description: 'Are you sure you want to delete this Agent Sandbox? All data will be lost and this action cannot be undone.',
+            okButton: 'Delete Agent Sandbox',
+        })) return;
+        await Toast.fromAction(() => deleteAgent(agentId), 'Agent Sandbox deleted successfully.');
     }, [openConfirmDialog]);
     const toggleInternetAccess = useCallback((appId: string) => {
         updateDraft(appId, draft => ({
@@ -403,39 +324,53 @@ function ProjectNetworkGraphEditor({
         const appId = node.kind === 'APP' ? node.id.replace('APP:', '') : undefined;
         const app = appId ? apps.find(item => item.id === appId) : undefined;
         const draft = app ? drafts[app.id] : undefined;
-        const role = app
+        const appRole = app
             ? UserGroupUtils.getRolePermissionForApp(session, app.id) ?? undefined
             : undefined;
+        const agentId = node.kind === 'AGENT' ? node.id.replace('AGENT:', '') : undefined;
+        const agent = agentId ? agents.find(item => item.id === agentId) : undefined;
+        const agentRole = agent
+            ? UserGroupUtils.getRolePermissionForProjectWorkload(session, agent.id) ?? undefined
+            : undefined;
         return {
-        id: node.id,
-        type: node.kind === 'INTERNET' ? 'internet' : 'workload',
-        position: node.position,
-        data: {
-            ...node,
-            connectionInProgress: !!connectionSourceNodeId,
-            connectionTarget: node.id === connectionTargetNodeId,
-            selected: node.id === selectedNodeId,
-            contextMenu: app && draft && role === RolePermissionEnum.READWRITE ? {
-                app,
-                role,
-                allowInternetAccess: draft.allowInternetAccess,
-                onToggleInternetAccess: () => toggleInternetAccess(app.id),
-                onOpenDrawerTab: (tab: DrawerTab) => {
-                    drawerSession.openAppTab(app.id, tab);
-                },
-                onShowEnvironment: () => {
-                    setEnvironmentAppId(app.id);
-                    drawerSession.openAppTab(app.id, 'settings');
-                },
-                onDelete: () => void deleteLocalApp(app.id),
-            } : undefined,
-            connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
-                (edge.source === selectedNodeId && edge.target === node.id)
-                || (edge.target === selectedNodeId && edge.source === node.id),
-            ),
-        },
-    };
-    }), [apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
+            id: node.id,
+            type: node.kind === 'INTERNET'
+                ? 'internet'
+                : node.kind === 'AGENT'
+                    ? 'agent-workload'
+                    : 'app-workload',
+            position: node.position,
+            data: {
+                ...node,
+                connectionInProgress: !!connectionSourceNodeId,
+                connectionTarget: node.id === connectionTargetNodeId,
+                selected: node.id === selectedNodeId,
+                appContextMenu: app && draft && appRole === RolePermissionEnum.READWRITE ? {
+                    app,
+                    role: appRole,
+                    allowInternetAccess: draft.allowInternetAccess,
+                    onToggleInternetAccess: () => toggleInternetAccess(app.id),
+                    onOpenDrawerTab: (tab: DrawerTab) => {
+                        drawerSession.openAppTab(app.id, tab);
+                    },
+                    onShowEnvironment: () => {
+                        setEnvironmentAppId(app.id);
+                        drawerSession.openAppTab(app.id, 'settings');
+                    },
+                    onDelete: () => void deleteLocalApp(app.id),
+                } : undefined,
+                agentContextMenu: agent && agentRole === RolePermissionEnum.READWRITE ? {
+                    agent,
+                    onOpenDrawerTab: (tab: AgentDrawerTab) => drawerSession.openAgentTab(agent.id, tab),
+                    onDelete: () => void deleteLocalAgent(agent.id),
+                } : undefined,
+                connectedToSelection: !selectedNodeId || (layout?.edges ?? []).some(edge =>
+                    (edge.source === selectedNodeId && edge.target === node.id)
+                    || (edge.target === selectedNodeId && edge.source === node.id),
+                ),
+            },
+        };
+    }), [agents, apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalAgent, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);
@@ -481,9 +416,11 @@ function ProjectNetworkGraphEditor({
     const selectedNode = nodes.find(node => node.id === selectedNodeId)?.data as NetworkGraphNode | undefined;
     const selectedApp = selectedNode?.kind === 'APP' ? apps.find(app => app.id === selectedNode.id.replace('APP:', '')) : undefined;
     const selectedAppRole = selectedApp ? UserGroupUtils.getRolePermissionForApp(session, selectedApp.id) ?? undefined : undefined;
+    const selectedAgent = selectedNode?.kind === 'AGENT' ? agents.find(agent => agent.id === selectedNode.id.replace('AGENT:', '')) : undefined;
+    const selectedAgentRole = selectedAgent ? UserGroupUtils.getRolePermissionForProjectWorkload(session, selectedAgent.id) ?? undefined : undefined;
 
     useEffect(() => {
-        if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
+        if (!selectedNodeId || (selectedNode?.kind !== 'APP' && selectedNode?.kind !== 'AGENT')) return;
         if (!window.matchMedia('(min-width: 1024px)').matches) return;
 
         const animationFrame = requestAnimationFrame(() => {
@@ -540,86 +477,86 @@ function ProjectNetworkGraphEditor({
                 <ProjectNetworkGraphCanvasContextMenu
                     projectId={projectId}
                     canCreateApps={canCreateApps}
+                    canCreateAgents={canCreateAgents}
                 >
                     <ReactFlow
-                    onInit={instance => { reactFlowRef.current = instance; }}
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    fitView
-                    fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
-                    minZoom={0.3}
-                    maxZoom={1.5}
-                    zoomOnScroll
-                    zoomOnPinch={false}
-                    zoomOnDoubleClick={false}
-                    preventScrolling
-                    nodesDraggable={canEditLayout}
-                    nodesConnectable
-                    elementsSelectable={false}
-                    isValidConnection={(connection: Connection) => {
-                        const source = connection.source?.replace('APP:', '');
-                        const target = connection.target?.replace('APP:', '');
-                        return connection.sourceHandle === 'source-egress'
-                            && connection.targetHandle === 'target-ingress'
-                            && !!source
-                            && !!target
-                            && source !== target
-                            && localAppIds.has(source)
-                            && localAppIds.has(target)
-                            && writable(source);
-                    }}
-                    onConnect={(connection: Connection) => {
-                        const source = connection.source?.replace('APP:', '');
-                        const target = connection.target?.replace('APP:', '');
-                        if (source && target) openConnectionDialog(source, target);
-                    }}
-                    onConnectStart={(_event, { nodeId, handleId }) => {
-                        if (handleId === 'source-egress') {
+                        onInit={instance => { reactFlowRef.current = instance; }}
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
+                        fitView
+                        fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
+                        minZoom={0.3}
+                        maxZoom={1.5}
+                        zoomOnScroll
+                        zoomOnPinch={false}
+                        zoomOnDoubleClick={false}
+                        preventScrolling
+                        nodesDraggable={canEditLayout}
+                        nodesConnectable
+                        elementsSelectable={false}
+                        isValidConnection={(connection: Connection) => {
+                            const source = stripWorkloadPrefix(connection.source);
+                            const target = stripWorkloadPrefix(connection.target);
+                            return connection.sourceHandle === 'source-egress'
+                                && connection.targetHandle === 'target-ingress'
+                                && !!source
+                                && !!target
+                                && source !== target
+                                && localAppIds.has(source)
+                                && localWorkloadIds.has(target)
+                                && writable(source);
+                        }}
+                        onConnect={(connection: Connection) => {
+                            const source = stripWorkloadPrefix(connection.source);
+                            const target = stripWorkloadPrefix(connection.target);
+                            if (source && target) openConnectionDialog(source, target);
+                        }}
+                        onConnectStart={(_event, { nodeId, handleId }) => {
+                            if (handleId === 'source-egress') {
+                                cancelConnectionTargetLeave();
+                                setConnectionSourceNodeId(nodeId ?? undefined);
+                            }
+                        }}
+                        onConnectEnd={() => {
                             cancelConnectionTargetLeave();
-                            setConnectionSourceNodeId(nodeId ?? undefined);
-                        }
-                    }}
-                    onConnectEnd={() => {
-                        cancelConnectionTargetLeave();
-                        setConnectionSourceNodeId(undefined);
-                        setConnectionTargetNodeId(undefined);
-                    }}
-                    onPaneClick={() => {
-                    }}
-                    onNodeMouseEnter={(_event, node) => {
-                        cancelConnectionTargetLeave();
-                        const source = connectionSourceNodeId?.replace('APP:', '');
-                        const target = node.id.replace('APP:', '');
-                        if (source && source !== target && localAppIds.has(source) && localAppIds.has(target) && writable(source)) {
-                            setConnectionTargetNodeId(node.id);
-                        }
-                    }}
-                    onNodeMouseLeave={(_event, node) => {
-                        cancelConnectionTargetLeave();
-                        connectionTargetLeaveTimer.current = setTimeout(() => {
-                            setConnectionTargetNodeId(current => current === node.id ? undefined : current);
-                        }, 100);
-                    }}
-                    onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
-                    style={{
-                        '--xy-controls-button-background-color': 'var(--secondary)',
-                        '--xy-controls-button-background-color-hover': 'var(--accent)',
-                        '--xy-controls-button-color': 'var(--secondary-foreground)',
-                        '--xy-controls-button-border-color': 'var(--border)',
-                        '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
-                    } as CSSProperties}
-                    onNodeClick={(_event, node) => {
-                        const data = node.data as NetworkGraphNode;
-                        if (data.kind !== 'INTERNET') {
+                            setConnectionSourceNodeId(undefined);
+                            setConnectionTargetNodeId(undefined);
+                        }}
+                        onPaneClick={() => {
+                        }}
+                        onNodeMouseEnter={(_event, node) => {
+                            cancelConnectionTargetLeave();
+                            const source = stripWorkloadPrefix(connectionSourceNodeId);
+                            const target = stripWorkloadPrefix(node.id);
+                            if (source && target && source !== target && localAppIds.has(source) && localWorkloadIds.has(target) && writable(source)) {
+                                setConnectionTargetNodeId(node.id);
+                            }
+                        }}
+                        onNodeMouseLeave={(_event, node) => {
+                            cancelConnectionTargetLeave();
+                            connectionTargetLeaveTimer.current = setTimeout(() => {
+                                setConnectionTargetNodeId(current => current === node.id ? undefined : current);
+                            }, 100);
+                        }}
+                        onNodeDragStop={canEditLayout ? (_event, node) => void saveNodePosition(node.id, node.position) : undefined}
+                        style={{
+                            '--xy-controls-button-background-color': 'var(--secondary)',
+                            '--xy-controls-button-background-color-hover': 'var(--accent)',
+                            '--xy-controls-button-color': 'var(--secondary-foreground)',
+                            '--xy-controls-button-border-color': 'var(--border)',
+                            '--xy-controls-box-shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+                        } as CSSProperties}
+                        onNodeClick={(_event, node) => {
+                            const data = node.data as NetworkGraphNode;
+                            if (data.kind === 'INTERNET') return;
                             drawerSession.selectNode(data);
-                        }
-                    }}
-                >
-                    <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
-                    <Controls showInteractive={false} />
+                        }}
+                    >
+                        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="color-mix(in oklab, var(--muted-foreground) 35%, transparent)" />
+                        <Controls showInteractive={false} />
                     </ReactFlow>
                 </ProjectNetworkGraphCanvasContextMenu>
                 {dirty && (
@@ -648,7 +585,7 @@ function ProjectNetworkGraphEditor({
                 {edges.length === 0 && nodes.length === 0 && <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                     <Cloud className="size-6 opacity-40" /><p>No active network policy connections yet.</p>
                 </div>}
-                {selectedNode && <AppDetailsDrawer
+                {selectedNode && selectedNode.kind === 'APP' && <AppDetailsDrawer
                     contentRef={drawerContentRef}
                     node={selectedNode}
                     app={selectedApp}
@@ -666,6 +603,21 @@ function ProjectNetworkGraphEditor({
                     }}
                     openEnvironment={environmentAppId === selectedApp?.id}
                     onEnvironmentOpened={() => setEnvironmentAppId(undefined)}
+                />}
+                {selectedNode && selectedNode.kind === 'AGENT' && <AgentSandboxDrawer
+                    contentRef={drawerContentRef}
+                    agent={selectedAgent}
+                    role={selectedAgentRole}
+                    templateInfo={selectedAgent ? agentTemplateInfoByAgent[selectedAgent.id] : undefined}
+                    storageClasses={storageClasses}
+                    runtimeClasses={runtimeClasses}
+                    open={drawerSession.open}
+                    onOpenChange={drawerSession.onOpenChange}
+                    onOpenChangeComplete={drawerSession.onOpenChangeComplete}
+                    requestedTab={drawerSession.requestedTab}
+                    onTabChange={tab => {
+                        if (selectedAgent) drawerSession.openAgentTab(selectedAgent.id, tab);
+                    }}
                 />}
             </div>
         </div>

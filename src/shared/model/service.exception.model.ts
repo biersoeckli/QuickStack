@@ -6,26 +6,35 @@ export class ServiceException extends Error {
     }
 }
 
-export class ApiUnauthorizedException extends Error {
-    public readonly statusCode = 401;
-    public readonly title: string;
-
-    constructor(title?: string, message?: string) {
-        super(message || 'Authentication checks did not pass for this request.');
-        this.title = title || 'Unauthorized';
-        this.name = ApiUnauthorizedException.name;
+export class ApiException extends Error {
+    constructor(
+        public readonly statusCode: number,
+        public readonly title: string,
+        message: string,
+    ) {
+        super(message);
+        this.name = ApiException.name;
         Error.captureStackTrace(this, this.constructor);
     }
 }
 
-export class ApiNotFoundException extends Error {
-    public readonly statusCode = 404;
-    public readonly title: string;
+export class ApiUnauthorizedException extends ApiException {
+    constructor(title = 'Unauthorized', message = 'Authentication checks did not pass for this request.') {
+        super(401, title, message);
+        this.name = ApiUnauthorizedException.name;
+    }
+}
 
-    constructor(title?: string, message?: string) {
-        super(message || 'The requested resource was not found.');
-        this.title = title || 'Not Found';
+export class ApiNotFoundException extends ApiException {
+    constructor(title = 'Not Found', message = 'The requested resource was not found.') {
+        super(404, title, message);
         this.name = ApiNotFoundException.name;
-        Error.captureStackTrace(this, this.constructor);
+    }
+}
+
+export class ApiConflictException extends ApiException {
+    constructor(title = 'Conflict', message = 'The request conflicts with the current state of the resource.') {
+        super(409, title, message);
+        this.name = ApiConflictException.name;
     }
 }

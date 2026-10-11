@@ -81,7 +81,7 @@ export type AppDetailsDrawerNode = {
     caption?: string;
 };
 
-function DrawerTabScrollArea({ children }: { children: ReactNode }) {
+export function DrawerTabScrollArea({ children }: { children: ReactNode }) {
     return (
         <ScrollArea className="min-h-0 min-w-0 flex-1 px-6 pt-2">
             <div className="min-w-0 pb-4">{children}</div>

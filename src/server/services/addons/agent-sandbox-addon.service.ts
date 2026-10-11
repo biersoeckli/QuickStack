@@ -27,6 +27,10 @@ class AgentSandboxAddonService extends BaseClusterAddon implements ClusterAddon 
     /** Newest first. Updates may only move to the immediately preceding release. */
     private static readonly RELEASES: readonly AddonRelease[] = [
         {
+            version: 'v1.0.6',
+            manifestUrl: 'https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.6/sandbox-with-extensions.yaml',
+        },
+        {
             version: 'v0.5.6',
             manifestUrl: 'https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v0.5.6/sandbox-with-extensions.yaml',
         },

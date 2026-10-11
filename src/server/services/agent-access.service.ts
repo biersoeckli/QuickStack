@@ -1,14 +1,14 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { Constants } from "@/shared/utils/constants";
-import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import agentDomainService from "./agent-domain.service";
 import agentService from "./agent.service";
 import { RequesterIdentity, ensureReadAgent } from "../utils/shared-authorization.utils";
 import { UserSession } from "@/shared/model/sim-session.model";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 import { AuthProxyJwtUtils } from "../utils/agent-jwt.utils";
+import agentSandboxResolutionService from "./agent-sandbox-resolution.service";
 
 export type AgentAccessView = 'agent' | 'files';
+
+const agentApiTokenTtlSeconds = 15 * 60;
 
 type CreateAgentAccessUrlInput = {
     agentId: string;
@@ -19,25 +19,6 @@ type CreateAgentAccessUrlInput = {
 };
 
 class AgentAccessService {
-    private resolveClaimStatus(claim: any): DeploymentStatus {
-        const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
-        const ready = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
-        );
-        if (ready) {
-            return 'DEPLOYED';
-        }
-
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
-        );
-        if (failed) {
-            return 'ERROR';
-        }
-
-        return 'DEPLOYING';
-    }
-
     async createAccessUrl(input: CreateAgentAccessUrlInput): Promise<{ url: string; expiresAt: number }> {
         const domain = await agentDomainService.getDomainForAgent(input.agentId, input.domainId);
         const target = await this.validateSandboxAccess(input.agentId, input.sandboxName, input.session);
@@ -57,7 +38,28 @@ class AgentAccessService {
         };
     }
 
-    async validateSandboxAccess(agentId: string, sandboxName: string, session: UserSession): Promise<{
+    async createApiToken(input: {
+        agentId: string;
+        sandboxName: string;
+        domainId: string;
+        session: UserSession;
+    }): Promise<{ token: string; expiresAt: number }> {
+        const domain = await agentDomainService.getDomainForAgent(input.agentId, input.domainId);
+        const target = await this.validateSandboxAccess(input.agentId, input.sandboxName, input.session);
+        const token = await AuthProxyJwtUtils.signAgentApiToken({
+            agentId: input.agentId,
+            claimId: input.sandboxName,
+            namespace: target.namespace,
+            port: domain.port,
+        }, agentApiTokenTtlSeconds);
+
+        return {
+            token,
+            expiresAt: Math.floor(Date.now() / 1000) + agentApiTokenTtlSeconds,
+        };
+    }
+
+    private async validateSandboxAccess(agentId: string, sandboxName: string, session: UserSession): Promise<{
         agentId: string;
         sandboxName: string;
         namespace: string;
@@ -66,15 +68,13 @@ class AgentAccessService {
         ensureReadAgent(identity, agentId);
 
         const agent = await agentService.getById(agentId);
-        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, agent.projectId);
-        if (!claim) {
-            throw new ServiceException('Agent sandbox not found.');
+
+        const agentSandbox = await agentSandboxResolutionService.resolve(agent, sandboxName);
+        const status = agentSandbox.status;
+        if (status === 'SUSPENDED') {
+            throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
         }
-        const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
-        if (claimAgentId !== agentId) {
-            throw new ServiceException('Agent sandbox does not belong to this Agent.');
-        }
-        if (this.resolveClaimStatus(claim) !== 'DEPLOYED') {
+        if (status !== 'DEPLOYED') {
             throw new ServiceException('Agent sandbox is not deployed.');
         }
         return {
@@ -82,10 +82,6 @@ class AgentAccessService {
             sandboxName,
             namespace: agent.projectId,
         };
-    }
-
-    async createSelectToken(input: CreateAgentAccessUrlInput) {
-        return this.createAccessUrl(input);
     }
 }
 

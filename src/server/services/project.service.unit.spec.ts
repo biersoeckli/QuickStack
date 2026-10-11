@@ -24,59 +24,48 @@ import dataAccess from '@/server/adapter/db.client';
 import namespaceService from '@/server/services/namespace.service';
 import projectService from './project.service';
 
-describe('project.service Project Type', () => {
+describe('project.service save', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it('requires Project Type when creating a Project', async () => {
-        await expect(projectService.save({ name: 'Missing Type' })).rejects.toThrow(
-            'Project Type is required.',
-        );
-
-        expect(dataAccess.client.project.create).not.toHaveBeenCalled();
-    });
-
-    it('persists the selected Project Type', async () => {
+    it('creates a Project with a generated id and namespace', async () => {
         vi.mocked(dataAccess.client.project.create).mockResolvedValue({
             id: 'proj-agent-project',
             name: 'Agent Project',
-            projectType: 'AGENT',
             createdAt: new Date(),
             updatedAt: new Date(),
         });
 
-        const project = await projectService.save({
-            name: 'Agent Project',
-            projectType: 'AGENT',
-        });
+        const project = await projectService.save({ name: 'Agent Project' });
 
         expect(dataAccess.client.project.create).toHaveBeenCalledWith({
             data: {
                 id: expect.stringMatching(/^proj-agent-project/),
                 name: 'Agent Project',
-                projectType: 'AGENT',
             },
         });
         expect(namespaceService.createNamespaceIfNotExists).toHaveBeenCalledWith(project.id);
     });
 
-    it('rejects changing Project Type after creation', async () => {
-        vi.mocked(dataAccess.client.project.findFirstOrThrow).mockResolvedValue({
+    it('renames an existing Project', async () => {
+        vi.mocked(dataAccess.client.project.update).mockResolvedValue({
             id: 'proj-agent-project',
-            name: 'Agent Project',
-            projectType: 'AGENT',
+            name: 'Renamed Agent Project',
             createdAt: new Date(),
             updatedAt: new Date(),
         });
 
-        await expect(projectService.save({
+        const project = await projectService.save({
             id: 'proj-agent-project',
             name: 'Renamed Agent Project',
-            projectType: 'APP',
-        })).rejects.toThrow('Project Type cannot be changed.');
+        });
 
-        expect(dataAccess.client.project.update).not.toHaveBeenCalled();
+        expect(dataAccess.client.project.update).toHaveBeenCalledWith({
+            where: { id: 'proj-agent-project' },
+            data: { name: 'Renamed Agent Project' },
+        });
+        expect(project.name).toBe('Renamed Agent Project');
     });
 });
 
@@ -98,7 +87,6 @@ describe('project.service lean read queries', () => {
         expect(query.select).toEqual(expect.objectContaining({
             id: true,
             name: true,
-            projectType: true,
             createdAt: true,
             updatedAt: true,
             apps: { select: { id: true, name: true } },
@@ -120,7 +108,6 @@ describe('project.service lean read queries', () => {
         expect(query.select).toEqual(expect.objectContaining({
             id: true,
             name: true,
-            projectType: true,
             createdAt: true,
             updatedAt: true,
             _count: { select: { apps: true, agents: true } },

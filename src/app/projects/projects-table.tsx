@@ -16,6 +16,7 @@ import { UserGroupUtils } from "@/shared/utils/role.utils";
 import ProjectStatusIndicator from "@/components/custom/project-status-indicator";
 import { ProjectWithCountsModel } from "@/shared/model/project-extended.model";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { ReactNode } from "react";
 
 
 export default function ProjectsTable({ data, session, agentsAvailable }: {
@@ -38,6 +39,24 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
     };
 
     const isAdmin = UserGroupUtils.isAdmin(session);
+    const columns: ([string, string, boolean, (item: ProjectWithCountsModel) => ReactNode] | [string, string, boolean])[] = [
+        ['id', 'ID', false],
+        ['name', 'Name', true, (item) => (
+            <Link href={`/project/${item.id}`}
+                className="font-medium cursor-pointer hover:underline">
+                {item.name}
+            </Link>
+        )],
+        ['apps', 'Apps', true, (item) => (
+            <ProjectStatusIndicator projectId={item.id} />
+        )],
+        ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
+        ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
+    ];
+
+    if (agentsAvailable) {
+        columns.splice(3, 0, ['agents', 'Agents', true, (item) => item._count.agents]);
+    }
 
     if (data.length === 0 && !isAdmin) {
         return (
@@ -68,7 +87,7 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
                     </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                    <EditProjectDialog agentsAvailable={agentsAvailable}>
+                    <EditProjectDialog>
                         <Button><Plus /> Create Project</Button>
                     </EditProjectDialog>
                 </EmptyContent>
@@ -77,21 +96,7 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
     }
 
     return <>
-        <SimpleDataTable columns={[
-            ['id', 'ID', false],
-            ['name', 'Name', true, (item) => (
-                <Link href={`/project/${item.id}`}
-                    className="font-medium cursor-pointer hover:underline">
-                    {item.name}
-                </Link>
-            )],
-            ['projectType', 'Type', true, (item) => item.projectType === 'AGENT' ? 'Agent' : 'App'],
-            ['status', 'Status', true, (item) => item.projectType === 'APP'
-                ? <ProjectStatusIndicator projectId={item.id} />
-                : <span className="text-muted-foreground">{item._count.agents === 0 ? 'No Agents' : item._count.agents + ' Agents'}</span>],
-            ["createdAt", "Created At", true, (item) => formatDateTime(item.createdAt)],
-            ["updatedAt", "Updated At", false, (item) => formatDateTime(item.updatedAt)],
-        ]}
+        <SimpleDataTable columns={columns}
             data={data}
             onItemClickLink={(item) => `/project/${item.id}`}
             actionCol={(item) =>
@@ -109,12 +114,12 @@ export default function ProjectsTable({ data, session, agentsAvailable }: {
                                 </DropdownMenuGroup>
                                 <Link href={`/project/${item.id}`}>
                                     <DropdownMenuItem>
-                                        <Eye /> <span>Show {item.projectType === 'AGENT' ? 'Agents' : 'Apps'} of Project</span>
+                                        <Eye /> <span>Show Workloads of Project</span>
                                     </DropdownMenuItem>
                                 </Link>
                                 <DropdownMenuSeparator />
                                 {UserGroupUtils.isAdmin(session) && <>
-                                    <EditProjectDialog agentsAvailable={agentsAvailable} existingItem={item}>
+                                    <EditProjectDialog existingItem={item}>
                                         <DropdownMenuItem>
                                             <Edit2 /> <span>Edit Project Name</span>
                                         </DropdownMenuItem>

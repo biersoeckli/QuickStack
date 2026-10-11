@@ -21,7 +21,7 @@ describe('agent-domain.service', () => {
 
         // Create prerequisite records
         const project = await dataAccess.client.project.create({
-            data: { name: 'Test Project', projectType: 'AGENT' },
+            data: { name: 'Test Project' },
         });
         projectId = project.id;
 

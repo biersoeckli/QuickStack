@@ -39,6 +39,32 @@ describe('project network graph layout service integration', () => {
         )).rejects.toThrow('Network graph node does not belong to this project.');
     });
 
+    it('saves positions for agents in the project without network policy rules', async () => {
+        await createProjectWithApps();
+        const db = dbCtx.getDataAccess().client;
+        const gateway = await db.llmGateway.create({
+            data: { id: 'gateway-a', name: 'Gateway A', baseUrl: 'https://gateway.example.test', encryptedAdminKey: 'key' },
+        });
+        await db.agent.create({
+            data: {
+                id: 'agent-a',
+                name: 'Agent A',
+                projectId: 'project-a',
+                llmGatewayId: gateway.id,
+                modelAlias: '["model-a"]',
+            },
+        });
+
+        await projectNetworkGraphLayoutService.savePosition(
+            'project-a',
+            { nodeId: 'AGENT:agent-a', x: 10, y: 20 },
+        );
+
+        await expect(projectNetworkGraphLayoutService.getPositions('project-a')).resolves.toEqual({
+            'AGENT:agent-a': { x: 10, y: 20 },
+        });
+    });
+
     it('rejects non-finite coordinates at the service boundary', async () => {
         await createProjectWithApps();
 

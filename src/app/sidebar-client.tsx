@@ -68,13 +68,7 @@ export function SidebarCient({
   const showSettingsNavigation = path.startsWith("/settings")
 
   useEffect(() => {
-    if (path.startsWith('/project/agent/')) {
-      const agentId = path.split('/')[3];
-      const project = projects.find(p => p.agents?.some(a => a.id === agentId));
-      setCurrentlySelectedProjectId(project?.id || null);
-      setCurrentlySelectedAgentId(agentId);
-      setCurrentlySelectedAppId(null);
-    } else if (path.startsWith('/project/app/')) {
+    if (path.startsWith('/project/app/')) {
       const appId = path.split('/')[3];
       const project = projects.find(p => p.apps.some(a => a.id === appId));
       setCurrentlySelectedProjectId(project?.id || null);
@@ -85,7 +79,7 @@ export function SidebarCient({
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(searchParams.get('drawerAppId'));
-      setCurrentlySelectedAgentId(null);
+      setCurrentlySelectedAgentId(searchParams.get('drawerAgentId'));
 
     } else {
       setCurrentlySelectedProjectId(null);
@@ -150,16 +144,17 @@ export function SidebarCient({
                     <FolderClosed />
                     <span>Projects</span>
                   </Link>} />
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
+                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
                   <SidebarMenuAction>
                     <Plus />
                   </SidebarMenuAction>
                 </EditProjectDialog>}
                 <SidebarMenu>
                   {projects.map((item) => {
-                    const isAgentProject = item.projectType === 'AGENT';
-                    const workloads = isAgentProject ? (item.agents || []) : item.apps;
-                    const currentlySelectedWorkloadId = isAgentProject ? currentlySelectedAgentId : currentlySelectedAppId;
+                    const workloads = [
+                      ...(item.apps || []).map(app => ({ ...app, kind: 'APP' as const })),
+                      ...(item.agents || []).map(agent => ({ ...agent, kind: 'AGENT' as const })),
+                    ];
 
                     return (
                       <DropdownMenu key={item.id}>
@@ -181,9 +176,14 @@ export function SidebarCient({
                               align={isMobile ? "end" : "start"}
                               className="min-w-56 rounded-lg"
                             >
-                              {workloads.map((workload) => (
-                                <DropdownMenuItem key={workload.name} className={currentlySelectedWorkloadId === workload.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={isAgentProject ? `/project/agent/${workload.id}` : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
-                              ))}
+                              {workloads.map((workload) => {
+                                const isSelected = workload.kind === 'AGENT'
+                                  ? currentlySelectedAgentId === workload.id
+                                  : currentlySelectedAppId === workload.id;
+                                return (
+                                  <DropdownMenuItem key={`${workload.kind}:${workload.id}`} className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={workload.kind === 'AGENT' ? PathBuilderUtils.projectAgentDrawer(item.id, workload.id) : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
+                                );
+                              })}
                             </DropdownMenuContent>
                           </>) : null}
                         </SidebarMenuItem>

@@ -23,7 +23,7 @@ export default async function ProjectPage() {
         <div className="flex-1 space-y-4 pt-6">
             <div className="flex gap-4">
                 <h2 className="text-3xl font-bold tracking-tight flex-1">Projects</h2>
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog agentsAvailable={agentsAvailable}>
+                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
                     <Button><Plus /> Create Project</Button>
                 </EditProjectDialog>}
             </div>
