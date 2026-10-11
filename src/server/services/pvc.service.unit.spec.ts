@@ -53,7 +53,7 @@ describe('pvc.service per-custom-tag management', () => {
             const { volume, volumeMount } = await pvcService.ensureAgentTagPvc(PROJECT_ID, agentVolume(), 'alice');
 
             const expectedName = KubeObjectNameUtils.toAgentTagPvcName(AGENT_ID, VOLUME_ID, 'alice');
-            expect(expectedName.startsWith('aw-')).toBe(true);
+            expect(expectedName.startsWith('av-')).toBe(true);
             expect(k3s.core.createNamespacedPersistentVolumeClaim).toHaveBeenCalledTimes(1);
             expect(k3s.core.createNamespacedPersistentVolumeClaim).toHaveBeenCalledWith(expect.objectContaining({
                 namespace: PROJECT_ID,
@@ -135,8 +135,8 @@ describe('pvc.service per-custom-tag management', () => {
         it('never deletes a per-Custom-Tag PVC on deploy', async () => {
             vi.mocked(k3s.core.listNamespacedPersistentVolumeClaim).mockResolvedValue({
                 items: [
-                    { metadata: { name: 'aw-tag', annotations: { [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID, [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: 'tag-vol', [Constants.QS_ANNOTATION_CUSTOM_TAG]: 'alice' } } },
-                    { metadata: { name: 'aw-unused', annotations: { [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID, [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: 'stale-all-vol' } } },
+                    { metadata: { name: 'av-tag', annotations: { [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID, [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: 'tag-vol', [Constants.QS_ANNOTATION_CUSTOM_TAG]: 'alice' } } },
+                    { metadata: { name: 'av-unused', annotations: { [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID, [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: 'stale-all-vol' } } },
                 ],
             } as any);
 
@@ -146,7 +146,7 @@ describe('pvc.service per-custom-tag management', () => {
             ]);
 
             expect(k3s.core.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledTimes(1);
-            expect(k3s.core.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledWith({ name: 'aw-unused', namespace: PROJECT_ID });
+            expect(k3s.core.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledWith({ name: 'av-unused', namespace: PROJECT_ID });
         });
     });
 });

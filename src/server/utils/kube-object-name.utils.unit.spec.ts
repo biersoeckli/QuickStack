@@ -138,7 +138,7 @@ describe('KubeObjectNameUtils', () => {
                 'AnotherVeryLongAgentVolumeId_With$Special%Chars_And_More_Length'
             );
 
-            expect(result).toMatch(/^aw-[a-f0-9]{60}$/);
+            expect(result).toMatch(/^av-[a-f0-9]{60}$/);
             expect(result.length).toBeLessThanOrEqual(63);
         });
     });
