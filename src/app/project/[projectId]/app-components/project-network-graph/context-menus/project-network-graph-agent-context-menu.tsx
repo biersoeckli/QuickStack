@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, Globe2, Settings, Trash2 } from 'lucide-react';
 import {
     ContextMenu,
@@ -26,7 +27,29 @@ export function ProjectNetworkGraphAgentContextMenu({
     onDelete,
     children,
 }: ProjectNetworkGraphAgentContextMenuProps) {
-    const allowsInternetAccess = agent.agentNetworkPolicy?.allowInternetAccess !== false;
+    const internetAccessEnabled = agent.agentNetworkPolicy?.allowInternetAccess !== false;
+    const [allowsInternetAccess, setAllowsInternetAccess] = useState(internetAccessEnabled);
+
+    useEffect(() => {
+        setAllowsInternetAccess(internetAccessEnabled);
+    }, [internetAccessEnabled]);
+
+    const toggleInternetAccess = async () => {
+        const nextAllowsInternetAccess = !allowsInternetAccess;
+        setAllowsInternetAccess(nextAllowsInternetAccess);
+        try {
+            await Toast.fromAction(
+                () => saveAgentNetworkPolicySettings(
+                    undefined,
+                    { allowInternetAccess: nextAllowsInternetAccess },
+                    agent.id,
+                ),
+                `Egress internet access ${nextAllowsInternetAccess ? 'enabled' : 'disabled'}.`,
+            );
+        } catch {
+            setAllowsInternetAccess(!nextAllowsInternetAccess);
+        }
+    };
 
     return (
         <ContextMenu>
@@ -42,18 +65,10 @@ export function ProjectNetworkGraphAgentContextMenu({
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem
-                    disabled={!allowsInternetAccess}
-                    onClick={() => void Toast.fromAction(
-                        () => saveAgentNetworkPolicySettings(
-                            undefined,
-                            { allowInternetAccess: false },
-                            agent.id,
-                        ),
-                        'Egress internet access disabled.',
-                    )}
+                    onClick={() => void toggleInternetAccess()}
                 >
                     <Globe2 />
-                    Disable Egress Internet Access
+                    {allowsInternetAccess ? 'Disable' : 'Enable'} Egress Internet Access
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem variant="destructive" onClick={onDelete}>
