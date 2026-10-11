@@ -420,7 +420,7 @@ function ProjectNetworkGraphEditor({
     const selectedAgentRole = selectedAgent ? UserGroupUtils.getRolePermissionForProjectWorkload(session, selectedAgent.id) ?? undefined : undefined;
 
     useEffect(() => {
-        if (!selectedNodeId || selectedNode?.kind !== 'APP') return;
+        if (!selectedNodeId || (selectedNode?.kind !== 'APP' && selectedNode?.kind !== 'AGENT')) return;
         if (!window.matchMedia('(min-width: 1024px)').matches) return;
 
         const animationFrame = requestAnimationFrame(() => {
