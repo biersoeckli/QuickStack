@@ -11,6 +11,7 @@ const routeMocks = vi.hoisted(() => ({
     runCommand: vi.fn(),
     listFiles: vi.fn(),
     fileExists: vi.fn(),
+    createApiToken: vi.fn(),
     ensureReadAgent: vi.fn(),
     ensureWriteAgent: vi.fn(),
 }));
@@ -47,6 +48,13 @@ vi.mock('@/server/services/agent-sandbox.service', () => ({
         writeFile: routeMocks.writeFile,
         listFiles: routeMocks.listFiles,
         fileExists: routeMocks.fileExists,
+    },
+}));
+
+vi.mock('@/server/services/agent-access.service', () => ({
+    default: {
+        createAccessUrl: vi.fn(),
+        createApiToken: routeMocks.createApiToken,
     },
 }));
 
@@ -120,6 +128,7 @@ describe('agent sandbox routes', () => {
         routeMocks.writeFile.mockResolvedValue(undefined);
         routeMocks.listFiles.mockResolvedValue([]);
         routeMocks.fileExists.mockResolvedValue({ exists: true });
+        routeMocks.createApiToken.mockResolvedValue({ token: 'api-token', expiresAt: 1_800_000_000 });
     });
 
     it('passes create env and idle timeout body to service', async () => {
@@ -179,6 +188,22 @@ describe('agent sandbox routes', () => {
 
         expect(response.status).toBe(200);
         expect(routeMocks.runCommand).toHaveBeenCalledWith('agent-1', 'ac-1', body);
+    });
+
+    it('creates a 15-minute API token for a sandbox domain', async () => {
+        const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes/ac-1/apiToken/domain-1', {
+            method: 'POST',
+        }));
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ token: 'api-token', expiresAt: 1_800_000_000 });
+        expect(routeMocks.createApiToken).toHaveBeenCalledWith({
+            agentId: 'agent-1',
+            sandboxName: 'ac-1',
+            domainId: 'domain-1',
+            session: routeMocks.identity.session,
+        });
+        expect(routeMocks.ensureReadAgent).toHaveBeenCalledWith(routeMocks.identity, 'agent-1');
     });
 
     it('streams raw file routes', async () => {

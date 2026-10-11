@@ -8,6 +8,8 @@ import agentSandboxResolutionService from "./agent-sandbox-resolution.service";
 
 export type AgentAccessView = 'agent' | 'files';
 
+const agentApiTokenTtlSeconds = 15 * 60;
+
 type CreateAgentAccessUrlInput = {
     agentId: string;
     sandboxName: string;
@@ -33,6 +35,27 @@ class AgentAccessService {
         return {
             url: `${protocol}://${domain.hostname}${path}?token=${encodeURIComponent(token)}`,
             expiresAt: Math.floor(Date.now() / 1000) + Number(30), // valid for 20 seconds
+        };
+    }
+
+    async createApiToken(input: {
+        agentId: string;
+        sandboxName: string;
+        domainId: string;
+        session: UserSession;
+    }): Promise<{ token: string; expiresAt: number }> {
+        const domain = await agentDomainService.getDomainForAgent(input.agentId, input.domainId);
+        const target = await this.validateSandboxAccess(input.agentId, input.sandboxName, input.session);
+        const token = await AuthProxyJwtUtils.signAgentApiToken({
+            agentId: input.agentId,
+            claimId: input.sandboxName,
+            namespace: target.namespace,
+            port: domain.port,
+        }, agentApiTokenTtlSeconds);
+
+        return {
+            token,
+            expiresAt: Math.floor(Date.now() / 1000) + agentApiTokenTtlSeconds,
         };
     }
 

@@ -31,4 +31,21 @@ describe('AuthProxyJwtUtils', () => {
         expect(firstClaims.jti).not.toBe(secondClaims.jti);
         expect(firstClaims.port).toBe(8080);
     });
+
+    it('creates an API token with the API token type and a 15-minute lifetime', async () => {
+        const now = Math.floor(Date.now() / 1000);
+        const token = await AuthProxyJwtUtils.signAgentApiToken({
+            agentId: 'agent-1',
+            claimId: 'claim-1',
+            namespace: 'project-1',
+            port: 8080,
+        });
+        const claims = decodeJwt(token);
+
+        expect(claims.type).toBe('api');
+        expect(claims.iss).toBe('quickstack-auth-proxy');
+        expect(claims.jti).toBeUndefined();
+        expect(claims.exp).toBeGreaterThanOrEqual(now + 899);
+        expect(claims.exp).toBeLessThanOrEqual(now + 901);
+    });
 });

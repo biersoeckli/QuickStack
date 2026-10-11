@@ -55,10 +55,16 @@ export const agentSandboxAccessUrlZodModel = z.object({
     expiresAt: z.number().int().positive(),
 });
 
+export const agentSandboxApiTokenZodModel = z.object({
+    token: z.string().min(1),
+    expiresAt: z.number().int().positive(),
+});
+
 export type AgentSandboxModel = z.infer<typeof agentSandboxZodModel>;
 export type CommandResultModel = z.infer<typeof commandResultZodModel>;
 export type FileEntryModel = z.infer<typeof fileEntryZodModel>;
 export type FileExistsResultModel = z.infer<typeof fileExistsResultZodModel>;
+export type AgentSandboxApiTokenModel = z.infer<typeof agentSandboxApiTokenZodModel>;
 export type CreateSandboxRequestModel = z.infer<typeof createSandboxRequestZodModel>;
 export type ResumeSandboxByTagRequestModel = z.infer<typeof resumeSandboxByTagRequestZodModel>;
 export type CommandRequestModel = z.infer<typeof commandRequestZodModel>;

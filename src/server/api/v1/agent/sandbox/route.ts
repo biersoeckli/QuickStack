@@ -12,6 +12,7 @@ import agentDomainService from '@/server/services/agent-domain.service';
 
 import {
     agentSandboxAccessUrlZodModel,
+    agentSandboxApiTokenZodModel,
     agentSandboxCustomTagZodModel,
     agentSandboxZodModel,
     commandRequestZodModel,
@@ -203,6 +204,29 @@ export const agentSandboxRoutes = new Elysia()
             summary: 'Get agent sandbox access URL',
             description: 'Get a temporary access URL to access the agent sandbox via the browser. This is only possible if a domain is configured for the agent and the agent serves an API or Web interface.',
             operationId: 'getAgentSandboxAccessUrl',
+            tags: ['Agent Sandboxes'],
+            security: [{ bearerAuth: [] }],
+        },
+    })
+    .post('/agents/:agentId/sandboxes/:sandboxName/apiToken/:domainId', async ({ params, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        await ensureAgentExists(params.agentId);
+        ensureReadAgent(identity, params.agentId);
+
+        return agentAccessService.createApiToken({
+            agentId: params.agentId,
+            sandboxName: params.sandboxName,
+            domainId: params.domainId,
+            session: identity.session,
+        });
+    }, {
+        params: agentSandboxAccessUrlParamsSchema,
+        response: ApiUtils.mapResponseModel(agentSandboxApiTokenZodModel),
+        detail: {
+            summary: 'Create agent sandbox API token',
+            description: 'Create a bearer token for direct API access to this Agent Sandbox through a configured domain. The token expires after 15 minutes.',
+            operationId: 'createAgentSandboxApiToken',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
         },
