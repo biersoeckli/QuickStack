@@ -12,7 +12,6 @@ import {
 } from "@/shared/utils/container-command-args.utils";
 import networkPolicyService from "./network-policy.service";
 import type { AgentSandboxTemplateNetworkPolicyConfig } from "./network-policy.service";
-import type { LiteLlmModelMetadata } from "../adapter/litellm-api.adapter";
 import { AgentDomain } from "@prisma/client";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { KubeSizeConverter } from "@/shared/utils/kubernetes-size-converter.utils";
@@ -36,9 +35,6 @@ export type AgentSandboxTemplateConfig = {
     id: string;
     projectId: string;
     containerImageSource: string;
-    modelAlias: string[];
-    modelMetadata?: Record<string, LiteLlmModelMetadata>;
-    llmGateway?: { baseUrl: string } | null;
     cpuRequest?: number | null;
     cpuLimit?: number | null;
     memoryRequest?: number | null;
@@ -67,6 +63,21 @@ export type AgentSandboxTemplateConfig = {
     agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig;
 };
 
+type AgentSandboxManifestAgent = Omit<AgentSandboxTemplateConfig,
+    'containerImageSource' | 'volumePvcData' | 'perSandboxVolumes' | 'fileVolumes' | 'fileVolumeMounts'> & {
+    containerImageSource?: string | null;
+};
+
+/** Prepared data required to derive an Agent Sandbox Manifest. */
+export type AgentSandboxManifestInput = {
+    agent: AgentSandboxManifestAgent;
+    containerImageSource?: string;
+    volumePvcData: AgentSandboxTemplateConfig['volumePvcData'];
+    perSandboxVolumes: AgentSandboxVolumeTemplateInput[];
+    fileVolumes: V1Volume[];
+    fileVolumeMounts: V1VolumeMount[];
+};
+
 export type SandboxTemplateDeploymentInfo = {
     dockerPullSecretName?: string;
     deploymentId?: string;
@@ -76,6 +87,18 @@ export type SandboxTemplateDeploymentInfo = {
 };
 
 class AgentSandboxTemplateBuilder {
+
+    private toTemplateConfig(input: AgentSandboxManifestInput): AgentSandboxTemplateConfig {
+        const { agent, containerImageSource, volumePvcData, perSandboxVolumes, fileVolumes, fileVolumeMounts } = input;
+        return {
+            ...agent,
+            containerImageSource: containerImageSource ?? agent.containerImageSource ?? '',
+            volumePvcData,
+            perSandboxVolumes,
+            fileVolumes,
+            fileVolumeMounts,
+        };
+    }
 
     private buildHealthCheckProbe(agent: AgentSandboxTemplateConfig): SandboxProbe | undefined {
         if (!agent.healthChechHttpGetPath && !agent.healthCheckTcpPort) {
@@ -276,7 +299,8 @@ class AgentSandboxTemplateBuilder {
         };
     }
 
-    buildSandboxTemplateResource(agent: AgentSandboxTemplateConfig, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
+    buildSandboxTemplateResource(input: AgentSandboxManifestInput, deploymentInfo?: SandboxTemplateDeploymentInfo): SandboxTemplate {
+        const agent = this.toTemplateConfig(input);
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
 
         const perSandboxVolumes = agent.perSandboxVolumes;
@@ -325,7 +349,7 @@ class AgentSandboxTemplateBuilder {
      * per-Custom-Tag claims) are attached through podTemplate.spec.volumes.
      */
     buildSandboxResource(
-        agent: AgentSandboxTemplateConfig,
+        input: AgentSandboxManifestInput,
         customTag: string,
         options: {
             sandboxName: string;
@@ -334,6 +358,7 @@ class AgentSandboxTemplateBuilder {
             deploymentInfo?: SandboxTemplateDeploymentInfo;
         },
     ): Sandbox {
+        const agent = this.toTemplateConfig(input);
         const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const deploymentInfo = options.deploymentInfo;
         const annotations = {

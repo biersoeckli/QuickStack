@@ -65,7 +65,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                     Persistent storage volumes attached to this workload.
                 </DrawerCardDescription>
             </DrawerCardHeader>
-            <DrawerCardContent>
+            {volumes.length > 0 && <DrawerCardContent>
                 <Table>
                     <TableCaption>{volumes.length} Volumes</TableCaption>
                     <TableHeader>
@@ -98,7 +98,7 @@ export default function AgentVolumesCard({ volumes, projectId, readonly, storage
                         ))}
                     </TableBody>
                 </Table>
-            </DrawerCardContent>
+            </DrawerCardContent>}
             {!readonly && <DrawerCardFooter>
                 <Button variant="outline" onClick={() => openEditVolumeDialog()}><Plus /> Add Volume</Button>
             </DrawerCardFooter>}

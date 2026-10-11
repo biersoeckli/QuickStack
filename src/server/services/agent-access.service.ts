@@ -1,13 +1,10 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { Constants } from "@/shared/utils/constants";
-import agentSandboxAdapter from "../adapter/agent-sandbox.adapter";
 import agentDomainService from "./agent-domain.service";
 import agentService from "./agent.service";
 import { RequesterIdentity, ensureReadAgent } from "../utils/shared-authorization.utils";
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AuthProxyJwtUtils } from "../utils/agent-jwt.utils";
-import { AgentVolumeUtils } from "../utils/agent-volume.utils";
-import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
+import agentSandboxResolutionService from "./agent-sandbox-resolution.service";
 
 export type AgentAccessView = 'agent' | 'files';
 
@@ -39,7 +36,7 @@ class AgentAccessService {
         };
     }
 
-    async validateSandboxAccess(agentId: string, sandboxName: string, session: UserSession): Promise<{
+    private async validateSandboxAccess(agentId: string, sandboxName: string, session: UserSession): Promise<{
         agentId: string;
         sandboxName: string;
         namespace: string;
@@ -49,42 +46,8 @@ class AgentAccessService {
 
         const agent = await agentService.getById(agentId);
 
-        if (AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
-            const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, agent.projectId);
-            if (!sandbox) {
-                throw new ServiceException('Agent sandbox not found.');
-            }
-            if (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] !== agentId) {
-                throw new ServiceException('Agent sandbox does not belong to this Agent.');
-            }
-            const directStatus = AgentSandboxUtils.resolveSandboxObjectStatus(sandbox);
-            if (directStatus === 'SUSPENDED') {
-                throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
-            }
-            if (directStatus !== 'DEPLOYED') {
-                throw new ServiceException('Agent sandbox is not deployed.');
-            }
-            return {
-                agentId,
-                sandboxName,
-                namespace: agent.projectId,
-            };
-        }
-
-        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, agent.projectId);
-        if (!claim) {
-            throw new ServiceException('Agent sandbox not found.');
-        }
-        const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
-        if (claimAgentId !== agentId) {
-            throw new ServiceException('Agent sandbox does not belong to this Agent.');
-        }
-
-        const sandboxObjectName = claim.status?.sandbox?.name;
-        const sandbox = sandboxObjectName
-            ? await agentSandboxAdapter.getSandbox(sandboxObjectName, agent.projectId)
-            : null;
-        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
+        const agentSandbox = await agentSandboxResolutionService.resolve(agent, sandboxName);
+        const status = agentSandbox.status;
         if (status === 'SUSPENDED') {
             throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
         }
@@ -96,10 +59,6 @@ class AgentAccessService {
             sandboxName,
             namespace: agent.projectId,
         };
-    }
-
-    async createSelectToken(input: CreateAgentAccessUrlInput) {
-        return this.createAccessUrl(input);
     }
 }
 

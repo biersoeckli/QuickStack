@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirmDialog, useDialog, useInputDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { Bot, ChevronDown, ExternalLink, Files, Filter, Logs, Pause, Play, PlayIcon, Search, Square, Terminal } from "lucide-react";
+import { Bot, ChevronDown, ExternalLink, Files, Filter, Logs, Pause, Play, PlayIcon, Search, Square, TagPlus, TagX, Terminal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { startSandbox, stopSandbox, suspendSandbox, resumeSandbox, deleteAgentTag } from "./actions";
 import { ListUtils } from "@/shared/utils/list.utils";
@@ -251,10 +251,10 @@ export default function AgentSandboxesCard({
             dropdownLabel="More sandbox start options"
             dropdownContent={<DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => void handleStartSandboxWithCustomTag()}>
-                    Start with custom tag
+                    <TagPlus />  Start with custom tag
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void handleDeleteTagData()}>
-                    Delete custom tag data
+                <DropdownMenuItem variant="destructive" onClick={() => void handleDeleteTagData()}>
+                    <TagX />  Delete custom tag data
                 </DropdownMenuItem>
             </DropdownMenuGroup>}
         >

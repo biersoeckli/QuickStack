@@ -247,7 +247,7 @@ class PvcService {
         volumeMount: V1VolumeMount;
     }> {
         const agentId = agentVolume.agentId;
-        const pvcName = KubeObjectNameUtils.toAgentWorkspacePvcName(agentVolume.agentId, agentVolume.id);
+        const pvcName = KubeObjectNameUtils.toAgentPvcName(agentVolume.agentId, agentVolume.id);
         const existing = await this.getAgentWorkspacePvc(projectId, pvcName);
         // todo needs handling for resize of existing pvc -> and what if multiple claims for one user and resize wanted? -> fails?
         if (!existing) {
@@ -416,7 +416,7 @@ class PvcService {
         for (const pvc of existingPvcs) {
             // Only QuickStack-owned shared claims are cleaned up here.
             // Per-sandbox claims from claim templates are controller-owned.
-            if (!pvc.metadata?.name || !KubeObjectNameUtils.isAgentWorkspacePvcName(pvc.metadata.name)) {
+            if (!pvc.metadata?.name || !KubeObjectNameUtils.isAgentPvcName(pvc.metadata.name)) {
                 continue;
             }
 

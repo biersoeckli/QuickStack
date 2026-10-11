@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ValidationError } from 'elysia';
-import { ApiConflictException, ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
+import { ApiException, ServiceException } from '@/shared/model/service.exception.model';
 import { stringToDate } from '@/shared/utils/zod.utils';
 import { getIdentityFromApiKeyHeader } from './requester-identity.utils';
 import paramService, { ParamService } from '../services/param.service';
@@ -138,13 +138,7 @@ export class ApiUtils {
         if (error instanceof ServiceException) {
             return ApiUtils.problem(400, 'Bad Request', error.message);
         }
-        if (error instanceof ApiUnauthorizedException) {
-            return ApiUtils.problem(error.statusCode, error.title, error.message);
-        }
-        if (error instanceof ApiNotFoundException) {
-            return ApiUtils.problem(error.statusCode, error.title, error.message);
-        }
-        if (error instanceof ApiConflictException) {
+        if (error instanceof ApiException) {
             return ApiUtils.problem(error.statusCode, error.title, error.message);
         }
         console.error(error);

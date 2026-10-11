@@ -119,21 +119,21 @@ describe('KubeObjectNameUtils', () => {
 
     describe('toAgentWorkspacePvcName', () => {
         it('should generate a deterministic name for the same inputs', () => {
-            const first = KubeObjectNameUtils.toAgentWorkspacePvcName('user-1', 'agent-volume-1');
-            const second = KubeObjectNameUtils.toAgentWorkspacePvcName('user-1', 'agent-volume-1');
+            const first = KubeObjectNameUtils.toAgentPvcName('user-1', 'agent-volume-1');
+            const second = KubeObjectNameUtils.toAgentPvcName('user-1', 'agent-volume-1');
 
             expect(first).toBe(second);
         });
 
         it('should generate different names for different inputs', () => {
-            const first = KubeObjectNameUtils.toAgentWorkspacePvcName('user-1', 'agent-volume-1');
-            const second = KubeObjectNameUtils.toAgentWorkspacePvcName('user-1', 'agent-volume-2');
+            const first = KubeObjectNameUtils.toAgentPvcName('user-1', 'agent-volume-1');
+            const second = KubeObjectNameUtils.toAgentPvcName('user-1', 'agent-volume-2');
 
             expect(first).not.toBe(second);
         });
 
         it('should return a valid Kubernetes-safe name with max length 63', () => {
-            const result = KubeObjectNameUtils.toAgentWorkspacePvcName(
+            const result = KubeObjectNameUtils.toAgentPvcName(
                 'VeryLongUserId_With@Special#Chars_And_More_Length',
                 'AnotherVeryLongAgentVolumeId_With$Special%Chars_And_More_Length'
             );

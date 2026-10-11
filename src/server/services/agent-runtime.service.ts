@@ -10,7 +10,7 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Constants } from "@/shared/utils/constants";
 import secretService from "./secret.service";
-import agentSandboxTemplateBuilder, { AgentSandboxTemplateConfig } from "./agent-sandbox-template-builder.service";
+import agentSandboxTemplateBuilder, { AgentSandboxManifestInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import { Sandbox, SandboxClaim } from "../adapter/api-clients/types/agents.models";
 import { agentSandboxCustomTagZodModel } from "@/shared/model/agent-sandbox.model";
@@ -18,6 +18,7 @@ import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
 import networkPolicyService from "./network-policy.service";
 import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
+import registryService from "./registry.service";
 
 const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
 
@@ -92,8 +93,15 @@ class AgentRuntimeService {
      * Builds the sandbox template config used to construct a direct base Sandbox at start.
      * Static volumes cover shared ALL claims and the ensured per-Custom-Tag claims.
      */
-    private async buildStartSandboxConfig(agent: AgentExtendedModel, customTag: string): Promise<AgentSandboxTemplateConfig> {
-        const volumePvcData: AgentSandboxTemplateConfig['volumePvcData'] = [];
+    private async buildStartSandboxManifestInput(agent: AgentExtendedModel, customTag: string): Promise<AgentSandboxManifestInput> {
+        const containerImageSource = agent.sourceType === 'GIT' || agent.sourceType === 'GIT_SSH'
+            ? registryService.createContainerRegistryUrlForAppId(agent.id)
+            : agent.containerImageSource;
+        if (!containerImageSource) {
+            throw new ServiceException('Container image source is missing. Cannot start Agent Sandbox.');
+        }
+
+        const volumePvcData: AgentSandboxManifestInput['volumePvcData'] = [];
         for (const volume of agent.agentVolumes.filter(v => v.volumeType === 'ALL')) {
             volumePvcData.push(await pvcService.ensurePvcForUserAgent(agent.projectId, volume));
         }
@@ -103,34 +111,12 @@ class AgentRuntimeService {
         const { fileVolumes, fileVolumeMounts } = await configMapService.createOrUpdateConfigMapForAgent(agent);
 
         return {
-            id: agent.id,
-            projectId: agent.projectId,
-            containerImageSource: agent.containerImageSource ?? '',
-            modelAlias: AgentModelAliasUtils.normalize(agent.modelAlias),
-            llmGateway: agent.llmGateway,
-            cpuRequest: agent.cpuRequest ?? null,
-            cpuLimit: agent.cpuLimit ?? null,
-            memoryRequest: agent.memoryRequest ?? null,
-            memoryLimit: agent.memoryLimit ?? null,
-            containerCommand: agent.containerCommand ?? null,
-            containerArgs: agent.containerArgs ?? null,
-            workingDir: agent.workingDir ?? null,
-            runtimeClassName: agent.runtimeClassName ?? null,
-            deployFileBrowser: agent.deployFileBrowser,
-            healthChechHttpGetPath: agent.healthChechHttpGetPath ?? null,
-            healthCheckHttpScheme: agent.healthCheckHttpScheme ?? null,
-            healthCheckHttpHeadersJson: agent.healthCheckHttpHeadersJson ?? null,
-            healthCheckHttpPort: agent.healthCheckHttpPort ?? null,
-            healthCheckPeriodSeconds: agent.healthCheckPeriodSeconds,
-            healthCheckTimeoutSeconds: agent.healthCheckTimeoutSeconds,
-            healthCheckFailureThreshold: agent.healthCheckFailureThreshold,
-            healthCheckTcpPort: agent.healthCheckTcpPort ?? null,
+            agent,
+            containerImageSource,
             volumePvcData,
             perSandboxVolumes: [],
             fileVolumes,
             fileVolumeMounts,
-            agentDomains: agent.agentDomains,
-            agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
         };
     }
 
@@ -277,69 +263,6 @@ class AgentRuntimeService {
     }
 
     /**
-     * Derives live Agent status from Kubernetes SandboxClaim conditions.
-     * - No claim -> SHUTDOWN
-     * - Claim exists, Available=True -> DEPLOYED
-     * - Claim exists, not yet available -> DEPLOYING
-     * - Claim exists, Sandbox suspended -> SUSPENDED
-     * - Never returns BUILDING (App-only status)
-     */
-    async getAgentStatus(agentId: string): Promise<DeploymentStatus> {
-        const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.id;
-
-        if (this.usesDirectSandbox(agent)) {
-            const sandboxes = await agentSandboxAdapter.listSandboxes(namespace, `${Constants.QS_ANNOTATION_AGENT_ID}=${agentId}`);
-            return this.aggregateDirectSandboxStatus(sandboxes);
-        }
-
-        const claim = await agentSandboxAdapter.getSandboxClaim(agentId, namespace);
-
-        if (!claim) {
-            return 'SHUTDOWN';
-        }
-
-        return AgentSandboxUtils.resolveSandboxStatus(claim);
-    }
-
-    private aggregateDirectSandboxStatus(sandboxes: Sandbox[]): DeploymentStatus {
-        if (sandboxes.length === 0) {
-            return 'SHUTDOWN';
-        }
-        const statuses = sandboxes.map(sandbox => AgentSandboxUtils.resolveSandboxObjectStatus(sandbox));
-        if (statuses.includes('DEPLOYED')) {
-            return 'DEPLOYED';
-        }
-        if (statuses.includes('DEPLOYING')) {
-            return 'DEPLOYING';
-        }
-        if (statuses.includes('SUSPENDED')) {
-            return 'SUSPENDED';
-        }
-        if (statuses.includes('ERROR')) {
-            return 'ERROR';
-        }
-        return 'SHUTTING_DOWN';
-    }
-
-    statusTextFor(status: DeploymentStatus): string {
-        switch (status) {
-            case 'DEPLOYED':
-                return 'Running';
-            case 'SHUTDOWN':
-                return 'Shut Down';
-            case 'DEPLOYING':
-                return 'Deploying';
-            case 'ERROR':
-                return 'Error';
-            case 'SUSPENDED':
-                return 'Suspended';
-            default:
-                return status;
-        }
-    }
-
-    /**
      * Starts a new SandboxClaim for the given agent.
      * - Ensures the runtime secret exists (creates if missing)
      * - Generates a unique claim name via addRandomSuffix
@@ -348,7 +271,6 @@ class AgentRuntimeService {
      */
     async startSandbox(agentId: string, userId: string, options?: StartAgentSandboxOptions | number): Promise<{ sandboxName: string }> {
         const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.id;
         const startOptions: StartAgentSandboxOptions = typeof options === 'number'
             ? { timeoutMs: options }
             : options ?? {};
@@ -364,10 +286,16 @@ class AgentRuntimeService {
         }
 
         if (this.usesDirectSandbox(agent)) {
-            return await this.startDirectSandbox(agent, userId, startOptions, customTag);
+            return await this.startSandboxBySandbox(agent, userId, startOptions, customTag);
+        } else {
+            return await this.startSandboxByClaim(agent, userId, startOptions, customTag);
         }
+    }
 
-        const sandboxName = KubeObjectNameUtils.toAgentClaimName(agentId);
+    private async startSandboxByClaim(agent: AgentExtendedModel, userId: string, startOptions: StartAgentSandboxOptions, customTag?: string): Promise<{ sandboxName: string }> {
+        const sandboxName = KubeObjectNameUtils.toAgentClaimName(agent.id);
+        const agentId = agent.id;
+        const namespace = agent.project.id;
 
         if (customTag) {
             await this.assertCustomTagAvailable(agentId, namespace, customTag);
@@ -424,7 +352,7 @@ class AgentRuntimeService {
      * Requires a Custom Tag, ensures the runtime secret, the tagged virtual key, and the
      * per-Custom-Tag PersistentVolumeClaims before creating the Sandbox.
      */
-    private async startDirectSandbox(
+    private async startSandboxBySandbox(
         agent: AgentExtendedModel,
         _userId: string,
         startOptions: StartAgentSandboxOptions,
@@ -440,7 +368,7 @@ class AgentRuntimeService {
 
         const taggedVirtualKey = await this.ensureTaggedVirtualKey(agent, customTag);
         const env = { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, taggedVirtualKey) };
-        const config = await this.buildStartSandboxConfig(agent, customTag);
+        const manifestInput = await this.buildStartSandboxManifestInput(agent, customTag);
         const sandboxName = KubeObjectNameUtils.toAgentSandboxName(agent.id, customTag);
 
         await networkPolicyService.reconcileAgentSandboxNetworkPolicy(
@@ -450,7 +378,7 @@ class AgentRuntimeService {
         );
 
         await agentSandboxAdapter.createSandbox(
-            agentSandboxTemplateBuilder.buildSandboxResource(config, customTag, {
+            agentSandboxTemplateBuilder.buildSandboxResource(manifestInput, customTag, {
                 sandboxName,
                 idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
                 env,

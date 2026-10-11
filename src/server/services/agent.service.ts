@@ -404,37 +404,14 @@ class AgentService {
             await agentRuntimeService.deleteTaggedVirtualKeys(agent.id);
             await agentRuntimeService.refreshRuntimeSecret(agent.id);
             const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
-            const modelMetadata = await this.loadLiteLlmModelMetadata(agent, modelAliases);
+            await this.loadLiteLlmModelMetadata(agent, modelAliases);
             await agentSandboxAdapter.reconcileSandboxTemplate(agentSandboxTemplateBuilder.buildSandboxTemplateResource({
-                id: agent.id,
-                projectId: agent.project.id,
+                agent,
                 containerImageSource,
-                modelAlias: modelAliases,
-                modelMetadata,
-                llmGateway: agent.llmGateway,
-                cpuRequest: agent.cpuRequest ?? null,
-                cpuLimit: agent.cpuLimit ?? null,
-                memoryRequest: agent.memoryRequest ?? null,
-                memoryLimit: agent.memoryLimit ?? null,
-                containerCommand: agent.containerCommand ?? null,
-                containerArgs: agent.containerArgs ?? null,
-                workingDir: agent.workingDir ?? null,
-                runtimeClassName: agent.runtimeClassName ?? null,
-                deployFileBrowser: agent.deployFileBrowser,
-                healthChechHttpGetPath: agent.healthChechHttpGetPath ?? null,
-                healthCheckHttpScheme: agent.healthCheckHttpScheme ?? null,
-                healthCheckHttpHeadersJson: agent.healthCheckHttpHeadersJson ?? null,
-                healthCheckHttpPort: agent.healthCheckHttpPort ?? null,
-                healthCheckPeriodSeconds: agent.healthCheckPeriodSeconds,
-                healthCheckTimeoutSeconds: agent.healthCheckTimeoutSeconds,
-                healthCheckFailureThreshold: agent.healthCheckFailureThreshold,
-                healthCheckTcpPort: agent.healthCheckTcpPort ?? null,
                 volumePvcData,
                 perSandboxVolumes,
                 fileVolumes,
                 fileVolumeMounts,
-                agentDomains: agent.agentDomains,
-                agentNetworkPolicy: agent.agentNetworkPolicy ?? null,
             }, {
                 dockerPullSecretName,
                 deploymentId,

@@ -162,6 +162,10 @@ _Avoid_: agent source when only model access is meant
 A reusable definition that can create one or more preconfigured **Agents** and their supporting Agent-specific resources.
 _Avoid_: fixed opencode runtime, app template when referring to Agent creation
 
+**Agent Sandbox Manifest**:
+The Kubernetes resource definitions QuickStack derives from a saved **Agent** configuration to deploy or start its Agent Sandboxes.
+_Avoid_: Agent Template, runtime configuration when the Kubernetes definitions are meant
+
 **Deploy (Agent)**:
 The explicit action that reconciles a saved **Agent** configuration from the database to Kubernetes SandboxTemplate and SandboxWarmPool resources.
 _Avoid_: auto-save, save-and-apply

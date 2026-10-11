@@ -153,7 +153,20 @@ export default function AgentVolumeEditOverlay({
                                     onValueChange={(value) => form.setValue("volumeType", value as AgentVolumeEditModel['volumeType'])}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select volume type" />
+                                        <SelectValue placeholder="Select volume type">
+                                            {(value) => {
+                                                switch (value) {
+                                                    case 'ALL':
+                                                        return 'All (Shared)';
+                                                    case 'PER_SANDBOX':
+                                                        return 'Per Sandbox';
+                                                    case Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG:
+                                                        return 'Per Custom Tag';
+                                                    default:
+                                                        return value;
+                                                }
+                                            }}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">All (Shared)</SelectItem>

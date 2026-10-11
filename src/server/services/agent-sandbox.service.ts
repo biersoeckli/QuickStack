@@ -13,20 +13,9 @@ import {
     FileExistsResultModel,
 } from "@/shared/model/agent-sandbox.model";
 import { ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
-import { Constants } from "@/shared/utils/constants";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
+import agentSandboxResolutionService, { ResolvedAgentSandbox } from "./agent-sandbox-resolution.service";
 
-type ResolvedSandboxTarget = {
-    namespace: string;
-    sandboxName: string;
-    sandboxObjectName: string;
-    podName: string;
-    containerName: string;
-    status: DeploymentStatus;
-    createdAt: string | null;
-    customTag?: string | null;
-};
+type ResolvedSandboxTarget = ResolvedAgentSandbox;
 
 class AgentSandboxService {
     // Path validation is not a security boundary: all file/command endpoints require
@@ -78,117 +67,12 @@ class AgentSandboxService {
         return agent.projectId;
     }
 
-    private async getClaimForAgent(agentId: string, sandboxName: string, namespace: string) {
-        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, namespace);
-        if (!claim) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
-        }
-
-        const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
-        if (claimAgentId !== agentId) {
-            throw new ServiceException('Agent sandbox does not belong to this Agent.');
-        }
-
-        return claim;
-    }
-
-    private async resolveDirectTarget(agentId: string, sandboxName: string, namespace: string): Promise<ResolvedSandboxTarget> {
-        const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, namespace);
-        if (!sandbox) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
-        }
-        if (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] !== agentId) {
-            throw new ServiceException('Agent sandbox does not belong to this Agent.');
-        }
-
-        const status = AgentSandboxUtils.resolveSandboxObjectStatus(sandbox);
-        const createdAt = sandbox.metadata?.creationTimestamp ?? null;
-        const customTag = sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-            ?? sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-            ?? null;
-
-        if (status === 'SUSPENDED') {
-            return { namespace, sandboxName, sandboxObjectName: sandboxName, podName: '', containerName: '', status, createdAt, customTag };
-        }
-
-        const selector = sandbox.status?.selector;
-        if (!selector) {
-            throw new ServiceException('Agent sandbox pod selector not found.');
-        }
-
-        const pods = await k3s.core.listNamespacedPod({ namespace, labelSelector: selector });
-        const pod = pods.items.find((item) => item.status?.phase === 'Running') ?? pods.items[0];
-        const podName = pod?.metadata?.name;
-        const containerName = pod?.spec?.containers?.[0]?.name;
-        if (!podName || !containerName) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox pod not found.');
-        }
-
-        return {
-            namespace,
-            sandboxName,
-            sandboxObjectName: sandboxName,
-            podName,
-            containerName,
-            status,
-            createdAt,
-            customTag,
-        };
-    }
-
     private async resolveTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
         const agent = await agentService.getByIdOrUndefined(agentId);
         if (!agent) {
             throw new ApiNotFoundException('Not Found', 'Agent not found.');
         }
-        const namespace = agent.projectId;
-
-        if (AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
-            return await this.resolveDirectTarget(agentId, sandboxName, namespace);
-        }
-
-        const claim = await this.getClaimForAgent(agentId, sandboxName, namespace);
-        const sandboxObjectName = claim.status?.sandbox?.name;
-        if (!sandboxObjectName) {
-            throw new ServiceException('Agent sandbox is not ready.');
-        }
-
-        const sandbox = await agentSandboxAdapter.getSandbox(sandboxObjectName, namespace);
-        if (!sandbox) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
-        }
-
-        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
-        const createdAt = claim.metadata?.creationTimestamp ?? null;
-        const customTag = claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null;
-
-        if (status === 'SUSPENDED') {
-            return { namespace, sandboxName, sandboxObjectName, podName: '', containerName: '', status, createdAt, customTag };
-        }
-
-        const selector = sandbox.status?.selector;
-        if (!selector) {
-            throw new ServiceException('Agent sandbox pod selector not found.');
-        }
-
-        const pods = await k3s.core.listNamespacedPod({ namespace, labelSelector: selector });
-        const pod = pods.items.find((item) => item.status?.phase === 'Running') ?? pods.items[0];
-        const podName = pod?.metadata?.name;
-        const containerName = pod?.spec?.containers?.[0]?.name;
-        if (!podName || !containerName) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox pod not found.');
-        }
-
-        return {
-            namespace,
-            sandboxName,
-            sandboxObjectName,
-            podName,
-            containerName,
-            status,
-            createdAt,
-            customTag,
-        };
+        return agentSandboxResolutionService.resolveWithPod(agent, sandboxName);
     }
 
     private assertRunnable(target: ResolvedSandboxTarget): void {

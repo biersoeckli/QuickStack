@@ -1,6 +1,5 @@
 import { Sandbox, SandboxClaim } from "@/server/adapter/api-clients/types/agents.models";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { AgentVolumeTypeLike } from "./agent-volume.utils";
 import { Constants } from "@/shared/utils/constants";
 
 const TERMINAL_CLAIM_FAILURE_REASONS = new Set([

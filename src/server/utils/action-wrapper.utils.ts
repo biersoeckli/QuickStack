@@ -1,4 +1,4 @@
-import { ServiceException } from "@/shared/model/service.exception.model";
+import { ApiException, ServiceException } from "@/shared/model/service.exception.model";
 import { UserGroupExtended, UserSession } from "@/shared/model/sim-session.model";
 import { getServerSession } from "next-auth";
 import { ZodRawShape, ZodObject, z } from "zod";
@@ -200,7 +200,7 @@ export async function simpleAction<ReturnType, ValidationCallbackType = unknown>
                 message: ex.message,
                 errors: ex.errors ?? undefined
             } as any;
-        } else if (ex instanceof ServiceException) {
+        } else if (ex instanceof ServiceException || ex instanceof ApiException) {
             return {
                 status: 'error',
                 message: ex.message
@@ -246,7 +246,7 @@ export async function fileUploadAction<ReturnType>(
         }
         funcResult = await func(file);
     } catch (ex) {
-        if (ex instanceof ServiceException) {
+        if (ex instanceof ServiceException || ex instanceof ApiException) {
             return {
                 status: 'error',
                 message: ex.message
@@ -293,6 +293,11 @@ export async function simpleRoute<ReturnType>(
                 status: 'error',
                 message: ex.message
             }, { status: 403 });
+        } else if (ex instanceof ApiException) {
+            return NextResponse.json({
+                status: 'error',
+                message: ex.message
+            }, { status: ex.statusCode });
         } else if (ex instanceof z.ZodError) {
             return NextResponse.json({
                 status: 'error',

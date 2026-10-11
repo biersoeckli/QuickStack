@@ -139,22 +139,6 @@ function mockAgent(overrides: Record<string, any> = {}) {
     };
 }
 
-function mockClaim(ready: boolean, conditions?: Array<{ type: string; status: string; message?: string }>) {
-    return {
-        apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
-        kind: 'SandboxClaim',
-        metadata: { name: AGENT_ID },
-        spec: { warmPoolRef: { name: AGENT_ID } },
-        status: {
-            conditions: conditions || (
-                ready
-                    ? [{ type: 'Available', status: 'True' }]
-                    : [{ type: 'Available', status: 'False' }]
-            ),
-        },
-    };
-}
-
 describe('agent-runtime.service', () => {
     beforeEach(() => {
         vi.resetAllMocks();
@@ -552,6 +536,22 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('uses the built registry image for a Git Agent', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
+                sourceType: 'GIT',
+                containerImageSource: null,
+                agentVolumes: [tagVolume],
+            }) as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            stubPvcs();
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice' });
+
+            const sandbox = vi.mocked(agentSandboxAdapter.createSandbox).mock.calls[0][0] as any;
+            expect(sandbox.spec.podTemplate.spec.containers[0].image)
+                .toBe(`localhost:30100/${AGENT_ID}:latest`);
+        });
+
         it('mounts ALL and PER_CUSTOM_TAG volumes into the filebrowser sidecar', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
                 containerImageSource: 'registry.example.com/agent:latest',
@@ -680,119 +680,6 @@ describe('agent-runtime.service', () => {
                 'sk-v-feature-key',
             );
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('tagkey-abc', SANDBOX_NAMESPACE);
-        });
-    });
-
-    describe('getAgentStatus', () => {
-        it('returns SHUTDOWN when no SandboxClaim exists', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(null);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('SHUTDOWN');
-        });
-
-        it('returns DEPLOYING when claim exists but not ready', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
-                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
-                kind: 'SandboxClaim',
-                metadata: { name: AGENT_ID },
-                spec: { warmPoolRef: { name: AGENT_ID } },
-                status: { conditions: [] },
-            });
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('DEPLOYING');
-        });
-
-        it('returns DEPLOYED when claim is ready', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true) as any);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('DEPLOYED');
-        });
-
-        it('returns DEPLOYING when the claim is not ready yet', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
-                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
-                kind: 'SandboxClaim',
-                metadata: { name: AGENT_ID },
-                spec: { warmPoolRef: { name: AGENT_ID } },
-                status: { conditions: [{ type: 'Ready', status: 'False', message: 'Something went wrong' }] },
-            } as any);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('DEPLOYING');
-        });
-
-        it('returns ERROR for a terminal SandboxClaim reconciliation failure', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
-                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
-                kind: 'SandboxClaim',
-                metadata: { name: AGENT_ID },
-                spec: { warmPoolRef: { name: AGENT_ID } },
-                status: { conditions: [{ type: 'Ready', status: 'False', reason: 'WarmPoolNotFound' }] },
-            } as any);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('ERROR');
-        });
-
-        it('returns SHUTTING_DOWN while the claim is terminating', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue({
-                apiVersion: 'extensions.agents.x-k8s.io/v1beta1',
-                kind: 'SandboxClaim',
-                metadata: { name: AGENT_ID, deletionTimestamp: '2026-08-31T12:00:00Z' },
-                spec: { warmPoolRef: { name: AGENT_ID } },
-                status: { conditions: [{ type: 'Ready', status: 'True' }] },
-            } as any);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(status).toBe('SHUTTING_DOWN');
-        });
-
-        it('compares status text for deployed to Running', async () => {
-            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(agentSandboxAdapter.getSandboxClaim).mockResolvedValue(mockClaim(true) as any);
-
-            const status = await agentRuntimeService.getAgentStatus(AGENT_ID);
-
-            expect(agentRuntimeService.statusTextFor(status)).toBe('Running');
-        });
-
-        it('returns Running for DEPLOYED', () => {
-            expect(agentRuntimeService.statusTextFor('DEPLOYED')).toBe('Running');
-        });
-
-        it('returns Shut Down for SHUTDOWN', () => {
-            expect(agentRuntimeService.statusTextFor('SHUTDOWN')).toBe('Shut Down');
-        });
-
-        it('returns Deploying for DEPLOYING', () => {
-            expect(agentRuntimeService.statusTextFor('DEPLOYING')).toBe('Deploying');
-        });
-
-        it('returns Error for ERROR', () => {
-            expect(agentRuntimeService.statusTextFor('ERROR')).toBe('Error');
-        });
-
-        it('never returns BUILDING', () => {
-            expect(agentRuntimeService.statusTextFor('BUILDING')).not.toBe('Building');
-        });
-
-        it('returns Suspended for SUSPENDED', () => {
-            expect(agentRuntimeService.statusTextFor('SUSPENDED')).toBe('Suspended');
         });
     });
 
