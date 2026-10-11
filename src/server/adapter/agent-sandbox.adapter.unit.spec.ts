@@ -13,7 +13,7 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
 }));
 
 import k3s from '@/server/adapter/kubernetes-api.adapter';
-import agentSandboxAdapter, { resolveSandboxObjectStatus } from './agent-sandbox.adapter';
+import agentSandboxAdapter from './agent-sandbox.adapter';
 import { ServiceException } from '@/shared/model/service.exception.model';
 
 describe('AgentSandboxAdapter', () => {
@@ -385,11 +385,6 @@ describe('AgentSandboxAdapter', () => {
             ).resolves.toBeUndefined();
         });
 
-        it('resolves the status of a base Sandbox', () => {
-            expect(resolveSandboxObjectStatus({ ...baseSandbox, spec: { operatingMode: 'Suspended' } } as any)).toBe('SUSPENDED');
-            expect(resolveSandboxObjectStatus({ ...baseSandbox, status: { conditions: [{ type: 'Ready', status: 'True' }] } } as any)).toBe('DEPLOYED');
-            expect(resolveSandboxObjectStatus(null)).toBe('SHUTDOWN');
-        });
     });
 
     describe('waitForSandboxReady', () => {
@@ -456,73 +451,6 @@ describe('AgentSandboxAdapter', () => {
             await expect(
                 agentSandboxAdapter.waitForSandboxReady(name, namespace, 200, 50),
             ).rejects.toThrow('not found while waiting for readiness');
-        });
-    });
-
-    describe('resolveSandboxStatus', () => {
-        const claimWith = (conditions: any[], metadata: Record<string, any> = { metadata: { name } }) =>
-            ({ metadata, status: { conditions } }) as any;
-
-        it('returns SHUTDOWN when there is no claim', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(null)).toBe('SHUTDOWN');
-        });
-
-        it('returns SHUTTING_DOWN while the claim is terminating', () => {
-            const claim = claimWith(
-                [{ type: 'Ready', status: 'True' }],
-                { name, deletionTimestamp: '2026-08-31T12:00:00Z' },
-            );
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claim)).toBe('SHUTTING_DOWN');
-        });
-
-        it('returns DEPLOYED when the claim reports Ready=True', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'True' }]))).toBe('DEPLOYED');
-        });
-
-        it('returns DEPLOYING while the claim is provisioning', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'DependenciesNotReady' }]))).toBe('DEPLOYING');
-        });
-
-        it('returns ERROR for terminal reconciliation failures', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'WarmPoolNotFound' }]))).toBe('ERROR');
-        });
-
-        it('returns ERROR for InvalidConfiguration', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'InvalidConfiguration' }]))).toBe('ERROR');
-        });
-
-        it('returns SHUTTING_DOWN for an expired claim', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'ClaimExpired' }]))).toBe('SHUTTING_DOWN');
-        });
-
-        it('returns SUSPENDED when the claim forwards the SandboxSuspended reason', () => {
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]))).toBe('SUSPENDED');
-        });
-
-        it('returns SUSPENDED when the Sandbox operatingMode is Suspended', () => {
-            const sandbox = { spec: { operatingMode: 'Suspended' } } as any;
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]), sandbox)).toBe('SUSPENDED');
-        });
-
-        it('returns SUSPENDED when the Sandbox reports the Suspended condition', () => {
-            const sandbox = {
-                spec: { operatingMode: 'Suspended' },
-                status: { conditions: [{ type: 'Suspended', status: 'True', reason: 'PodTerminated' }] },
-            } as any;
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]), sandbox)).toBe('SUSPENDED');
-        });
-
-        it('does not report SUSPENDED when the Sandbox has already resumed Running', () => {
-            const sandbox = {
-                spec: { operatingMode: 'Running' },
-                status: { conditions: [{ type: 'Suspended', status: 'False', reason: 'NotSuspended' }] },
-            } as any;
-            const claim = claimWith([{ type: 'Ready', status: 'False', reason: 'SandboxSuspended' }]);
-
-            expect(agentSandboxAdapter.resolveSandboxStatus(claim, sandbox)).toBe('DEPLOYING');
         });
     });
 

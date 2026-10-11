@@ -7,6 +7,7 @@ import { RequesterIdentity, ensureReadAgent } from "../utils/shared-authorizatio
 import { UserSession } from "@/shared/model/sim-session.model";
 import { AuthProxyJwtUtils } from "../utils/agent-jwt.utils";
 import { AgentVolumeUtils } from "../utils/agent-volume.utils";
+import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 export type AgentAccessView = 'agent' | 'files';
 
@@ -48,7 +49,7 @@ class AgentAccessService {
 
         const agent = await agentService.getById(agentId);
 
-        if (AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
+        if (AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
             const sandbox = await agentSandboxAdapter.getSandbox(sandboxName, agent.projectId);
             if (!sandbox) {
                 throw new ServiceException('Agent sandbox not found.');
@@ -56,7 +57,7 @@ class AgentAccessService {
             if (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] !== agentId) {
                 throw new ServiceException('Agent sandbox does not belong to this Agent.');
             }
-            const directStatus = agentSandboxAdapter.resolveSandboxObjectStatus(sandbox);
+            const directStatus = AgentSandboxUtils.resolveSandboxObjectStatus(sandbox);
             if (directStatus === 'SUSPENDED') {
                 throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
             }
@@ -83,7 +84,7 @@ class AgentAccessService {
         const sandbox = sandboxObjectName
             ? await agentSandboxAdapter.getSandbox(sandboxObjectName, agent.projectId)
             : null;
-        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
         if (status === 'SUSPENDED') {
             throw new ServiceException('Agent sandbox is suspended. Resume it before requesting an access URL.');
         }

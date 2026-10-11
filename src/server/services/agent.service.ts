@@ -29,7 +29,7 @@ import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import agentSandboxTemplateBuilder, { AgentSandboxVolumeTemplateInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
-import { AgentVolumeUtils } from "../utils/agent-volume.utils";
+import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -445,7 +445,7 @@ class AgentService {
 
             // Agents with a PER_CUSTOM_TAG volume are cold-started by creating a
             // Sandbox directly, so they never use a warm pool.
-            const usesDirectSandbox = AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
+            const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
             await agentSandboxAdapter.reconcileSandboxWarmPool(
                 agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(
                     agent.id,

@@ -29,7 +29,7 @@ function agentVolume(overrides: Partial<AgentVolume> = {}): AgentVolume {
         id: VOLUME_ID,
         containerMountPath: '/data',
         size: 1024,
-        volumeType: 'PER_CUSTOM_TAG',
+        volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG,
         accessMode: 'ReadWriteOnce',
         storageClassName: 'longhorn',
         agentId: AGENT_ID,
@@ -142,7 +142,7 @@ describe('pvc.service per-custom-tag management', () => {
 
             await pvcService.deleteUnusedPvcForAgent(PROJECT_ID, AGENT_ID, [
                 agentVolume({ id: 'shared-vol', volumeType: 'ALL', accessMode: 'ReadWriteMany' }),
-                agentVolume({ id: 'tag-vol', volumeType: 'PER_CUSTOM_TAG' }),
+                agentVolume({ id: 'tag-vol', volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG }),
             ]);
 
             expect(k3s.core.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledTimes(1);

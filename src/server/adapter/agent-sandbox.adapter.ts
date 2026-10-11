@@ -3,7 +3,6 @@ import k3s, { kubernetesPatchOptions } from "./kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { Sandbox, SandboxClaim, SandboxTemplate, SandboxWarmPool } from "./api-clients/types/agents.models";
 import { ApiException, PatchStrategy } from "@kubernetes/client-node";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
 
 export const SANDBOX_API_GROUP = 'extensions.agents.x-k8s.io';
 export const BASE_SANDBOX_API_GROUP = 'agents.x-k8s.io';
@@ -24,97 +23,6 @@ const TERMINAL_CLAIM_FAILURE_REASONS = new Set([
     'ReconcilerError',
     'InvalidConfiguration',
 ]);
-
-/**
- * Maps a SandboxClaim (and optionally the Sandbox behind it) to a deployment status.
- * The Agent Sandbox controller forwards the Sandbox Ready condition onto the claim, so a
- * suspended Sandbox is visible as Ready=False with reason "SandboxSuspended" even when the
- * Sandbox object is not loaded.
- */
-export function resolveSandboxStatus(
-    claim: SandboxClaim | null | undefined,
-    sandbox?: Sandbox | null,
-): DeploymentStatus {
-    if (!claim) {
-        return 'SHUTDOWN';
-    }
-    if (claim.metadata?.deletionTimestamp) {
-        return 'SHUTTING_DOWN';
-    }
-
-    if (sandbox) {
-        const suspendedCondition = (sandbox.status?.conditions ?? []).find(
-            (condition) => condition.type === 'Suspended',
-        );
-        if (suspendedCondition?.status === 'True') {
-            return 'SUSPENDED';
-        }
-        if (sandbox.spec?.operatingMode === 'Suspended') {
-            return 'SUSPENDED';
-        }
-    }
-
-    const conditions = claim.status?.conditions ?? [];
-    const ready = conditions.find(
-        (condition) => (condition.type === 'Ready' || condition.type === 'Available') && condition.status === 'True',
-    );
-    if (ready) {
-        return 'DEPLOYED';
-    }
-
-    const readinessCondition = conditions.find(
-        (condition) => condition.type === 'Ready' || condition.type === 'Available',
-    );
-
-    if (!sandbox && readinessCondition?.reason === 'SandboxSuspended') {
-        return 'SUSPENDED';
-    }
-    if (readinessCondition?.reason === 'ClaimExpired' || readinessCondition?.reason === 'Expired') {
-        return 'SHUTTING_DOWN';
-    }
-    if (TERMINAL_CLAIM_FAILURE_REASONS.has(readinessCondition?.reason ?? '')) {
-        return 'ERROR';
-    }
-
-    return 'DEPLOYING';
-}
-
-/**
- * Maps a directly created base Sandbox (no SandboxClaim) to a deployment status.
- * Used for Agents that carry a PER_CUSTOM_TAG Agent Volume.
- */
-export function resolveSandboxObjectStatus(sandbox: Sandbox | null | undefined): DeploymentStatus {
-    if (!sandbox) {
-        return 'SHUTDOWN';
-    }
-    if (sandbox.metadata?.deletionTimestamp) {
-        return 'SHUTTING_DOWN';
-    }
-
-    const conditions = sandbox.status?.conditions ?? [];
-    const suspendedCondition = conditions.find(
-        (condition) => condition.type === 'Suspended' && condition.status === 'True',
-    );
-    if (suspendedCondition || sandbox.spec?.operatingMode === 'Suspended') {
-        return 'SUSPENDED';
-    }
-
-    const ready = conditions.find(
-        (condition) => (condition.type === 'Ready' || condition.type === 'Available') && condition.status === 'True',
-    );
-    if (ready) {
-        return 'DEPLOYED';
-    }
-
-    const readinessCondition = conditions.find(
-        (condition) => condition.type === 'Ready' || condition.type === 'Available',
-    );
-    if (TERMINAL_CLAIM_FAILURE_REASONS.has(readinessCondition?.reason ?? '')) {
-        return 'ERROR';
-    }
-
-    return 'DEPLOYING';
-}
 
 class AgentSandboxAdapter {
 
@@ -138,21 +46,6 @@ class AgentSandboxAdapter {
                 `Failed to get Sandbox "${name}": ${error?.message || error}`,
             );
         }
-    }
-
-    /**
-     * Resolves the deployment status of a SandboxClaim, optionally using the Sandbox
-     * behind it to detect a suspended sandbox.
-     */
-    resolveSandboxStatus(claim: SandboxClaim | null | undefined, sandbox?: Sandbox | null): DeploymentStatus {
-        return resolveSandboxStatus(claim, sandbox);
-    }
-
-    /**
-     * Resolves the deployment status of a directly created base Sandbox.
-     */
-    resolveSandboxObjectStatus(sandbox: Sandbox | null | undefined): DeploymentStatus {
-        return resolveSandboxObjectStatus(sandbox);
     }
 
     /**

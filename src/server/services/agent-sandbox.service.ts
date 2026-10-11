@@ -15,7 +15,7 @@ import {
 import { ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
 import { Constants } from "@/shared/utils/constants";
 import { DeploymentStatus } from "@/shared/model/deployment-info.model";
-import { AgentVolumeUtils } from "../utils/agent-volume.utils";
+import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 type ResolvedSandboxTarget = {
     namespace: string;
@@ -101,7 +101,7 @@ class AgentSandboxService {
             throw new ServiceException('Agent sandbox does not belong to this Agent.');
         }
 
-        const status = agentSandboxAdapter.resolveSandboxObjectStatus(sandbox);
+        const status = AgentSandboxUtils.resolveSandboxObjectStatus(sandbox);
         const createdAt = sandbox.metadata?.creationTimestamp ?? null;
         const customTag = sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
             ?? sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
@@ -143,7 +143,7 @@ class AgentSandboxService {
         }
         const namespace = agent.projectId;
 
-        if (AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
+        if (AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes)) {
             return await this.resolveDirectTarget(agentId, sandboxName, namespace);
         }
 
@@ -158,7 +158,7 @@ class AgentSandboxService {
             throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
         }
 
-        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
         const createdAt = claim.metadata?.creationTimestamp ?? null;
         const customTag = claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null;
 

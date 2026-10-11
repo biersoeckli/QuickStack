@@ -15,6 +15,7 @@ import { Tags } from '@/server/utils/cache-tag-generator.utils';
 import agentVolumeService from '@/server/services/agent-volume.service';
 import pvcService from '@/server/services/pvc.service';
 import dataAccess from '@/server/adapter/db.client';
+import { Constants } from '@/shared/utils/constants';
 
 describe('agent-volume.service', () => {
     createPrismaTestContext('agent-volume');
@@ -143,12 +144,12 @@ describe('agent-volume.service', () => {
                 containerMountPath: '/tag-rwo',
                 size: 10,
                 storageClassName: 'longhorn',
-                volumeType: 'PER_CUSTOM_TAG',
+                volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG,
                 accessMode: 'ReadWriteOnce',
             });
 
             const volumes = await dataAccess.client.agentVolume.findMany({ where: { agentId } });
-            expect(volumes[0].volumeType).toBe('PER_CUSTOM_TAG');
+            expect(volumes[0].volumeType).toBe(Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG);
             expect(volumes[0].accessMode).toBe('ReadWriteOnce');
         });
 
@@ -158,12 +159,12 @@ describe('agent-volume.service', () => {
                 containerMountPath: '/tag-rwx',
                 size: 10,
                 storageClassName: 'longhorn',
-                volumeType: 'PER_CUSTOM_TAG',
+                volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG,
                 accessMode: 'ReadWriteMany',
             });
 
             const volumes = await dataAccess.client.agentVolume.findMany({ where: { agentId } });
-            expect(volumes[0].volumeType).toBe('PER_CUSTOM_TAG');
+            expect(volumes[0].volumeType).toBe(Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG);
             expect(volumes[0].accessMode).toBe('ReadWriteMany');
         });
 
@@ -177,14 +178,14 @@ describe('agent-volume.service', () => {
                 containerMountPath: '/tag',
                 size: 5,
                 storageClassName: 'longhorn',
-                volumeType: 'PER_CUSTOM_TAG',
+                volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG,
                 accessMode: 'ReadWriteOnce',
             })).rejects.toThrow('cannot be combined');
         });
 
         it('rejects combining PER_CUSTOM_TAG and PER_SANDBOX on one Agent', async () => {
             await dataAccess.client.agentVolume.create({
-                data: { agentId, containerMountPath: '/tag', size: 5, storageClassName: 'longhorn', volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce' },
+                data: { agentId, containerMountPath: '/tag', size: 5, storageClassName: 'longhorn', volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG, accessMode: 'ReadWriteOnce' },
             });
 
             await expect(agentVolumeService.saveVolume({
@@ -207,12 +208,12 @@ describe('agent-volume.service', () => {
                 containerMountPath: '/tag',
                 size: 5,
                 storageClassName: 'longhorn',
-                volumeType: 'PER_CUSTOM_TAG',
+                volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG,
                 accessMode: 'ReadWriteOnce',
             });
 
             const volumes = await dataAccess.client.agentVolume.findMany({ where: { agentId } });
-            expect(volumes.map(volume => volume.volumeType).sort()).toEqual(['ALL', 'PER_CUSTOM_TAG']);
+            expect(volumes.map(volume => volume.volumeType).sort()).toEqual(['ALL', Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG]);
         });
 
         it('rejects an ALL volume with ReadWriteOnce', async () => {
@@ -351,7 +352,7 @@ describe('agent-volume.service', () => {
 
         it('deletes the per-Custom-Tag PVCs when deleting a PER_CUSTOM_TAG volume', async () => {
             const volume = await dataAccess.client.agentVolume.create({
-                data: { agentId, containerMountPath: '/tag', size: 5, storageClassName: 'longhorn', volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce' },
+                data: { agentId, containerMountPath: '/tag', size: 5, storageClassName: 'longhorn', volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG, accessMode: 'ReadWriteOnce' },
             });
 
             await agentVolumeService.deleteVolume(volume.id);

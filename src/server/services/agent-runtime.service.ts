@@ -17,7 +17,7 @@ import { agentSandboxCustomTagZodModel } from "@/shared/model/agent-sandbox.mode
 import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
 import networkPolicyService from "./network-policy.service";
-import { AgentVolumeUtils } from "../utils/agent-volume.utils";
+import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
 
@@ -79,7 +79,7 @@ class AgentRuntimeService {
      * PER_CUSTOM_TAG Agent Volume. Agents without one keep the SandboxClaim path.
      */
     private usesDirectSandbox(agent: AgentExtendedModel): boolean {
-        return AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
+        return AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
     }
 
     private sandboxMatchesTag(sandbox: Sandbox, agentId: string, customTag: string): boolean {
@@ -299,14 +299,14 @@ class AgentRuntimeService {
             return 'SHUTDOWN';
         }
 
-        return agentSandboxAdapter.resolveSandboxStatus(claim);
+        return AgentSandboxUtils.resolveSandboxStatus(claim);
     }
 
     private aggregateDirectSandboxStatus(sandboxes: Sandbox[]): DeploymentStatus {
         if (sandboxes.length === 0) {
             return 'SHUTDOWN';
         }
-        const statuses = sandboxes.map(sandbox => agentSandboxAdapter.resolveSandboxObjectStatus(sandbox));
+        const statuses = sandboxes.map(sandbox => AgentSandboxUtils.resolveSandboxObjectStatus(sandbox));
         if (statuses.includes('DEPLOYED')) {
             return 'DEPLOYED';
         }
@@ -621,7 +621,7 @@ class AgentRuntimeService {
 
         if (this.usesDirectSandbox(agent)) {
             const sandbox = await this.getOwnedSandboxOrThrow(agentId, namespace, sandboxName);
-            const directStatus = agentSandboxAdapter.resolveSandboxObjectStatus(sandbox);
+            const directStatus = AgentSandboxUtils.resolveSandboxObjectStatus(sandbox);
             if (directStatus === 'SUSPENDED') {
                 return;
             }
@@ -643,7 +643,7 @@ class AgentRuntimeService {
 
         const claim = await this.getOwnedClaimOrThrow(agentId, namespace, sandboxName);
         const { sandboxObjectName, sandbox } = await this.getSandboxObject(namespace, claim);
-        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
 
         if (status === 'SUSPENDED') {
             return;
@@ -676,7 +676,7 @@ class AgentRuntimeService {
             if (!sandbox) {
                 throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
             }
-            if (agentSandboxAdapter.resolveSandboxObjectStatus(sandbox) === 'DEPLOYED') {
+            if (AgentSandboxUtils.resolveSandboxObjectStatus(sandbox) === 'DEPLOYED') {
                 return;
             }
             await agentSandboxAdapter.setSandboxOperatingMode(sandboxName, namespace, 'Running');
@@ -691,7 +691,7 @@ class AgentRuntimeService {
 
         const claim = await this.getOwnedClaimOrThrow(agentId, namespace, sandboxName);
         const { sandboxObjectName, sandbox } = await this.getSandboxObject(namespace, claim);
-        const status = agentSandboxAdapter.resolveSandboxStatus(claim, sandbox);
+        const status = AgentSandboxUtils.resolveSandboxStatus(claim, sandbox);
 
         if (status === 'DEPLOYED') {
             return;
@@ -745,7 +745,7 @@ class AgentRuntimeService {
      * Reusable by both listSandboxes and SSE watch delta events.
      */
     mapClaimToSandbox(claim: SandboxClaim, namespace: string): AgentSandboxInfo {
-        const status = agentSandboxAdapter.resolveSandboxStatus(claim);
+        const status = AgentSandboxUtils.resolveSandboxStatus(claim);
         return {
             name: claim.metadata?.name || 'unknown',
             status,
@@ -761,7 +761,7 @@ class AgentRuntimeService {
     mapSandboxToSandbox(sandbox: Sandbox, namespace: string): AgentSandboxInfo {
         return {
             name: sandbox.metadata?.name || 'unknown',
-            status: agentSandboxAdapter.resolveSandboxObjectStatus(sandbox),
+            status: AgentSandboxUtils.resolveSandboxObjectStatus(sandbox),
             namespace,
             createdAt: sandbox.metadata?.creationTimestamp || null,
             customTag: sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]

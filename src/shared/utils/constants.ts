@@ -24,6 +24,7 @@ export class Constants {
     static readonly K3S_JOIN_TOKEN = 'k3sJoinToken';
     static readonly QS_NAMESPACE = 'quickstack';
     static readonly QS_APP_NAME = 'quickstack';
+    static readonly QS_VOLUME_TYPE_PER_CUSTOM_TAG = 'PER_CUSTOM_TAG';
     static readonly INTERNAL_REGISTRY_LOCATION = 'internal-registry-location';
     static readonly TRAEFIK_ME_SECRET_NAME = 'traefik-me-tls';
     static readonly QS_SYSTEM_BACKUP_DEACTIVATED = 'deactivated';

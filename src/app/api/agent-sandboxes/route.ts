@@ -13,6 +13,7 @@ import { AgentVolumeUtils } from "@/server/utils/agent-volume.utils";
 import { Constants } from "@/shared/utils/constants";
 import * as k8s from '@kubernetes/client-node';
 import z from "zod";
+import { AgentSandboxUtils } from "@/server/utils/agent-sandbox.utils";
 
 // Prevents this route's response from being cached
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 
 
                 // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
-                const usesDirectSandbox = AgentVolumeUtils.usesPerCustomTagVolume(agent.agentVolumes);
+                const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
                 const watchPath = usesDirectSandbox
                     ? `/apis/${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${SANDBOX_PLURAL}`
                     : `/apis/${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${CLAIM_PLURAL}`;

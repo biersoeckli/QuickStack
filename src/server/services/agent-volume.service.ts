@@ -10,6 +10,7 @@ import {
 } from "@/shared/model/volume-edit.model";
 import { Prisma } from "@prisma/client";
 import pvcService from "./pvc.service";
+import { Constants } from "@/shared/utils/constants";
 
 class AgentVolumeService {
 
@@ -31,10 +32,10 @@ class AgentVolumeService {
         existingVolumeTypes: string[],
         newVolumeType: AgentVolumeType,
     ) {
-        const conflictingType = newVolumeType === 'PER_CUSTOM_TAG'
+        const conflictingType = newVolumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
             ? 'PER_SANDBOX'
             : newVolumeType === 'PER_SANDBOX'
-                ? 'PER_CUSTOM_TAG'
+                ? Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
                 : null;
         if (conflictingType && existingVolumeTypes.includes(conflictingType)) {
             throw new ServiceException('Agent Volumes with Volume Type PER_SANDBOX and PER_CUSTOM_TAG cannot be combined on one Agent.');
@@ -132,7 +133,7 @@ class AgentVolumeService {
             await db.agentVolume.delete({
                 where: { id: volumeId },
             });
-            if (volume.volumeType === 'PER_CUSTOM_TAG') {
+            if (volume.volumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG) {
                 await pvcService.deletePvcsForAgentVolume(volume.agent.projectId, volume.agentId, volume.id);
             }
         } finally {

@@ -17,9 +17,7 @@ vi.mock('@/server/adapter/db.client', () => ({
         },
     },
 }));
-vi.mock('@/server/adapter/agent-sandbox.adapter', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@/server/adapter/agent-sandbox.adapter')>();
-    return {
+vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
         default: {
             createSandboxClaim: vi.fn(),
             deleteSandboxClaim: vi.fn(),
@@ -38,16 +36,11 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', async (importOriginal) => {
             reconcileSandboxWarmPool: vi.fn(),
             deleteSandboxTemplate: vi.fn(),
             deleteSandboxWarmPool: vi.fn(),
-            resolveSandboxStatus: actual.resolveSandboxStatus,
-            resolveSandboxObjectStatus: actual.resolveSandboxObjectStatus,
         },
         SANDBOX_API_GROUP: 'extensions.agents.x-k8s.io',
         SANDBOX_API_VERSION: 'v1beta1',
         BASE_SANDBOX_API_GROUP: 'agents.x-k8s.io',
-        resolveSandboxStatus: actual.resolveSandboxStatus,
-        resolveSandboxObjectStatus: actual.resolveSandboxObjectStatus,
-    };
-});
+}));
 vi.mock('@/server/services/secret.service', () => ({
     default: {
         getDecodedSecret: vi.fn(),
@@ -102,6 +95,7 @@ import configMapService from '@/server/services/config-map.service';
 import networkPolicyService from '@/server/services/network-policy.service';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
+import { Constants } from '@/shared/utils/constants';
 
 const AGENT_ID = 'agent-test-runner';
 const PROJECT = { id: 'proj-1', name: 'test-project' };
@@ -488,7 +482,7 @@ describe('agent-runtime.service', () => {
     });
 
     describe('PER_CUSTOM_TAG direct Sandbox path', () => {
-        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
+        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG, accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
         const sharedVolume = { id: 'vol-shared', agentId: AGENT_ID, containerMountPath: '/shared', size: 2048, volumeType: 'ALL', accessMode: 'ReadWriteMany', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
 
         function mockDirectAgent() {
@@ -620,7 +614,7 @@ describe('agent-runtime.service', () => {
     });
 
     describe('deleteTag', () => {
-        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: 'PER_CUSTOM_TAG', accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
+        const tagVolume = { id: 'vol-tag', agentId: AGENT_ID, containerMountPath: '/workspace', size: 1024, volumeType: Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG, accessMode: 'ReadWriteOnce', storageClassName: 'longhorn', createdAt: new Date(), updatedAt: new Date() };
 
         it('rejects while a sandbox with the tag exists', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ agentVolumes: [tagVolume] }) as any);

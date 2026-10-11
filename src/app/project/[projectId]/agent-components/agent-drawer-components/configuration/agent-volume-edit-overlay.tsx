@@ -17,6 +17,7 @@ import { AgentVolumeEditModel, agentVolumeEditZodModel } from "@/shared/model/vo
 import { useDialogContext } from "@/frontend/states/dialog-context";
 import { saveAgentVolume } from "./actions";
 import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
+import { Constants } from "@/shared/utils/constants";
 
 export default function AgentVolumeEditOverlay({
     existingVolume,
@@ -164,7 +165,7 @@ export default function AgentVolumeEditOverlay({
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared by every sandbox and persists after the sandbox is deleted.'
-                                    : volumeType === 'PER_CUSTOM_TAG'
+                                    : volumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
                                         ? 'Private to each Custom Tag and persists across sandbox restarts, deletion and idle expiry.'
                                         : 'Private to each sandbox and deleted with it.'}
                                 {' '}This cannot be changed after creation.
@@ -197,7 +198,7 @@ export default function AgentVolumeEditOverlay({
                             <FormDescription>
                                 {volumeType === 'ALL'
                                     ? 'Shared volumes require ReadWriteMany.'
-                                    : volumeType === 'PER_CUSTOM_TAG'
+                                    : volumeType === Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG
                                         ? 'Per-Custom-Tag volumes may use ReadWriteOnce or ReadWriteMany.'
                                         : 'Per-sandbox volumes may use ReadWriteOnce.'}
                                 {' '}This cannot be changed after creation.

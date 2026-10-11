@@ -10,6 +10,7 @@ import AgentVolumeEditOverlay from "./agent-volume-edit-overlay";
 import { AgentVolume } from "@prisma/client";
 import { AgentVolumeEditModel } from "@/shared/model/volume-edit.model";
 import { deleteAgentVolume } from "./actions";
+import { Constants } from "@/shared/utils/constants";
 
 function formatSize(mb: number): string {
     if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
@@ -20,7 +21,7 @@ function volumeTypeLabel(volumeType: string): string {
     switch (volumeType) {
         case 'PER_SANDBOX':
             return 'Per Sandbox';
-        case 'PER_CUSTOM_TAG':
+        case Constants.QS_VOLUME_TYPE_PER_CUSTOM_TAG:
             return 'Per Custom Tag';
         default:
             return 'All (Shared)';
