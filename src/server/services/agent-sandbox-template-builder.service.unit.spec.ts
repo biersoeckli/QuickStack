@@ -4,6 +4,7 @@ vi.mock('./network-policy.service', () => ({
     },
 }));
 
+import { createK3sTestContext } from '@/__tests__/k3s-test.utils';
 import agentSandboxTemplateBuilder from './agent-sandbox-template-builder.service';
 
 const agent = {
@@ -18,6 +19,7 @@ const agent = {
 };
 
 describe('AgentSandboxTemplateBuilder', () => {
+    createK3sTestContext();
     it('derives a SandboxTemplate from an Agent Sandbox Manifest input', () => {
         const resource = agentSandboxTemplateBuilder.buildSandboxTemplateResource({
             agent,
