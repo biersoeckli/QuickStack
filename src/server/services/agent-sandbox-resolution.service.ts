@@ -84,9 +84,7 @@ class AgentSandboxResolutionService {
             containerName: '',
             status: AgentSandboxUtils.resolveSandboxObjectStatus(sandbox),
             createdAt: sandbox.metadata?.creationTimestamp ?? null,
-            customTag: sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-                ?? sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-                ?? null,
+            customTag: sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
         };
     }
 

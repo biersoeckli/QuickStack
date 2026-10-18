@@ -50,29 +50,30 @@ describe('pvc.service per-custom-tag management', () => {
 
     describe('ensureAgentTagPvc', () => {
         it('creates a per-Custom-Tag PVC with the volume access mode, storage class and size', async () => {
-            const { volume, volumeMount } = await pvcService.ensureAgentTagPvc(PROJECT_ID, agentVolume(), 'alice');
+            const customTag = 'jan.meier@achtpunkt.ch';
+            const { volume, volumeMount } = await pvcService.ensureAgentTagPvc(PROJECT_ID, agentVolume(), customTag);
 
-            const expectedName = KubeObjectNameUtils.toAgentTagPvcName(AGENT_ID, VOLUME_ID, 'alice');
+            const expectedName = KubeObjectNameUtils.toAgentTagPvcName(AGENT_ID, VOLUME_ID, customTag);
             expect(expectedName.startsWith('av-')).toBe(true);
             expect(k3s.core.createNamespacedPersistentVolumeClaim).toHaveBeenCalledTimes(1);
-            expect(k3s.core.createNamespacedPersistentVolumeClaim).toHaveBeenCalledWith(expect.objectContaining({
-                namespace: PROJECT_ID,
-                body: expect.objectContaining({
-                    metadata: expect.objectContaining({
-                        name: expectedName,
-                        annotations: expect.objectContaining({
-                            [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID,
-                            [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: VOLUME_ID,
-                            [Constants.QS_ANNOTATION_CUSTOM_TAG]: 'alice',
-                        }),
-                    }),
-                    spec: expect.objectContaining({
-                        accessModes: ['ReadWriteOnce'],
-                        storageClassName: 'longhorn',
-                        resources: { requests: { storage: '1Gi' } },
+            const createCall = vi.mocked(k3s.core.createNamespacedPersistentVolumeClaim).mock.calls[0][0];
+            expect(createCall.namespace).toBe(PROJECT_ID);
+            expect(createCall.body).toEqual(expect.objectContaining({
+                metadata: expect.objectContaining({
+                    name: expectedName,
+                    annotations: expect.objectContaining({
+                        [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID,
+                        [Constants.QS_ANNOTATION_AGENT_VOLUME_ID]: VOLUME_ID,
+                        [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag,
                     }),
                 }),
+                spec: expect.objectContaining({
+                    accessModes: ['ReadWriteOnce'],
+                    storageClassName: 'longhorn',
+                    resources: { requests: { storage: '1Gi' } },
+                }),
             }));
+            expect(createCall.body.metadata?.labels).toBeUndefined();
 
             expect(volume).toEqual({ name: VOLUME_ID, persistentVolumeClaim: { claimName: expectedName } });
             expect(volumeMount).toEqual({ name: VOLUME_ID, mountPath: '/data' });

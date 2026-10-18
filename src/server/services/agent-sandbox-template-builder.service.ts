@@ -374,7 +374,6 @@ class AgentSandboxTemplateBuilder {
         const labels = {
             [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
             [Constants.QS_ANNOTATION_PROJECT_ID]: agent.projectId,
-            [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag,
         };
         const podTemplate = this.buildPodTemplate(agent, deploymentInfo, {
             secretName,

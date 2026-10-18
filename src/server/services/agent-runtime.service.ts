@@ -85,8 +85,7 @@ class AgentRuntimeService {
 
     private sandboxMatchesTag(sandbox: Sandbox, agentId: string, customTag: string): boolean {
         return sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID] === agentId
-            && (sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG] === customTag
-                || sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] === customTag);
+            && sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] === customTag;
     }
 
     /**
@@ -366,6 +365,8 @@ class AgentRuntimeService {
         await this.assertCustomTagAvailable(agent.id, namespace, customTag);
         await this.ensureRuntimeSecret(agent);
 
+        const dockerPullSecretName = await secretService.createOrUpdateAgentDockerPullSecret(agent);
+
         const taggedVirtualKey = await this.ensureTaggedVirtualKey(agent, customTag);
         const env = { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, taggedVirtualKey) };
         const manifestInput = await this.buildStartSandboxManifestInput(agent, customTag);
@@ -382,6 +383,7 @@ class AgentRuntimeService {
                 sandboxName,
                 idleTimeoutMinutes: startOptions.idleTimeoutMinutes,
                 env,
+                deploymentInfo: { dockerPullSecretName },
             }),
         );
 
@@ -692,9 +694,7 @@ class AgentRuntimeService {
             status: AgentSandboxUtils.resolveSandboxObjectStatus(sandbox),
             namespace,
             createdAt: sandbox.metadata?.creationTimestamp || null,
-            customTag: sandbox.metadata?.labels?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-                || sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG]
-                || undefined,
+            customTag: sandbox.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] || undefined,
         };
     }
 

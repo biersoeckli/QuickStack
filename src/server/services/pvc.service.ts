@@ -314,7 +314,6 @@ class PvcService {
                 agentVolume.storageClassName,
                 agentVolume.size,
                 annotations,
-                annotations,
             );
 
             await k3s.core.createNamespacedPersistentVolumeClaim({ namespace: projectId, body: pvcDefinition });

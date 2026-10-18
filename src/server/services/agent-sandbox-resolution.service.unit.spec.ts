@@ -46,10 +46,8 @@ describe('AgentSandboxResolutionService', () => {
     it('resolves a suspended direct Agent Sandbox without looking up a Pod', async () => {
         vi.mocked(agentSandboxAdapter.getSandbox).mockResolvedValue({
             metadata: {
-                labels: {
-                    'qs-agent-id': agent.id,
-                    'qs-custom-tag': 'workspace-a',
-                },
+                labels: { 'qs-agent-id': agent.id },
+                annotations: { 'qs-custom-tag': 'workspace-a' },
             },
             spec: { operatingMode: 'Suspended' },
         } as any);

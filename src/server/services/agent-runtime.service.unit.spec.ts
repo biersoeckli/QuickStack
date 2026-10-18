@@ -44,6 +44,7 @@ vi.mock('@/server/adapter/agent-sandbox.adapter', () => ({
 vi.mock('@/server/services/secret.service', () => ({
     default: {
         getDecodedSecret: vi.fn(),
+        createOrUpdateAgentDockerPullSecret: vi.fn(),
         createOrReplaceGenericSecret: vi.fn(),
         deleteSecretSafe: vi.fn(),
         listDecodedSecretsByLabels: vi.fn(),
@@ -497,6 +498,7 @@ describe('agent-runtime.service', () => {
         it('ensures per-Custom-Tag PVCs, builds a static-PVC Sandbox, and waits for readiness', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
             vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-test-key');
+            vi.mocked(secretService.createOrUpdateAgentDockerPullSecret).mockResolvedValue('pull-secret-agent-test-runner');
             stubPvcs();
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice' });
@@ -511,11 +513,21 @@ describe('agent-runtime.service', () => {
             expect(sandbox.metadata.name).toMatch(/^as-/);
             expect(sandbox.metadata.labels).toEqual(expect.objectContaining({
                 'qs-agent-id': AGENT_ID,
-                'qs-custom-tag': 'alice',
             }));
+            expect(sandbox.metadata.labels['qs-custom-tag']).toBeUndefined();
+            expect(sandbox.metadata.annotations['qs-custom-tag']).toBe('alice');
+            expect(sandbox.spec.podTemplate.metadata.labels['qs-custom-tag']).toBeUndefined();
+            expect(sandbox.spec.podTemplate.metadata.annotations['qs-custom-tag']).toBe('alice');
             expect(sandbox.spec.operatingMode).toBe('Running');
             expect(sandbox.spec.shutdownPolicy).toBe('Delete');
             expect(sandbox.spec.service).toBe(true);
+            expect(secretService.createOrUpdateAgentDockerPullSecret).toHaveBeenCalledWith(expect.objectContaining({
+                id: AGENT_ID,
+                containerImageSource: 'registry.example.com/agent:latest',
+            }));
+            expect(sandbox.spec.podTemplate.spec.imagePullSecrets).toEqual([
+                { name: 'pull-secret-agent-test-runner' },
+            ]);
             expect(sandbox.spec.podTemplate.spec.volumes).toEqual(expect.arrayContaining([
                 { name: 'vol-shared', persistentVolumeClaim: { claimName: 'aw-shared' } },
                 { name: 'vol-tag', persistentVolumeClaim: { claimName: 'aw-tag-alice' } },
@@ -599,7 +611,8 @@ describe('agent-runtime.service', () => {
                 {
                     metadata: {
                         name: 'as-abc',
-                        labels: { 'qs-agent-id': AGENT_ID, 'qs-custom-tag': 'alice' },
+                        labels: { 'qs-agent-id': AGENT_ID },
+                        annotations: { 'qs-custom-tag': 'alice' },
                         creationTimestamp: '2026-01-01T00:00:00Z',
                     },
                 },
@@ -619,7 +632,7 @@ describe('agent-runtime.service', () => {
         it('rejects while a sandbox with the tag exists', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ agentVolumes: [tagVolume] }) as any);
             vi.mocked(agentSandboxAdapter.listSandboxes).mockResolvedValue([
-                { metadata: { name: 'as-abc', labels: { 'qs-agent-id': AGENT_ID, 'qs-custom-tag': 'alice' } } },
+                { metadata: { name: 'as-abc', labels: { 'qs-agent-id': AGENT_ID }, annotations: { 'qs-custom-tag': 'alice' } } },
             ] as any);
 
             await expect(agentRuntimeService.deleteTag(AGENT_ID, 'alice')).rejects.toThrow('currently used');
