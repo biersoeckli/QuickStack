@@ -1,6 +1,7 @@
 import { PodsInfoModel } from "@/shared/model/pods-info.model";
 import k3s from "../adapter/kubernetes-api.adapter";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { CommandResultModel } from '@/shared/model/agent-sandbox.model';
 import standalonePodService from "./standalone-services/standalone-pod.service";
 
 class PodService {
@@ -42,6 +43,16 @@ class PodService {
         command: string[],
     ): Promise<void> {
         return await standalonePodService.runCommandInPod(namespace, podName, containerName, command);
+    }
+
+    async execInPod(
+        namespace: string,
+        podName: string,
+        containerName: string,
+        command: string[],
+        timeoutSec?: number,
+    ): Promise<CommandResultModel> {
+        return standalonePodService.execInPod(namespace, podName, containerName, command, timeoutSec);
     }
 
     public async cpFromPod(
