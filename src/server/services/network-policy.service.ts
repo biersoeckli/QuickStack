@@ -114,6 +114,8 @@ class NetworkPolicyService {
         const result: V1NetworkPolicyIngressRule[] = [];
         // Traffic between replicas of the same App is always allowed on all ports.
         result.push({ _from: [this.getSelfPeer(appId)] });
+        // QuickStack needs direct access to managed workloads on all ports.
+        result.push({ _from: [this.getQuickStackPodPeer()] });
         const backupAndTools: V1NetworkPolicyPeer[] = [
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL } } },
@@ -137,6 +139,13 @@ class NetworkPolicyService {
 
     private getSelfPeer(appId: string): V1NetworkPolicyPeer {
         return { podSelector: { matchLabels: { app: appId } } };
+    }
+
+    private getQuickStackPodPeer(): V1NetworkPolicyPeer {
+        return {
+            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': Constants.QS_NAMESPACE } },
+            podSelector: { matchLabels: { app: Constants.QS_APP_NAME } },
+        };
     }
 
     private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {
@@ -206,20 +215,23 @@ class NetworkPolicyService {
         }
 
         return {
-            ingress: [{
-                from: [{
-                    namespaceSelector: {
-                        matchLabels: {
-                            'kubernetes.io/metadata.name': Constants.QS_NAMESPACE,
+            ingress: [
+                {
+                    from: [{
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': Constants.QS_NAMESPACE,
+                            },
                         },
-                    },
-                    podSelector: {
-                        matchLabels: {
-                            app: QS_AUTH_PROXY_SERVICE_NAME,
+                        podSelector: {
+                            matchLabels: {
+                                app: QS_AUTH_PROXY_SERVICE_NAME,
+                            },
                         },
-                    },
-                }],
-            }],
+                    }],
+                },
+                { from: [this.getQuickStackPodPeer()] },
+            ],
             egress,
         };
     }

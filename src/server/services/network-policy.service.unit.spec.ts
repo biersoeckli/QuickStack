@@ -63,7 +63,7 @@ describe('network-policy.service', () => {
             rules: [],
         });
 
-        expect(policy?.ingress).toEqual([{
+        expect(policy?.ingress).toEqual(expect.arrayContaining([{
             from: [{
                 namespaceSelector: {
                     matchLabels: {
@@ -76,7 +76,29 @@ describe('network-policy.service', () => {
                     },
                 },
             }],
-        }]);
+        }]));
+    });
+
+    it('allows QuickStack ingress to all sandbox ports', () => {
+        const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
+            allowInternetAccess: false,
+            rules: [],
+        });
+
+        expect(policy?.ingress).toEqual(expect.arrayContaining([{
+            from: [{
+                namespaceSelector: {
+                    matchLabels: {
+                        'kubernetes.io/metadata.name': 'quickstack',
+                    },
+                },
+                podSelector: {
+                    matchLabels: {
+                        app: 'quickstack',
+                    },
+                },
+            }],
+        }]));
     });
 
     it('always allows ingress from replicas of the same App', async () => {
@@ -94,6 +116,27 @@ describe('network-policy.service', () => {
         const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
         expect(policy.spec.ingress).toEqual(expect.arrayContaining([expect.objectContaining({
             _from: [{ podSelector: { matchLabels: { app: 'demo-app' } } }],
+        })]));
+    });
+
+    it('allows QuickStack ingress to all App ports', async () => {
+        const app = {
+            id: 'demo-app',
+            projectId: 'app-project',
+            useNetworkPolicy: true,
+            appDomains: [],
+            appNodePorts: [],
+            appNetworkPolicy: null,
+        } as unknown as AppExtendedModel;
+
+        await networkPolicyService.reconcileNetworkPolicy(app);
+
+        const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
+        expect(policy.spec.ingress).toEqual(expect.arrayContaining([expect.objectContaining({
+            _from: [{
+                namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'quickstack' } },
+                podSelector: { matchLabels: { app: 'quickstack' } },
+            }],
         })]));
     });
 
