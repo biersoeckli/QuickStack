@@ -3,6 +3,8 @@ import fs from 'fs';
 import stream from 'stream';
 import * as k8s from '@kubernetes/client-node';
 import dataAccess from "../../../server/adapter/db.client";
+import { CommandResultModel } from '@/shared/model/agent-sandbox.model';
+import { ServiceException } from '@/shared/model/service.exception.model';
 
 class SetupPodService {
 
@@ -71,46 +73,69 @@ class SetupPodService {
         })).filter((item) => !!item.podName && !!item.containerName);
     }
 
+    public async execInPod(
+        namespace: string,
+        podName: string,
+        containerName: string,
+        command: string[],
+        timeoutSec = 120,
+    ): Promise<CommandResultModel> {
+        const stdoutStream = new stream.PassThrough();
+        const stderrStream = new stream.PassThrough();
+        let stdout = '';
+        let stderr = '';
+        stdoutStream.on('data', (chunk) => { stdout += chunk.toString(); });
+        stderrStream.on('data', (chunk) => { stderr += chunk.toString(); });
+
+        return new Promise<CommandResultModel>((resolve, reject) => {
+            let settled = false;
+            let connection: { close: () => void } | undefined;
+            const finish = (callback: () => void) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                callback();
+            };
+            const timer = setTimeout(() => finish(() => {
+                connection?.close();
+                reject(new ServiceException('Command execution timed out or the Pod connection was lost.'));
+            }), (timeoutSec + 5) * 1000);
+
+            const exec = new k8s.Exec(k3s.getKubeConfig());
+            exec.exec(
+                namespace,
+                podName,
+                containerName,
+                command,
+                stdoutStream,
+                stderrStream,
+                null,
+                false,
+                (status: k8s.V1Status) => finish(() => {
+                    const exitCodeCause = status?.details?.causes?.find((cause: any) => cause.reason === 'ExitCode');
+                    const parsedExitCode = Number.parseInt(exitCodeCause?.message ?? '', 10);
+                    resolve({
+                        stdout,
+                        stderr,
+                        exitCode: status?.status === 'Failure' && !Number.isFinite(parsedExitCode) ? 1 : parsedExitCode || 0,
+                    });
+                }),
+            ).then((ws) => {
+                connection = ws;
+            }).catch((error: unknown) => finish(() => reject(error)));
+        });
+    }
+
     public async runCommandInPod(
         namespace: string,
         podName: string,
         containerName: string,
         command: string[],
     ): Promise<void> {
-        const writerStream = new stream.PassThrough();
-        const stderrStream = new stream.PassThrough();
-        return new Promise<void>((resolve, reject) => {
-
-            const exec = new k8s.Exec(k3s.getKubeConfig());
-            exec
-                .exec(
-                    namespace,
-                    podName,
-                    containerName,
-                    command,
-                    writerStream,
-                    stderrStream,
-                    null,
-                    false,
-                    async ({ status }) => {
-                        try {
-                            console.log(`Output for command "${command}": \n ${writerStream.read()?.toString()}`);
-                            console.log(`Error for command "${command}": \n ${stderrStream.read()?.toString()}`);
-                            if (status === 'Failure') {
-                                return reject(
-                                    new Error(
-                                        `Error while running command "${command}": \n ${stderrStream.read()?.toString()}`,
-                                    ),
-                                );
-                            }
-                            resolve();
-                        } catch (e) {
-                            reject(e);
-                        }
-                    },
-                )
-                .catch(reject);
-        });
+        const result = await this.execInPod(namespace, podName, containerName, command);
+        if (result.exitCode !== 0) {
+            throw new ServiceException(`Error while running command "${command}":\n ${result.stderr || result.stdout}`);
+        }
     }
 
     /**

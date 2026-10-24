@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { z } from 'zod';
 import appService from '@/server/services/app.service';
 import appLogsService from '@/server/services/standalone-services/app-logs.service';
+import appCommandService from '@/server/services/app-command.service';
 import {
     ensureCreateAppInProject,
     ensureDeleteAppInProject,
@@ -14,6 +15,7 @@ import { AppExtendedModel, AppExtendedWriteModel, AppExtendedWriteZodModel, AppE
 import { ApiUtils } from '../../../utils/api-response.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { appLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
+import { commandRequestZodModel, commandResultZodModel } from '@/shared/model/agent-sandbox.model';
 
 function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtendedWriteModel {
     return {
@@ -93,6 +95,29 @@ export const appRoutes = new Elysia()
         }),
         response: ApiUtils.mapResponseModel(appLogsResponseZodModel),
         detail: { summary: 'Get current app logs', operationId: 'getAppLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
+    })
+    .post('/apps/:appId/commands', async ({ params, body, identity }) => {
+        if (!identity) throw new ApiUnauthorizedException();
+
+        const app = await appService.getByIdOrUndefined(params.appId);
+        if (!app) throw new ApiNotFoundException();
+
+        ensureWriteApp(identity, app.id);
+
+        return appCommandService.runCommand(app.id, body);
+    }, {
+        params: z.object({
+            appId: z.string(),
+        }),
+        body: commandRequestZodModel,
+        response: ApiUtils.mapResponseModel(commandResultZodModel),
+        detail: {
+            summary: 'Run command in app',
+            description: 'Run a shell command in the first running Pod of this app. Requires write access to the app.',
+            operationId: 'runAppCommand',
+            tags: ['Apps'],
+            security: [{ bearerAuth: [] }],
+        },
     })
     .post('/apps', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
