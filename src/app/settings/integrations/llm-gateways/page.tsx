@@ -21,7 +21,7 @@ export default async function LlmGatewaysPage() {
             <PageTitle
                 title={'LLM Gateways'}
                 subtitle={'Manage LiteLLM-compatible gateways for Agent workloads.'}>
-                <LlmGatewayEditOverlay projects={projects.filter(project => project.projectType === 'APP')}>
+                <LlmGatewayEditOverlay projects={projects}>
                     <Button>Add LLM Gateway</Button>
                 </LlmGatewayEditOverlay>
             </PageTitle>

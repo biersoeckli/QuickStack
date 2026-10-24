@@ -11,6 +11,13 @@ export interface AgentAccessTokenPayload {
     jti?: string;
 }
 
+export interface AgentApiTokenPayload {
+    agentId: string;
+    claimId: string;
+    namespace: string;
+    port: number;
+}
+
 export class AuthProxyJwtUtils {
     private static readonly authProxyIssues = 'quickstack-auth-proxy';
     private static readonly algorithm = 'HS256';
@@ -33,6 +40,21 @@ export class AuthProxyJwtUtils {
             .setJti(randomUUID())
             .setIssuedAt()
             .setExpirationTime(`${AuthProxyJwtUtils.getTokenTtlSeconds()}s`)
+            .sign(await AuthProxyJwtUtils.getAgentJwtSecret());
+    }
+
+    static async signAgentApiToken(payload: AgentApiTokenPayload, ttlSeconds = 900): Promise<string> {
+        return new SignJWT({
+            agentId: payload.agentId,
+            claimId: payload.claimId,
+            namespace: payload.namespace,
+            port: payload.port,
+            type: 'api',
+        })
+            .setProtectedHeader({ alg: AuthProxyJwtUtils.algorithm })
+            .setIssuer(AuthProxyJwtUtils.authProxyIssues)
+            .setIssuedAt()
+            .setExpirationTime(`${ttlSeconds}s`)
             .sign(await AuthProxyJwtUtils.getAgentJwtSecret());
     }
 

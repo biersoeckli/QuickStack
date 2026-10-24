@@ -5,18 +5,17 @@ import projectService from "@/server/services/project.service";
 import AppProjectOverview from "./app-components/project-overview";
 import appService from "@/server/services/app.service";
 import agentService from "@/server/services/agent.service";
-import PageTitle from "@/components/custom/page-title";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
-import CreateProjectActions from "./create-project-actions";
 import { UserGroupUtils } from "@/shared/utils/role.utils";
-import AgentListClient from "./agent-components/agent-table";
 import projectNetworkGraphLayoutService from '@/server/services/project-network-graph-layout.service';
 import { ensureReadProject, RequesterIdentity } from '@/server/utils/shared-authorization.utils';
-import paramService, { ParamService } from '@/server/services/param.service';
-import s3TargetService from '@/server/services/s3-target.service';
-import volumeBackupService from '@/server/services/volume-backup.service';
-import clusterService from '@/server/services/cluster.service';
-import appGitSshKeyService from '@/server/services/app-git-ssh-key.service';
+import paramService, { ParamService } from "@/server/services/param.service";
+import s3TargetService from "@/server/services/s3-target.service";
+import volumeBackupService from "@/server/services/volume-backup.service";
+import clusterService from "@/server/services/cluster.service";
+import appGitSshKeyService from "@/server/services/app-git-ssh-key.service";
+import agentSandboxAddonService from "@/server/services/addons/agent-sandbox-addon.service";
+import { CatchUtils } from "@/shared/utils/catch.utils";
 
 export default async function AppsPage({
     params
@@ -34,41 +33,32 @@ export default async function AppsPage({
     const identity: RequesterIdentity = { type: 'session', session };
     ensureReadProject(identity, projectId);
     const project = await projectService.getById(projectId);
-    const isAgentProject = project.projectType === 'AGENT';
+    const agentsAvailable = await agentSandboxAddonService.isAvailable();
 
-    if (isAgentProject) {
-        const agents = await agentService.getAllByProjectId(projectId);
-        const relevantAgents = agents.filter((agent) =>
-            UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id));
-        return (
-            <div className="flex-1 space-y-4 pt-6">
-                <PageTitle
-                    title="Agents"
-                    subtitle={`Agent Project "${project.name}"`}>
-                    {UserGroupUtils.sessionCanCreateProjectWorkloadsForProject(session, projectId) &&
-                        <CreateProjectActions projectId={projectId} projectType="agent" />}
-                </PageTitle>
-                <AgentListClient agents={relevantAgents} session={session} projectId={projectId} />
-                <ProjectBreadcrumbs project={project} />
-            </div>
-        );
-    }
-
-    const data = await appService.getAllAppsByProjectId(projectId);
+    const [data, agents] = await Promise.all([
+        appService.getAllAppsByProjectId(projectId),
+        agentService.getAllByProjectId(projectId),
+    ]);
     const relevantApps = data.filter((app) =>
         UserGroupUtils.sessionHasReadAccessForApp(session, app.id));
+    const relevantAgents = agents.filter((agent) =>
+        UserGroupUtils.sessionHasReadAccessForAgent(session, agent.id));
+
     const [
         networkGraphPositions,
         hasAcknowledgedNewNetworkPolicyExplanation,
         s3Targets,
         storageClasses,
+        runtimeClasses,
         volumeBackups,
         gitSshPublicKeys,
+        agentTemplateInfoByAgent,
     ] = await Promise.all([
         projectNetworkGraphLayoutService.getPositions(projectId),
         paramService.getBoolean(ParamService.FEATURE_NEW_NETWORK_POLICY_EXPLENATION),
         s3TargetService.getAll(),
         clusterService.getStorageClasses(),
+        clusterService.getRuntimeClasses(),
         Promise.all(relevantApps.map(async (app) => [
             app.id,
             await volumeBackupService.getForApp(app.id),
@@ -77,6 +67,10 @@ export default async function AppsPage({
             app.id,
             await appGitSshKeyService.getPublicKey(app.id),
         ] as const)),
+        Promise.all(relevantAgents.map(async (agent) => [
+            agent.id,
+            await CatchUtils.resultOrUndefined(() => agentService.getSandboxTemplateDeployInfo(agent.id)),
+        ] as const)),
     ]);
 
     return (
@@ -84,14 +78,18 @@ export default async function AppsPage({
             <AppProjectOverview
                 session={session}
                 apps={relevantApps}
+                agents={relevantAgents}
+                agentsAvailable={agentsAvailable}
                 projectId={project.id}
                 projectName={project.name}
                 networkGraphPositions={networkGraphPositions}
                 showNewNetworkPolicyExplanation={!hasAcknowledgedNewNetworkPolicyExplanation}
                 s3Targets={s3Targets}
                 storageClasses={storageClasses}
+                runtimeClasses={runtimeClasses}
                 volumeBackupsByApp={Object.fromEntries(volumeBackups)}
                 gitSshPublicKeysByApp={Object.fromEntries(gitSshPublicKeys)}
+                agentTemplateInfoByAgent={Object.fromEntries(agentTemplateInfoByAgent)}
             />
             <ProjectBreadcrumbs project={project} />
         </div>

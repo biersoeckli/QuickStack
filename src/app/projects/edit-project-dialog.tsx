@@ -9,34 +9,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Toast } from '@/frontend/utils/toast.utils';
 import { useDialogContext } from '@/frontend/states/dialog-context';
 import { useDialog } from '@/frontend/states/zustand.states';
-import { ProjectType } from '@/shared/model/project-type.model';
 import { Project } from '@prisma/client';
 import { useState } from 'react';
 import { createProject } from './actions';
 
-function EditProjectForm({ existingItem, agentsAvailable }: {
+function EditProjectForm({ existingItem }: {
     existingItem?: Project;
-    agentsAvailable: boolean;
 }) {
     const { closeDialog } = useDialogContext();
     const [name, setName] = useState(existingItem?.name ?? '');
-    const [projectType, setProjectType] = useState<ProjectType | undefined>(
-        agentsAvailable ? existingItem?.projectType as ProjectType | undefined : 'APP',
-    );
 
     const submit = async () => {
-        if (!name.trim() || !projectType) return;
-        await Toast.fromAction(() => createProject(name.trim(), projectType, existingItem?.id));
+        if (!name.trim()) return;
+        await Toast.fromAction(() => createProject(name.trim(), existingItem?.id));
         closeDialog();
     };
 
@@ -45,8 +33,8 @@ function EditProjectForm({ existingItem, agentsAvailable }: {
             <DialogTitle>{existingItem ? 'Edit Project' : 'Create Project'}</DialogTitle>
             <DialogDescription>
                 {existingItem
-                    ? 'Rename this Project. Project Type cannot be changed.'
-                    : 'Choose the workload type this Project will contain.'}
+                    ? 'Rename this Project.'
+                    : 'Projects can contain both Apps and Agent Sandboxes.'}
             </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -58,29 +46,9 @@ function EditProjectForm({ existingItem, agentsAvailable }: {
                     onChange={(event) => setName(event.target.value)}
                 />
             </div>
-            <div className="grid gap-2">
-                <Label>Project Type</Label>
-                <Select
-                    disabled={!!existingItem}
-                    value={projectType}
-                    onValueChange={(value) => setProjectType(value as ProjectType)}
-                    items={[
-                        { value: 'APP', label: 'App' },
-                        ...(agentsAvailable ? [{ value: 'AGENT', label: 'Agent' }] : []),
-                    ]}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Project Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="APP">App</SelectItem>
-                        {agentsAvailable && <SelectItem value="AGENT">Agent</SelectItem>}
-                    </SelectContent>
-                </Select>
-            </div>
         </div>
         <DialogFooter>
-            <Button disabled={!name.trim() || !projectType} onClick={submit}>
+            <Button disabled={!name.trim()} onClick={submit}>
                 {existingItem ? 'Save Project' : 'Create Project'}
             </Button>
             <Button variant="secondary" onClick={() => closeDialog()}>Cancel</Button>
@@ -88,15 +56,14 @@ function EditProjectForm({ existingItem, agentsAvailable }: {
     </>;
 }
 
-export function EditProjectDialog({ children, existingItem, agentsAvailable }: {
+export function EditProjectDialog({ children, existingItem }: {
     children?: React.ReactNode;
     existingItem?: Project;
-    agentsAvailable: boolean;
 }) {
     const { openDialog } = useDialog();
 
     const handleOpen = () => {
-        openDialog(<EditProjectForm existingItem={existingItem} agentsAvailable={agentsAvailable} />, { maxWidth: '425px' });
+        openDialog(<EditProjectForm existingItem={existingItem} />, { maxWidth: '425px' });
     };
 
     return <div onClick={handleOpen}>{children}</div>;

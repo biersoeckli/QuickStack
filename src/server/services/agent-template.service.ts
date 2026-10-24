@@ -79,13 +79,10 @@ class AgentTemplateService {
             return await dataAccess.client.$transaction(async (tx) => {
                 const project = await tx.project.findUnique({
                     where: { id: projectId },
-                    select: { id: true, projectType: true },
+                    select: { id: true },
                 });
                 if (!project) {
                     throw new ServiceException("Project not found.");
-                }
-                if (project.projectType !== "AGENT") {
-                    throw new ServiceException("Agent templates can only be created in Agent Projects.");
                 }
 
                 const createdAgents: AgentExtendedModel[] = [];

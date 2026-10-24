@@ -20,7 +20,7 @@ describe('agent-file-mount.service', () => {
         vi.clearAllMocks();
 
         const project = await dataAccess.client.project.create({
-            data: { name: 'Test Project', projectType: 'AGENT' },
+            data: { name: 'Test Project' },
         });
         projectId = project.id;
 

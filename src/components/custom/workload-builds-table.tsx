@@ -20,6 +20,7 @@ import { DeploymentInfoModel, DeploymentStatus } from "@/shared/model/deployment
 import { GlobalBuildJobModel } from "@/shared/model/global-build-job.model";
 import { WorkloadType } from "@/shared/model/runtime-type.model";
 import { deleteWorkloadBuildAction, getWorkloadBuildsAction } from "@/app/project/actions";
+import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
 
 type WorkloadBuildRow = BuildJobModel & Partial<Pick<GlobalBuildJobModel, 'projectId' | 'projectName' | 'workloadName' | 'completionTime'>>;
 
@@ -92,7 +93,12 @@ export default function WorkloadBuildsTable({
                 <span className="flex items-center gap-1 font-medium">
                     {item.workloadName}
                     <span className="text-xs text-muted-foreground uppercase">{item.workloadType}</span>
-                    <Link href={`/project/${item.workloadType}/${item.workloadId}`} onClick={(e) => e.stopPropagation()}>
+                    <Link
+                        href={item.workloadType === 'agent' && item.projectId
+                            ? PathBuilderUtils.projectAgentDrawer(item.projectId, item.workloadId, 'builds')
+                            : `/project/${item.workloadType}/${item.workloadId}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                     </Link>
                 </span>

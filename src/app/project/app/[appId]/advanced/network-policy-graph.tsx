@@ -370,7 +370,7 @@ export default function NetworkPolicyGraph({
                         const [workloadType, workloadId] = String(node.id).split(':');
                         const peer = node.data as PeerNodeData;
                         router.push(workloadType === 'AGENT'
-                            ? `/project/agent/${workloadId}`
+                            ? PathBuilderUtils.projectAgentDrawer(peer.projectId, workloadId)
                             : PathBuilderUtils.projectAppDrawer(peer.projectId, workloadId));
                     }}
                 >

@@ -13,43 +13,14 @@ import {
     FileExistsResultModel,
 } from "@/shared/model/agent-sandbox.model";
 import { ApiNotFoundException, ServiceException } from "@/shared/model/service.exception.model";
-import { Constants } from "@/shared/utils/constants";
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
+import agentSandboxResolutionService, { ResolvedAgentSandbox } from "./agent-sandbox-resolution.service";
 
-type ResolvedSandboxTarget = {
-    namespace: string;
-    sandboxName: string;
-    sandboxObjectName: string;
-    podName: string;
-    containerName: string;
-    status: DeploymentStatus;
-    createdAt: string | null;
-    customTag?: string | null;
-};
+type ResolvedSandboxTarget = ResolvedAgentSandbox;
 
 class AgentSandboxService {
     // Path validation is not a security boundary: all file/command endpoints require
     // write access to the agent, which already grants unrestricted shell read/write
     // access in this sandbox. Container isolation is the real boundary.
-    private resolveClaimStatus(claim: any): DeploymentStatus {
-        const conditions: Array<{ type: string; status: string }> = claim?.status?.conditions || [];
-        const ready = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'True',
-        );
-        if (ready) {
-            return 'DEPLOYED';
-        }
-
-        const failed = conditions.find((c) =>
-            (c.type === 'Ready' || c.type === 'Available') && c.status === 'False',
-        );
-        if (failed) {
-            return 'ERROR';
-        }
-
-        return 'DEPLOYING';
-    }
-
     private shellQuote(value: string): string {
         return `'${value.replace(/'/g, `'\\''`)}'`;
     }
@@ -96,56 +67,18 @@ class AgentSandboxService {
         return agent.projectId;
     }
 
-    private async getClaimForAgent(agentId: string, sandboxName: string, namespace: string) {
-        const claim = await agentSandboxAdapter.getSandboxClaim(sandboxName, namespace);
-        if (!claim) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox not found.');
+    private async resolveTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
+        const agent = await agentService.getByIdOrUndefined(agentId);
+        if (!agent) {
+            throw new ApiNotFoundException('Not Found', 'Agent not found.');
         }
-
-        const claimAgentId = claim.metadata?.labels?.[Constants.QS_ANNOTATION_AGENT_ID];
-        if (claimAgentId !== agentId) {
-            throw new ServiceException('Agent sandbox does not belong to this Agent.');
-        }
-
-        return claim;
+        return agentSandboxResolutionService.resolveWithPod(agent, sandboxName);
     }
 
-    private async resolveTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
-        const namespace = await this.getAgentNamespace(agentId);
-        const claim = await this.getClaimForAgent(agentId, sandboxName, namespace);
-        const sandboxObjectName = claim.status?.sandbox?.name;
-        if (!sandboxObjectName) {
-            throw new ServiceException('Agent sandbox is not ready.');
+    private assertRunnable(target: ResolvedSandboxTarget): void {
+        if (target.status === 'SUSPENDED') {
+            throw new ServiceException('Agent sandbox is suspended. Resume it before running commands or accessing files.');
         }
-
-        const sandbox = await agentSandboxAdapter.getSandbox(sandboxObjectName, namespace);
-        if (!sandbox) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox runtime not found.');
-        }
-
-        const selector = sandbox.status?.selector;
-        if (!selector) {
-            throw new ServiceException('Agent sandbox pod selector not found.');
-        }
-
-        const pods = await k3s.core.listNamespacedPod({ namespace, labelSelector: selector });
-        const pod = pods.items.find((item) => item.status?.phase === 'Running') ?? pods.items[0];
-        const podName = pod?.metadata?.name;
-        const containerName = pod?.spec?.containers?.[0]?.name;
-        if (!podName || !containerName) {
-            throw new ApiNotFoundException('Not Found', 'Agent sandbox pod not found.');
-        }
-
-        return {
-            namespace,
-            sandboxName,
-            sandboxObjectName,
-            podName,
-            containerName,
-            status: this.resolveClaimStatus(claim),
-            createdAt: claim.metadata?.creationTimestamp ?? null,
-            customTag: claim.metadata?.annotations?.[Constants.QS_ANNOTATION_CUSTOM_TAG] ?? null,
-        };
     }
 
     private toSandboxModel(agentId: string, target: ResolvedSandboxTarget): AgentSandboxModel {
@@ -333,14 +266,39 @@ class AgentSandboxService {
         await agentRuntimeService.stopSandbox(agentId, sandboxName);
     }
 
-    async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
+    async deleteTag(agentId: string, customTag: string): Promise<void> {
+        await agentRuntimeService.deleteTag(agentId, customTag);
+    }
+
+    async suspendSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {
+        await agentRuntimeService.suspendSandbox(agentId, sandboxName);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    async resumeSandbox(agentId: string, sandboxName: string): Promise<AgentSandboxModel> {
+        await agentRuntimeService.resumeSandbox(agentId, sandboxName);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    async resumeSandboxByTag(agentId: string, customTag: string): Promise<AgentSandboxModel> {
+        const { sandboxName } = await agentRuntimeService.resumeSandboxByTag(agentId, customTag);
+        return this.getSandbox(agentId, sandboxName);
+    }
+
+    private async resolveRunnableTarget(agentId: string, sandboxName: string): Promise<ResolvedSandboxTarget> {
         const target = await this.resolveTarget(agentId, sandboxName);
+        this.assertRunnable(target);
+        return target;
+    }
+
+    async runCommand(agentId: string, sandboxName: string, input: CommandRequestModel): Promise<CommandResultModel> {
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const timeoutSec = input.timeoutSec ?? 120;
         return this.execShell(target, this.buildShellScript(input.command, { ...input, timeoutSec }), timeoutSec);
     }
 
     async readFile(agentId: string, sandboxName: string, path: string): Promise<{ stream: stream.PassThrough; size: number }> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const size = await this.getFileSize(target, path);
 
         return {
@@ -350,7 +308,7 @@ class AgentSandboxService {
     }
 
     async writeFile(agentId: string, sandboxName: string, path: string, input: stream.Readable): Promise<void> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const result = await this.execShell(
             target,
             `cat > ${this.shellQuote(path)}`,
@@ -361,7 +319,7 @@ class AgentSandboxService {
     }
 
     async listFiles(agentId: string, sandboxName: string, path: string): Promise<FileEntryModel[]> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const quotedPath = this.shellQuote(path);
         const script = [
             `target=${quotedPath}`,
@@ -401,7 +359,7 @@ class AgentSandboxService {
     }
 
     async fileExists(agentId: string, sandboxName: string, path: string): Promise<FileExistsResultModel> {
-        const target = await this.resolveTarget(agentId, sandboxName);
+        const target = await this.resolveRunnableTarget(agentId, sandboxName);
         const result = await this.execShell(target, `test -e ${this.shellQuote(path)}`);
         return { exists: result.exitCode === 0 };
     }

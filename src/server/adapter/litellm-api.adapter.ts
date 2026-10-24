@@ -48,8 +48,16 @@ class LiteLlmApiAdapter {
         }
     }
 
-    async createVirtualKey(baseUrl: string, adminKey: string, modelAliases: string[]): Promise<string> {
-        const requestBody: LiteLlmGenerateKeyRequest = { models: modelAliases };
+    async createVirtualKey(
+        baseUrl: string,
+        adminKey: string,
+        modelAliases: string[],
+        metadata?: Record<string, unknown>,
+    ): Promise<string> {
+        const requestBody: LiteLlmGenerateKeyRequest = {
+            models: modelAliases,
+            ...(metadata ? { metadata } : {}),
+        };
         const response = await this.fetchJson<LiteLlmGenerateKeyResponse>(baseUrl, adminKey, '/key/generate', {
             method: 'POST',
             body: JSON.stringify(requestBody),

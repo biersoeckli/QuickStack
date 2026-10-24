@@ -72,7 +72,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                         )}
                     </DrawerHeader>
                     <ScrollArea
-                        className="min-h-0 min-w-0 flex-1 px-4 pb-4"
+                        className="min-h-0 min-w-0 flex-1 px-6 pb-4"
                         contentClassName="h-full"
                     >
                         <div className="h-full min-w-0 p-1">

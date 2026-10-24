@@ -114,6 +114,8 @@ class NetworkPolicyService {
         const result: V1NetworkPolicyIngressRule[] = [];
         // Traffic between replicas of the same App is always allowed on all ports.
         result.push({ _from: [this.getSelfPeer(appId)] });
+        // QuickStack needs direct access to managed workloads on all ports.
+        result.push({ _from: [this.getQuickStackPodPeer()] });
         const backupAndTools: V1NetworkPolicyPeer[] = [
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_BACKUP_JOB } } },
             { podSelector: { matchLabels: { [Constants.QS_ANNOTATION_CONTAINER_TYPE]: Constants.QS_ANNOTATION_CONTAINER_TYPE_DB_TOOL } } },
@@ -137,6 +139,13 @@ class NetworkPolicyService {
 
     private getSelfPeer(appId: string): V1NetworkPolicyPeer {
         return { podSelector: { matchLabels: { app: appId } } };
+    }
+
+    private getQuickStackPodPeer(): V1NetworkPolicyPeer {
+        return {
+            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': Constants.QS_NAMESPACE } },
+            podSelector: { matchLabels: { app: Constants.QS_APP_NAME } },
+        };
     }
 
     private getTargetPeer(rule: TargetNetworkPolicyRule): V1NetworkPolicyPeer {
@@ -206,22 +215,82 @@ class NetworkPolicyService {
         }
 
         return {
-            ingress: [{
-                from: [{
-                    namespaceSelector: {
-                        matchLabels: {
-                            'kubernetes.io/metadata.name': Constants.QS_NAMESPACE,
+            ingress: [
+                {
+                    from: [{
+                        namespaceSelector: {
+                            matchLabels: {
+                                'kubernetes.io/metadata.name': Constants.QS_NAMESPACE,
+                            },
                         },
-                    },
-                    podSelector: {
-                        matchLabels: {
-                            app: QS_AUTH_PROXY_SERVICE_NAME,
+                        podSelector: {
+                            matchLabels: {
+                                app: QS_AUTH_PROXY_SERVICE_NAME,
+                            },
                         },
-                    },
-                }],
-            }],
+                    }],
+                },
+                { from: [this.getQuickStackPodPeer()] },
+            ],
             egress,
         };
+    }
+
+    /**
+     * Builds a standalone NetworkPolicy for a directly created Agent Sandbox.
+     * The base Sandbox CRD does not carry network policy configuration, so for
+     * PER_CUSTOM_TAG Agents QuickStack manages the policy itself, selecting the
+     * sandbox Pods by the qs-agent-id label.
+     */
+    buildAgentSandboxNetworkPolicy(
+        agentId: string,
+        projectId: string,
+        agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig,
+    ): V1NetworkPolicy | null {
+        const embedded = this.buildAgentSandboxTemplateNetworkPolicy(agentNetworkPolicy);
+        if (!embedded) {
+            return null;
+        }
+
+        return {
+            apiVersion: 'networking.k8s.io/v1',
+            kind: 'NetworkPolicy',
+            metadata: {
+                name: KubeObjectNameUtils.toNetworkPolicyName(agentId),
+                namespace: projectId,
+                annotations: {
+                    [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                    [Constants.QS_ANNOTATION_PROJECT_ID]: projectId,
+                },
+            },
+            spec: {
+                podSelector: {
+                    matchLabels: {
+                        [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+                    },
+                },
+                policyTypes: ['Ingress', 'Egress'],
+                ingress: embedded.ingress,
+                egress: embedded.egress,
+            },
+        };
+    }
+
+    async reconcileAgentSandboxNetworkPolicy(
+        agentId: string,
+        projectId: string,
+        agentNetworkPolicy?: AgentSandboxTemplateNetworkPolicyConfig,
+    ): Promise<void> {
+        const policy = this.buildAgentSandboxNetworkPolicy(agentId, projectId, agentNetworkPolicy);
+        if (!policy) {
+            await this.deleteAgentSandboxNetworkPolicy(agentId, projectId);
+            return;
+        }
+        await this.applyNetworkPolicy(projectId, policy.metadata!.name!, policy);
+    }
+
+    async deleteAgentSandboxNetworkPolicy(agentId: string, projectId: string): Promise<void> {
+        await this.deleteNetworkPolicy(agentId, projectId);
     }
 
     async deleteNetworkPolicy(appId: string, projectId: string) {

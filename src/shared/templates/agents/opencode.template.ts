@@ -35,7 +35,6 @@ export const opencodeAgentTemplate: AgentTemplateModel = {
         cpuLimit: null,
         memoryRequest: null,
         memoryLimit: null,
-        systemPrompt: null,
         encryptedEnvVars: undefined,
         containerCommand: JSON.stringify([
             "/bin/sh",

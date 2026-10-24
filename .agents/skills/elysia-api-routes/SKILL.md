@@ -88,4 +88,4 @@ Use POST upsert semantics:
 - Check that every accepted input has a route-level Zod schema.
 - Check that every route has `response: ApiUtils.mapResponseModel(...)`.
 - Check that expected failures are thrown as exceptions; route mounting maps them centrally with `ApiUtils.mapError(...)`.
-- Check `CONTEXT.md` for REST API domain terms and write semantics before changing behavior.
+- Check `GLOSSARY.md` for REST API domain terms and write semantics before changing behavior.

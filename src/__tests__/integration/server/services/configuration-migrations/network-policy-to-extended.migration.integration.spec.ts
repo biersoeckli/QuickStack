@@ -10,7 +10,7 @@ describe('network-policy-to-extended migration', () => {
 
     async function createProject(id: string) {
         return dataAccess.client.project.create({
-            data: { id, name: id, projectType: 'APP' },
+            data: { id, name: id },
         });
     }
 

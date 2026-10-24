@@ -38,4 +38,13 @@ describe('agent-sandbox.service listFiles', () => {
         await expect(agentSandboxService.listFiles('agent-1', 'sandbox-1', '/workspace/output'))
             .rejects.toThrow('List files failed: invalid output from sandbox.');
     });
+
+    it('rejects commands and file operations on a suspended sandbox', async () => {
+        vi.spyOn(agentSandboxService as any, 'resolveTarget').mockResolvedValue({ status: 'SUSPENDED' });
+
+        await expect(agentSandboxService.runCommand('agent-1', 'sandbox-1', { command: 'ls' }))
+            .rejects.toThrow('Agent sandbox is suspended.');
+        await expect(agentSandboxService.fileExists('agent-1', 'sandbox-1', '/workspace'))
+            .rejects.toThrow('Agent sandbox is suspended.');
+    });
 });

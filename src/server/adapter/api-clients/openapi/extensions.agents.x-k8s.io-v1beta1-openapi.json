@@ -4498,6 +4498,9 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "serviceFQDN": {
+                    "type": "string"
                   }
                 }
               }
@@ -5811,6 +5814,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -5909,6 +5915,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -5980,6 +5989,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -6031,6 +6043,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -6143,6 +6158,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -6194,6 +6212,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -6490,6 +6511,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -6541,6 +6565,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -6637,6 +6664,13 @@
                                   "name"
                                 ],
                                 "properties": {
+                                  "bindMountOptions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "x-kubernetes-list-type": "set"
+                                  },
                                   "mountPath": {
                                     "type": "string"
                                   },
@@ -6971,6 +7005,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -7069,6 +7106,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -7140,6 +7180,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -7191,6 +7234,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -7303,6 +7349,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -7354,6 +7403,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -7650,6 +7702,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -7701,6 +7756,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -7800,6 +7858,13 @@
                                   "name"
                                 ],
                                 "properties": {
+                                  "bindMountOptions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "x-kubernetes-list-type": "set"
+                                  },
                                   "mountPath": {
                                     "type": "string"
                                   },
@@ -7832,6 +7897,30 @@
                               "type": "string"
                             }
                           }
+                        },
+                        "x-kubernetes-list-map-keys": [
+                          "name"
+                        ],
+                        "x-kubernetes-list-type": "map"
+                      },
+                      "evictionResponders": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "priority"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "priority": {
+                              "type": "integer",
+                              "format": "int32"
+                            }
+                          },
+                          "x-kubernetes-map-type": "atomic"
                         },
                         "x-kubernetes-list-map-keys": [
                           "name"
@@ -8154,6 +8243,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -8252,6 +8344,9 @@
                                           ],
                                           "x-kubernetes-int-or-string": true
                                         },
+                                        "protocol": {
+                                          "type": "string"
+                                        },
                                         "scheme": {
                                           "type": "string"
                                         }
@@ -8323,6 +8418,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -8374,6 +8472,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -8486,6 +8587,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -8537,6 +8641,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -8833,6 +8940,9 @@
                                     "port"
                                   ],
                                   "properties": {
+                                    "mode": {
+                                      "type": "string"
+                                    },
                                     "port": {
                                       "type": "integer",
                                       "format": "int32"
@@ -8884,6 +8994,9 @@
                                         }
                                       ],
                                       "x-kubernetes-int-or-string": true
+                                    },
+                                    "protocol": {
+                                      "type": "string"
                                     },
                                     "scheme": {
                                       "type": "string"
@@ -8980,6 +9093,13 @@
                                   "name"
                                 ],
                                 "properties": {
+                                  "bindMountOptions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "x-kubernetes-list-type": "set"
+                                  },
                                   "mountPath": {
                                     "type": "string"
                                   },
@@ -9586,6 +9706,10 @@
                                   "type": "integer",
                                   "format": "int32"
                                 },
+                                "defaultUser": {
+                                  "type": "integer",
+                                  "format": "int64"
+                                },
                                 "items": {
                                   "type": "array",
                                   "items": {
@@ -9604,6 +9728,10 @@
                                       },
                                       "path": {
                                         "type": "string"
+                                      },
+                                      "user": {
+                                        "type": "integer",
+                                        "format": "int64"
                                       }
                                     }
                                   },
@@ -9658,6 +9786,10 @@
                                 "defaultMode": {
                                   "type": "integer",
                                   "format": "int32"
+                                },
+                                "defaultUser": {
+                                  "type": "integer",
+                                  "format": "int64"
                                 },
                                 "items": {
                                   "type": "array",
@@ -9715,6 +9847,10 @@
                                           }
                                         },
                                         "x-kubernetes-map-type": "atomic"
+                                      },
+                                      "user": {
+                                        "type": "integer",
+                                        "format": "int64"
                                       }
                                     }
                                   },
@@ -9727,6 +9863,10 @@
                               "properties": {
                                 "medium": {
                                   "type": "string"
+                                },
+                                "mode": {
+                                  "type": "integer",
+                                  "format": "int32"
                                 },
                                 "sizeLimit": {
                                   "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
@@ -10178,6 +10318,10 @@
                                   "type": "integer",
                                   "format": "int32"
                                 },
+                                "defaultUser": {
+                                  "type": "integer",
+                                  "format": "int64"
+                                },
                                 "sources": {
                                   "type": "array",
                                   "items": {
@@ -10238,6 +10382,10 @@
                                           },
                                           "signerName": {
                                             "type": "string"
+                                          },
+                                          "user": {
+                                            "type": "integer",
+                                            "format": "int64"
                                           }
                                         }
                                       },
@@ -10262,6 +10410,10 @@
                                                 },
                                                 "path": {
                                                   "type": "string"
+                                                },
+                                                "user": {
+                                                  "type": "integer",
+                                                  "format": "int64"
                                                 }
                                               }
                                             },
@@ -10336,6 +10488,10 @@
                                                     }
                                                   },
                                                   "x-kubernetes-map-type": "atomic"
+                                                },
+                                                "user": {
+                                                  "type": "integer",
+                                                  "format": "int64"
                                                 }
                                               }
                                             },
@@ -10369,6 +10525,10 @@
                                           "signerName": {
                                             "type": "string"
                                           },
+                                          "user": {
+                                            "type": "integer",
+                                            "format": "int64"
+                                          },
                                           "userAnnotations": {
                                             "type": "object",
                                             "additionalProperties": {
@@ -10398,6 +10558,10 @@
                                                 },
                                                 "path": {
                                                   "type": "string"
+                                                },
+                                                "user": {
+                                                  "type": "integer",
+                                                  "format": "int64"
                                                 }
                                               }
                                             },
@@ -10428,6 +10592,10 @@
                                           },
                                           "path": {
                                             "type": "string"
+                                          },
+                                          "user": {
+                                            "type": "integer",
+                                            "format": "int64"
                                           }
                                         }
                                       }
@@ -10567,6 +10735,10 @@
                                   "type": "integer",
                                   "format": "int32"
                                 },
+                                "defaultUser": {
+                                  "type": "integer",
+                                  "format": "int64"
+                                },
                                 "items": {
                                   "type": "array",
                                   "items": {
@@ -10585,6 +10757,10 @@
                                       },
                                       "path": {
                                         "type": "string"
+                                      },
+                                      "user": {
+                                        "type": "integer",
+                                        "format": "int64"
                                       }
                                     }
                                   },

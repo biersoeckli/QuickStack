@@ -8,6 +8,10 @@ import {
     defaultAppDrawerTab,
     type AppDrawerTab,
 } from '@/shared/utils/app-drawer-navigation.utils';
+import {
+    defaultAgentDrawerTab,
+    type AgentDrawerTab,
+} from '@/shared/utils/agent-drawer-navigation.utils';
 import type { NetworkGraphNode } from './project-network-graph-projection';
 
 export const drawerTabValues = appDrawerTabValues;
@@ -16,26 +20,30 @@ export const DrawerSessionUtils = AppDrawerNavigationUtils;
 
 type QueryParams = Pick<URLSearchParams, 'get' | 'toString'>;
 
+type DrawerTarget = { kind: 'APP' | 'AGENT'; id: string };
+
 export function useProjectNetworkGraphDrawerSession({
     searchParams,
     appIds,
+    agentIds,
 }: {
     searchParams: QueryParams;
     appIds: Set<string>;
+    agentIds: Set<string>;
 }) {
     const [selectedNodeId, setSelectedNodeId] = useState<string>();
     const [open, setOpen] = useState(false);
     const requestedTab = searchParams.get('drawerTab');
 
-    const updateQuery = useCallback((appId?: string, tab?: DrawerTab) => {
+    const updateQuery = useCallback((target?: DrawerTarget, tab?: AppDrawerTab | AgentDrawerTab) => {
         const params = new URLSearchParams(searchParams.toString());
+        params.delete('drawerAppId');
+        params.delete('drawerAgentId');
+        params.delete('drawerTab');
 
-        if (!appId) {
-            params.delete('drawerAppId');
-            params.delete('drawerTab');
-        } else {
-            params.set('drawerAppId', appId);
-            params.set('drawerTab', tab ?? defaultAppDrawerTab);
+        if (target) {
+            params.set(target.kind === 'AGENT' ? 'drawerAgentId' : 'drawerAppId', target.id);
+            params.set('drawerTab', tab ?? (target.kind === 'AGENT' ? defaultAgentDrawerTab : defaultAppDrawerTab));
         }
 
         TabNavigationUtils.replaceQuery(params);
@@ -43,15 +51,25 @@ export function useProjectNetworkGraphDrawerSession({
 
     useEffect(() => {
         const requestedAppId = searchParams.get('drawerAppId');
+        const requestedAgentId = searchParams.get('drawerAgentId');
 
-        if (!requestedAppId) return;
-        if (!appIds.has(requestedAppId)) {
-            updateQuery();
+        if (requestedAppId) {
+            if (!appIds.has(requestedAppId)) {
+                updateQuery();
+                return;
+            }
+            setSelectedNodeId(`APP:${requestedAppId}`);
             return;
         }
 
-        setSelectedNodeId(`APP:${requestedAppId}`);
-    }, [appIds, searchParams, updateQuery]);
+        if (requestedAgentId) {
+            if (!agentIds.has(requestedAgentId)) {
+                updateQuery();
+                return;
+            }
+            setSelectedNodeId(`AGENT:${requestedAgentId}`);
+        }
+    }, [agentIds, appIds, searchParams, updateQuery]);
 
     useEffect(() => {
         if (selectedNodeId) setOpen(true);
@@ -60,14 +78,27 @@ export function useProjectNetworkGraphDrawerSession({
     const selectNode = useCallback((node: NetworkGraphNode) => {
         setSelectedNodeId(node.id);
         if (selectedNodeId === node.id) setOpen(true);
-        updateQuery(node.kind === 'APP' ? node.id.replace('APP:', '') : undefined);
+        if (node.kind === 'APP') {
+            updateQuery({ kind: 'APP', id: node.id.replace('APP:', '') });
+        } else if (node.kind === 'AGENT') {
+            updateQuery({ kind: 'AGENT', id: node.id.replace('AGENT:', '') });
+        } else {
+            updateQuery();
+        }
     }, [selectedNodeId, updateQuery]);
 
     const openAppTab = useCallback((appId: string, tab: DrawerTab) => {
         const nodeId = `APP:${appId}`;
         setSelectedNodeId(nodeId);
         if (selectedNodeId === nodeId) setOpen(true);
-        updateQuery(appId, tab);
+        updateQuery({ kind: 'APP', id: appId }, tab);
+    }, [selectedNodeId, updateQuery]);
+
+    const openAgentTab = useCallback((agentId: string, tab: AgentDrawerTab) => {
+        const nodeId = `AGENT:${agentId}`;
+        setSelectedNodeId(nodeId);
+        if (selectedNodeId === nodeId) setOpen(true);
+        updateQuery({ kind: 'AGENT', id: agentId }, tab);
     }, [selectedNodeId, updateQuery]);
 
     const onOpenChange = useCallback((nextOpen: boolean) => {
@@ -89,11 +120,13 @@ export function useProjectNetworkGraphDrawerSession({
         requestedTab,
         selectNode,
         openAppTab,
+        openAgentTab,
         onOpenChange,
         onOpenChangeComplete,
     }), [
         onOpenChange,
         onOpenChangeComplete,
+        openAgentTab,
         openAppTab,
         open,
         requestedTab,

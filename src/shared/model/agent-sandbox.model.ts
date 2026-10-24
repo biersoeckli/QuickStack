@@ -31,11 +31,17 @@ export const fileExistsResultZodModel = z.object({
 
 const envNameZodModel = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 
+export const agentSandboxCustomTagZodModel = z.string().trim().min(1).max(63);
+
 export const createSandboxRequestZodModel = z.object({
     env: z.record(envNameZodModel, z.string()).optional(),
     idleTimeoutMinutes: z.number().int().positive().max(1440).optional(),
-    customTag: z.string().min(1).optional(),
+    customTag: agentSandboxCustomTagZodModel.optional(),
 }).optional().default({});
+
+export const resumeSandboxByTagRequestZodModel = z.object({
+    customTag: agentSandboxCustomTagZodModel,
+});
 
 export const commandRequestZodModel = z.object({
     command: z.string().min(1),
@@ -49,9 +55,16 @@ export const agentSandboxAccessUrlZodModel = z.object({
     expiresAt: z.number().int().positive(),
 });
 
+export const agentSandboxApiTokenZodModel = z.object({
+    token: z.string().min(1),
+    expiresAt: z.number().int().positive(),
+});
+
 export type AgentSandboxModel = z.infer<typeof agentSandboxZodModel>;
 export type CommandResultModel = z.infer<typeof commandResultZodModel>;
 export type FileEntryModel = z.infer<typeof fileEntryZodModel>;
 export type FileExistsResultModel = z.infer<typeof fileExistsResultZodModel>;
+export type AgentSandboxApiTokenModel = z.infer<typeof agentSandboxApiTokenZodModel>;
 export type CreateSandboxRequestModel = z.infer<typeof createSandboxRequestZodModel>;
+export type ResumeSandboxByTagRequestModel = z.infer<typeof resumeSandboxByTagRequestZodModel>;
 export type CommandRequestModel = z.infer<typeof commandRequestZodModel>;
