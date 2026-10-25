@@ -11,6 +11,7 @@ import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/s
 import { appDeploymentLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
 import { deploymentDetailsResponseZodModel } from '@/shared/model/deployment-info.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
 export const appDeployRoutes = new Elysia()
@@ -38,13 +39,14 @@ export const appDeployRoutes = new Elysia()
         }),
         query: paginationQueryZodModel,
         response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(deploymentDetailsResponseZodModel)),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'List app deployments',
-            description: 'Returns the deployment history as an array. Set limit (and optionally cursor) for the paginated envelope. Poll this after deployApp until the newest entry reports success or failure.',
+            description: 'Returns the deployment history as an array. Set limit (and optionally cursor) for the paginated envelope.',
+            'x-mcp-description': 'Returns the deployment history as an array. Set limit (and optionally cursor) for the paginated envelope. Poll this after deployApp until the newest entry reports success or failure.',
             operationId: 'listAppDeployments',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
-        }
+        })
     })
     .get('/apps/:appId/deploy/:deployemtId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -96,13 +98,14 @@ export const appDeployRoutes = new Elysia()
             tailLines: z.coerce.number().int().positive().max(5000).optional(),
         }),
         response: ApiUtils.mapResponseModel(appDeploymentLogsResponseZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Get app deployment logs',
-            description: 'Returns build/deploy logs for one deployment. Keep tailLines small (max 5000); large responses are truncated by MCP clients.',
+            description: 'Returns build/deploy logs for one deployment. tailLines is limited to 5000.',
+            'x-mcp-description': 'Returns build/deploy logs for one deployment. Keep tailLines small (max 5000); large responses are truncated by MCP clients.',
             operationId: 'getAppDeploymentLogs',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
-        }
+        })
     })
     .post('/apps/:appId/deploy', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -120,13 +123,14 @@ export const appDeployRoutes = new Elysia()
             forceRebuild: z.coerce.boolean().optional().default(false),
         }),
         response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() })),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Deploy app',
-            description: `Starts a build and rollout and returns {"deploymentId":"..."} immediately. Pass query.forceRebuild=true to rebuild even when the commit/image did not change.
+            description: 'Starts a build and rollout and returns the deploymentId immediately. Pass forceRebuild=true to rebuild even when the commit/image did not change. This changes live Kubernetes workloads.',
+            'x-mcp-description': `Starts a build and rollout and returns {"deploymentId":"..."} immediately. Pass query.forceRebuild=true to rebuild even when the commit/image did not change.
 Example: POST /api/v1/apps/<appId>/deploy?forceRebuild=true.
 Poll listAppDeployments or getAppDeployment with that deploymentId until the status is successful or failed. On failure, call getAppDeploymentLogs to inspect the build logs. This changes live Kubernetes workloads; ask for confirmation first.`,
             operationId: 'deployApp',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }]
-        }
+        })
     });

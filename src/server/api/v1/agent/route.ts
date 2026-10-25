@@ -10,6 +10,7 @@ import {
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { AgentExtendedModel, AgentExtendedWriteModel, AgentExtendedWriteZodModel, AgentExtendedZodModel } from '@/shared/model/agent-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
@@ -100,9 +101,10 @@ export const agentRoutes = new Elysia()
     }, {
         body: AgentExtendedWriteZodModel,
         response: ApiUtils.mapResponseModel(AgentExtendedZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Create or update agent.',
-            description: `Upsert one agent template.
+            description: 'Creates an agent template when id is omitted, otherwise replaces the existing template. projectId cannot be changed. Call deployAgent afterwards to apply it.',
+            'x-mcp-description': `Upsert one agent template.
 - Omit id to create: projectId, llmGatewayId and modelAlias (non-empty array) are required. agentDomains, agentVolumes, agentFileMounts are required arrays, and agentNetworkPolicy must be null or an object.
 - Send id to update: projectId must equal the existing agent's projectId and cannot be changed. The request replaces the stored agent, so omitted or empty sub-resource arrays delete the existing entries. Call getAgent first, then send the full object back with the ids of sub-resources you want to keep.
 - This only saves the template. Call deployAgent to apply it, then startAgentSandbox to run a sandbox. Saving revalidates caches but does not create Kubernetes resources.
@@ -115,7 +117,7 @@ Example update (read getAgent first and keep all sub-resource ids you do not wan
             operationId: 'saveAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }]
-        }
+        })
     })
     .delete('/agents/:agentId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -132,11 +134,12 @@ Example update (read getAgent first and keep all sub-resource ids you do not wan
             agentId: z.string(),
         }),
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Delete agent',
-            description: 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy). No request body.\nExample: DELETE /api/v1/agents/<agentId>.\nRequires confirmation because this cannot be undone.',
+            description: 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy).',
+            'x-mcp-description': 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy). No request body.\nExample: DELETE /api/v1/agents/<agentId>.\nRequires confirmation because this cannot be undone.',
             operationId: 'deleteAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }],
-        }
+        })
     });

@@ -5,6 +5,7 @@ import { ensureAdmin, ensureReadProject } from '@/server/utils/shared-authorizat
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { ProjectModel } from '@/shared/model/generated-zod';
 import { ApiUtils } from '../../../utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import { Project } from '@prisma/client';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
@@ -76,16 +77,17 @@ export const projectRoutes = new Elysia()
     }, {
         body: projectWriteSchema,
         response: ApiUtils.mapResponseModel(ProjectModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Create or update project',
-            description: `Upsert one project. Omit id to create; send id to update an existing project.
+            description: 'Creates a project when id is omitted, otherwise updates the existing project. Requires admin.',
+            'x-mcp-description': `Upsert one project. Omit id to create; send id to update an existing project.
 Example create: {"name":"team-demo"}
 Example update: {"id":"<projectId>","name":"team-demo-renamed"}
 Requires admin. Every project maps to a Kubernetes namespace; saveProject only stores metadata, deployApp or deployAgent creates the namespace.`,
             operationId: 'saveProject',
             tags: ['Projects'],
             security: [{ bearerAuth: [] }],
-        }
+        })
     })
     .delete('/projects/:id', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -101,11 +103,12 @@ Requires admin. Every project maps to a Kubernetes namespace; saveProject only s
             id: z.string(),
         }),
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Delete project',
-            description: 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. No request body.\nExample: DELETE /api/v1/projects/<projectId>.\nRequires admin and confirmation because this cannot be undone.',
+            description: 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. Requires admin.',
+            'x-mcp-description': 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. No request body.\nExample: DELETE /api/v1/projects/<projectId>.\nRequires admin and confirmation because this cannot be undone.',
             operationId: 'deleteProject',
             tags: ['Projects'],
             security: [{ bearerAuth: [] }],
-        }
+        })
     });
