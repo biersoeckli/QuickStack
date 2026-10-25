@@ -4,6 +4,8 @@ import { Tags } from "../utils/cache-tag-generator.utils";
 import { Parameter, Prisma } from "@prisma/client";
 import { Constants } from "../../shared/utils/constants";
 import { CryptoUtils } from "../utils/crypto.utils";
+import { McpServerMode } from "../../shared/model/mcp-settings.model";
+import { McpSettingsUtils } from "../../shared/utils/mcp.utils";
 
 export class ParamService {
 
@@ -23,12 +25,16 @@ export class ParamService {
     static readonly MAX_PARALLEL_BUILDS = 'maxParallelBuilds';
     static readonly QS_INSTANCE_ID = 'qsInstanceId';
     static readonly API_OPEN_API_SPEC_ENABLED = 'apiOpenApiSpecEnabled';
+    /** Legacy on/off flag. Kept in sync for older deployments, read only for migration. */
     static readonly MCP_SERVER_ENABLED = 'mcpServerEnabled';
+    static readonly MCP_SERVER_MODE = 'mcpServerMode';
+    static readonly MCP_SEND_SECRETS = 'mcpSendSecrets';
     static readonly AGENT_JWT_SECRET = 'agentJwtSecret';
     static readonly LATEST_COMPLETED_CODE_MIGRATION = 'latestCompletedCodeMigration';
     static readonly FEATURE_NEW_NETWORK_POLICY_EXPLENATION = 'featureNewNetworkPolicyExplenation';
 
     async initializeDefaults(revalidateParam = true) {
+        const legacyMcpEnabled = (await this.getOrUndefinedUncached(ParamService.MCP_SERVER_ENABLED))?.value === 'true';
         const [instanceId, registryLocation] = await Promise.all([
             this.getOrCreate(ParamService.QS_INSTANCE_ID, crypto.randomUUID(), revalidateParam),
             this.getOrCreate(ParamService.DISABLE_NODEPORT_ACCESS, 'false', revalidateParam),
@@ -38,6 +44,8 @@ export class ParamService {
             this.getOrCreate(ParamService.MAX_PARALLEL_BUILDS, String(Constants.DEFAULT_MAX_PARALLEL_BUILDS), revalidateParam),
             this.getOrCreate(ParamService.API_OPEN_API_SPEC_ENABLED, 'false', revalidateParam),
             this.getOrCreate(ParamService.MCP_SERVER_ENABLED, 'false', revalidateParam),
+            this.getOrCreate(ParamService.MCP_SERVER_MODE, legacyMcpEnabled ? 'readwrite' : 'off', revalidateParam),
+            this.getOrCreate(ParamService.MCP_SEND_SECRETS, 'false', revalidateParam),
         ]);
 
         return { instanceId, registryLocation };
@@ -110,6 +118,20 @@ export class ParamService {
             return param.value === 'true';
         }
         return undefined;
+    }
+
+    async getMcpServerMode(): Promise<McpServerMode> {
+        const configuredMode = await this.getString(ParamService.MCP_SERVER_MODE);
+        if (McpSettingsUtils.isMcpServerMode(configuredMode)) {
+            return configuredMode;
+        }
+
+        const legacyEnabled = await this.getBoolean(ParamService.MCP_SERVER_ENABLED);
+        return legacyEnabled ? 'readwrite' : 'off';
+    }
+
+    async getMcpSendSecrets(): Promise<boolean> {
+        return (await this.getBoolean(ParamService.MCP_SEND_SECRETS)) ?? false;
     }
 
     async getString(name: string) {

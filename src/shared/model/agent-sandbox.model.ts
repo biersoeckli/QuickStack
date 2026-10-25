@@ -51,12 +51,12 @@ export const commandRequestZodModel = z.object({
 });
 
 export const agentSandboxAccessUrlZodModel = z.object({
-    url: z.string(),
+    url: z.string().meta({ secret: true }),
     expiresAt: z.number().int().positive(),
 });
 
 export const agentSandboxApiTokenZodModel = z.object({
-    token: z.string().min(1),
+    token: z.string().min(1).meta({ secret: true }),
     expiresAt: z.number().int().positive(),
 });
 

@@ -3,7 +3,9 @@ import type { AuthInfo } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import packageJson from '../../../package.json';
 import operationExecutor from './operation-executor';
+import mcpSecretRedactionUtils from './mcp-secret-redaction';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
+import type { McpServerMode } from '@/shared/model/mcp-settings.model';
 
 export const MCP_TOOL_NAMES = {
     search: 'quickstack_search_operations',
@@ -82,14 +84,32 @@ const executeOutputSchema = z.object({
     hint: z.string().optional(),
 });
 
-const SERVER_INSTRUCTIONS = [
-    'QuickStack is a self-hosted platform for deploying Apps and Agents on Kubernetes.',
-    `Workflow: call ${SEARCH_TOOL} to find the operation id, call it again with detail "full" to read the exact input schema, then run the operation with ${READ_TOOL} or ${WRITE_TOOL}.`,
-    `Only pass a readOnly operation to ${READ_TOOL}. Use ${WRITE_TOOL} for deploys, deletes, saves and commands.`,
-    `Before calling ${WRITE_TOOL}, summarize the intended change and ask the user for confirmation. Never chain destructive writes without explicit approval.`,
-    'deployApp returns a deploymentId immediately; poll listAppDeployments or getAppDeployment until it reports success or failure. deployAgent applies CONTAINER configs synchronously; GIT builds continue asynchronously in the QuickStack UI, so poll listAgentSandboxes before starting a sandbox.',
-    'Tool responses are truncated when they exceed the size limit. Narrow the request with search filters, list limit/cursor or a smaller lines value.',
-].join(' ');
+const SECRET_REDACTION_INSTRUCTION = 'Secret fields are redacted from tool results: environment variables, build arguments, container registry passwords, Git tokens, SSH private keys, basic-auth passwords, webhook IDs, health-check headers and LLM admin keys may be absent. Do not assume they are empty or unchanged.';
+
+function buildServerInstructions(mode: McpServerMode, sendSecrets: boolean): string {
+    const runStep = mode === 'readonly'
+        ? `then run the read-only operation with ${READ_TOOL}.`
+        : `then run the operation with ${READ_TOOL} or ${WRITE_TOOL}.`;
+    const instructions = [
+        'QuickStack is a self-hosted platform for deploying Apps and Agents on Kubernetes.',
+        `Workflow: call ${SEARCH_TOOL} to find the operation id, call it again with detail "full" to read the exact input schema, ${runStep}`,
+        `Only pass a readOnly operation to ${READ_TOOL}.`,
+        'deployApp returns a deploymentId immediately; poll listAppDeployments or getAppDeployment until it reports success or failure. deployAgent applies CONTAINER configs synchronously; GIT builds continue asynchronously in the QuickStack UI, so poll listAgentSandboxes before starting a sandbox.',
+        'Tool responses are truncated when they exceed the size limit. Narrow the request with search filters, list limit/cursor or a smaller lines value.',
+    ];
+
+    if (mode === 'readonly') {
+        instructions.push(`This server is read-only. Write operations are hidden and ${WRITE_TOOL} is unavailable.`);
+    } else {
+        instructions.push(`Use ${WRITE_TOOL} for deploys, deletes, saves and commands. Before calling ${WRITE_TOOL}, summarize the intended change and ask the user for confirmation. Never chain destructive writes without explicit approval.`);
+    }
+
+    if (!sendSecrets) {
+        instructions.push(SECRET_REDACTION_INSTRUCTION);
+    }
+
+    return instructions.join(' ');
+}
 
 const SEARCH_TOOL_DESCRIPTION = [
     'Search the QuickStack operations catalog.',
@@ -130,6 +150,8 @@ type RankedOperation = {
 export type McpServerBuildOptions = {
     app: McpSourceApp;
     operations: OperationDescriptor[];
+    mode: McpServerMode;
+    sendSecrets: boolean;
     authInfo?: AuthInfo;
     version?: string;
 };
@@ -139,20 +161,32 @@ class McpServerFactory {
     build(options: McpServerBuildOptions): McpServer {
         const server = new McpServer(
             { name: SERVER_NAME, version: options.version ?? SERVER_VERSION },
-            { instructions: SERVER_INSTRUCTIONS }
+            { instructions: buildServerInstructions(options.mode, options.sendSecrets) }
         );
-        this.registerSearchOperation(server, options.operations);
-        this.registerReadOperation(server, options);
-        this.registerWriteOperation(server, options);
+
+        const availableOperations = options.mode === 'readonly'
+            ? options.operations.filter((operation) => operation.readOnly)
+            : options.operations;
+        const availableOptions = { ...options, operations: availableOperations };
+
+        this.registerSearchOperation(server, availableOperations, options.mode);
+        this.registerReadOperation(server, availableOptions);
+        if (options.mode === 'readwrite') {
+            this.registerWriteOperation(server, availableOptions);
+        }
         return server;
     }
 
-    private registerSearchOperation(server: McpServer, operations: OperationDescriptor[]): void {
+    private registerSearchOperation(server: McpServer, operations: OperationDescriptor[], mode: McpServerMode): void {
+        const modeDescription = mode === 'readonly'
+            ? 'This server is read-only; only read-only operations are listed.'
+            : '';
+
         server.registerTool(
             SEARCH_TOOL,
             {
                 title: 'Search QuickStack operations',
-                description: SEARCH_TOOL_DESCRIPTION,
+                description: [SEARCH_TOOL_DESCRIPTION, modeDescription].filter(Boolean).join(' '),
                 inputSchema: searchInputSchema,
                 outputSchema: searchOutputSchema,
                 annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -186,11 +220,15 @@ class McpServerFactory {
     }
 
     private registerReadOperation(server: McpServer, options: McpServerBuildOptions): void {
+        const secretDescription = options.sendSecrets
+            ? 'Secret fields are included in responses.'
+            : 'Secret fields are redacted from responses.';
+
         server.registerTool(
             READ_TOOL,
             {
                 title: 'Execute read-only QuickStack operation',
-                description: READ_TOOL_DESCRIPTION,
+                description: `${READ_TOOL_DESCRIPTION} ${secretDescription}`,
                 inputSchema: readInputSchema,
                 outputSchema: executeOutputSchema,
                 annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -204,11 +242,15 @@ class McpServerFactory {
     }
 
     private registerWriteOperation(server: McpServer, options: McpServerBuildOptions): void {
+        const secretDescription = options.sendSecrets
+            ? 'Secret fields are included in responses.'
+            : 'Secret fields are redacted from responses.';
+
         server.registerTool(
             WRITE_TOOL,
             {
                 title: 'Execute mutating QuickStack operation',
-                description: WRITE_TOOL_DESCRIPTION,
+                description: `${WRITE_TOOL_DESCRIPTION} ${secretDescription}`,
                 inputSchema: writeInputSchema,
                 outputSchema: executeOutputSchema,
                 annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
@@ -251,7 +293,10 @@ class McpServerFactory {
         }
 
         if (execution.status >= 200 && execution.status < 300) {
-            return this.successResult(operation, execution.status, execution.result ?? null);
+            const result = options.sendSecrets
+                ? execution.result
+                : mcpSecretRedactionUtils.redact(execution.result, operation.responseSchema);
+            return this.successResult(operation, execution.status, result ?? null);
         }
 
         return this.errorResult(this.describeFailure(execution.status, execution.result));

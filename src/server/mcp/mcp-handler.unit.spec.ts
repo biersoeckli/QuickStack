@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { z } from 'zod';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import { createQuickStackMcpHandler } from './mcp-handler';
-import type { QuickStackMcpHandler } from './mcp-handler';
+import type { QuickStackMcpHandler, QuickStackMcpRequestOptions } from './mcp-handler';
 
 const VALID_TOKEN = 'valid-token';
 
@@ -53,6 +53,46 @@ function buildFixtureApp() {
             params: z.object({ appId: z.string() }),
             response: { 200: z.object({ deploymentId: z.string() }), 401: unauthorizedSchema },
             detail: { operationId: 'deployApp', summary: 'Deploy app', description: 'Starts a build and rollout for the app.', tags: ['Apps'] },
+        })
+        .get('/secret-project', ({ authenticated }) => {
+            if (!authenticated) return unauthorized();
+            return {
+                id: 'p1',
+                name: 'Secret project',
+                envVars: 'API_KEY=secret',
+                buildArgs: 'NPM_TOKEN=secret',
+                containerRegistryPassword: 'registry-password',
+                gitToken: 'git-token',
+                appBasicAuths: [{ username: 'user', password: 'basic-password' }],
+                appGitSshKey: { publicKey: 'ssh-rsa', encryptedPrivateKey: 'encrypted-private-key' },
+                llmGateway: { encryptedAdminKey: 'admin-key' },
+                visible: 'ok',
+            };
+        }, {
+            response: {
+                200: z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    envVars: z.string().meta({ secret: true }),
+                    buildArgs: z.string().meta({ secret: true }),
+                    containerRegistryPassword: z.string().nullish().meta({ secret: true }),
+                    gitToken: z.string().nullish().meta({ secret: true }),
+                    appBasicAuths: z.array(z.object({
+                        username: z.string(),
+                        password: z.string().meta({ secret: true }),
+                    })),
+                    appGitSshKey: z.object({
+                        publicKey: z.string(),
+                        encryptedPrivateKey: z.string().meta({ secret: true }),
+                    }),
+                    llmGateway: z.object({
+                        encryptedAdminKey: z.string().meta({ secret: true }),
+                    }),
+                    visible: z.string(),
+                }),
+                401: unauthorizedSchema,
+            },
+            detail: { operationId: 'getSecretProject', summary: 'Get secret project', tags: ['Testing'] },
         })
         .get('/huge', () => ({ blob: 'x'.repeat(100_000) }), {
             response: { 200: z.object({ blob: z.string() }) },
@@ -147,17 +187,22 @@ function jsonRpcRequest(options: {
     });
 }
 
-async function listTools(handler: QuickStackMcpHandler) {
-    const response = await handler.fetch(jsonRpcRequest({ method: 'tools/list' }));
+async function listTools(handler: QuickStackMcpHandler, options?: QuickStackMcpRequestOptions) {
+    const response = await handler.fetch(jsonRpcRequest({ method: 'tools/list' }), options);
     return { status: response.status, body: await response.json() };
 }
 
-async function callTool(handler: QuickStackMcpHandler, name: string, args: Record<string, unknown>) {
+async function callTool(
+    handler: QuickStackMcpHandler,
+    name: string,
+    args: Record<string, unknown>,
+    options?: QuickStackMcpRequestOptions
+) {
     const response = await handler.fetch(jsonRpcRequest({
         method: 'tools/call',
         toolName: name,
         params: { name, arguments: args },
-    }));
+    }), options);
     return { status: response.status, body: await response.json() };
 }
 
@@ -181,6 +226,98 @@ describe('QuickStack MCP handler', () => {
         expect(response.status).toBe(200);
         expect(body.result.instructions).toContain('quickstack_search_operations');
         expect(body.result.instructions).toContain('ask the user for confirmation');
+    });
+
+    it('hides the write tool and write operations in read-only mode', async () => {
+        const options: QuickStackMcpRequestOptions = { mode: 'readonly', sendSecrets: false };
+        const { body: toolsBody } = await listTools(buildHandler(), options);
+        const toolNames = toolsBody.result.tools.map((tool: { name: string }) => tool.name).sort();
+
+        expect(toolNames).toEqual([
+            'quickstack_execute_read_operation',
+            'quickstack_search_operations',
+        ]);
+
+        const { body: searchBody } = await callTool(
+            buildHandler(),
+            'quickstack_search_operations',
+            { detail: 'summary' },
+            options
+        );
+        const ids = searchBody.result.structuredContent.operations
+            .map((operation: { operationId: string }) => operation.operationId);
+
+        expect(ids).toContain('listProjects');
+        expect(ids).not.toContain('saveProject');
+
+        const { body: writeBody } = await callTool(
+            buildHandler(),
+            'quickstack_execute_operation',
+            { operationId: 'saveProject', body: { name: 'blocked' } },
+            options
+        );
+        expect(writeBody.result?.isError || writeBody.error).toBeTruthy();
+    });
+
+    it('publishes read-only instructions and mentions redacted secrets', async () => {
+        const response = await buildHandler().fetch(
+            jsonRpcRequest({ method: 'server/discover' }),
+            { mode: 'readonly', sendSecrets: false }
+        );
+        const body = await response.json();
+
+        expect(body.result.instructions).toContain('read-only');
+        expect(body.result.instructions).toContain('Secret fields are redacted');
+        expect(body.result.instructions).not.toContain('Before calling quickstack_execute_operation');
+    });
+
+    it('redacts secret response fields by default', async () => {
+        const { body } = await callTool(buildHandler(), 'quickstack_execute_read_operation', {
+            operationId: 'getSecretProject',
+        });
+
+        expect(body.result.isError).not.toBe(true);
+        expect(body.result.structuredContent.result).toEqual({
+            id: 'p1',
+            name: 'Secret project',
+            appBasicAuths: [{ username: 'user' }],
+            appGitSshKey: { publicKey: 'ssh-rsa' },
+            llmGateway: {},
+            visible: 'ok',
+        });
+    });
+
+    it('returns secret response fields when the secret toggle is enabled', async () => {
+        const { body } = await callTool(
+            buildHandler(),
+            'quickstack_execute_read_operation',
+            { operationId: 'getSecretProject' },
+            { mode: 'readwrite', sendSecrets: true }
+        );
+
+        expect(body.result.structuredContent.result).toMatchObject({
+            envVars: 'API_KEY=secret',
+            buildArgs: 'NPM_TOKEN=secret',
+            containerRegistryPassword: 'registry-password',
+            gitToken: 'git-token',
+            appBasicAuths: [{ username: 'user', password: 'basic-password' }],
+            appGitSshKey: { publicKey: 'ssh-rsa', encryptedPrivateKey: 'encrypted-private-key' },
+            llmGateway: { encryptedAdminKey: 'admin-key' },
+        });
+    });
+
+    it('does not redact the normal REST response', async () => {
+        const response = await buildFixtureApp().handle(new Request('http://localhost/api/v1/secret-project', {
+            headers: { authorization: `Bearer ${VALID_TOKEN}` },
+        }));
+        const body = await response.json();
+
+        expect(body).toMatchObject({
+            envVars: 'API_KEY=secret',
+            buildArgs: 'NPM_TOKEN=secret',
+            containerRegistryPassword: 'registry-password',
+            gitToken: 'git-token',
+        });
     });
 
     it('rejects a request with an invalid REST API Key', async () => {

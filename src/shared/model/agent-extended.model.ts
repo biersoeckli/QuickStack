@@ -19,12 +19,20 @@ const AgentNetworkPolicyWithRulesZodModel = AgentNetworkPolicyModel.extend({
 export const AgentExtendedZodModel = z.lazy(() => AgentModel.extend({
     modelAlias: z.array(z.string()),
     project: ProjectModel,
-    llmGateway: LlmGatewayModel,
+    llmGateway: LlmGatewayModel.extend({
+        encryptedAdminKey: z.string().meta({ secret: true }),
+    }),
     agentDomains: z.array(AgentDomainModel),
     agentVolumes: z.array(AgentVolumeModel),
     agentFileMounts: z.array(AgentFileMountModel),
-    agentGitSshKey: AgentGitSshKeyModel.nullish(),
+    agentGitSshKey: AgentGitSshKeyModel.extend({
+        encryptedPrivateKey: z.string().meta({ secret: true }),
+    }).nullish(),
     agentNetworkPolicy: AgentNetworkPolicyWithRulesZodModel.nullish(),
+    containerRegistryPassword: z.string().nullish().meta({ secret: true }),
+    gitToken: z.string().nullish().meta({ secret: true }),
+    encryptedEnvVars: z.string().nullish().meta({ secret: true }),
+    healthCheckHttpHeadersJson: z.string().nullish().meta({ secret: true }),
 }));
 
 export type AgentWithProjectModel = Agent & {

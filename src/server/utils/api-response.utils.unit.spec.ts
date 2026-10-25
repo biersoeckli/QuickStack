@@ -42,6 +42,19 @@ describe("api-response.utils", () => {
             expect(responseSchema[200].parse({ deletedAt: null })).toEqual({ deletedAt: null });
             expect(responseSchema[200].parse({})).toEqual({});
         });
+
+        it("preserves secret metadata on nullable and optional fields", () => {
+            const responseSchema = ApiUtils.mapResponseModel(z.object({
+                envVars: z.string().meta({ secret: true }),
+                registryPassword: z.string().nullish().meta({ secret: true }),
+            }));
+            const jsonSchema = z.toJSONSchema(responseSchema[200]) as {
+                properties: Record<string, { secret?: boolean }>;
+            };
+
+            expect(jsonSchema.properties.envVars.secret).toBe(true);
+            expect(jsonSchema.properties.registryPassword.secret).toBe(true);
+        });
     });
 
     describe("mapError", () => {

@@ -11,8 +11,11 @@ surface honest:
 
 ## Prerequisites
 
-- A running QuickStack instance with the MCP canary and the MCP server enabled
-  in Settings → Developer → MCP.
+- A running QuickStack instance with the MCP canary active and the MCP server
+  set to **Read only** or **Read & write** in Settings → Developer → MCP.
+- Secret fields are redacted from MCP responses unless **Send secrets in MCP
+  responses** is enabled. Scripted and LLM evals should normally run with
+  redaction enabled.
 - A REST API key from Settings → Account & Access → API Keys.
 - Node.js 24 (uses the built-in `fetch` and `parseArgs`).
 

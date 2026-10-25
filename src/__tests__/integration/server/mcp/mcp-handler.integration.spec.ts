@@ -98,6 +98,36 @@ describe('QuickStack MCP integration', () => {
         expect(byId.get('writeAgentSandboxFile')?.supported).toBe(false);
     }, 120_000);
 
+    it('only exposes read operations in read-only mode', async () => {
+        const apiKey = await createAdminApiKey();
+        const handler = createQuickStackMcpHandler({ app: v1Api, resolveAuthInfo: resolveQuickStackAuthInfo });
+        const options = { mode: 'readonly' as const, sendSecrets: false };
+
+        const toolsResponse = await handler.fetch(jsonRpcRequest({
+            method: 'tools/list',
+            apiKey,
+        }), options);
+        const toolsBody = await toolsResponse.json();
+        const toolNames = toolsBody.result.tools.map((tool: { name: string }) => tool.name).sort();
+
+        expect(toolNames).toEqual([
+            'quickstack_execute_read_operation',
+            'quickstack_search_operations',
+        ]);
+
+        const searchResponse = await handler.fetch(jsonRpcRequest({
+            method: 'tools/call',
+            toolName: 'quickstack_search_operations',
+            apiKey,
+            params: { name: 'quickstack_search_operations', arguments: { detail: 'summary', limit: 100 } },
+        }), options);
+        const searchBody = await searchResponse.json();
+        const operations = searchBody.result.structuredContent.operations as Array<{ operationId: string }>;
+
+        expect(operations.some((operation) => operation.operationId === 'listApps')).toBe(true);
+        expect(operations.some((operation) => operation.operationId === 'saveAgent')).toBe(false);
+    }, 120_000);
+
     it('executes a real REST operation through the MCP handler', async () => {
         const apiKey = await createAdminApiKey();
         const handler = createQuickStackMcpHandler({ app: v1Api, resolveAuthInfo: resolveQuickStackAuthInfo });

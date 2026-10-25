@@ -12,12 +12,13 @@ const mcpHandler = createQuickStackMcpHandler({
 });
 
 async function handleRequest(request: Request): Promise<Response> {
-    const [canaryEnabled, enabled] = await Promise.all([
+    const [canaryEnabled, mode, sendSecrets] = await Promise.all([
         paramService.getBoolean(ParamService.USE_CANARY_CHANNEL),
-        paramService.getBoolean(ParamService.MCP_SERVER_ENABLED),
+        paramService.getMcpServerMode(),
+        paramService.getMcpSendSecrets(),
     ]);
 
-    if (!canaryEnabled || !enabled) {
+    if (!canaryEnabled || mode === 'off') {
         return jsonRpcErrorResponse({
             code: MCP_ERROR_CODES.SERVER_DISABLED,
             message: 'MCP server is disabled.',
@@ -25,7 +26,7 @@ async function handleRequest(request: Request): Promise<Response> {
         });
     }
 
-    return mcpHandler.fetch(request);
+    return mcpHandler.fetch(request, { mode, sendSecrets });
 }
 
 // The MCP 2026-07-28 transport is stateless: only POST is supported.

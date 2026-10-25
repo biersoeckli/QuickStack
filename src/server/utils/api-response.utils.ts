@@ -44,52 +44,61 @@ export class ApiUtils {
                 mappedObject = mappedObject.catchall(ApiUtils.mapDateSchemaToStringDate(catchall));
             }
 
-            return mappedObject;
+            return ApiUtils.withMeta(schema, mappedObject);
         }
 
         if (schema instanceof z.ZodArray) {
-            return z.array(ApiUtils.mapDateSchemaToStringDate(schema.element));
+            return ApiUtils.withMeta(schema, z.array(ApiUtils.mapDateSchemaToStringDate(schema.element)));
         }
 
         if (schema instanceof z.ZodOptional) {
-            return ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).optional();
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).optional());
         }
 
         if (schema instanceof z.ZodNullable) {
-            return ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).nullable();
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).nullable());
         }
 
         if (schema instanceof z.ZodDefault) {
-            return ApiUtils.mapDateSchemaToStringDate(schema._def.innerType).default(schema._def.defaultValue);
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema._def.innerType).default(schema._def.defaultValue));
         }
 
         if (schema instanceof z.ZodUnion) {
-            return z.union((schema._def.options).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+            return ApiUtils.withMeta(schema, z.union((schema._def.options).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]));
         }
 
         if (schema instanceof z.ZodTuple) {
             const mappedItems = (schema._def.items).map(item => ApiUtils.mapDateSchemaToStringDate(item)) as [z.ZodTypeAny, ...z.ZodTypeAny[]];
             const mappedTuple = z.tuple(mappedItems);
 
-            return schema._def.rest ? mappedTuple.rest(ApiUtils.mapDateSchemaToStringDate(schema._def.rest)) : mappedTuple;
+            return ApiUtils.withMeta(schema, schema._def.rest ? mappedTuple.rest(ApiUtils.mapDateSchemaToStringDate(schema._def.rest)) : mappedTuple);
         }
 
         if (schema instanceof z.ZodRecord) {
-            return z.record(
+            return ApiUtils.withMeta(schema, z.record(
                 schema._def.keyType as z.ZodString | z.ZodNumber | z.ZodSymbol,
                 ApiUtils.mapDateSchemaToStringDate(schema._def.valueType)
-            );
+            ));
         }
 
         if (schema instanceof z.ZodLazy) {
-            return z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter()));
+            return ApiUtils.withMeta(schema, z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter())));
         }
 
         if (schema instanceof z.ZodPromise) {
-            return z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap()));
+            return ApiUtils.withMeta(schema, z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap())));
         }
 
         return schema;
+    }
+
+    /** Preserves `.meta()` when the date mapper has to rebuild a schema wrapper. */
+    private static withMeta<T extends z.ZodTypeAny>(source: z.ZodTypeAny, target: T): T {
+        const meta = z.globalRegistry.get(source);
+        if (!meta) {
+            return target;
+        }
+        return target.meta(meta) as T;
     }
 
     static toJsonSchema<T>(schema: z.ZodType<T>) {
