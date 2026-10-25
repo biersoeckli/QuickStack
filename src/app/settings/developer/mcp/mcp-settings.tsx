@@ -152,9 +152,11 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                     <CardTitle>Connection</CardTitle>
                     <CardDescription>
                         Use the endpoint URL below and authenticate with a REST API Key created under
-                        {' '}Settings &rarr; Account &amp; Access &rarr; API Keys. QuickStack exposes two tools:
-                        {' '}<span className="font-mono">search_operations</span> to discover operations and
-                        {' '}<span className="font-mono">execute_operation</span> to run one.
+                        {' '}Settings &rarr; Account &amp; Access &rarr; API Keys. QuickStack exposes three
+                        namespaced tools: <span className="font-mono">quickstack_search_operations</span> to
+                        discover operations, <span className="font-mono">quickstack_execute_read_operation</span> for
+                        read-only calls and <span className="font-mono">quickstack_execute_operation</span> for
+                        mutating calls.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -215,8 +217,10 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                                 <Snippet value={genericJson} />
                             </Step>
                             <p className="text-sm text-muted-foreground">
-                                Call <span className="font-mono">search_operations</span> first to discover operation ids and their
-                                input/output schemas, then call <span className="font-mono">execute_operation</span> with
+                                Call <span className="font-mono">quickstack_search_operations</span> first to discover operation ids
+                                and their input/output schemas, then call
+                                {' '}<span className="font-mono">quickstack_execute_read_operation</span> or
+                                {' '}<span className="font-mono">quickstack_execute_operation</span> with
                                 {' '}<span className="font-mono">pathParams</span>, <span className="font-mono">query</span> and
                                 {' '}<span className="font-mono">body</span>. Clients set the MCP protocol headers themselves.
                             </p>

@@ -10,7 +10,16 @@ const problemResponseSchema = z.object({
     title: z.string(),
     status: z.number(),
     detail: z.string().optional(),
+    errors: z.array(z.object({
+        path: z.string(),
+        message: z.string(),
+    })).optional(),
 });
+
+type ProblemFieldError = {
+    path: string;
+    message: string;
+};
 
 export class ApiUtils {
 
@@ -116,12 +125,13 @@ export class ApiUtils {
         return { identity };
     };
 
-    static problem(status: number, title: string, detail?: string): Response {
+    static problem(status: number, title: string, detail?: string, errors?: ProblemFieldError[]): Response {
         return new Response(JSON.stringify({
             type: 'about:blank',
             title,
             status,
-            ...(detail ? { detail } : {})
+            ...(detail ? { detail } : {}),
+            ...(errors && errors.length > 0 ? { errors } : {}),
         }), {
             status,
             headers: { 'content-type': 'application/problem+json' }
@@ -130,10 +140,18 @@ export class ApiUtils {
 
     static mapError(error: unknown): Response {
         if (error instanceof ValidationError) {
-            return ApiUtils.problem(422, 'Unprocessable Entity', 'Request validation failed.');
+            const errors = this.toFieldErrors(error);
+            const detail = errors.length > 0
+                ? `Request validation failed: ${errors.map(entry => `${entry.path || '(root)'} - ${entry.message}`).join('; ')}`
+                : 'Request validation failed.';
+            return ApiUtils.problem(422, 'Unprocessable Entity', detail, errors);
         }
         if (error instanceof z.ZodError) {
-            return ApiUtils.problem(400, 'Bad Request', 'Request validation failed. ' + error.issues.map(e => `${e.path.join('.')} - ${e.message}`).join('; '));
+            const errors = error.issues.map(issue => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+            }));
+            return ApiUtils.problem(400, 'Bad Request', 'Request validation failed. ' + errors.map(entry => `${entry.path} - ${entry.message}`).join('; '), errors);
         }
         if (error instanceof ServiceException) {
             return ApiUtils.problem(400, 'Bad Request', error.message);
@@ -143,6 +161,24 @@ export class ApiUtils {
         }
         console.error(error);
         return ApiUtils.problem(500, 'Internal Server Error', 'An unknown error occurred.');
+    }
+
+    private static toFieldErrors(error: ValidationError): ProblemFieldError[] {
+        try {
+            return error.all.map((issue) => ({
+                path: this.normalizeFieldPath(issue.path),
+                message: issue.message || 'Invalid value.',
+            }));
+        } catch {
+            return [];
+        }
+    }
+
+    private static normalizeFieldPath(path: string | undefined): string {
+        if (!path) {
+            return '';
+        }
+        return path.replace(/^\//, '').replace(/\//g, '.');
     }
 
     static mapResponseModel<T>(schema: z.ZodType<T>) {

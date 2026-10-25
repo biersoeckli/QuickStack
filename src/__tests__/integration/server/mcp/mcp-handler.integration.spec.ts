@@ -81,9 +81,9 @@ describe('QuickStack MCP integration', () => {
 
         const response = await handler.fetch(jsonRpcRequest({
             method: 'tools/call',
-            toolName: 'search_operations',
+            toolName: 'quickstack_search_operations',
             apiKey,
-            params: { name: 'search_operations', arguments: { detail: 'full' } },
+            params: { name: 'quickstack_search_operations', arguments: { detail: 'summary', limit: 100 } },
         }));
         const body = await response.json();
         const operations = body.result.structuredContent.operations as Array<{ operationId: string; supported: boolean }>;
@@ -104,9 +104,9 @@ describe('QuickStack MCP integration', () => {
 
         const response = await handler.fetch(jsonRpcRequest({
             method: 'tools/call',
-            toolName: 'execute_read_operation',
+            toolName: 'quickstack_execute_read_operation',
             apiKey,
-            params: { name: 'execute_read_operation', arguments: { operationId: 'listProjects' } },
+            params: { name: 'quickstack_execute_read_operation', arguments: { operationId: 'listProjects' } },
         }));
         const body = await response.json();
 

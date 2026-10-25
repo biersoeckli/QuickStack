@@ -5,6 +5,7 @@ import {
 } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import type { McpAuthResolver } from './mcp-auth';
+import { jsonRpcErrorResponse, MCP_ERROR_CODES } from './mcp-errors';
 import mcpServerFactory from './mcp-server.factory';
 import operationRegistry from './operation-registry';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
@@ -23,16 +24,12 @@ export type QuickStackMcpHandler = {
 };
 
 function unauthorizedResponse(): Response {
-    return new Response(
-        JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } }),
-        {
-            status: 401,
-            headers: {
-                'content-type': 'application/json',
-                'www-authenticate': 'Bearer',
-            },
-        }
-    );
+    return jsonRpcErrorResponse({
+        code: MCP_ERROR_CODES.UNAUTHORIZED,
+        message: 'Unauthorized',
+        status: 401,
+        headers: { 'www-authenticate': 'Bearer' },
+    });
 }
 
 export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions): QuickStackMcpHandler {

@@ -29,7 +29,7 @@ export const agentDeployRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(z.object({ deploymentId: z.string() })),
         detail: {
             summary: 'Deploy agent configuration',
-            description: 'Deploys the agent with the given ID. This does not start any agent sandbox, it just applies the configuration to kubernetes (SandboxTemplate). Every new agent sandbox created after this deployment will use the newly applied configuration. This can only be done, wehen no sandbox is running.',
+            description: 'Deploys the agent configuration with the given ID. This does not start any agent sandbox; it only applies the configuration to Kubernetes (SandboxTemplate). Every new agent sandbox created after this deployment uses the newly applied configuration. This can only be done when no sandbox is running. For CONTAINER sources the SandboxTemplate is applied before the call returns. For GIT/GIT_SSH sources the build continues asynchronously after the returned deploymentId; follow its progress in the QuickStack UI and poll listAgentSandboxes before starting a sandbox.\nExample: POST /api/v1/agents/<agentId>/deploy?forceRebuild=false.\nThis changes live Kubernetes resources; ask for confirmation first.',
             operationId: 'deployAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }]

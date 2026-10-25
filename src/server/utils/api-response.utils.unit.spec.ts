@@ -1,3 +1,4 @@
+import { Elysia } from "elysia";
 import { z } from "zod";
 import { ApiUtils } from "./api-response.utils";
 
@@ -40,6 +41,48 @@ describe("api-response.utils", () => {
 
             expect(responseSchema[200].parse({ deletedAt: null })).toEqual({ deletedAt: null });
             expect(responseSchema[200].parse({})).toEqual({});
+        });
+    });
+
+    describe("mapError", () => {
+        it("exposes Elysia request validation issues as field errors", async () => {
+            const app = new Elysia()
+                .onError(({ error }) => ApiUtils.mapError(error))
+                .post("/apps", ({ body }) => body, {
+                    body: z.object({
+                        name: z.string().min(3),
+                        domains: z.array(z.object({ hostname: z.string().min(3) })),
+                    }),
+                });
+
+            const response = await app.handle(new Request("http://localhost/apps", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ name: "x", domains: [{ hostname: "y" }] }),
+            }));
+            const problem = await response.json() as {
+                status: number;
+                detail: string;
+                errors: Array<{ path: string; message: string }>;
+            };
+
+            expect(response.status).toBe(422);
+            expect(problem.errors).toHaveLength(2);
+            expect(problem.errors.map((entry) => entry.path)).toEqual(["name", "domains.0.hostname"]);
+            expect(problem.detail).toContain("name - ");
+            expect(problem.detail).toContain("domains.0.hostname - ");
+        });
+
+        it("exposes Zod issues as field errors", async () => {
+            const problem = await ApiUtils.mapError(new z.ZodError([
+                { code: "too_small", minimum: 3, origin: "string", path: ["name"], message: "Too small" },
+            ])).json() as {
+                status: number;
+                errors: Array<{ path: string; message: string }>;
+            };
+
+            expect(problem.status).toBe(400);
+            expect(problem.errors).toEqual([{ path: "name", message: "Too small" }]);
         });
     });
 });

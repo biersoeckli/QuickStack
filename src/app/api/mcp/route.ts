@@ -1,5 +1,6 @@
 import { v1Api } from '@/server/api/v1/api-index';
 import { resolveQuickStackAuthInfo } from '@/server/mcp/mcp-auth';
+import { jsonRpcErrorResponse, MCP_ERROR_CODES } from '@/server/mcp/mcp-errors';
 import { createQuickStackMcpHandler } from '@/server/mcp/mcp-handler';
 import paramService, { ParamService } from '@/server/services/param.service';
 
@@ -17,18 +18,16 @@ async function handleRequest(request: Request): Promise<Response> {
     ]);
 
     if (!canaryEnabled || !enabled) {
-        return new Response(
-            JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'MCP server is disabled.' } }),
-            {
-                status: 404,
-                headers: { 'content-type': 'application/json' },
-            }
-        );
+        return jsonRpcErrorResponse({
+            code: MCP_ERROR_CODES.SERVER_DISABLED,
+            message: 'MCP server is disabled.',
+            status: 404,
+        });
     }
 
     return mcpHandler.fetch(request);
 }
 
+// The MCP 2026-07-28 transport is stateless: only POST is supported.
+// Next.js answers unsupported methods with 405 automatically.
 export const POST = handleRequest;
-export const GET = handleRequest;
-export const DELETE = handleRequest;
