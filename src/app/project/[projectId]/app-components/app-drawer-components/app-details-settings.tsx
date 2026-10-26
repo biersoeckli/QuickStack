@@ -24,7 +24,7 @@ import StorageList from '@/app/project/app/[appId]/volumes/storages';
 import DomainsCard from '@/components/custom/domains-card';
 import FileMountsCard from '@/components/custom/file-mounts-card';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import { SettingsSection } from './settings-section';
 import { DrawerEnvironment } from './app-details-environment';
 import { useNestedDrawer } from './nested-drawer';

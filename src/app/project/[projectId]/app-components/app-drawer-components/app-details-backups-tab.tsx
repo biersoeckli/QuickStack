@@ -3,7 +3,7 @@
 import type { S3Target } from '@prisma/client';
 import VolumeBackupList from '@/app/project/app/[appId]/volumes/volume-backup';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import { useNestedDrawer } from './nested-drawer';
 import { DrawerBackupList } from './app-details-backup-list';

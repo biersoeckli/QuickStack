@@ -12,7 +12,7 @@ import { useBuildStatus, useConfirmDialog, useDialog } from '@/frontend/states/z
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import { GitHashUtils } from '@/shared/utils/git-hash.utils';
 import {
     deleteBuild,

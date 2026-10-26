@@ -1,5 +1,5 @@
 import { AppLifecycleUtils } from './app-lifecycle.utils';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 
 const app = {
