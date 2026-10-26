@@ -22,6 +22,7 @@ vi.mock('@/server/services/standalone-services/standalone-pod.service', () => ({
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
         getKubeConfig: vi.fn().mockReturnValue({}),
+        core: { readNamespacedPod: vi.fn() },
     },
 }));
 
@@ -32,12 +33,31 @@ vi.mock('@/shared/utils/stream.utils', () => ({
     },
 }));
 
+vi.mock('@/server/adapter/db.client', () => ({
+    default: { client: {
+        user: { findUnique: vi.fn() },
+        app: { findUnique: vi.fn() },
+        agent: { findUnique: vi.fn() },
+    } },
+}));
+vi.mock('@/server/services/user-group.service', () => ({
+    default: { getRoleByUserMailUncached: vi.fn() },
+}));
+import dataAccess from '@/server/adapter/db.client';
+import userGroupService from '@/server/services/user-group.service';
 import terminalService from './terminal.service';
+import k3s from '@/server/adapter/kubernetes-api.adapter';
 import { TerminalSetupInfoModel } from '@/shared/model/terminal-setup-info.model';
 
-function makeSocket() {
+const sockets: ReturnType<typeof makeSocket>[] = [];
+
+function makeSocket(): any {
     const events: Record<string, any> = {};
-    return {
+    const socket = {
+        connected: true,
+        data: { terminalAuthentication: { userId: 'user-1', expiresAt: Date.now() + 60000 } },
+        off: vi.fn(),
+        disconnect: vi.fn(),
         on: vi.fn((event: string, handler: any) => {
             events[event] = handler;
         }),
@@ -45,6 +65,8 @@ function makeSocket() {
         id: `socket-${Math.random().toString(36).slice(2)}`,
         _events: events,
     } as any;
+    sockets.push(socket);
+    return socket;
 }
 
 function makeTerminalInfo(overrides: Partial<TerminalSetupInfoModel> = {}): TerminalSetupInfoModel {
@@ -59,10 +81,138 @@ function makeTerminalInfo(overrides: Partial<TerminalSetupInfoModel> = {}): Term
 }
 
 describe('terminal.service', () => {
+    afterEach(() => {
+        for (const socket of sockets.splice(0)) socket._events.disconnecting?.();
+        vi.useRealTimers();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         mockWaitUntilPodIsRunning.mockResolvedValue(true);
-        mockExecFn.mockResolvedValue({ close: vi.fn() });
+        mockExecFn.mockResolvedValue({ close: vi.fn(), on: vi.fn() });
+        vi.mocked(dataAccess.client.user.findUnique).mockResolvedValue({ id: 'user-1', email: 'user@example.com', apiOnlyUser: false } as any);
+        vi.mocked(dataAccess.client.app.findUnique).mockResolvedValue({ id: 'app-1', projectId: 'proj-1' } as any);
+        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue({
+            name: 'writer', id: 'role-1', canAccessBackups: false,
+            roleProjectPermissions: [{
+                projectId: 'proj-1', project: { projectWorkloads: [{ id: 'app-1', name: 'App' }] },
+                writeWorkloads: true, readWorkloads: true, createWorkloads: false, deleteWorkloads: false,
+                workloadPermissions: [],
+            }],
+        });
+        vi.mocked(k3s.core.readNamespacedPod).mockResolvedValue({
+            metadata: { uid: 'pod-uid', namespace: 'proj-1', annotations: { 'qs-app-id': 'app-1' } },
+            spec: { containers: [{ name: 'agent' }] },
+        });
+    });
+
+    it('rejects an unauthenticated socket before Kubernetes exec', async () => {
+        const socket = makeSocket();
+        socket.data = {};
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal?.(makeTerminalInfo());
+        expect(mockExecFn).not.toHaveBeenCalled();
+    });
+
+    it.each(['read-only', 'other-workload', 'deleted-user', 'expired', 'system', 'wrong-project', 'missing-label', 'ambiguous', 'unknown-container'])('rejects %s terminal access', async (scenario) => {
+        const socket = makeSocket();
+        const info = makeTerminalInfo();
+        if (scenario === 'read-only') {
+            const role = await userGroupService.getRoleByUserMailUncached('user@example.com');
+            role!.roleProjectPermissions[0].writeWorkloads = false;
+        }
+        if (scenario === 'other-workload') {
+            const role = await userGroupService.getRoleByUserMailUncached('user@example.com');
+            role!.roleProjectPermissions[0].project.projectWorkloads = [];
+        }
+        if (scenario === 'deleted-user') vi.mocked(dataAccess.client.user.findUnique).mockResolvedValue(null);
+        if (scenario === 'expired') socket.data.terminalAuthentication.expiresAt = Date.now() - 1;
+        if (scenario === 'system') info.namespace = 'quickstack';
+        if (scenario === 'wrong-project') info.namespace = 'other-project';
+        if (scenario === 'unknown-container') info.containerName = 'management';
+        if (scenario === 'missing-label' || scenario === 'ambiguous') {
+            vi.mocked(k3s.core.readNamespacedPod).mockResolvedValue({
+                metadata: { uid: 'pod-uid', namespace: 'proj-1', annotations: scenario === 'ambiguous'
+                    ? { 'qs-app-id': 'app-1', 'qs-agent-id': 'agent-2' } : {} },
+                spec: { containers: [{ name: 'agent' }] },
+            });
+        }
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal?.(info);
+        expect(mockExecFn).not.toHaveBeenCalled();
+    });
+
+    it('opens a labeled Agent in its own project', async () => {
+        vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue({ id: 'app-1', projectId: 'proj-1' } as any);
+        vi.mocked(k3s.core.readNamespacedPod).mockResolvedValue({
+            metadata: { uid: 'agent-uid', namespace: 'proj-1', labels: { 'qs-agent-id': 'app-1' } },
+            spec: { containers: [{ name: 'agent' }] },
+        });
+        const socket = makeSocket();
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal(makeTerminalInfo());
+        expect(mockExecFn).toHaveBeenCalledOnce();
+    });
+
+    it('closes exec and removes input listeners when write access is revoked', async () => {
+        vi.useFakeTimers();
+        const close = vi.fn();
+        mockExecFn.mockResolvedValue({ close, on: vi.fn() });
+        const socket = makeSocket();
+        const info = makeTerminalInfo();
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal(info);
+        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue(null);
+        await vi.advanceTimersByTimeAsync(15000);
+        expect(close).toHaveBeenCalledOnce();
+        expect(socket.off).toHaveBeenCalledWith(`${info.terminalSessionKey}_input`, expect.any(Function));
+    });
+
+    it('ignores empty input without queuing authorization work', async () => {
+        const socket = makeSocket();
+        const info = makeTerminalInfo();
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal(info);
+        const write = vi.spyOn(mockExecFn.mock.calls[0][6], 'write');
+        await socket._events[`${info.terminalSessionKey}_input`]('');
+        expect(write).not.toHaveBeenCalled();
+    });
+
+    it('blocks input after permission revocation', async () => {
+        const socket = makeSocket();
+        const info = makeTerminalInfo();
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal(info);
+        const stdin = mockExecFn.mock.calls[0][6];
+        const write = vi.spyOn(stdin, 'write');
+        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue(null);
+        await socket._events[`${info.terminalSessionKey}_input`]('id\n');
+        expect(write).not.toHaveBeenCalled();
+    });
+
+    it('closes a late exec connection after disconnect during opening', async () => {
+        let finish!: (value: any) => void;
+        const close = vi.fn();
+        mockExecFn.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+        const socket = makeSocket();
+        await terminalService.streamTerminal(socket);
+        const opening = socket._events.openTerminal(makeTerminalInfo());
+        await vi.waitFor(() => expect(mockExecFn).toHaveBeenCalledOnce());
+        socket._events.disconnecting();
+        finish({ close, on: vi.fn() });
+        await opening;
+        expect(close).toHaveBeenCalledOnce();
+    });
+
+    it('closes exec at session expiry', async () => {
+        vi.useFakeTimers();
+        const socket = makeSocket();
+        socket.data.terminalAuthentication.expiresAt = Date.now() + 1000;
+        const close = vi.fn();
+        mockExecFn.mockResolvedValue({ close, on: vi.fn() });
+        await terminalService.streamTerminal(socket);
+        await socket._events.openTerminal(makeTerminalInfo());
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(close).toHaveBeenCalledOnce();
     });
 
     describe('command selection', () => {
@@ -171,7 +321,7 @@ describe('terminal.service', () => {
             mockExecFn.mockImplementation(
                 (_ns: any, _pod: any, _ctr: any, _cmd: any, _stdout: any, _stderr: any, _stdin: any, _tty: any, cb: Function) => {
                     statusCallback = cb;
-                    return Promise.resolve({ close: vi.fn() });
+                    return Promise.resolve({ close: vi.fn(), on: vi.fn() });
                 },
             );
 
@@ -197,7 +347,7 @@ describe('terminal.service', () => {
             mockExecFn.mockImplementation(
                 (_ns: any, _pod: any, _ctr: any, _cmd: any, _stdout: any, _stderr: any, _stdin: any, _tty: any, cb: Function) => {
                     statusCallback = cb;
-                    return Promise.resolve({ close: vi.fn() });
+                    return Promise.resolve({ close: vi.fn(), on: vi.fn() });
                 },
             );
 

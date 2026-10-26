@@ -1,4 +1,10 @@
 export class Constants {
+    static readonly TERMINAL_MAX_SESSIONS_PER_SOCKET = 4;
+    static readonly TERMINAL_MAX_OPENS_PER_MINUTE = 10;
+    static readonly TERMINAL_MAX_INPUT_BYTES = 16384;
+    static readonly TERMINAL_MAX_QUEUED_INPUT_BYTES = 65536;
+    static readonly TERMINAL_REVALIDATION_INTERVAL_MS = 15000;
+    static readonly TERMINAL_MAX_DURATION_MS = 60 * 60 * 1000;
     static readonly QS_ANNOTATION_APP_ID = 'qs-app-id';
     static readonly QS_ANNOTATION_AGENT_ID = 'qs-agent-id';
     static readonly QS_ANNOTATION_WORKLOAD_ID = 'qs-workload-id';

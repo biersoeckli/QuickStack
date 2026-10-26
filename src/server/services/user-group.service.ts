@@ -67,7 +67,15 @@ export class UserGroupService {
     }
 
     async getRoleByUserMail(email: string): Promise<UserGroupExtended | null> {
-        return await unstable_cache(async (mail: string) => await dataAccess.client.user.findFirst({
+        return unstable_cache(
+            (mail: string) => this.getRoleByUserMailUncached(mail),
+            [Tags.userGroups(), Tags.users()],
+            { tags: [Tags.userGroups(), Tags.users()] },
+        )(email);
+    }
+
+    async getRoleByUserMailUncached(email: string): Promise<UserGroupExtended | null> {
+        return await dataAccess.client.user.findFirst({
             select: {
                 userGroup: {
                     select: {
@@ -105,7 +113,7 @@ export class UserGroupService {
                 }
             },
             where: {
-                email: mail
+                email
             }
         }).then(user => {
             if (!user?.userGroup) {
@@ -116,10 +124,7 @@ export class UserGroupService {
                 ...user.userGroup,
                 roleProjectPermissions: user.userGroup.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
             };
-        }),
-            [Tags.userGroups(), Tags.users()], {
-            tags: [Tags.userGroups(), Tags.users()]
-        })(email);
+        });
     }
 
     async saveWithPermissions(item: RoleEditModel) {
