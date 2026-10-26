@@ -34,7 +34,7 @@ import { RenameAgentDialog } from '@/app/project/[projectId]/agent-components/re
 import { AgentSandboxStatusActions } from './agent-sandbox-status-actions';
 import AgentSandboxDrawerSettings from './agent-sandbox-drawer-settings';
 import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import type { AgentSandboxTemplateInfo } from '@/shared/model/agent-sandbox-template-info.model';
 import {
     AgentDrawerNavigationUtils,

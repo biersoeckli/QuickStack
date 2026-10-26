@@ -2,7 +2,7 @@ import dataAccess from "../../adapter/db.client";
 import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import quickStackService from "../qs.service";
-import { adminRoleName } from "../../../shared/model/role-extended.model.ts";
+import { adminRoleName } from "../../../shared/model/role-extended.model";
 
 class PasswordChangeService {
 

@@ -27,7 +27,7 @@ import { saveUser } from "./actions"
 import SelectFormField from "@/components/custom/select-form-field"
 import { UserGroupExtended } from "@/shared/model/sim-session.model"
 import { Checkbox } from "@/components/ui/checkbox"
-import { adminRoleName } from "@/shared/model/role-extended.model.ts"
+import { adminRoleName } from "@/shared/model/role-extended.model"
 
 
 export default function UserEditOverlay({ children, user, userGroups }: {

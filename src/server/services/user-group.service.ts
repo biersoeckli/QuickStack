@@ -4,7 +4,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { RoleEditModel } from "@/shared/model/role-edit.model";
-import { adminRoleName } from "@/shared/model/role-extended.model.ts";
+import { adminRoleName } from "@/shared/model/role-extended.model";
 import type { UserGroupExtended } from "@/shared/model/sim-session.model";
 import userGroupQueryService from './standalone-services/user-group-query.service';
 

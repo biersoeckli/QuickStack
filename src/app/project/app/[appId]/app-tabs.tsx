@@ -24,7 +24,7 @@ import NetworkPolicy from "./advanced/network-policy";
 import HealthCheckSettings from "./advanced/health-check-settings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DbToolsCard from "./credentials/db-tools";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model";
 import { Eye, Key, Settings, Zap, Globe, HardDrive, Cog } from "lucide-react";
 import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
 import { TabNavigationUtils } from "@/frontend/utils/tab-navigation.utils";

@@ -8,7 +8,7 @@ import React from "react";
 import { SimpleDataTable } from "@/components/custom/simple-data-table";
 import { formatDateTime } from "@/frontend/utils/format.utils";
 import { deleteRole } from "./actions";
-import { adminRoleName } from "@/shared/model/role-extended.model.ts";
+import { adminRoleName } from "@/shared/model/role-extended.model";
 import RoleEditOverlay from "./user-group-edit-overlay";
 import { ProjectExtendedModel } from "@/shared/model/project-extended.model";
 import { UserGroupExtended } from "@/shared/model/sim-session.model";

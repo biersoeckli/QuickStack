@@ -57,7 +57,7 @@ import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import Logs from '@/app/project/app/[appId]/overview/logs';
 import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
 import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials';
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';

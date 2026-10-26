@@ -22,7 +22,7 @@ import { ServerActionResult } from "@/shared/model/server-action-error-return.mo
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { saveRole } from "./actions"
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts"
+import { RolePermissionEnum } from "@/shared/model/role-extended.model"
 import { RoleEditModel, roleEditZodModel } from "@/shared/model/role-edit.model"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"

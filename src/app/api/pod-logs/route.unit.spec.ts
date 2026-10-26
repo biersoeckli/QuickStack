@@ -1,5 +1,5 @@
 import { PassThrough } from 'node:stream';
-import { adminRoleName } from '@/shared/model/role-extended.model.ts';
+import { adminRoleName } from '@/shared/model/role-extended.model';
 
 const mocks = vi.hoisted(() => ({
     getUserSession: vi.fn(),

@@ -1,4 +1,4 @@
-import { RolePermissionEnum } from "./role-extended.model.ts";
+import { RolePermissionEnum } from "./role-extended.model";
 
 export interface UserSession {
     email: string;
