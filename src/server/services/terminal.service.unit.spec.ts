@@ -48,6 +48,7 @@ import userGroupQueryService from '@/server/services/standalone-services/user-gr
 import terminalService from './terminal.service';
 import k3s from '@/server/adapter/kubernetes-api.adapter';
 import { TerminalSetupInfoModel } from '@/shared/model/terminal-setup-info.model';
+import { Constants } from '@/shared/utils/constants';
 
 const sockets: ReturnType<typeof makeSocket>[] = [];
 
@@ -158,11 +159,12 @@ describe('terminal.service', () => {
         const close = vi.fn();
         mockExecFn.mockResolvedValue({ close, on: vi.fn() });
         const socket = makeSocket();
+        socket.data.terminalAuthentication.expiresAt = Date.now() + Constants.TERMINAL_REVALIDATION_INTERVAL_MS + 1000;
         const info = makeTerminalInfo();
         await terminalService.streamTerminal(socket);
         await socket._events.openTerminal(info);
         vi.mocked(userGroupQueryService.getRoleByUserMail).mockResolvedValue(null);
-        await vi.advanceTimersByTimeAsync(15000);
+        await vi.advanceTimersByTimeAsync(Constants.TERMINAL_REVALIDATION_INTERVAL_MS);
         expect(close).toHaveBeenCalledOnce();
         expect(socket.off).toHaveBeenCalledWith(`${info.terminalSessionKey}_input`, expect.any(Function));
     });
