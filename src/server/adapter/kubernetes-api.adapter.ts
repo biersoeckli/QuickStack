@@ -47,8 +47,7 @@ export class K3sApiAdapter {
     getKubeConfig = () => {
         const kc = new k8s.KubeConfig();
         if (process.env.NODE_ENV === 'production') {
-            //kc.loadFromCluster();
-            kc.loadFromFile('/workspace/kube-config.config');
+            kc.loadFromCluster();
         } else {
             kc.loadFromFile('/workspace/kube-config.config');
         }
