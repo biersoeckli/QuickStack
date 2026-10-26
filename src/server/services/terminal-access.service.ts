@@ -1,6 +1,6 @@
 import dataAccess from '../adapter/db.client';
 import k3s from '../adapter/kubernetes-api.adapter';
-import userGroupService from './user-group.service';
+import userGroupQueryService from './standalone-services/user-group-query.service';
 import { ensureWriteProjectWorkload } from '../utils/shared-authorization.utils';
 import type { TerminalAuthentication } from '../utils/terminal-auth.utils';
 import type { TerminalSetupInfoModel } from '@/shared/model/terminal-setup-info.model';
@@ -41,7 +41,7 @@ class TerminalAccessService {
         if (!workload || workload.projectId !== info.namespace) {
             throw new ServiceException('Terminal target does not belong to this project.');
         }
-        const userGroup = await userGroupService.getRoleByUserMailUncached(user.email);
+        const userGroup = await userGroupQueryService.getRoleByUserMail(user.email);
         ensureWriteProjectWorkload({
             type: 'session',
             session: { userId: user.id, email: user.email, userGroup: userGroup ?? undefined },

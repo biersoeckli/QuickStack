@@ -40,11 +40,11 @@ vi.mock('@/server/adapter/db.client', () => ({
         agent: { findUnique: vi.fn() },
     } },
 }));
-vi.mock('@/server/services/user-group.service', () => ({
-    default: { getRoleByUserMailUncached: vi.fn() },
+vi.mock('@/server/services/standalone-services/user-group-query.service', () => ({
+    default: { getRoleByUserMail: vi.fn() },
 }));
 import dataAccess from '@/server/adapter/db.client';
-import userGroupService from '@/server/services/user-group.service';
+import userGroupQueryService from '@/server/services/standalone-services/user-group-query.service';
 import terminalService from './terminal.service';
 import k3s from '@/server/adapter/kubernetes-api.adapter';
 import { TerminalSetupInfoModel } from '@/shared/model/terminal-setup-info.model';
@@ -91,7 +91,7 @@ describe('terminal.service', () => {
         mockExecFn.mockResolvedValue({ close: vi.fn(), on: vi.fn() });
         vi.mocked(dataAccess.client.user.findUnique).mockResolvedValue({ id: 'user-1', email: 'user@example.com', apiOnlyUser: false } as any);
         vi.mocked(dataAccess.client.app.findUnique).mockResolvedValue({ id: 'app-1', projectId: 'proj-1' } as any);
-        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue({
+        vi.mocked(userGroupQueryService.getRoleByUserMail).mockResolvedValue({
             name: 'writer', id: 'role-1', canAccessBackups: false,
             roleProjectPermissions: [{
                 projectId: 'proj-1', project: { projectWorkloads: [{ id: 'app-1', name: 'App' }] },
@@ -117,11 +117,11 @@ describe('terminal.service', () => {
         const socket = makeSocket();
         const info = makeTerminalInfo();
         if (scenario === 'read-only') {
-            const role = await userGroupService.getRoleByUserMailUncached('user@example.com');
+            const role = await userGroupQueryService.getRoleByUserMail('user@example.com');
             role!.roleProjectPermissions[0].writeWorkloads = false;
         }
         if (scenario === 'other-workload') {
-            const role = await userGroupService.getRoleByUserMailUncached('user@example.com');
+            const role = await userGroupQueryService.getRoleByUserMail('user@example.com');
             role!.roleProjectPermissions[0].project.projectWorkloads = [];
         }
         if (scenario === 'deleted-user') vi.mocked(dataAccess.client.user.findUnique).mockResolvedValue(null);
@@ -161,7 +161,7 @@ describe('terminal.service', () => {
         const info = makeTerminalInfo();
         await terminalService.streamTerminal(socket);
         await socket._events.openTerminal(info);
-        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue(null);
+        vi.mocked(userGroupQueryService.getRoleByUserMail).mockResolvedValue(null);
         await vi.advanceTimersByTimeAsync(15000);
         expect(close).toHaveBeenCalledOnce();
         expect(socket.off).toHaveBeenCalledWith(`${info.terminalSessionKey}_input`, expect.any(Function));
@@ -184,7 +184,7 @@ describe('terminal.service', () => {
         await socket._events.openTerminal(info);
         const stdin = mockExecFn.mock.calls[0][6];
         const write = vi.spyOn(stdin, 'write');
-        vi.mocked(userGroupService.getRoleByUserMailUncached).mockResolvedValue(null);
+        vi.mocked(userGroupQueryService.getRoleByUserMail).mockResolvedValue(null);
         await socket._events[`${info.terminalSessionKey}_input`]('id\n');
         expect(write).not.toHaveBeenCalled();
     });
