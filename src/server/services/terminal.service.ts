@@ -68,7 +68,7 @@ export class TerminalService {
             sessions.set(key, cleanup);
             const deny = () => {
                 if (!closed) {
-                    socket.emit(outputKey, '\n[ERROR] Terminal session is not authorized or no longer available.\n');
+                    socket.emit(outputKey, '\n[ERROR] Terminal session or action is not authorized or no longer available.\n');
                 }
                 cleanup();
             };
