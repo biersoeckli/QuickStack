@@ -1,12 +1,19 @@
-import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, type _Object } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, type _Object } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { S3Target } from "@prisma/client";
 import s3Adapter from "../adapter/aws-s3.adapter";
-import { createReadStream } from "fs";
+import { createReadStream, createWriteStream } from "fs";
 import fsPromises from "fs/promises";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { ServiceException } from "../../shared/model/service.exception.model";
 
 
 export class S3Service {
+
+    private static readonly MIN_PART_SIZE = 8 * 1024 * 1024;
+    private static readonly MAX_PART_SIZE = 5 * 1024 * 1024 * 1024;
+    private static readonly MAX_PARTS_PER_UPLOAD = 9500;
 
     async testConnection(target: S3Target) {
         try {
@@ -53,12 +60,16 @@ export class S3Service {
         });
         const response = await client.send(command);
 
-        const fileStream = await response.Body?.transformToByteArray();
-        if (!fileStream) {
+        if (!response.Body) {
             throw new ServiceException('No file stream found');
         }
 
-        await fsPromises.writeFile(outputFilePath, fileStream);
+        try {
+            await pipeline(response.Body as Readable, createWriteStream(outputFilePath));
+        } catch (e) {
+            await fsPromises.rm(outputFilePath, { force: true });
+            throw e;
+        }
     }
 
     async uploadFile(s3Target: S3Target,
@@ -82,14 +93,32 @@ export class S3Service {
             fileName: fileName
         };
 
-        const command = new PutObjectCommand({
-            Bucket: s3Target.bucketName, // todo: use bucket from env
-            Key: objectStorageFile.fileName,
-            Body: createReadStream(inputFilePath),
-            //ContentDisposition: 'inline',
-            ContentType: mimeType,
+        // Multipart upload keeps every request below the single-put limits of
+        // S3-compatible endpoints (AWS S3 and s3s default to 5 GiB per request)
+        // and bounds memory usage to partSize * queueSize.
+        const upload = new Upload({
+            client,
+            params: {
+                Bucket: s3Target.bucketName, // todo: use bucket from env
+                Key: objectStorageFile.fileName,
+                Body: createReadStream(inputFilePath),
+                //ContentDisposition: 'inline',
+                ContentType: mimeType,
+            },
+            partSize: await this.getUploadPartSize(inputFilePath),
+            queueSize: 4,
+            leavePartsOnError: false,
         });
-        await client.send(command);
+        await upload.done();
+    }
+
+    private async getUploadPartSize(inputFilePath: string) {
+        const { size } = await fsPromises.stat(inputFilePath);
+        const sizeBasedPartSize = Math.ceil(size / S3Service.MAX_PARTS_PER_UPLOAD);
+        const partSize = Math.max(S3Service.MIN_PART_SIZE, sizeBasedPartSize);
+        const megabyte = 1024 * 1024;
+        const roundedPartSize = Math.ceil(partSize / megabyte) * megabyte;
+        return Math.min(roundedPartSize, S3Service.MAX_PART_SIZE);
     }
 }
 

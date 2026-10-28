@@ -21,7 +21,8 @@
     "openapi-generate": "bash scripts/update-k8s-custom-crds.sh && bash scripts/update-openapi.sh"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.717.0",
+    "@aws-sdk/client-s3": "^3.1159.0",
+    "@aws-sdk/lib-storage": "^3.1159.0",
     "@base-ui/react": "^1.8.0",
     "@elysiajs/openapi": "^1.4.15",
     "@hookform/resolvers": "5.5.7",
