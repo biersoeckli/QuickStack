@@ -16,3 +16,9 @@ export type LiteLlmGenerateKeyRequest = Partial<components["schemas"]["GenerateK
 };
 export type LiteLlmGenerateKeyResponse = components["schemas"]["GenerateKeyResponse"];
 export type LiteLlmDeleteKeyRequest = components["schemas"]["KeyRequest"];
+export type LiteLlmCreateUserRequest = Partial<components["schemas"]["NewUserRequest"]> & {
+    user_id: string;
+    auto_create_key: false;
+};
+export type LiteLlmCreateUserResponse = components["schemas"]["NewUserResponse"];
+export type LiteLlmUserInfoResponse = components["schemas"]["UserInfoResponse"];
