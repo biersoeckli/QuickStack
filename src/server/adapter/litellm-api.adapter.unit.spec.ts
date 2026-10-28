@@ -177,6 +177,18 @@ describe('LiteLlmApiAdapter', () => {
             );
         });
 
+        it('assigns an existing user and team to the virtual key', async () => {
+            let capturedBody: string | null = null;
+            vi.spyOn(global, 'fetch').mockImplementation(async (_url: any, init?: any) => {
+                capturedBody = init?.body ?? null;
+                return { ok: true, status: 200, json: vi.fn().mockResolvedValue({ key: 'sk-v-test-key' }) } as any;
+            });
+
+            await liteLlmApiAdapter.createVirtualKey('https://litellm.example.com', 'admin-secret', ['gpt-4o'], undefined, 'tag-1', 'team-1');
+
+            expect(JSON.parse(capturedBody!)).toMatchObject({ user_id: 'tag-1', team_id: 'team-1' });
+        });
+
         it('maps non-200 status to ServiceException', async () => {
             vi.spyOn(global, 'fetch').mockResolvedValue({
                 ok: false,

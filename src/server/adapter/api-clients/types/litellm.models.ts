@@ -13,6 +13,8 @@ export type LiteLlmModelInfoResponse = {
 
 export type LiteLlmGenerateKeyRequest = Partial<components["schemas"]["GenerateKeyRequest"]> & {
     models: string[];
+    user_id?: string;
+    team_id?: string;
 };
 export type LiteLlmGenerateKeyResponse = components["schemas"]["GenerateKeyResponse"];
 export type LiteLlmDeleteKeyRequest = components["schemas"]["KeyRequest"];

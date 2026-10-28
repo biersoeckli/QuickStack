@@ -19,6 +19,7 @@ import configMapService from "./config-map.service";
 import networkPolicyService from "./network-policy.service";
 import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 import registryService from "./registry.service";
+import { ValueFormatUtils } from "../utils/value-format.utils";
 
 const HARNESS_VIRTUAL_KEY_REFERENCE = '__quickstack_runtime_virtual_key__';
 
@@ -65,14 +66,6 @@ class AgentRuntimeService {
             ...agent,
             modelAlias: AgentModelAliasUtils.normalize(agent.modelAlias),
         };
-    }
-
-    private toSecretName(agentId: string): string {
-        return KubeObjectNameUtils.toSecretId(agentId);
-    }
-
-    private toTaggedVirtualKeySecretName(agentId: string, customTag: string): string {
-        return KubeObjectNameUtils.toAgentTaggedVirtualKeySecretId(agentId, customTag);
     }
 
     /**
@@ -133,56 +126,35 @@ class AgentRuntimeService {
 
     private buildRuntimeSecretData(
         gatewayBaseUrl: string,
-        virtualKey: string,
         decryptedEnvVars: Record<string, string>,
     ): Record<string, string> {
         const data: Record<string, string> = {
             QS_GATEWAY_URL: gatewayBaseUrl,
-            QS_VIRTUAL_KEY: virtualKey,
         };
         for (const [key, value] of Object.entries(decryptedEnvVars)) {
-            data[key] = value === HARNESS_VIRTUAL_KEY_REFERENCE ? virtualKey : value;
+            if (value !== HARNESS_VIRTUAL_KEY_REFERENCE) {
+                data[key] = value;
+            }
         }
         return data;
     }
 
     private async createRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
         const namespace = agent.project.id;
-        const secretName = this.toSecretName(agent.id);
-
-        if (!agent.llmGateway) {
-            throw new ServiceException('LLM Gateway not found for Agent.');
-        }
-        const gateway = agent.llmGateway;
-        if (!gateway.encryptedAdminKey) {
-            throw new ServiceException('LLM Gateway admin key is missing.');
-        }
-
-        const adminKey = CryptoUtils.decrypt(gateway.encryptedAdminKey);
-        const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
-        if (modelAliases.length === 0) {
-            throw new ServiceException('At least one model alias must be selected for Agent.');
-        }
-        const virtualKey = await liteLlmApiAdapter.createVirtualKey(
-            gateway.baseUrl,
-            adminKey,
-            modelAliases,
-            { quickstack: { agentId: agent.id, scope: 'agent' } },
-        );
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
 
         const decryptedEnvVars = this.decryptEnvVars(agent.encryptedEnvVars ?? null);
         const secretData = this.buildRuntimeSecretData(
-            gateway.baseUrl,
-            virtualKey,
+            agent.llmGateway?.baseUrl ?? '',
             decryptedEnvVars,
         );
 
         await secretService.createOrReplaceGenericSecret(secretName, namespace, secretData);
     }
 
-    private async ensureTaggedVirtualKey(agent: AgentExtendedModel, customTag: string): Promise<string> {
+    private async ensureSandboxVirtualKey(agent: AgentExtendedModel, sandboxName: string, customTag?: string): Promise<string> {
         const namespace = agent.project.id;
-        const secretName = this.toTaggedVirtualKeySecretName(agent.id, customTag);
+        const secretName = KubeObjectNameUtils.toAgentSandboxVirtualKeySecretId(agent.id, sandboxName);
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
         if (existingSecret?.QS_VIRTUAL_KEY) {
             return existingSecret.QS_VIRTUAL_KEY;
@@ -200,17 +172,39 @@ class AgentRuntimeService {
             throw new ServiceException('At least one model alias must be selected for Agent.');
         }
 
+        const baseUrl = agent.llmGateway.baseUrl;
+        const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+        let teamId: string | undefined;
+        if (customTag) {
+            let existingUser = await liteLlmApiAdapter.getUserByIdOrUndefined(baseUrl, adminKey, customTag);
+            teamId = ValueFormatUtils.firstLiteLlmTeamId(existingUser?.teams);
+            if (!existingUser) {
+                try {
+                    await liteLlmApiAdapter.createUserWithId(baseUrl, adminKey, customTag);
+                } catch (error) {
+                    existingUser = await liteLlmApiAdapter.getUserByIdOrUndefined(baseUrl, adminKey, customTag);
+                    if (!existingUser) {
+                        throw error;
+                    }
+                    teamId = ValueFormatUtils.firstLiteLlmTeamId(existingUser.teams);
+                }
+            }
+        }
+
         const virtualKey = await liteLlmApiAdapter.createVirtualKey(
-            agent.llmGateway.baseUrl,
-            CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey),
+            baseUrl,
+            adminKey,
             modelAliases,
-            { quickstack: { agentId: agent.id, customTag, scope: 'agent-sandbox' } },
+            { quickstack: { agentId: agent.id, ...(customTag ? { customTag } : {}), scope: 'agent-sandbox' } },
+            customTag,
+            teamId,
         );
         await secretService.createOrReplaceGenericSecret(secretName, namespace, {
             QS_VIRTUAL_KEY: virtualKey,
         }, {
             [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
-            [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
+            [Constants.QS_ANNOTATION_SANDBOX_NAME]: sandboxName,
+            [Constants.QS_LABEL_AGENT_SANDBOX_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
         });
         return virtualKey;
     }
@@ -227,11 +221,11 @@ class AgentRuntimeService {
 
     /**
      * Ensures the agent runtime secret exists.
-     * Creates a new LiteLLM virtual key and secret if missing; reuses existing if present.
+     * Creates the shared, non-key runtime secret if missing.
      */
     private async ensureRuntimeSecret(agent: AgentExtendedModel): Promise<void> {
         const namespace = agent.project.id;
-        const secretName = this.toSecretName(agent.id);
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
         if (existingSecret) {
             return;
@@ -241,12 +235,12 @@ class AgentRuntimeService {
     }
 
     /**
-     * Replaces the stored runtime virtual key so deploys apply current model permissions.
+     * Removes a legacy shared virtual key and refreshes the shared, non-key runtime secret.
      */
     async refreshRuntimeSecret(agentId: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
         const namespace = agent.project.id;
-        const secretName = this.toSecretName(agent.id);
+        const secretName = KubeObjectNameUtils.toSecretId(agent.id);
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
 
         if (existingSecret?.QS_VIRTUAL_KEY && agent.llmGateway?.encryptedAdminKey) {
@@ -258,6 +252,7 @@ class AgentRuntimeService {
             );
         }
 
+        await secretService.deleteSecretSafe(secretName, namespace);
         await this.createRuntimeSecret(agent);
     }
 
@@ -302,12 +297,8 @@ class AgentRuntimeService {
 
         await this.ensureRuntimeSecret(agent);
 
-        const taggedVirtualKey = customTag
-            ? await this.ensureTaggedVirtualKey(agent, customTag)
-            : undefined;
-        const env = taggedVirtualKey
-            ? { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, taggedVirtualKey) }
-            : startOptions.env;
+        const virtualKey = await this.ensureSandboxVirtualKey(agent, sandboxName, customTag);
+        const env = { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, virtualKey) };
 
         const perSandboxVolumes = agent.agentVolumes.filter(volume => volume.volumeType === 'PER_SANDBOX');
         const volumeClaimTemplates = customTag && perSandboxVolumes.length > 0
@@ -335,6 +326,7 @@ class AgentRuntimeService {
                 await agentSandboxAdapter.waitForSandboxReady(sandboxName, namespace);
             }
         } catch (error) {
+            await this.deleteSandboxVirtualKey(agent, sandboxName);
             revalidateTag(Tags.agent(agentId));
             revalidateTag(Tags.agents(agent.projectId));
             throw error;
@@ -367,10 +359,10 @@ class AgentRuntimeService {
 
         const dockerPullSecretName = await secretService.createOrUpdateAgentDockerPullSecret(agent);
 
-        const taggedVirtualKey = await this.ensureTaggedVirtualKey(agent, customTag);
-        const env = { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, taggedVirtualKey) };
         const manifestInput = await this.buildStartSandboxManifestInput(agent, customTag);
         const sandboxName = KubeObjectNameUtils.toAgentSandboxName(agent.id, customTag);
+        const virtualKey = await this.ensureSandboxVirtualKey(agent, sandboxName, customTag);
+        const env = { ...startOptions.env, ...this.buildTaggedVirtualKeyEnvOverrides(agent, virtualKey) };
 
         await networkPolicyService.reconcileAgentSandboxNetworkPolicy(
             agent.id,
@@ -394,6 +386,7 @@ class AgentRuntimeService {
                 await agentSandboxAdapter.waitForSandboxObjectReady(sandboxName, namespace);
             }
         } catch (error) {
+            await this.deleteSandboxVirtualKey(agent, sandboxName);
             revalidateTag(Tags.agent(agent.id));
             revalidateTag(Tags.agents(agent.projectId));
             throw error;
@@ -417,6 +410,7 @@ class AgentRuntimeService {
         } else {
             await agentSandboxAdapter.deleteSandboxClaim(sandboxName, namespace);
         }
+        await this.deleteSandboxVirtualKey(agent, sandboxName);
 
         revalidateTag(Tags.agent(agentId));
         revalidateTag(Tags.agents(agent.projectId));
@@ -433,6 +427,7 @@ class AgentRuntimeService {
             const sandboxName = claim.metadata?.name;
             if (sandboxName) {
                 await agentSandboxAdapter.deleteSandboxClaim(sandboxName, namespace);
+                await this.deleteSandboxVirtualKey(agent, sandboxName);
             }
         }
 
@@ -441,6 +436,7 @@ class AgentRuntimeService {
             const sandboxName = sandbox.metadata?.name;
             if (sandboxName) {
                 await agentSandboxAdapter.deleteSandbox(sandboxName, namespace);
+                await this.deleteSandboxVirtualKey(agent, sandboxName);
             }
         }
 
@@ -483,6 +479,19 @@ class AgentRuntimeService {
                 console.warn(`Failed to delete tagged virtual key Secret during Agent cleanup (agentId=${agentId}, secret=${secret.name}):`, error);
             }
         }
+    }
+
+    private async deleteSandboxVirtualKey(agent: AgentExtendedModel, sandboxName: string): Promise<void> {
+        const secretName = KubeObjectNameUtils.toAgentSandboxVirtualKeySecretId(agent.id, sandboxName);
+        const secret = await secretService.getDecodedSecret(secretName, agent.project.id);
+        try {
+            if (secret?.QS_VIRTUAL_KEY && agent.llmGateway?.encryptedAdminKey) {
+                await liteLlmApiAdapter.deleteVirtualKey(agent.llmGateway.baseUrl, CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey), secret.QS_VIRTUAL_KEY);
+            }
+        } catch (error) {
+            console.warn(`Failed to delete LiteLLM virtual key for sandbox ${sandboxName}:`, error);
+        }
+        await secretService.deleteSecretSafe(secretName, agent.project.id);
     }
 
     private claimMatchesTag(claim: SandboxClaim, agentId: string, customTag: string): boolean {

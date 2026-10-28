@@ -399,9 +399,6 @@ class AgentService {
             if (!containerImageSource) {
                 throw new ServiceException('Container image source is missing. Cannot deploy for Agent.');
             }
-            // Tagged sandbox keys inherit the Agent's model allowlist. Replace them on
-            // deploy so a stopped tag cannot retain permissions from an older deploy.
-            await agentRuntimeService.deleteTaggedVirtualKeys(agent.id);
             await agentRuntimeService.refreshRuntimeSecret(agent.id);
             const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
             await this.loadLiteLlmModelMetadata(agent, modelAliases);
@@ -529,10 +526,9 @@ class AgentService {
             }
         }
 
-        await agentRuntimeService.deleteTaggedVirtualKeys(agentId);
-
         // 3. Stop runtime resources, then delete irreversible Agent-owned data.
         await agentRuntimeService.stopAllSandboxes(agentId);
+        await agentRuntimeService.deleteTaggedVirtualKeys(agentId);
         await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
         await buildService.deleteAllBuildsOfAgent(agentId);
 

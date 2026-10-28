@@ -76,6 +76,8 @@ vi.mock('@/server/adapter/litellm-api.adapter', () => ({
     default: {
         createVirtualKey: vi.fn(),
         deleteVirtualKey: vi.fn(),
+        getUserByIdOrUndefined: vi.fn(),
+        createUserWithId: vi.fn(),
         listModelAliases: vi.fn(),
     },
 }));
@@ -149,6 +151,7 @@ describe('agent-runtime.service', () => {
         vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
         vi.mocked(agentSandboxAdapter.waitForSandboxObjectReady).mockResolvedValue(undefined);
         vi.mocked(configMapService.createOrUpdateConfigMapForAgent).mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] });
+        vi.mocked(liteLlmApiAdapter.getUserByIdOrUndefined).mockResolvedValue({} as any);
     });
 
     describe('startSandbox', () => {
@@ -171,7 +174,9 @@ describe('agent-runtime.service', () => {
                 'https://litellm.example.com',
                 'adminkey',
                 ['gpt-4o', 'claude-3-5-sonnet'],
-                { quickstack: { agentId: AGENT_ID, scope: 'agent' } },
+                { quickstack: { agentId: AGENT_ID, scope: 'agent-sandbox' } },
+                undefined,
+                undefined,
             );
         });
 
@@ -186,7 +191,6 @@ describe('agent-runtime.service', () => {
                 SANDBOX_NAMESPACE,
                 expect.objectContaining({
                     QS_GATEWAY_URL: 'https://litellm.example.com',
-                    QS_VIRTUAL_KEY: 'sk-v-test-key',
                     MY_KEY: 'my-secret',
                 }),
             );
@@ -202,8 +206,9 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
-            const secretData = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
-            expect(secretData.ANTHROPIC_AUTH_TOKEN).toBe('sk-v-test-key');
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
+                spec: expect.objectContaining({ env: expect.arrayContaining([{ name: 'ANTHROPIC_AUTH_TOKEN', value: 'sk-v-test-key' }]) }),
+            }));
         });
 
         it('omits env vars from secret when agent has none', async () => {
@@ -213,7 +218,7 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
-            expect(Object.keys(callArgs)).toHaveLength(2); // QS_GATEWAY_URL + QS_VIRTUAL_KEY
+            expect(Object.keys(callArgs)).toHaveLength(1); // QS_GATEWAY_URL
         });
 
         it('reuses existing runtime secret without overwriting it', async () => {
@@ -269,7 +274,7 @@ describe('agent-runtime.service', () => {
                 expect.objectContaining({
                     spec: expect.objectContaining({
                         warmPoolRef: { name: AGENT_ID },
-                        env: [{ name: 'FOO', value: 'bar' }],
+                        env: expect.arrayContaining([{ name: 'FOO', value: 'bar' }, { name: 'QS_VIRTUAL_KEY', value: 'sk-v-test-key' }]),
                         lifecycle: { shutdownPolicy: 'Delete', ttlSecondsAfterFinished: 600 },
                     }),
                 }),
@@ -302,9 +307,7 @@ describe('agent-runtime.service', () => {
 
         it('creates a tagged key once, stores it, and injects it into a tagged SandboxClaim', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(liteLlmApiAdapter.createVirtualKey)
-                .mockResolvedValueOnce('sk-v-agent-key')
-                .mockResolvedValueOnce('sk-v-feature-key');
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-feature-key');
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
 
@@ -313,21 +316,38 @@ describe('agent-runtime.service', () => {
                 'adminkey',
                 ['gpt-4o', 'claude-3-5-sonnet'],
                 { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                'feature-branch',
+                undefined,
             );
             expect(secretService.createOrReplaceGenericSecret).toHaveBeenLastCalledWith(
-                expect.stringMatching(/^tagkey-[a-f0-9]{64}$/),
+                expect.stringMatching(/^sandboxkey-[a-f0-9]{64}$/),
                 SANDBOX_NAMESPACE,
                 { QS_VIRTUAL_KEY: 'sk-v-feature-key' },
                 {
                     'qs-agent-id': AGENT_ID,
-                    'qs-agent-tagged-virtual-key': 'true',
+                    'qs-agent-sandbox-virtual-key': 'true',
+                    'qs-sandbox-name': expect.stringMatching(/^ac-/),
                 },
             );
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
                 spec: expect.objectContaining({
-                    env: [{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }],
+                    env: expect.arrayContaining([{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }]),
                 }),
             }));
+        });
+
+        it('assigns the first existing LiteLLM user team to a tagged sandbox key', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.getUserByIdOrUndefined).mockResolvedValue({ teams: [{ team_id: 'team-first' }, { team_id: 'team-second' }] } as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-team-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenLastCalledWith(
+                'https://litellm.example.com', 'adminkey', ['gpt-4o', 'claude-3-5-sonnet'],
+                { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                'feature-branch', 'team-first',
+            );
         });
 
         it('reuses the tagged key from its Secret', async () => {

@@ -69,10 +69,14 @@ class LiteLlmApiAdapter {
         adminKey: string,
         modelAliases: string[],
         metadata?: Record<string, unknown>,
+        userId?: string,
+        teamId?: string,
     ): Promise<string> {
         const requestBody: LiteLlmGenerateKeyRequest = {
             models: modelAliases,
             ...(metadata ? { metadata } : {}),
+            ...(userId ? { user_id: userId } : {}),
+            ...(teamId ? { team_id: teamId } : {}),
         };
         const response = await this.fetchJson<LiteLlmGenerateKeyResponse>(baseUrl, adminKey, '/key/generate', {
             method: 'POST',
@@ -96,6 +100,17 @@ class LiteLlmApiAdapter {
     async getUserById(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmUserInfoResponse> {
         const query = new URLSearchParams({ user_id: userId });
         return await this.fetchJson<LiteLlmUserInfoResponse>(baseUrl, adminKey, `/user/info?${query}`);
+    }
+
+    async getUserByIdOrUndefined(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmUserInfoResponse | undefined> {
+        try {
+            return await this.getUserById(baseUrl, adminKey, userId);
+        } catch (error) {
+            if (error instanceof ServiceException && error.message.startsWith('LiteLLM request failed with status 404')) {
+                return undefined;
+            }
+            throw error;
+        }
     }
 
     async createUserWithId(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmCreateUserResponse> {
