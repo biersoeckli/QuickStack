@@ -71,7 +71,7 @@ describe('LiteLlmApiAdapter', () => {
                             display_name: 'GPT 5',
                             max_input_tokens: 128000,
                             max_output_tokens: '8192',
-                            supports_reasoning: true,
+                            supports_reasoning: 'TRUE',
                             default_reasoning_effort: 'medium',
                             reasoning_summary: 'auto',
                             text_verbosity: 'low',
@@ -269,6 +269,56 @@ describe('LiteLlmApiAdapter', () => {
             await expect(
                 liteLlmApiAdapter.deleteVirtualKey('https://litellm.example.com', 'admin', 'sk-v-key'),
             ).rejects.toThrow('Could not reach LiteLLM Gateway: connect ECONNREFUSED');
+        });
+    });
+
+    describe('users', () => {
+        it('loads a user by its id', async () => {
+            let capturedUrl: string | null = null;
+            vi.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+                capturedUrl = url as string;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: vi.fn().mockResolvedValue({
+                        user_id: 'user@example.com',
+                        user_info: { user_email: 'user@example.com' },
+                        keys: [],
+                        teams: [],
+                    }),
+                } as any;
+            });
+
+            await expect(liteLlmApiAdapter.getUserById(
+                'https://litellm.example.com',
+                'admin-secret',
+                'user@example.com',
+            )).resolves.toMatchObject({ user_id: 'user@example.com' });
+
+            expect(capturedUrl).toBe('https://litellm.example.com/user/info?user_id=user%40example.com');
+        });
+
+        it('creates a user with the supplied id without creating an API key', async () => {
+            let capturedBody: string | null = null;
+            vi.spyOn(global, 'fetch').mockImplementation(async (_url: any, init?: any) => {
+                capturedBody = init?.body ?? null;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: vi.fn().mockResolvedValue({ user_id: 'user-123' }),
+                } as any;
+            });
+
+            await expect(liteLlmApiAdapter.createUserWithId(
+                'https://litellm.example.com',
+                'admin-secret',
+                'user-123',
+            )).resolves.toMatchObject({ user_id: 'user-123' });
+
+            expect(JSON.parse(capturedBody!)).toEqual({
+                user_id: 'user-123',
+                auto_create_key: false,
+            });
         });
     });
 });

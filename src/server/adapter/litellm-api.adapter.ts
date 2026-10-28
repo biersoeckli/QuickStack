@@ -1,5 +1,21 @@
 import { ServiceException } from "@/shared/model/service.exception.model";
-import { LiteLlmDeleteKeyRequest, LiteLlmGenerateKeyRequest, LiteLlmGenerateKeyResponse, LiteLlmModelInfo, LiteLlmModelInfoResponse } from "./api-clients/types/litellm.models";
+import { ValueFormatUtils } from "@/server/utils/value-format.utils";
+import {
+    LiteLlmCreateUserRequest,
+    LiteLlmCreateUserResponse,
+    LiteLlmDeleteKeyRequest,
+    LiteLlmGenerateKeyRequest,
+    LiteLlmGenerateKeyResponse,
+    LiteLlmModelInfo,
+    LiteLlmModelInfoResponse,
+    LiteLlmUserInfoResponse,
+} from "./api-clients/types/litellm.models";
+import {
+    liteLlmMetadataBooleanZodModel,
+    liteLlmMetadataNumberZodModel,
+    liteLlmMetadataObjectZodModel,
+    liteLlmMetadataStringZodModel,
+} from "./litellm-api.models";
 
 export type LiteLlmModelMetadata = {
     modelName: string;
@@ -77,6 +93,22 @@ class LiteLlmApiAdapter {
         });
     }
 
+    async getUserById(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmUserInfoResponse> {
+        const query = new URLSearchParams({ user_id: userId });
+        return await this.fetchJson<LiteLlmUserInfoResponse>(baseUrl, adminKey, `/user/info?${query}`);
+    }
+
+    async createUserWithId(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmCreateUserResponse> {
+        const requestBody: LiteLlmCreateUserRequest = {
+            user_id: userId,
+            auto_create_key: false,
+        };
+        return await this.fetchJson<LiteLlmCreateUserResponse>(baseUrl, adminKey, '/user/new', {
+            method: 'POST',
+            body: JSON.stringify(requestBody),
+        });
+    }
+
     async listModelAliases(baseUrl: string, adminKey: string): Promise<string[]> {
         return (await this.listModelInfo(baseUrl, adminKey)).map((item) => item.modelName);
     }
@@ -99,8 +131,8 @@ class LiteLlmApiAdapter {
     }
 
     private toModelMetadata(item: LiteLlmModelInfo): LiteLlmModelMetadata | null {
-        const modelName = this.readString(item.model_name);
-        if (!modelName) {
+        const modelName = liteLlmMetadataStringZodModel.safeParse(item.model_name);
+        if (!modelName.success) {
             return null;
         }
 
@@ -109,93 +141,22 @@ class LiteLlmApiAdapter {
         const metadata = this.readObject(modelInfo?.metadata);
 
         return {
-            modelName,
-            displayName: this.firstString(modelInfo, metadata, ['display_name', 'displayName', 'name']),
-            contextLimit: this.firstNumber(modelInfo, metadata, item, ['max_input_tokens', 'max_context_tokens', 'max_context_length', 'context_window', 'max_tokens']),
-            outputLimit: this.firstNumber(modelInfo, metadata, litellmParams, item, ['max_output_tokens', 'max_completion_tokens', 'output_token_limit']),
-            supportsReasoning: this.firstBoolean(modelInfo, metadata, ['supports_reasoning', 'supportsReasoning', 'reasoning']),
-            reasoningType: this.firstString(modelInfo, metadata, ['reasoning_type', 'reasoningType']),
-            defaultReasoningEffort: this.firstString(modelInfo, metadata, litellmParams, ['default_reasoning_effort', 'defaultReasoningEffort', 'reasoning_effort', 'reasoningEffort']),
-            reasoningSummary: this.firstString(modelInfo, metadata, litellmParams, ['reasoning_summary', 'reasoningSummary']),
-            textVerbosity: this.firstString(modelInfo, metadata, litellmParams, ['text_verbosity', 'textVerbosity']),
-            thinkingBudgetTokens: this.firstNumber(modelInfo, metadata, litellmParams, ['thinking_budget_tokens', 'thinkingBudgetTokens', 'budget_tokens', 'budgetTokens']),
+            modelName: modelName.data,
+            displayName: ValueFormatUtils.firstValidValue([modelInfo, metadata], ['display_name', 'displayName', 'name'], liteLlmMetadataStringZodModel),
+            contextLimit: ValueFormatUtils.firstValidValue([modelInfo, metadata, item], ['max_input_tokens', 'max_context_tokens', 'max_context_length', 'context_window', 'max_tokens'], liteLlmMetadataNumberZodModel),
+            outputLimit: ValueFormatUtils.firstValidValue([modelInfo, metadata, litellmParams, item], ['max_output_tokens', 'max_completion_tokens', 'output_token_limit'], liteLlmMetadataNumberZodModel),
+            supportsReasoning: ValueFormatUtils.firstValidValue([modelInfo, metadata], ['supports_reasoning', 'supportsReasoning', 'reasoning'], liteLlmMetadataBooleanZodModel),
+            reasoningType: ValueFormatUtils.firstValidValue([modelInfo, metadata], ['reasoning_type', 'reasoningType'], liteLlmMetadataStringZodModel),
+            defaultReasoningEffort: ValueFormatUtils.firstValidValue([modelInfo, metadata, litellmParams], ['default_reasoning_effort', 'defaultReasoningEffort', 'reasoning_effort', 'reasoningEffort'], liteLlmMetadataStringZodModel),
+            reasoningSummary: ValueFormatUtils.firstValidValue([modelInfo, metadata, litellmParams], ['reasoning_summary', 'reasoningSummary'], liteLlmMetadataStringZodModel),
+            textVerbosity: ValueFormatUtils.firstValidValue([modelInfo, metadata, litellmParams], ['text_verbosity', 'textVerbosity'], liteLlmMetadataStringZodModel),
+            thinkingBudgetTokens: ValueFormatUtils.firstValidValue([modelInfo, metadata, litellmParams], ['thinking_budget_tokens', 'thinkingBudgetTokens', 'budget_tokens', 'budgetTokens'], liteLlmMetadataNumberZodModel),
         };
     }
 
     private readObject(value: unknown): Record<string, unknown> | undefined {
-        return value && typeof value === 'object' && !Array.isArray(value)
-            ? value as Record<string, unknown>
-            : undefined;
-    }
-
-    private readString(value: unknown): string | undefined {
-        return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-    }
-
-    private readNumber(value: unknown): number | undefined {
-        const numberValue = typeof value === 'number'
-            ? value
-            : typeof value === 'string' && value.trim().length > 0
-                ? Number(value)
-                : NaN;
-        return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : undefined;
-    }
-
-    private readBoolean(value: unknown): boolean | undefined {
-        if (typeof value === 'boolean') {
-            return value;
-        }
-        if (typeof value === 'string') {
-            if (value.toLowerCase() === 'true') {
-                return true;
-            }
-            if (value.toLowerCase() === 'false') {
-                return false;
-            }
-        }
-        return undefined;
-    }
-
-    private firstString(...args: [...Array<Record<string, unknown> | undefined>, string[]]): string | undefined {
-        const keys = args[args.length - 1] as string[];
-        const sources = args.slice(0, -1) as Array<Record<string, unknown> | undefined>;
-        for (const source of sources) {
-            for (const key of keys) {
-                const value = this.readString(source?.[key]);
-                if (value) {
-                    return value;
-                }
-            }
-        }
-        return undefined;
-    }
-
-    private firstNumber(...args: [...Array<Record<string, unknown> | undefined>, string[]]): number | undefined {
-        const keys = args[args.length - 1] as string[];
-        const sources = args.slice(0, -1) as Array<Record<string, unknown> | undefined>;
-        for (const source of sources) {
-            for (const key of keys) {
-                const value = this.readNumber(source?.[key]);
-                if (value) {
-                    return value;
-                }
-            }
-        }
-        return undefined;
-    }
-
-    private firstBoolean(...args: [...Array<Record<string, unknown> | undefined>, string[]]): boolean | undefined {
-        const keys = args[args.length - 1] as string[];
-        const sources = args.slice(0, -1) as Array<Record<string, unknown> | undefined>;
-        for (const source of sources) {
-            for (const key of keys) {
-                const value = this.readBoolean(source?.[key]);
-                if (value !== undefined) {
-                    return value;
-                }
-            }
-        }
-        return undefined;
+        const result = liteLlmMetadataObjectZodModel.safeParse(value);
+        return result.success ? result.data : undefined;
     }
 }
 
