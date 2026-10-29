@@ -12,6 +12,7 @@ export const S3TargetModel = z.object({
   secretKey: z.string(),
   v4Auth: z.boolean(),
   forcePathStyle: z.boolean(),
+  useSinglePutObject: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

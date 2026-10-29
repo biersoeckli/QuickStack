@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, type _Object } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, type _Object } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3Target } from "@prisma/client";
 import s3Adapter from "../adapter/aws-s3.adapter";
@@ -96,15 +96,22 @@ export class S3Service {
         // Multipart upload keeps every request below the single-put limits of
         // S3-compatible endpoints (AWS S3 and s3s default to 5 GiB per request)
         // and bounds memory usage to partSize * queueSize.
+        const uploadParams = {
+            Bucket: s3Target.bucketName, // todo: use bucket from env
+            Key: objectStorageFile.fileName,
+            Body: createReadStream(inputFilePath),
+            //ContentDisposition: 'inline',
+            ContentType: mimeType,
+        };
+
+        if (s3Target.useSinglePutObject) {
+            await client.send(new PutObjectCommand(uploadParams));
+            return;
+        }
+
         const upload = new Upload({
             client,
-            params: {
-                Bucket: s3Target.bucketName, // todo: use bucket from env
-                Key: objectStorageFile.fileName,
-                Body: createReadStream(inputFilePath),
-                //ContentDisposition: 'inline',
-                ContentType: mimeType,
-            },
+            params: uploadParams,
             partSize: await this.getUploadPartSize(inputFilePath),
             queueSize: 4,
             leavePartsOnError: false,

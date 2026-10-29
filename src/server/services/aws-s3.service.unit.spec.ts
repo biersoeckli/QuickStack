@@ -9,6 +9,19 @@ vi.mock('../adapter/aws-s3.adapter', () => ({
     },
 }));
 
+// Keep mocked multipart uploads from opening the temporary archive after the
+// test has already removed it.
+vi.mock('fs', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('fs')>();
+    const { Readable } = await import('stream');
+    const createReadStream = vi.fn(() => Readable.from([])) as any;
+    return {
+        ...actual,
+        createReadStream,
+        default: { ...(actual as any).default, createReadStream },
+    };
+});
+
 const uploadMocks = vi.hoisted(() => {
     const done = vi.fn().mockResolvedValue({});
     const constructor = vi.fn();
@@ -98,6 +111,29 @@ describe('S3Service file transfer', () => {
                 ContentType: 'application/gzip',
             }),
         }));
+    });
+
+    it('uses a single PutObject when the target opts out of multipart', async () => {
+        const filePath = createSparseFile(5.3 * 1024 * 1024 * 1024);
+        const send = vi.fn().mockResolvedValue({});
+        vi.mocked(s3Adapter.getS3Client).mockReturnValue({ send } as any);
+
+        await new S3Service().uploadFile(
+            { bucketName: 'backups', useSinglePutObject: true } as any,
+            filePath,
+            'backups/app/volume/date.tar.gz',
+            'application/gzip',
+            'binary',
+        );
+
+        expect(uploadMocks.constructor).not.toHaveBeenCalled();
+        expect(uploadMocks.done).not.toHaveBeenCalled();
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send.mock.calls[0][0].input).toMatchObject({
+            Bucket: 'backups',
+            Key: 'backups/app/volume/date.tar.gz',
+            ContentType: 'application/gzip',
+        });
     });
 
     it('grows the part size for very large volumes to stay below the part limit', async () => {
