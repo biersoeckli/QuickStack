@@ -26,7 +26,7 @@ export function AgentSandboxStatusActions({
 
     return (
         <TooltipProvider delay={300}>
-            <div className="flex items-center gap-1 rounded-2xl bg-stone-100 px-1 py-1">
+            <div className="flex w-fit max-w-full flex-wrap items-center gap-1 rounded-2xl bg-stone-100 px-1 py-1">
                 <Tooltip>
                     <TooltipTrigger
                         render={
