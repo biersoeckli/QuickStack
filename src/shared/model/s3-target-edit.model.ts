@@ -10,6 +10,7 @@ export const s3TargetEditZodModel = z.object({
   secretKey: z.string().trim().min(1),
   v4Auth: z.boolean().optional().default(true),
   forcePathStyle: z.boolean().optional().default(false),
+  useSinglePutObject: z.boolean().optional().default(false),
 })
 
 export type S3TargetEditModel = z.infer<typeof s3TargetEditZodModel>;

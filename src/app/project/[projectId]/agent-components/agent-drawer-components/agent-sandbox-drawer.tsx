@@ -108,10 +108,10 @@ export function AgentSandboxDrawer({
                     <Tabs
                         value={activeTab}
                         onValueChange={handleTabChange}
-                        className="min-h-0 min-w-0 flex-1"
+                        className="@container/drawer min-h-0 min-w-0 flex-1"
                     >
                         <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
-                            <div className="flex items-start gap-3">
+                            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 @min-[40rem]/drawer:grid-cols-[auto_minmax(0,1fr)_auto]">
                                 <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 ring-1 ring-violet-500/30">
                                     <Bot className="size-6" />
                                 </div>
@@ -131,7 +131,7 @@ export function AgentSandboxDrawer({
                                             </Button>
                                         )}
                                     </DrawerTitle>
-                                    <DrawerDescription className="text-xs">
+                                    <DrawerDescription className="text-xs wrap-anywhere">
                                         Agent Sandbox{agent ? ` · ${agent.project.name}` : ''}
                                         {templateInfo?.lastDeployedAt
                                             ? ` · Last deployed ${formatDateTime(templateInfo.lastDeployedAt)}`
@@ -139,10 +139,12 @@ export function AgentSandboxDrawer({
                                     </DrawerDescription>
                                 </div>
                                 {agent && (
-                                    <AgentSandboxStatusActions
-                                        agent={agent}
-                                        readonly={readonly}
-                                    />
+                                    <div className="col-span-2 min-w-0 @min-[40rem]/drawer:col-span-1">
+                                        <AgentSandboxStatusActions
+                                            agent={agent}
+                                            readonly={readonly}
+                                        />
+                                    </div>
                                 )}
                             </div>
                             {agent && role ? (

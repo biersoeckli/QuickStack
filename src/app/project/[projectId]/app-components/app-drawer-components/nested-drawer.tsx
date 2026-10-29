@@ -63,7 +63,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                                 <ArrowLeft className="size-4" />
                                 <span className="sr-only">Back</span>
                             </Button>
-                            <span>{drawer?.title}</span>
+                            <span className="min-w-0 wrap-anywhere">{drawer?.title}</span>
                         </DrawerTitle>
                         {drawer?.description && (
                             <DrawerDescription>
@@ -73,7 +73,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                     </DrawerHeader>
                     <ScrollArea
                         className="min-h-0 min-w-0 flex-1 px-6 pb-4"
-                        contentClassName="h-full"
+                        contentClassName="h-full w-full min-w-0! max-w-full"
                     >
                         <div className="h-full min-w-0 p-1">
                             {drawer?.content}

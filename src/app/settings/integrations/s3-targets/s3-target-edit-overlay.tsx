@@ -25,7 +25,7 @@ import { saveS3Target } from "./actions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import CheckboxFormField from "@/components/custom/checkbox-form-field"
 
-const NEW_S3_TARGET_DEFAULT_VALUES = { v4Auth: true }
+const NEW_S3_TARGET_DEFAULT_VALUES = { v4Auth: true, useSinglePutObject: false }
 
 export default function S3TargetEditOverlay({ children, target }: { children: React.ReactNode; target?: S3Target; }) {
 
@@ -163,6 +163,12 @@ export default function S3TargetEditOverlay({ children, target }: { children: Re
 
                     <CheckboxFormField form={form} name="v4Auth" label="Use AWS Signature Version 4 (v4auth)" />
                     <CheckboxFormField form={form} name="forcePathStyle" label="Force path-style addressing (forcepathstyle)" />
+                    <CheckboxFormField
+                      form={form}
+                      name="useSinglePutObject"
+                      label="Use single PutObject upload"
+                      labelHint="Upload backup archives with a single PutObject request instead of a multipart upload. Enable this only for S3-compatible targets that do not support multipart uploads. Each single request is limited by the target's maximum object size, so large backups can fail with EntityTooLarge."
+                    />
 
                     <p className="text-red-500">{state.message}</p>
                     <SubmitButton>Save</SubmitButton>

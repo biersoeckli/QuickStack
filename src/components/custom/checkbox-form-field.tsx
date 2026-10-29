@@ -10,16 +10,19 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "../ui/checkbox";
+import FormLabelWithQuestion from "./form-label-with-question";
 
 
 export default function CheckboxFormField<TFormType extends FieldValues>(
     {
         form,
         label,
+        labelHint,
         name
     }: {
         form: UseFormReturn<TFormType, any, TFormType>,
         label: string
+        labelHint?: string
         name: keyof TFormType
     }
 ) {
@@ -55,9 +58,9 @@ export default function CheckboxFormField<TFormType extends FieldValues>(
                         />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                        <FormLabel>
-                            {label}
-                        </FormLabel>
+                        {labelHint
+                            ? <FormLabelWithQuestion hint={labelHint}>{label}</FormLabelWithQuestion>
+                            : <FormLabel>{label}</FormLabel>}
                     </div>
                 </FormItem>
             )}

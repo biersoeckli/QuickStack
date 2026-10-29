@@ -25,6 +25,11 @@ class AwsS3Adapter {
             },
             endpoint: this.getEndpointUrl(s3Target.endpoint),
             forcePathStyle: s3Target.forcePathStyle,
+            // Do not add flexible checksums unless an operation requires them.
+            // Several S3-compatible endpoints reject the CRC32 headers that
+            // newer SDK versions add by default.
+            requestChecksumCalculation: 'WHEN_REQUIRED',
+            responseChecksumValidation: 'WHEN_REQUIRED',
         });
     }
 }

@@ -125,7 +125,7 @@ export default function Logs({
             <CardDescription>Read logs from all running Containers.</CardDescription>
         </CardHeader>}
         <CardContent className={cn(
-            'space-y-4',
+            'min-w-0 space-y-4',
             hideCard && 'p-0',
             useFullHeight && 'flex min-h-0 flex-1 flex-col',
         )}>
@@ -143,22 +143,22 @@ export default function Logs({
                     </EmptyHeader>
                 </Empty>
             )}
-            {selectedPod && appPods && <div className="flex gap-4">
-                <div className="flex-1">
+            {selectedPod && appPods && <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-[1_1_12rem]">
                     <Select
                         value={selectedPod.podName}
                         onValueChange={(val) => setSelectedPod(appPods.find(p => p.podName === val))}
                         items={appPods.map((pod) => ({ value: pod.podName, label: `${pod.podName} (${pod.status})` }))}
                     >
-                        <SelectTrigger className="w-full" >
-                            <SelectValue placeholder="Pod wählen" />
+                        <SelectTrigger className="min-w-0 w-full" >
+                            <SelectValue className="block! min-w-0 truncate" placeholder="Pod wählen" />
                         </SelectTrigger>
                         <SelectContent>
                             {appPods.map(pod => <SelectItem key={pod.podName} value={pod.podName}>{pod.podName} ({pod.status})</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
-                {role === RolePermissionEnum.READWRITE && <div>
+                {role === RolePermissionEnum.READWRITE && <div className="shrink-0">
                     <TerminalDialog terminalInfo={{
                         podName: selectedPod.podName,
                         containerName: selectedPod.containerName,
@@ -169,10 +169,10 @@ export default function Logs({
                         </Button>
                     </TerminalDialog>
                 </div>}
-                <div>
+                <div className="shrink-0">
                     <Tooltip>
                         <TooltipTrigger delay={300}>
-                            <Button variant="secondary" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
+                            <Button variant="secondary" aria-label="Fullscreen Logs" onClick={() => openDialog(<LogsDialogContent namespace={app.projectId} podName={selectedPod.podName} />, { maxWidth: '1300px' })}>
                                 <Expand />
                             </Button>
                         </TooltipTrigger>
@@ -193,7 +193,7 @@ export default function Logs({
     </>;
 
     if (hideCard && useFullHeight) {
-        return <div className="flex h-full min-h-0 flex-col">{content}</div>;
+        return <div className="flex h-full min-h-0 min-w-0 flex-col">{content}</div>;
     }
 
     return <>
