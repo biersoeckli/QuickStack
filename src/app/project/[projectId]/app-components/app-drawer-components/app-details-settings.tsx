@@ -62,8 +62,8 @@ export function DrawerSettings({
     }, [onEnvironmentOpened, openEnvironment, openEnvironmentEditor]);
 
     return (
-        <div className="relative grid gap-16 grid-cols-1 lg:grid-cols-[1fr_auto]">
-            <div className="pb-4 space-y-10 [&_[data-slot=card-footer]]:mt-4">
+        <div className="relative min-w-0">
+            <div className="min-w-0 pb-4 space-y-10 [&_[data-slot=card-footer]]:mt-4">
                 <SettingsSection
                     id="source"
                     title="Source"

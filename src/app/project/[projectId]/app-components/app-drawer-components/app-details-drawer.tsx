@@ -83,7 +83,10 @@ export type AppDetailsDrawerNode = {
 
 export function DrawerTabScrollArea({ children }: { children: ReactNode }) {
     return (
-        <ScrollArea className="min-h-0 min-w-0 flex-1 px-6 pt-2">
+        <ScrollArea
+            className="min-h-0 min-w-0 flex-1 px-6 pt-2"
+            contentClassName="w-full min-w-0! max-w-full"
+        >
             <div className="min-w-0 pb-4">{children}</div>
         </ScrollArea>
     );
@@ -107,11 +110,11 @@ function AppStatusActions({
     };
 
     return (
-        <div className="flex shrink-0 items-center gap-1 bg-stone-100 rounded-2xl pl-4 pr-2 py-1">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-1 bg-stone-100 rounded-2xl pl-4 pr-2 py-1">
             <PodStatusIndicator appId={app.id} />
             {(lifecycle.canManage || app.appDomains.length > 0) && (
                 <TooltipProvider delay={300}>
-                    <div className="ml-2 flex items-center gap-1 pl-2">
+                    <div className="ml-2 flex flex-wrap items-center gap-1 pl-2">
                         {lifecycle.canManage && (
                             <>
                                 <Tooltip>
@@ -319,10 +322,10 @@ export function AppDetailsDrawer({
                     <Tabs
                         value={activeTab}
                         onValueChange={handleTabChange}
-                        className="min-h-0 min-w-0 flex-1"
+                        className="@container/drawer min-h-0 min-w-0 flex-1"
                     >
                         <DrawerHeader className="gap-4 p-6 pb-0 pr-12 text-left">
-                            <div className="flex items-start gap-3">
+                            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 @min-[40rem]/drawer:grid-cols-[auto_minmax(0,1fr)_auto]">
                                 <div
                                     className={cn(
                                         'flex size-12 shrink-0 items-center justify-center rounded-lg ring-1',
@@ -357,15 +360,15 @@ export function AppDetailsDrawer({
                                             </EditAppDialog>
                                         )}
                                     </DrawerTitle>
-                                    <DrawerDescription className="text-xs">
+                                    <DrawerDescription className="text-xs wrap-anywhere">
                                         {node.caption ??
                                             (isApp ? 'App' : 'Agent sandbox')}
                                     </DrawerDescription>
                                 </div>
-                                {app && !needsSourceConfiguration && (<>
-                                    <AppStatusActions app={app} role={role} />
-                                    <div className=""></div>
-                                </>
+                                {app && !needsSourceConfiguration && (
+                                    <div className="col-span-2 min-w-0 @min-[40rem]/drawer:col-span-1">
+                                        <AppStatusActions app={app} role={role} />
+                                    </div>
                                 )}
                             </div>
                             {app && role && !needsSourceConfiguration ? (
@@ -443,14 +446,12 @@ export function AppDetailsDrawer({
                                 {hasVolumes && (
                                     <TabsContent value="backups" className="flex min-h-0 min-w-0 flex-1 flex-col">
                                         <DrawerTabScrollArea>
-                                            <div className="px-2 pt-4">
-                                                <DrawerBackupsTab
-                                                    app={app}
-                                                    role={role}
-                                                    s3Targets={s3Targets}
-                                                    volumeBackups={volumeBackups}
-                                                />
-                                            </div>
+                                            <DrawerBackupsTab
+                                                app={app}
+                                                role={role}
+                                                s3Targets={s3Targets}
+                                                volumeBackups={volumeBackups}
+                                            />
                                         </DrawerTabScrollArea>
                                     </TabsContent>
                                 )}

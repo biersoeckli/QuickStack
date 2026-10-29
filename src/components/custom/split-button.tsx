@@ -55,7 +55,7 @@ export function SplitButton({
                         disabled={disabled}
                         size={size}
                         variant={variant}
-                        className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                        className={cn(variant ==='outline' ? 'border': ' border-l border-primary-foreground/20', "rounded-l-none px-2")}
                     />}
                 >
                     <ChevronDown data-icon="inline-end" />
