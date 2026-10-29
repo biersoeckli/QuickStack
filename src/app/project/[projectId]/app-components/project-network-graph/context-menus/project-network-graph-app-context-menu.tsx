@@ -17,7 +17,7 @@ import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 
 export type ProjectNetworkGraphAppContextMenuProps = {
     app: AppExtendedModel;

@@ -52,7 +52,7 @@ class PhpMyAdminService extends BaseDbToolService {
                             containers: [
                                 {
                                     name: appName,
-                                    image: 'phpmyadmin/phpmyadmin:latest',
+                                    image: 'phpmyadmin:latest',
                                     imagePullPolicy: 'Always',
                                     env: [
                                         {

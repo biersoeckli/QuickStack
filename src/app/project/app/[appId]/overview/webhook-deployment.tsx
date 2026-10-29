@@ -7,7 +7,7 @@ import { useConfirmDialog } from "@/frontend/states/zustand.states";
 import { Toast } from "@/frontend/utils/toast.utils";
 import { ClipboardCopy } from "lucide-react";
 import { toast } from "sonner";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model";
 
 export default function WebhookDeploymentInfo({
     app,

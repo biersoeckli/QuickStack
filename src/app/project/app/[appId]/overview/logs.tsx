@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Expand, Terminal } from "lucide-react";
 import { TerminalDialog } from "./terminal-overlay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model.ts";
+import { RolePermissionEnum } from "@/shared/model/role-extended.model";
 import { useDialog, usePodsStatus } from "@/frontend/states/zustand.states";
 import { cn } from "@/frontend/utils/utils";
 import {

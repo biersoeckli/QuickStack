@@ -39,10 +39,12 @@ When creating or editing a service:
 
 ## Standalone Services
 
-- Place cron and background jobs in `src/server/services/standalone-services/`.
-- Register cron jobs with `scheduleService`.
+- Use `src/server/services/standalone-services/` for Node-runtime modules consumed by cron jobs, watchers, Socket.IO, or other (non Next.JS) custom-server paths.
+- Keep standalone services free of Next.js and App Router runtime imports, including `next/cache`, `next/navigation`, and `next/server`.
+- Register persistent cron jobs with `scheduleService`; event-driven Socket.IO services need no schedule registration.
 - Wrap cron callback bodies in `try/catch` and log errors instead of rethrowing.
-- Initialize standalone services from `src/server.ts`.
+- Initialize persistent standalone services from `src/server.ts`.
+- Before creating or moving a standalone service, read `src/server/services/standalone-services/README.md` for its consumers and placement rules.
 
 ## Reference
 

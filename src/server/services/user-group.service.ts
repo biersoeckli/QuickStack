@@ -4,122 +4,17 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
 import { RoleEditModel } from "@/shared/model/role-edit.model";
-import { adminRoleName } from "@/shared/model/role-extended.model.ts";
-import { ProjectRolePermission, UserGroupExtended } from "@/shared/model/sim-session.model";
-
-type RoleProjectPermissionRecord = {
-    projectId: string;
-    project: {
-        apps: {
-            id: string;
-            name: string;
-        }[];
-        agents: {
-            id: string;
-            name: string;
-        }[];
-    };
-    createApps: boolean;
-    deleteApps: boolean;
-    writeApps: boolean;
-    readApps: boolean;
-    roleAppPermissions: {
-        appId: string;
-        permission: string;
-    }[];
-    roleAgentPermissions: {
-        agentId: string;
-        permission: string;
-    }[];
-};
+import { adminRoleName } from "@/shared/model/role-extended.model";
+import type { UserGroupExtended } from "@/shared/model/sim-session.model";
+import userGroupQueryService from './standalone-services/user-group-query.service';
 
 export class UserGroupService {
-    private mapProjectRolePermission(permission: RoleProjectPermissionRecord): ProjectRolePermission {
-        const appWorkloads = permission.project.apps.map((app) => ({
-            id: app.id,
-            name: app.name,
-        }));
-        const agentWorkloads = permission.project.agents?.map((agent) => ({
-            id: agent.id,
-            name: agent.name,
-        })) ?? [];
-
-        const appPermissions = permission.roleAppPermissions.map((wp) => ({
-            workloadId: wp.appId,
-            permission: wp.permission,
-        }));
-        const agentPermissions = permission.roleAgentPermissions?.map((wp) => ({
-            workloadId: wp.agentId,
-            permission: wp.permission,
-        })) ?? [];
-
-        return {
-            projectId: permission.projectId,
-            project: {
-                projectWorkloads: [...appWorkloads, ...agentWorkloads],
-            },
-            createWorkloads: permission.createApps,
-            deleteWorkloads: permission.deleteApps,
-            writeWorkloads: permission.writeApps,
-            readWorkloads: permission.readApps,
-            workloadPermissions: [...appPermissions, ...agentPermissions],
-        };
-    }
-
     async getRoleByUserMail(email: string): Promise<UserGroupExtended | null> {
-        return await unstable_cache(async (mail: string) => await dataAccess.client.user.findFirst({
-            select: {
-                userGroup: {
-                    select: {
-                        name: true,
-                        id: true,
-                        canAccessBackups: true,
-                        roleProjectPermissions: {
-                            select: {
-                                projectId: true,
-                                project: {
-                                    select: {
-                                        apps: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                            }
-                                        },
-                                        agents: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                            }
-                                        }
-                                    }
-                                },
-                                createApps: true,
-                                deleteApps: true,
-                                writeApps: true,
-                                readApps: true,
-                                roleAppPermissions: true,
-                                roleAgentPermissions: true,
-                            }
-                        }
-                    }
-                }
-            },
-            where: {
-                email: mail
-            }
-        }).then(user => {
-            if (!user?.userGroup) {
-                return null;
-            }
-
-            return {
-                ...user.userGroup,
-                roleProjectPermissions: user.userGroup.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
-            };
-        }),
-            [Tags.userGroups(), Tags.users()], {
-            tags: [Tags.userGroups(), Tags.users()]
-        })(email);
+        return unstable_cache(
+            (mail: string) => userGroupQueryService.getRoleByUserMail(mail),
+            [Tags.userGroups(), Tags.users()],
+            { tags: [Tags.userGroups(), Tags.users()] },
+        )(email);
     }
 
     async saveWithPermissions(item: RoleEditModel) {
@@ -242,82 +137,13 @@ export class UserGroupService {
     }
 
     async getAll(): Promise<UserGroupExtended[]> {
-        return await unstable_cache(async () => await dataAccess.client.userGroup.findMany({
-            include: {
-                roleProjectPermissions: {
-                    select: {
-                        projectId: true,
-                        project: {
-                            select: {
-                                apps: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                    }
-                                },
-                                agents: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                    }
-                                }
-                            }
-                        },
-                        createApps: true,
-                        deleteApps: true,
-                        writeApps: true,
-                        readApps: true,
-                        roleAppPermissions: true,
-                        roleAgentPermissions: true,
-                    }
-                }
-            }
-        }).then((groups) => groups.map((group) => ({
-            ...group,
-            roleProjectPermissions: group.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
-        }))),
+        return await unstable_cache(() => userGroupQueryService.getAll(),
             [Tags.userGroups()], {
             tags: [Tags.userGroups()]
         })();
     }
     async getById(id: string): Promise<UserGroupExtended> {
-        return await unstable_cache(async () => await dataAccess.client.userGroup.findFirstOrThrow({
-            where: {
-                id
-            },
-            include: {
-                roleProjectPermissions: {
-                    select: {
-                        projectId: true,
-                        project: {
-                            select: {
-                                apps: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                    }
-                                },
-                                agents: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                    }
-                                }
-                            }
-                        },
-                        createApps: true,
-                        deleteApps: true,
-                        writeApps: true,
-                        readApps: true,
-                        roleAppPermissions: true,
-                        roleAgentPermissions: true,
-                    }
-                }
-            }
-        }).then((group) => ({
-            ...group,
-            roleProjectPermissions: group.roleProjectPermissions.map((permission) => this.mapProjectRolePermission(permission)),
-        })),
+        return await unstable_cache(() => userGroupQueryService.getById(id),
             [Tags.userGroups(), id], {
             tags: [Tags.userGroups()]
         })();

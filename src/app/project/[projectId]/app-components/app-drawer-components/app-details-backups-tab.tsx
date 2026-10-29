@@ -23,7 +23,7 @@ import { useConfirmDialog } from '@/frontend/states/zustand.states';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { BackupEntry } from '@/shared/model/backup-info.model';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-extended.model';
 import { useNestedDrawer } from './nested-drawer';
 

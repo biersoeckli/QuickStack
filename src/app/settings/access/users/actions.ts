@@ -7,7 +7,7 @@ import userService from "@/server/services/user.service";
 import { UserEditModel, userEditZodModel } from "@/shared/model/user-edit.model";
 import userGroupService from "@/server/services/user-group.service";
 import { RoleEditModel, roleEditZodModel } from "@/shared/model/role-edit.model";
-import { adminRoleName } from "@/shared/model/role-extended.model.ts";
+import { adminRoleName } from "@/shared/model/role-extended.model";
 import restApiKeyService from "@/server/services/rest-api-key.service";
 import { RestApiKeyCreateModel, restApiKeyCreateZodModel } from "@/shared/model/rest-api-key.model";
 import { CryptoUtils } from "@/server/utils/crypto.utils";

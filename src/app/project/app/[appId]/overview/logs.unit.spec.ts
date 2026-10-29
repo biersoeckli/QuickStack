@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Logs from './logs';
 import { getPodsForApp } from './actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 
 vi.mock('./actions', () => ({
     getPodsForApp: vi.fn(),

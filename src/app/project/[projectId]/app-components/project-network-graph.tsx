@@ -27,7 +27,7 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { AgentExtendedModel } from '@/shared/model/agent-extended.model';
 import type { UserSession } from '@/shared/model/sim-session.model';
 import { UserGroupUtils } from '@/shared/utils/role.utils';
-import { RolePermissionEnum } from '@/shared/model/role-extended.model.ts';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import { ProjectNetworkGraphConnectionContextMenu } from './project-network-graph/context-menus/project-network-graph-connection-context-menu';
 import { connectionDeletionProvenance, type NetworkGraphEdge, NetworkGraphNode } from './project-network-graph/project-network-graph-projection';
 import { useProjectNetworkGraph } from './project-network-graph/use-project-network-graph';
