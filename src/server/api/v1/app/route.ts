@@ -13,9 +13,11 @@ import {
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { AppExtendedModel, AppExtendedWriteModel, AppExtendedWriteZodModel, AppExtendedZodModel } from '@/shared/model/app-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
 import { appLogsResponseZodModel } from '@/shared/model/app-tail-log-entry';
 import { commandRequestZodModel, commandResultZodModel } from '@/shared/model/agent-sandbox.model';
+import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
 function stripAppSubObjectIdsForCreate(body: AppExtendedWriteModel): AppExtendedWriteModel {
     return {
@@ -42,19 +44,27 @@ export const appRoutes = new Elysia()
 
         const apps = query.projectId ? await appService.getAllAppsByProjectId(query.projectId) : await appService.getAll();
 
-        if (UserGroupUtils.isAdmin(identity.session)) {
-            return apps;
-        }
+        const visibleApps = UserGroupUtils.isAdmin(identity.session)
+            ? apps
+            : apps.filter(app =>
+                UserGroupUtils.sessionHasReadAccessForApp(identity.session, app.id)
+            );
 
-        return apps.filter(app =>
-            UserGroupUtils.sessionHasReadAccessForApp(identity.session, app.id)
-        );
+        return paginationUtils.isRequested(query)
+            ? paginationUtils.page(visibleApps, query)
+            : visibleApps;
     }, {
-        query: z.object({
+        query: paginationQueryZodModel.extend({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapResponseModel(z.array(AppExtendedZodModel)),
-        detail: { summary: 'List apps', operationId: 'listApps', tags: ['Apps'], security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(AppExtendedZodModel)),
+        detail: {
+            summary: 'List apps',
+            description: 'Returns all apps as an array. Set limit (and optionally cursor) to receive the paginated envelope { items, total, limit, nextCursor } instead.',
+            operationId: 'listApps',
+            tags: ['Apps'],
+            security: [{ bearerAuth: [] }],
+        }
     })
     .get('/apps/:appId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -94,7 +104,14 @@ export const appRoutes = new Elysia()
             lines: z.coerce.number().int().positive().max(5000).optional().default(200)
         }),
         response: ApiUtils.mapResponseModel(appLogsResponseZodModel),
-        detail: { summary: 'Get current app logs', operationId: 'getAppLogs', tags: ['Apps'], security: [{ bearerAuth: [] }] }
+        detail: ApiOperationDetailUtils.create({
+            summary: 'Get current app logs',
+            description: 'Returns the current log tail of the app. `lines` defaults to 200 and is limited to 5000.',
+            'x-mcp-description': 'Returns the current log tail of the app. Keep `lines` small (default 200, max 5000); large responses are truncated by MCP clients.',
+            operationId: 'getAppLogs',
+            tags: ['Apps'],
+            security: [{ bearerAuth: [] }],
+        })
     })
     .post('/apps/:appId/commands', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -111,13 +128,16 @@ export const appRoutes = new Elysia()
         }),
         body: commandRequestZodModel,
         response: ApiUtils.mapResponseModel(commandResultZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Run command in app',
-            description: 'Run a shell command in the first running Pod of this app. Requires write access to the app.',
+            description: 'Runs a shell command in the first running Pod of the app. Returns stdout, stderr and exitCode.',
+            'x-mcp-description': `Run a shell command in the first running Pod of this app. Requires write access to the app.
+Example: {"command":"ls -la /app","cwd":"/app","timeoutSec":120}
+Returns stdout, stderr and exitCode. The command is executed inside the live Pod and can modify application data.`,
             operationId: 'runAppCommand',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
-        },
+        }),
     })
     .post('/apps', async ({ body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -144,13 +164,23 @@ export const appRoutes = new Elysia()
     }, {
         body: AppExtendedWriteZodModel,
         response: ApiUtils.mapResponseModel(AppExtendedZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Create or update app.',
-            description: 'When an ID is set, the app will be updated. Otherwise a new one will be created.',
+            description: 'Creates an app when id is omitted, otherwise replaces the existing app. projectId cannot be changed. Call deployApp afterwards to roll out the desired state.',
+            'x-mcp-description': `Upsert one App.
+- Omit id to create: projectId is required. appDomains, appNodePorts, appFileMounts, appVolumes and appBasicAuths are required arrays (empty allowed), and appNetworkPolicy must be null or an object.
+- Send id to update: projectId must equal the existing app's projectId and cannot be changed. The request replaces the stored app, so omitted or empty sub-resource arrays delete the existing entries. Call getApp first, then send the full object back with the ids of sub-resources you want to keep.
+- This only saves desired state. Call deployApp afterwards to roll it out. Saving revalidates server caches but does not change Kubernetes resources.
+
+Example create:
+{"name":"web","appType":"APP","projectId":"<projectId>","sourceType":"CONTAINER","buildMethod":"RAILPACK","containerImageSource":"nginx:1.27","dockerfilePath":"./Dockerfile","replicas":1,"envVars":"","buildArgs":"","useNetworkPolicy":true,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"appDomains":[{"hostname":"web.example.com","port":80,"useSsl":true,"redirectHttps":true}],"appNodePorts":[],"appFileMounts":[],"appVolumes":[],"appBasicAuths":[],"appNetworkPolicy":null}
+
+Example update (read getApp first and keep all sub-resource ids you do not want to delete):
+{"id":"<appId>","name":"web","appType":"APP","projectId":"<projectId>","sourceType":"CONTAINER","buildMethod":"DOCKERFILE","containerImageSource":"nginx:1.27","dockerfilePath":"./Dockerfile","replicas":2,"envVars":"","buildArgs":"","useNetworkPolicy":true,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"appDomains":[{"id":"<domainId>","hostname":"web.example.com","port":80,"useSsl":true,"redirectHttps":true}],"appNodePorts":[],"appFileMounts":[],"appVolumes":[],"appBasicAuths":[],"appNetworkPolicy":null}`,
             operationId: 'saveApp',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }]
-        }
+        })
     })
     .delete('/apps/:id', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -167,5 +197,12 @@ export const appRoutes = new Elysia()
             id: z.string(),
         }),
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: { summary: 'Delete app', operationId: 'deleteApp', tags: ['Apps'], security: [{ bearerAuth: [] }] }
+        detail: ApiOperationDetailUtils.create({
+            summary: 'Delete app',
+            description: 'Permanently deletes the app and its sub-resources (domains, volumes, file mounts, basic auth).',
+            'x-mcp-description': 'Permanently deletes the app and its sub-resources (domains, volumes, file mounts, basic auth). No request body.\nExample: DELETE /api/v1/apps/<appId>.\nRequires confirmation because this cannot be undone.',
+            operationId: 'deleteApp',
+            tags: ['Apps'],
+            security: [{ bearerAuth: [] }],
+        })
     });

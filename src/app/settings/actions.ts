@@ -35,6 +35,7 @@ import { BuildSettingsModel, buildSettingsZodModel } from "@/shared/model/build-
 import qsAuthProxyService from "@/server/services/qs-auth-proxy.service";
 import clusterAddonRegistryService from "@/server/services/addons/cluster-addon-registry.service";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import { MCP_SERVER_MODE_LABELS, McpServerMode, mcpServerModeZodModel } from "@/shared/model/mcp-settings.model";
 import { randomUUID } from "crypto";
 
 export const saveBuildSettings = async (prevState: any, inputData: BuildSettingsModel) =>
@@ -272,14 +273,35 @@ export const setOpenApiSpecEnabled = async (enabled: boolean) =>
     return new SuccessActionResult(undefined, `Turned ${enabled ? 'on' : 'off'} OpenAPI spec access.`);
   });
 
-export const setMcpServerEnabled = async (enabled: boolean) =>
+export const setMcpServerMode = async (mode: McpServerMode) =>
+  simpleAction(async () => {
+    await getAdminUserSession();
+
+    const parsedMode = mcpServerModeZodModel.safeParse(mode);
+    if (!parsedMode.success) {
+      throw new ServiceException('Invalid MCP server mode.');
+    }
+
+    await paramService.save({
+      name: ParamService.MCP_SERVER_MODE,
+      value: parsedMode.data,
+    });
+    // Keep the legacy flag in sync so an older QuickStack build still sees on/off.
+    await paramService.save({
+      name: ParamService.MCP_SERVER_ENABLED,
+      value: parsedMode.data === 'off' ? 'false' : 'true',
+    });
+    return new SuccessActionResult(undefined, `MCP server set to ${MCP_SERVER_MODE_LABELS[parsedMode.data]}.`);
+  });
+
+export const setMcpSendSecrets = async (enabled: boolean) =>
   simpleAction(async () => {
     await getAdminUserSession();
     await paramService.save({
-      name: ParamService.MCP_SERVER_ENABLED,
-      value: enabled ? 'true' : 'false'
+      name: ParamService.MCP_SEND_SECRETS,
+      value: enabled ? 'true' : 'false',
     });
-    return new SuccessActionResult(undefined, `Turned ${enabled ? 'on' : 'off'} the MCP server.`);
+    return new SuccessActionResult(undefined, `MCP secrets ${enabled ? 'enabled' : 'disabled'}.`);
   });
 
 export const setRegistryStorageLocation = async (prevState: any, inputData: RegistryStorageLocationSettingsModel) =>

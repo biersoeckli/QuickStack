@@ -23,8 +23,10 @@ import {
 } from '@/shared/model/agent-sandbox.model';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
 import { ApiUtils } from '@/server/utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import agentAccessService from '@/server/services/agent-access.service';
 import { FileUploadUtils } from '@/server/utils/file-upload.utils';
+import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
 const agentSandboxParamsSchema = z.object({
     agentId: z.string(),
@@ -67,19 +69,24 @@ async function ensureAgentExists(agentId: string) {
 
 export const agentSandboxRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
-    .get('/agents/:agentId/sandboxes', async ({ params, identity }) => {
+    .get('/agents/:agentId/sandboxes', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
 
         await ensureAgentExists(params.agentId);
         ensureReadAgent(identity, params.agentId);
 
-        return agentSandboxService.listSandboxes(params.agentId);
+        const sandboxes = await agentSandboxService.listSandboxes(params.agentId);
+
+        return paginationUtils.isRequested(query)
+            ? paginationUtils.page(sandboxes, query)
+            : sandboxes;
     }, {
         params: agentSandboxParamsSchema,
-        response: ApiUtils.mapResponseModel(z.array(agentSandboxZodModel)),
+        query: paginationQueryZodModel,
+        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(agentSandboxZodModel)),
         detail: {
             summary: 'List agent sandboxes',
-            description: 'List all running agent sandboxes for the given agent ID.',
+            description: 'List all running agent sandboxes for the given agent ID as an array. Set limit (and optionally cursor) for the paginated envelope { items, total, limit, nextCursor }.',
             operationId: 'listAgentSandboxes',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -99,12 +106,16 @@ export const agentSandboxRoutes = new Elysia()
         }),
         body: startSandboxRequestZodModel,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Start agent sandbox',
+            description: 'Creates and starts one agent sandbox for this agent. The body is optional and defaults to {}. Changes live Kubernetes resources.',
+            'x-mcp-description': `Creates and starts one agent sandbox for this agent. Body is optional and defaults to {}.
+Example: POST /api/v1/agents/<agentId>/sandboxes?timeoutMs=300000 with body {"customTag":"review","idleTimeoutMinutes":30,"env":{"FOO":"bar"}}
+customTag must be 1-63 characters; idleTimeoutMinutes is 1-1440; env names must match [A-Za-z_][A-Za-z0-9_]*. Query timeoutMs (max 900000, default 300000) controls how long the API waits for the sandbox to start. This creates live Kubernetes resources; ask for confirmation first.`,
             operationId: 'startAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .post('/agents/:agentId/sandboxes/resume', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -117,13 +128,14 @@ export const agentSandboxRoutes = new Elysia()
         params: agentSandboxParamsSchema,
         body: resumeSandboxByTagRequestZodModel,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Resume agent sandbox by Custom Tag',
-            description: 'Resume the suspended Agent Sandbox of this Agent that carries the given Custom Tag.',
+            description: 'Resumes the suspended Agent Sandbox of this Agent that carries the given Custom Tag.',
+            'x-mcp-description': 'Resume the suspended Agent Sandbox of this Agent that carries the given Custom Tag. Recreates the Pod with the existing volumes mounted.\nExample: POST /api/v1/agents/<agentId>/sandboxes/resume with body {"customTag":"review"}.',
             operationId: 'resumeAgentSandboxByTag',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .post('/agents/:agentId/sandboxes/:sandboxName/suspend', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -135,13 +147,14 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Suspend agent sandbox',
-            description: 'Release the compute of a running Agent Sandbox while keeping its volumes and identity.',
+            description: 'Releases the compute of a running Agent Sandbox while keeping its volumes and identity. The sandbox Pod is deleted and can be resumed later.',
+            'x-mcp-description': 'Release the compute of a running Agent Sandbox while keeping its volumes and identity. No request body. The sandbox Pod is deleted and can be resumed later.\nExample: POST /api/v1/agents/<agentId>/sandboxes/<sandboxName>/suspend.',
             operationId: 'suspendAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .post('/agents/:agentId/sandboxes/:sandboxName/resume', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -153,13 +166,14 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         response: ApiUtils.mapResponseModel(agentSandboxZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Resume agent sandbox',
-            description: 'Recreate the Pod of a suspended Agent Sandbox with its existing volumes mounted.',
+            description: 'Recreates the Pod of a suspended Agent Sandbox with its existing volumes mounted.',
+            'x-mcp-description': 'Recreate the Pod of a suspended Agent Sandbox with its existing volumes mounted. No request body.\nExample: POST /api/v1/agents/<agentId>/sandboxes/<sandboxName>/resume.',
             operationId: 'resumeAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .get('/agents/:agentId/sandboxes/:sandboxName', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -201,7 +215,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(agentSandboxAccessUrlZodModel),
         detail: {
             summary: 'Get agent sandbox access URL',
-            description: 'Get a temporary access URL to access the agent sandbox via the browser. This is only possible if a domain is configured for the agent and the agent serves an API or Web interface.',
+            description: 'Get a temporary access URL to access the agent sandbox via the browser. This is only possible if a domain is configured for the agent and the agent serves an API or Web interface. No request body; the returned URL expires.\nExample: GET /api/v1/agents/<agentId>/sandboxes/<sandboxName>/accessUrl/<domainId>.',
             operationId: 'getAgentSandboxAccessUrl',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -224,7 +238,7 @@ export const agentSandboxRoutes = new Elysia()
         response: ApiUtils.mapResponseModel(agentSandboxApiTokenZodModel),
         detail: {
             summary: 'Create agent sandbox API token',
-            description: 'Create a bearer token for direct API access to this Agent Sandbox through a configured domain. The token expires after 15 minutes.',
+            description: 'Create a bearer token for direct API access to this Agent Sandbox through a configured domain. No request body. The token expires after 15 minutes.\nExample: POST /api/v1/agents/<agentId>/sandboxes/<sandboxName>/apiToken/<domainId>.',
             operationId: 'createAgentSandboxApiToken',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
@@ -241,12 +255,14 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentSandboxClaimParamsSchema,
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Delete agent sandbox',
+            description: 'Permanently deletes the agent sandbox and stops its Pod.',
+            'x-mcp-description': 'Permanently deletes the agent sandbox and stops its Pod. No request body.\nExample: DELETE /api/v1/agents/<agentId>/sandboxes/<sandboxName>.\nRequires confirmation because the running sandbox cannot be recovered.',
             operationId: 'deleteAgentSandbox',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .delete('/agents/:agentId/tags/:customTag', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -259,13 +275,14 @@ export const agentSandboxRoutes = new Elysia()
     }, {
         params: agentTagParamsSchema,
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Delete Custom Tag data',
-            description: 'Delete all stored data of one Custom Tag across the Agent\'s PER_CUSTOM_TAG volumes. Rejected while a sandbox with that tag exists.',
+            description: 'Deletes all stored data of one Custom Tag across the Agent\'s PER_CUSTOM_TAG volumes. Rejected while a sandbox with that tag exists.',
+            'x-mcp-description': 'Delete all stored data of one Custom Tag across the Agent\'s PER_CUSTOM_TAG volumes. Rejected while a sandbox with that tag exists. No request body.\nExample: DELETE /api/v1/agents/<agentId>/tags/<customTag>.\nRequires confirmation because this cannot be undone.',
             operationId: 'deleteAgentTag',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .post('/agents/:agentId/sandboxes/:sandboxName/commands', async ({ params, body, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();
@@ -278,13 +295,16 @@ export const agentSandboxRoutes = new Elysia()
         params: agentSandboxClaimParamsSchema,
         body: commandRequestZodModel,
         response: ApiUtils.mapResponseModel(commandResultZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Run command in agent sandbox',
-            description: 'Run a shell command in a running Agent Sandbox. CLI harness templates stay alive with `sleep infinity`; invoke their documented launcher or bootstrap script here so it receives the Agent Runtime Secret and selected LiteLLM Model Alias.',
+            description: 'Runs a shell command in a running Agent Sandbox. timeoutSec is 1-3600 (default 120). Returns stdout, stderr and exitCode.',
+            'x-mcp-description': `Run a shell command in a running Agent Sandbox. CLI harness templates stay alive with \`sleep infinity\`; invoke their documented launcher or bootstrap script here so it receives the Agent Runtime Secret and selected LiteLLM Model Alias.
+Example: {"command":"pwd && ls -la","cwd":"/workspace","timeoutSec":120,"env":{"FOO":"bar"}}
+timeoutSec is 1-3600 (default 120). Returns stdout, stderr and exitCode. Requires confirmation because the command can modify sandbox state.`,
             operationId: 'runAgentSandboxCommand',
             tags: ['Agent Sandboxes'],
             security: [{ bearerAuth: [] }],
-        },
+        })
     })
     .get('/agents/:agentId/sandboxes/:sandboxName/files/read', async ({ params, query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException();

@@ -186,7 +186,10 @@ describe('REST API v1 integration - nested subitem identity', () => {
             body: payload,
         }), 422);
 
-        expect(problem.detail).toBe('Request validation failed.');
+        expect(problem.detail).toContain('appNetworkPolicy');
+        expect(problem.errors).toEqual(expect.arrayContaining([
+            expect.objectContaining({ path: 'appNetworkPolicy' }),
+        ]));
     });
 
     it('removes an App network policy configuration when the API receives null', async () => {
@@ -373,7 +376,10 @@ describe('REST API v1 integration - nested subitem identity', () => {
             body: payload,
         }), 422);
 
-        expect(problem.detail).toBe('Request validation failed.');
+        expect(problem.detail).toContain('agentNetworkPolicy');
+        expect(problem.errors).toEqual(expect.arrayContaining([
+            expect.objectContaining({ path: 'agentNetworkPolicy' }),
+        ]));
     });
 
     it('removes an Agent network policy configuration when the API receives null', async () => {
@@ -532,5 +538,5 @@ async function expectApiProblem(response: Response, status: number) {
     const json = text ? JSON.parse(text) : undefined;
 
     expect(response.status, JSON.stringify(json)).toBe(status);
-    return json as { detail?: string };
+    return json as { detail?: string; errors?: Array<{ path: string; message: string }> };
 }

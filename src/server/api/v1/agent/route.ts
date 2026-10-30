@@ -10,7 +10,9 @@ import {
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { AgentExtendedModel, AgentExtendedWriteModel, AgentExtendedWriteZodModel, AgentExtendedZodModel } from '@/shared/model/agent-extended.model';
 import { ApiUtils } from '../../../utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import { ApiNotFoundException, ApiUnauthorizedException, ServiceException } from '@/shared/model/service.exception.model';
+import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
 function stripAgentSubObjectIdsForCreate(body: AgentExtendedWriteModel): AgentExtendedWriteModel {
     const agentNetworkPolicy = body.agentNetworkPolicy
@@ -39,19 +41,27 @@ export const agentRoutes = new Elysia()
 
         const agents = query.projectId ? await agentService.getAllByProjectId(query.projectId) : await agentService.getAll();
 
-        if (UserGroupUtils.isAdmin(identity.session)) {
-            return agents;
-        }
+        const visibleAgents = UserGroupUtils.isAdmin(identity.session)
+            ? agents
+            : agents.filter(agent =>
+                UserGroupUtils.sessionHasReadAccessForProjectWorkload(identity.session, agent.id)
+            );
 
-        return agents.filter(agent =>
-            UserGroupUtils.sessionHasReadAccessForProjectWorkload(identity.session, agent.id)
-        );
+        return paginationUtils.isRequested(query)
+            ? paginationUtils.page(visibleAgents, query)
+            : visibleAgents;
     }, {
-        query: z.object({
+        query: paginationQueryZodModel.extend({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapResponseModel(z.array(AgentExtendedZodModel)),
-        detail: { summary: 'List agents', operationId: 'listAgents', tags: ['Agents'], security: [{ bearerAuth: [] }] }
+        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(AgentExtendedZodModel)),
+        detail: {
+            summary: 'List agents',
+            description: 'Returns all agent templates as an array. Set limit (and optionally cursor) for the paginated envelope { items, total, limit, nextCursor }.',
+            operationId: 'listAgents',
+            tags: ['Agents'],
+            security: [{ bearerAuth: [] }],
+        }
     })
     .get('/agents/:agentId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -91,13 +101,23 @@ export const agentRoutes = new Elysia()
     }, {
         body: AgentExtendedWriteZodModel,
         response: ApiUtils.mapResponseModel(AgentExtendedZodModel),
-        detail: {
+        detail: ApiOperationDetailUtils.create({
             summary: 'Create or update agent.',
-            description: 'When an ID is set, the agent will be updated. Otherwise a new one will be created.',
+            description: 'Creates an agent template when id is omitted, otherwise replaces the existing template. projectId cannot be changed. Call deployAgent afterwards to apply it.',
+            'x-mcp-description': `Upsert one agent template.
+- Omit id to create: projectId, llmGatewayId and modelAlias (non-empty array) are required. agentDomains, agentVolumes, agentFileMounts are required arrays, and agentNetworkPolicy must be null or an object.
+- Send id to update: projectId must equal the existing agent's projectId and cannot be changed. The request replaces the stored agent, so omitted or empty sub-resource arrays delete the existing entries. Call getAgent first, then send the full object back with the ids of sub-resources you want to keep.
+- This only saves the template. Call deployAgent to apply it, then startAgentSandbox to run a sandbox. Saving revalidates caches but does not create Kubernetes resources.
+
+Example create:
+{"name":"coder","projectId":"<projectId>","llmGatewayId":"<gatewayId>","modelAlias":["gpt-4o"],"sourceType":"CONTAINER","buildMethod":"DOCKERFILE","containerImageSource":"ghcr.io/example/agent:latest","dockerfilePath":"./Dockerfile","warmPoolReplicas":0,"deployFileBrowser":false,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"agentDomains":[],"agentVolumes":[],"agentFileMounts":[],"agentNetworkPolicy":null}
+
+Example update (read getAgent first and keep all sub-resource ids you do not want to delete):
+{"id":"<agentId>","name":"coder","projectId":"<projectId>","llmGatewayId":"<gatewayId>","modelAlias":["gpt-4o","gpt-4o-mini"],"sourceType":"CONTAINER","buildMethod":"DOCKERFILE","containerImageSource":"ghcr.io/example/agent:latest","dockerfilePath":"./Dockerfile","warmPoolReplicas":1,"deployFileBrowser":false,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"agentDomains":[],"agentVolumes":[{"id":"<volumeId>","containerMountPath":"/workspace","size":10,"storageClassName":"longhorn","volumeType":"PER_SANDBOX"}],"agentFileMounts":[],"agentNetworkPolicy":{"allowInternetAccess":true,"rules":[]}}`,
             operationId: 'saveAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }]
-        }
+        })
     })
     .delete('/agents/:agentId', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -114,5 +134,12 @@ export const agentRoutes = new Elysia()
             agentId: z.string(),
         }),
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: { summary: 'Delete agent', operationId: 'deleteAgent', tags: ['Agents'], security: [{ bearerAuth: [] }] }
+        detail: ApiOperationDetailUtils.create({
+            summary: 'Delete agent',
+            description: 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy).',
+            'x-mcp-description': 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy). No request body.\nExample: DELETE /api/v1/agents/<agentId>.\nRequires confirmation because this cannot be undone.',
+            operationId: 'deleteAgent',
+            tags: ['Agents'],
+            security: [{ bearerAuth: [] }],
+        })
     });
