@@ -67,7 +67,7 @@ class SecretService {
             const existingSecret = await this.getExistingSecret(app.projectId, KubeObjectNameUtils.toPullSecretId(app.id));
             if (existingSecret) {
                 console.log(`Deleting secret ${existingSecret.metadata?.name}...`);
-                await this.deleteSecret(app.projectId, existingSecret.metadata?.name!);
+                await this.deleteSecretIfExists(app.projectId, existingSecret.metadata?.name!);
             }
         }
     }
@@ -93,7 +93,7 @@ class SecretService {
 
     async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
         console.log(`Updating secret ${secretName}...`);
-        await this.deleteSecret(namespace, secretName);
+        await this.deleteSecretIfExists(namespace, secretName);
         await this.createSecret(namespace, secretManifest);
     }
 
@@ -106,10 +106,6 @@ class SecretService {
         }
     }
 
-    async deleteSecret(namespace: string, secretName: string) {
-        await k3s.core.deleteNamespacedSecret({ name: secretName, namespace: namespace });
-    }
-
     async deleteSecretIfExists(namespace: string, secretName?: string) {
         if (!secretName) {
             return;
@@ -117,7 +113,9 @@ class SecretService {
         const existingSecret = await this.getExistingSecret(namespace, secretName);
         if (existingSecret) {
             console.log(`Deleting secret ${secretName}...`);
-            await this.deleteSecret(namespace, secretName);
+            await k3s.core.deleteNamespacedSecret({ name: secretName, namespace: namespace });
+        } else {
+            console.log(`Triggered deletion of secret ${secretName}, but secret does not exist.`);
         }
     }
 
