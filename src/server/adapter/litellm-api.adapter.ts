@@ -6,8 +6,10 @@ import {
     LiteLlmDeleteKeyRequest,
     LiteLlmGenerateKeyRequest,
     LiteLlmGenerateKeyResponse,
+    LiteLlmKeyListResponse,
     LiteLlmModelInfo,
     LiteLlmModelInfoResponse,
+    LiteLlmUserApiKey,
     LiteLlmUserInfoResponse,
 } from "./api-clients/types/litellm.models";
 import {
@@ -90,11 +92,46 @@ class LiteLlmApiAdapter {
     }
 
     async deleteVirtualKey(baseUrl: string, adminKey: string, key: string): Promise<void> {
-        const requestBody: LiteLlmDeleteKeyRequest = { keys: [key] };
+        await this.deleteVirtualKeys(baseUrl, adminKey, [key]);
+    }
+
+    async deleteVirtualKeys(baseUrl: string, adminKey: string, keys: string[]): Promise<void> {
+        if (keys.length === 0) {
+            return;
+        }
+
+        const requestBody: LiteLlmDeleteKeyRequest = { keys };
         await this.fetchJson<unknown>(baseUrl, adminKey, '/key/delete', {
             method: 'POST',
             body: JSON.stringify(requestBody),
         });
+    }
+
+    async listVirtualKeysByUserId(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmUserApiKey[]> {
+        const keys: LiteLlmUserApiKey[] = [];
+        let page = 1;
+
+        while (true) {
+            const query = new URLSearchParams({
+                user_id: userId,
+                return_full_object: 'true',
+                page: String(page),
+                size: '100',
+            });
+            const response = await this.fetchJson<LiteLlmKeyListResponse>(baseUrl, adminKey, `/key/list?${query}`);
+            const pageKeys = (response.keys ?? []).filter((key): key is LiteLlmUserApiKey => (
+                typeof key === 'object' && key !== null && 'token' in key
+            ));
+            keys.push(...pageKeys);
+
+            const totalPages = response.total_pages ?? 0;
+            if (pageKeys.length === 0 || totalPages === 0 || page >= totalPages) {
+                break;
+            }
+            page++;
+        }
+
+        return keys;
     }
 
     async getUserById(baseUrl: string, adminKey: string, userId: string): Promise<LiteLlmUserInfoResponse> {

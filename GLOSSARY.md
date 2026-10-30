@@ -147,11 +147,11 @@ CPU and memory requests and limits stored as integers (millicores for CPU, MB fo
 _Avoid_: resource quantities, K8s resource strings
 
 **Agent Container Configuration**:
-Runtime startup settings for an **Agent** container, including command, arguments, and pre-warmed sandbox count.
+Runtime startup settings for an **Agent** container, including command and arguments.
 _Avoid_: opencode config, app container config
 
 **Agent Warm Pool Replicas**:
-The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**.
+The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**. Currently stored but ignored, and not editable in the UI, because warm pools are temporarily disabled (ADR 0015).
 _Avoid_: app replicas, running agent instances
 
 **Agent Source**:

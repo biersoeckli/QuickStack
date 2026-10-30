@@ -13,6 +13,7 @@ import secretService from "./secret.service";
 import agentSandboxTemplateBuilder, { AgentSandboxManifestInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
 import { Sandbox, SandboxClaim } from "../adapter/api-clients/types/agents.models";
+import { LiteLlmUserApiKey } from "../adapter/api-clients/types/litellm.models";
 import { agentSandboxCustomTagZodModel } from "@/shared/model/agent-sandbox.model";
 import pvcService from "./pvc.service";
 import configMapService from "./config-map.service";
@@ -155,6 +156,11 @@ class AgentRuntimeService {
     private async ensureSandboxVirtualKey(agent: AgentExtendedModel, sandboxName: string, customTag?: string): Promise<string> {
         const namespace = agent.project.id;
         const secretName = KubeObjectNameUtils.toAgentSandboxVirtualKeySecretId(agent.id, sandboxName);
+
+        if (customTag) {
+            await this.deleteStaleTaggedVirtualKeys(agent, customTag, sandboxName);
+        }
+
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
         if (existingSecret?.QS_VIRTUAL_KEY) {
             return existingSecret.QS_VIRTUAL_KEY;
@@ -204,6 +210,7 @@ class AgentRuntimeService {
         }, {
             [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
             [Constants.QS_ANNOTATION_SANDBOX_NAME]: sandboxName,
+            ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
             [Constants.QS_LABEL_AGENT_SANDBOX_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
         });
         return virtualKey;
@@ -444,54 +451,146 @@ class AgentRuntimeService {
         revalidateTag(Tags.agents(agent.projectId));
     }
 
-    async deleteTaggedVirtualKeys(agentId: string): Promise<void> {
+    /**
+     * Deletes every virtual-key Secret owned by the Agent, including legacy
+     * per-Custom-Tag Keys and the newer per-Sandbox Keys.
+     */
+    async deleteAllSandboxVirtualKeys(agentId: string): Promise<void> {
         const agent = await this.getAgentOrThrow(agentId);
-        const namespace = agent.project.id;
-        let taggedSecrets: Array<{ name: string; data: Record<string, string> }>;
+        let secrets: Awaited<ReturnType<typeof secretService.listDecodedSecretsByLabels>>;
 
         try {
-            taggedSecrets = await secretService.listDecodedSecretsByLabels(namespace, {
+            secrets = await secretService.listDecodedSecretsByLabels(agent.project.id, {
+                [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
+            });
+        } catch (error) {
+            console.warn(`Failed to list LiteLLM virtual key Secrets during Agent cleanup (agentId=${agentId}):`, error);
+            return;
+        }
+
+        for (const secret of secrets) {
+            const isLegacyTagKey = secret.labels[Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY] === Constants.QS_ANNOTATION_VALUE_TRUE;
+            const isSandboxKey = secret.labels[Constants.QS_LABEL_AGENT_SANDBOX_VIRTUAL_KEY] === Constants.QS_ANNOTATION_VALUE_TRUE;
+            if (!isLegacyTagKey && !isSandboxKey) {
+                continue;
+            }
+
+            await this.deleteVirtualKeySecret(agent, secret);
+        }
+    }
+
+    /**
+     * Deletes only the legacy per-Custom-Tag Keys that predate per-Sandbox Keys.
+     * Used during deploy so running Sandboxes keep their current key.
+     */
+    async deleteLegacyTaggedVirtualKeys(agentId: string): Promise<void> {
+        const agent = await this.getAgentOrThrow(agentId);
+        let secrets: Awaited<ReturnType<typeof secretService.listDecodedSecretsByLabels>>;
+
+        try {
+            secrets = await secretService.listDecodedSecretsByLabels(agent.project.id, {
                 [Constants.QS_ANNOTATION_AGENT_ID]: agentId,
                 [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
             });
         } catch (error) {
-            console.warn(`Failed to list tagged LiteLLM virtual keys during Agent cleanup (agentId=${agentId}):`, error);
+            console.warn(`Failed to list legacy tagged LiteLLM virtual keys during Agent deploy (agentId=${agentId}):`, error);
             return;
         }
 
-        for (const secret of taggedSecrets) {
-            try {
-                const virtualKey = secret.data.QS_VIRTUAL_KEY;
-                if (virtualKey && agent.llmGateway?.encryptedAdminKey) {
-                    await liteLlmApiAdapter.deleteVirtualKey(
-                        agent.llmGateway.baseUrl,
-                        CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey),
-                        virtualKey,
-                    );
-                }
-            } catch (error) {
-                console.warn(`Failed to delete tagged LiteLLM virtual key during Agent cleanup (agentId=${agentId}, secret=${secret.name}):`, error);
-            }
-
-            try {
-                await secretService.deleteSecretSafe(secret.name, namespace);
-            } catch (error) {
-                console.warn(`Failed to delete tagged virtual key Secret during Agent cleanup (agentId=${agentId}, secret=${secret.name}):`, error);
-            }
+        for (const secret of secrets) {
+            await this.deleteVirtualKeySecret(agent, secret);
         }
+    }
+
+    /**
+     * A Custom Tag can only own one running Sandbox per Agent. Before starting
+     * one, remove any keys left behind by earlier starts for the same Agent and
+     * Custom Tag. Keys owned by other Agents are never touched, even when they
+     * use the same Custom Tag.
+     */
+    private async deleteStaleTaggedVirtualKeys(agent: AgentExtendedModel, customTag: string, sandboxName: string): Promise<void> {
+        await this.deleteLegacyTaggedVirtualKey(agent, customTag);
+        await this.deleteSandboxVirtualKey(agent, sandboxName);
+        await this.deleteTaggedVirtualKeysFromLiteLlm(agent, customTag);
+    }
+
+    private async deleteLegacyTaggedVirtualKey(agent: AgentExtendedModel, customTag: string): Promise<void> {
+        const secretName = KubeObjectNameUtils.toAgentTaggedVirtualKeySecretId(agent.id, customTag);
+        await this.deleteVirtualKeySecretByName(agent, secretName);
+    }
+
+    private async deleteTaggedVirtualKeysFromLiteLlm(agent: AgentExtendedModel, customTag: string): Promise<void> {
+        if (!agent.llmGateway?.encryptedAdminKey) {
+            return;
+        }
+
+        try {
+            const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+            const keys = await liteLlmApiAdapter.listVirtualKeysByUserId(agent.llmGateway.baseUrl, adminKey, customTag);
+            const staleKeys = keys
+                .filter((key) => this.matchesTaggedSandboxKey(key, agent.id, customTag))
+                .map((key) => key.token)
+                .filter((token): token is string => !!token);
+
+            await liteLlmApiAdapter.deleteVirtualKeys(agent.llmGateway.baseUrl, adminKey, staleKeys);
+        } catch (error) {
+            console.warn(`Failed to delete stale LiteLLM virtual keys for Custom Tag "${customTag}" (agentId=${agent.id}):`, error);
+        }
+    }
+
+    private matchesTaggedSandboxKey(key: LiteLlmUserApiKey, agentId: string, customTag: string): boolean {
+        const metadata = key.metadata?.quickstack;
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+            return false;
+        }
+
+        const quickstackMetadata = metadata as Record<string, unknown>;
+        return quickstackMetadata.agentId === agentId
+            && quickstackMetadata.customTag === customTag
+            && quickstackMetadata.scope === 'agent-sandbox';
     }
 
     private async deleteSandboxVirtualKey(agent: AgentExtendedModel, sandboxName: string): Promise<void> {
         const secretName = KubeObjectNameUtils.toAgentSandboxVirtualKeySecretId(agent.id, sandboxName);
-        const secret = await secretService.getDecodedSecret(secretName, agent.project.id);
+        await this.deleteVirtualKeySecretByName(agent, secretName);
+    }
+
+    private async deleteVirtualKeySecretByName(agent: AgentExtendedModel, secretName: string): Promise<void> {
+        let secret: Record<string, string> | null = null;
         try {
-            if (secret?.QS_VIRTUAL_KEY && agent.llmGateway?.encryptedAdminKey) {
-                await liteLlmApiAdapter.deleteVirtualKey(agent.llmGateway.baseUrl, CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey), secret.QS_VIRTUAL_KEY);
+            secret = await secretService.getDecodedSecret(secretName, agent.project.id);
+        } catch (error) {
+            console.warn(`Failed to read virtual key Secret "${secretName}" for Agent ${agent.id}:`, error);
+        }
+
+        await this.deleteVirtualKeySecret(agent, {
+            name: secretName,
+            data: secret ?? {},
+        });
+    }
+
+    private async deleteVirtualKeySecret(
+        agent: AgentExtendedModel,
+        secret: { name: string; data: Record<string, string> },
+    ): Promise<void> {
+        try {
+            const virtualKey = secret.data.QS_VIRTUAL_KEY;
+            if (virtualKey && agent.llmGateway?.encryptedAdminKey) {
+                await liteLlmApiAdapter.deleteVirtualKey(
+                    agent.llmGateway.baseUrl,
+                    CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey),
+                    virtualKey,
+                );
             }
         } catch (error) {
-            console.warn(`Failed to delete LiteLLM virtual key for sandbox ${sandboxName}:`, error);
+            console.warn(`Failed to delete LiteLLM virtual key for Secret "${secret.name}" (agentId=${agent.id}):`, error);
         }
-        await secretService.deleteSecretSafe(secretName, agent.project.id);
+
+        try {
+            await secretService.deleteSecretSafe(secret.name, agent.project.id);
+        } catch (error) {
+            console.warn(`Failed to delete virtual key Secret "${secret.name}" (agentId=${agent.id}):`, error);
+        }
     }
 
     private claimMatchesTag(claim: SandboxClaim, agentId: string, customTag: string): boolean {

@@ -40,7 +40,6 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
                 : [],
             workingDir: agent.workingDir ?? '',
             runtimeClassName: agent.runtimeClassName ?? '',
-            warmPoolReplicas: agent.warmPoolReplicas ?? 0,
             deployFileBrowser: agent.deployFileBrowser,
         },
         disabled: readonly,
@@ -67,7 +66,7 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
                         <DrawerCardHeader>
                             <DrawerCardTitle>Container Configuration</DrawerCardTitle>
                             <DrawerCardDescription>
-                                Configure agent sandbox startup and pre-warmed sandbox capacity.
+                                Configure agent sandbox startup.
                             </DrawerCardDescription>
                         </DrawerCardHeader>
                         <DrawerCardContent className="space-y-6">
@@ -134,27 +133,6 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
                                                 placeholder="/workspace"
                                                 {...field}
                                                 value={inputValue(field.value)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="warmPoolReplicas"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Warm Pool Replicas</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                max={10}
-                                                {...field}
-                                                value={inputValue(field.value)}
-                                                onChange={(event) => field.onChange(event.target.value === '' ? 0 : Number(event.target.value))}
                                             />
                                         </FormControl>
                                         <FormMessage />
