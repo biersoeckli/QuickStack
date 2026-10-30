@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { agentConfigZodModel, agentSourceInfoGitZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
+import { agentConfigZodModel, agentContainerConfigZodModel, agentSourceInfoGitZodModel, isQuickStackReservedEnvName, QUICKSTACK_RESERVED_ENV_PREFIX } from '@/shared/model/agent-config.model';
 
 function validAgentConfig(overrides: Record<string, unknown> = {}) {
     return {
@@ -202,6 +202,15 @@ describe('agentConfigZodModel', () => {
         it('rejects warm pool replicas outside the allowed range', () => {
             expect(agentConfigZodModel.safeParse(validAgentConfig({ warmPoolReplicas: '-1' })).success).toBe(false);
             expect(agentConfigZodModel.safeParse(validAgentConfig({ warmPoolReplicas: '11' })).success).toBe(false);
+        });
+
+        it('does not expose warm pool replicas in the container configuration form', () => {
+            const result = agentContainerConfigZodModel.safeParse(validAgentConfig({ warmPoolReplicas: 3 }));
+
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data).not.toHaveProperty('warmPoolReplicas');
+            }
         });
     });
 

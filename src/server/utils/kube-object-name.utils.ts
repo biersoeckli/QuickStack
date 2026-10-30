@@ -125,6 +125,11 @@ export class KubeObjectNameUtils {
         return `tagkey-${identifier}`;
     }
 
+    static toAgentSandboxVirtualKeySecretId(agentId: string, sandboxName: string): `sandboxkey-${string}` {
+        const identifier = crypto.createHash('sha256').update(`${agentId}:${sandboxName}`).digest('hex');
+        return `sandboxkey-${identifier}`;
+    }
+
     static toPullSecretId(id: string): `pullsec-${string}` {
         return `pullsec-${id.substring(0, 55)}`;
     }

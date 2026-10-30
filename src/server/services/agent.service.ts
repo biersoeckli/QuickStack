@@ -29,7 +29,6 @@ import registryService from "./registry.service";
 import deploymentLogService, { dlog } from "./deployment-logs.service";
 import agentSandboxTemplateBuilder, { AgentSandboxVolumeTemplateInput } from "./agent-sandbox-template-builder.service";
 import { AgentModelAliasUtils } from "../utils/agent-model-alias.utils";
-import { AgentSandboxUtils } from "../utils/agent-sandbox.utils";
 
 type AgentSaveInput =
     | (Omit<Prisma.AgentUncheckedCreateInput, 'modelAlias'> & { modelAlias?: unknown })
@@ -399,9 +398,9 @@ class AgentService {
             if (!containerImageSource) {
                 throw new ServiceException('Container image source is missing. Cannot deploy for Agent.');
             }
-            // Tagged sandbox keys inherit the Agent's model allowlist. Replace them on
-            // deploy so a stopped tag cannot retain permissions from an older deploy.
-            await agentRuntimeService.deleteTaggedVirtualKeys(agent.id);
+            // Legacy tag keys must not survive a deploy. Newer per-Sandbox keys
+            // stay attached to their running Sandbox until it is stopped.
+            await agentRuntimeService.deleteLegacyTaggedVirtualKeys(agent.id);
             await agentRuntimeService.refreshRuntimeSecret(agent.id);
             const modelAliases = AgentModelAliasUtils.normalize(agent.modelAlias);
             await this.loadLiteLlmModelMetadata(agent, modelAliases);
@@ -420,14 +419,15 @@ class AgentService {
                 gitCommitMessage,
             }));
 
-            // Agents with a PER_CUSTOM_TAG volume are cold-started by creating a
-            // Sandbox directly, so they never use a warm pool.
-            const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
+            // Warm pools are temporarily disabled because the current Agent Sandbox
+            // controller cannot combine warm-pool adoption with per-claim virtual-key
+            // env injection. See ADR 0015. Stored warmPoolReplicas values are kept for
+            // a possible re-enable, but they are ignored here.
             await agentSandboxAdapter.reconcileSandboxWarmPool(
                 agentSandboxTemplateBuilder.buildSandboxWarmPoolResource(
                     agent.id,
                     agent.project.id,
-                    usesDirectSandbox ? 0 : agent.warmPoolReplicas,
+                    0,
                 ),
             );
 
@@ -529,10 +529,9 @@ class AgentService {
             }
         }
 
-        await agentRuntimeService.deleteTaggedVirtualKeys(agentId);
-
         // 3. Stop runtime resources, then delete irreversible Agent-owned data.
         await agentRuntimeService.stopAllSandboxes(agentId);
+        await agentRuntimeService.deleteAllSandboxVirtualKeys(agentId);
         await pvcService.deleteAllPvcForAgent(existing.projectId, agentId);
         await buildService.deleteAllBuildsOfAgent(agentId);
 

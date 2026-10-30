@@ -76,6 +76,10 @@ vi.mock('@/server/adapter/litellm-api.adapter', () => ({
     default: {
         createVirtualKey: vi.fn(),
         deleteVirtualKey: vi.fn(),
+        deleteVirtualKeys: vi.fn(),
+        listVirtualKeysByUserId: vi.fn(),
+        getUserByIdOrUndefined: vi.fn(),
+        createUserWithId: vi.fn(),
         listModelAliases: vi.fn(),
     },
 }));
@@ -97,6 +101,7 @@ import networkPolicyService from '@/server/services/network-policy.service';
 import agentRuntimeService from './agent-runtime.service';
 import { ServiceException } from '@/shared/model/service.exception.model';
 import { Constants } from '@/shared/utils/constants';
+import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
 
 const AGENT_ID = 'agent-test-runner';
 const PROJECT = { id: 'proj-1', name: 'test-project' };
@@ -149,6 +154,8 @@ describe('agent-runtime.service', () => {
         vi.mocked(agentSandboxAdapter.waitForSandboxReady).mockResolvedValue(undefined);
         vi.mocked(agentSandboxAdapter.waitForSandboxObjectReady).mockResolvedValue(undefined);
         vi.mocked(configMapService.createOrUpdateConfigMapForAgent).mockResolvedValue({ fileVolumes: [], fileVolumeMounts: [] });
+        vi.mocked(liteLlmApiAdapter.getUserByIdOrUndefined).mockResolvedValue({} as any);
+        vi.mocked(liteLlmApiAdapter.listVirtualKeysByUserId).mockResolvedValue([]);
     });
 
     describe('startSandbox', () => {
@@ -171,7 +178,9 @@ describe('agent-runtime.service', () => {
                 'https://litellm.example.com',
                 'adminkey',
                 ['gpt-4o', 'claude-3-5-sonnet'],
-                { quickstack: { agentId: AGENT_ID, scope: 'agent' } },
+                { quickstack: { agentId: AGENT_ID, scope: 'agent-sandbox' } },
+                undefined,
+                undefined,
             );
         });
 
@@ -186,7 +195,6 @@ describe('agent-runtime.service', () => {
                 SANDBOX_NAMESPACE,
                 expect.objectContaining({
                     QS_GATEWAY_URL: 'https://litellm.example.com',
-                    QS_VIRTUAL_KEY: 'sk-v-test-key',
                     MY_KEY: 'my-secret',
                 }),
             );
@@ -202,8 +210,9 @@ describe('agent-runtime.service', () => {
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
-            const secretData = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
-            expect(secretData.ANTHROPIC_AUTH_TOKEN).toBe('sk-v-test-key');
+            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
+                spec: expect.objectContaining({ env: expect.arrayContaining([{ name: 'ANTHROPIC_AUTH_TOKEN', value: 'sk-v-test-key' }]) }),
+            }));
         });
 
         it('omits env vars from secret when agent has none', async () => {
@@ -213,7 +222,7 @@ describe('agent-runtime.service', () => {
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID);
 
             const callArgs = vi.mocked(secretService.createOrReplaceGenericSecret).mock.calls[0][2] as Record<string, string>;
-            expect(Object.keys(callArgs)).toHaveLength(2); // QS_GATEWAY_URL + QS_VIRTUAL_KEY
+            expect(Object.keys(callArgs)).toHaveLength(1); // QS_GATEWAY_URL
         });
 
         it('reuses existing runtime secret without overwriting it', async () => {
@@ -269,7 +278,7 @@ describe('agent-runtime.service', () => {
                 expect.objectContaining({
                     spec: expect.objectContaining({
                         warmPoolRef: { name: AGENT_ID },
-                        env: [{ name: 'FOO', value: 'bar' }],
+                        env: expect.arrayContaining([{ name: 'FOO', value: 'bar' }, { name: 'QS_VIRTUAL_KEY', value: 'sk-v-test-key' }]),
                         lifecycle: { shutdownPolicy: 'Delete', ttlSecondsAfterFinished: 600 },
                     }),
                 }),
@@ -302,9 +311,7 @@ describe('agent-runtime.service', () => {
 
         it('creates a tagged key once, stores it, and injects it into a tagged SandboxClaim', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(liteLlmApiAdapter.createVirtualKey)
-                .mockResolvedValueOnce('sk-v-agent-key')
-                .mockResolvedValueOnce('sk-v-feature-key');
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-feature-key');
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
 
@@ -313,37 +320,81 @@ describe('agent-runtime.service', () => {
                 'adminkey',
                 ['gpt-4o', 'claude-3-5-sonnet'],
                 { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                'feature-branch',
+                undefined,
             );
             expect(secretService.createOrReplaceGenericSecret).toHaveBeenLastCalledWith(
-                expect.stringMatching(/^tagkey-[a-f0-9]{64}$/),
+                expect.stringMatching(/^sandboxkey-[a-f0-9]{64}$/),
                 SANDBOX_NAMESPACE,
                 { QS_VIRTUAL_KEY: 'sk-v-feature-key' },
                 {
                     'qs-agent-id': AGENT_ID,
-                    'qs-agent-tagged-virtual-key': 'true',
+                    'qs-agent-sandbox-virtual-key': 'true',
+                    'qs-sandbox-name': expect.stringMatching(/^ac-/),
+                    'qs-custom-tag': 'feature-branch',
                 },
             );
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
                 spec: expect.objectContaining({
-                    env: [{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }],
+                    env: expect.arrayContaining([{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }]),
                 }),
             }));
         });
 
-        it('reuses the tagged key from its Secret', async () => {
+        it('assigns the first existing LiteLLM user team to a tagged sandbox key', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
-            vi.mocked(secretService.getDecodedSecret)
-                .mockResolvedValueOnce({ QS_VIRTUAL_KEY: 'sk-v-agent-key' })
-                .mockResolvedValueOnce({ QS_VIRTUAL_KEY: 'sk-v-feature-key' });
+            vi.mocked(liteLlmApiAdapter.getUserByIdOrUndefined).mockResolvedValue({ teams: [{ team_id: 'team-first' }, { team_id: 'team-second' }] } as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-team-key');
 
             await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
 
-            expect(liteLlmApiAdapter.createVirtualKey).not.toHaveBeenCalled();
-            expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
-                spec: expect.objectContaining({
-                    env: [{ name: 'QS_VIRTUAL_KEY', value: 'sk-v-feature-key' }],
-                }),
-            }));
+            expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenLastCalledWith(
+                'https://litellm.example.com', 'adminkey', ['gpt-4o', 'claude-3-5-sonnet'],
+                { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                'feature-branch', 'team-first',
+            );
+        });
+
+        it('deletes stale keys for the same Agent and Custom Tag before creating a new one', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(liteLlmApiAdapter.listVirtualKeysByUserId).mockResolvedValue([
+                { token: 'hash-old', metadata: { quickstack: { agentId: AGENT_ID, customTag: 'feature-branch', scope: 'agent-sandbox' } } },
+                { token: 'hash-other-agent', metadata: { quickstack: { agentId: 'other-agent', customTag: 'feature-branch', scope: 'agent-sandbox' } } },
+                { token: 'hash-other-tag', metadata: { quickstack: { agentId: AGENT_ID, customTag: 'other-tag', scope: 'agent-sandbox' } } },
+            ] as any);
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-fresh-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            expect(liteLlmApiAdapter.listVirtualKeysByUserId).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'feature-branch',
+            );
+            expect(liteLlmApiAdapter.deleteVirtualKeys).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                ['hash-old'],
+            );
+            expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalled();
+        });
+
+        it('deletes the legacy tagged key Secret for the Custom Tag before starting', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            const legacySecretName = KubeObjectNameUtils.toAgentTaggedVirtualKeySecretId(AGENT_ID, 'feature-branch');
+            vi.mocked(secretService.getDecodedSecret).mockImplementation(async (name) => (
+                name === legacySecretName ? { QS_VIRTUAL_KEY: 'sk-legacy-key' } : null
+            ));
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-fresh-key');
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'feature-branch' });
+
+            expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'sk-legacy-key',
+            );
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(legacySecretName, SANDBOX_NAMESPACE);
         });
 
         it('sends claim template overrides with the custom tag for PER_SANDBOX volumes', async () => {
@@ -548,6 +599,32 @@ describe('agent-runtime.service', () => {
             );
         });
 
+        it('deletes a stale per-Sandbox key Secret before starting the same Custom Tag again', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockDirectAgent() as any);
+            const sandboxName = KubeObjectNameUtils.toAgentSandboxName(AGENT_ID, 'alice');
+            const secretName = KubeObjectNameUtils.toAgentSandboxVirtualKeySecretId(AGENT_ID, sandboxName);
+            let staleSecretRead = false;
+            vi.mocked(secretService.getDecodedSecret).mockImplementation(async (name) => {
+                if (name === secretName && !staleSecretRead) {
+                    staleSecretRead = true;
+                    return { QS_VIRTUAL_KEY: 'sk-stale-key' };
+                }
+                return null;
+            });
+            vi.mocked(liteLlmApiAdapter.createVirtualKey).mockResolvedValue('sk-v-fresh-key');
+            stubPvcs();
+
+            await agentRuntimeService.startSandbox(AGENT_ID, USER_ID, { customTag: 'alice' });
+
+            expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'sk-stale-key',
+            );
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(secretName, SANDBOX_NAMESPACE);
+            expect(liteLlmApiAdapter.createVirtualKey).toHaveBeenCalled();
+        });
+
         it('uses the built registry image for a Git Agent', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({
                 sourceType: 'GIT',
@@ -677,20 +754,64 @@ describe('agent-runtime.service', () => {
         });
     });
 
-    describe('deleteTaggedVirtualKeys', () => {
-        it('deletes each tagged key and its Secret', async () => {
+    describe('deleteAllSandboxVirtualKeys', () => {
+        it('deletes legacy and per-Sandbox key Secrets but leaves unrelated Secrets alone', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
             vi.mocked(secretService.listDecodedSecretsByLabels).mockResolvedValue([{
                 name: 'tagkey-abc',
-                data: { QS_VIRTUAL_KEY: 'sk-v-feature-key' },
+                data: { QS_VIRTUAL_KEY: 'sk-legacy-key' },
+                labels: { [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: 'true' },
+                annotations: {},
+            }, {
+                name: 'sandboxkey-abc',
+                data: { QS_VIRTUAL_KEY: 'sk-sandbox-key' },
+                labels: { [Constants.QS_LABEL_AGENT_SANDBOX_VIRTUAL_KEY]: 'true' },
+                annotations: {},
+            }, {
+                name: 'secret-unrelated',
+                data: {},
+                labels: {},
+                annotations: {},
             }]);
 
-            await agentRuntimeService.deleteTaggedVirtualKeys(AGENT_ID);
+            await agentRuntimeService.deleteAllSandboxVirtualKeys(AGENT_ID);
 
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
                 'adminkey',
-                'sk-v-feature-key',
+                'sk-legacy-key',
+            );
+            expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'sk-sandbox-key',
+            );
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('tagkey-abc', SANDBOX_NAMESPACE);
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('sandboxkey-abc', SANDBOX_NAMESPACE);
+            expect(secretService.deleteSecretSafe).not.toHaveBeenCalledWith('secret-unrelated', SANDBOX_NAMESPACE);
+        });
+    });
+
+    describe('deleteLegacyTaggedVirtualKeys', () => {
+        it('deletes only the legacy tagged key Secrets returned by the old label', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(secretService.listDecodedSecretsByLabels).mockResolvedValue([{
+                name: 'tagkey-abc',
+                data: { QS_VIRTUAL_KEY: 'sk-legacy-key' },
+                labels: { [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: 'true' },
+                annotations: {},
+            }]);
+
+            await agentRuntimeService.deleteLegacyTaggedVirtualKeys(AGENT_ID);
+
+            expect(secretService.listDecodedSecretsByLabels).toHaveBeenCalledWith(SANDBOX_NAMESPACE, {
+                [Constants.QS_ANNOTATION_AGENT_ID]: AGENT_ID,
+                [Constants.QS_LABEL_AGENT_TAGGED_VIRTUAL_KEY]: 'true',
+            });
+            expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
+                'https://litellm.example.com',
+                'adminkey',
+                'sk-legacy-key',
             );
             expect(secretService.deleteSecretSafe).toHaveBeenCalledWith('tagkey-abc', SANDBOX_NAMESPACE);
         });

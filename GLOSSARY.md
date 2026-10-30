@@ -127,8 +127,16 @@ A user-defined label for an **Agent** that does not have to be unique.
 _Avoid_: agent id, Kubernetes name
 
 **Agent Runtime Secret**:
-Sensitive runtime context injected into a running **Agent**.
+Sensitive runtime context shared by an **Agent**'s SandboxTemplate, such as its LLM Gateway URL and configured environment variables. It does not contain a virtual key.
 _Avoid_: public agent config, plain environment config
+
+**Sandbox Virtual Key**:
+A LiteLLM virtual key created for exactly one **Agent Sandbox** instance. QuickStack keeps its value in a per-sandbox Kubernetes Secret so it can delete the key when the sandbox is stopped. Suspending and resuming the same sandbox retains the same Sandbox Virtual Key.
+_Avoid_: Agent virtual key, tag key
+
+**Sandbox Virtual Key Secret**:
+The Kubernetes Secret that stores one **Sandbox Virtual Key** and identifies its owning **Agent Sandbox**. It is deleted on Stop even if deleting the corresponding LiteLLM key fails.
+_Avoid_: Agent Runtime Secret, tag key secret
 
 **Agent Environment Variable**:
 A user-defined environment value for an **Agent** whose value is stored encrypted by QuickStack.
@@ -139,11 +147,11 @@ CPU and memory requests and limits stored as integers (millicores for CPU, MB fo
 _Avoid_: resource quantities, K8s resource strings
 
 **Agent Container Configuration**:
-Runtime startup settings for an **Agent** container, including command, arguments, and pre-warmed sandbox count.
+Runtime startup settings for an **Agent** container, including command and arguments.
 _Avoid_: opencode config, app container config
 
 **Agent Warm Pool Replicas**:
-The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**.
+The number of pre-warmed idle sandbox instances QuickStack keeps available for an **Agent**. Currently stored but ignored, and not editable in the UI, because warm pools are temporarily disabled (ADR 0015).
 _Avoid_: app replicas, running agent instances
 
 **Agent Source**:
@@ -215,7 +223,7 @@ An **Agent Volume** of Volume Type `PER_CUSTOM_TAG`. Its data belongs to a **Cus
 _Avoid_: per-tag volume, tag storage
 
 **Custom Tag**:
-The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes** and **Per-Custom-Tag Agent Volumes**. It is unique per **Agent** among existing sandboxes, so it is also a stable handle for **Resume**. It is encoded to derive the per-tag PersistentVolumeClaim name and is never used raw in a Kubernetes name.
+The optional tag given when an Agent Sandbox is started, used to identify that sandbox and its **Per-Sandbox Agent Volumes** and **Per-Custom-Tag Agent Volumes**. It is unique per **Agent** among existing sandboxes, so it is also a stable handle for **Resume**. It is encoded to derive the per-tag PersistentVolumeClaim name and is never used raw in a Kubernetes name. For LiteLLM ownership, its normalized value is the `user_id` of the Sandbox Virtual Key's LiteLLM user.
 _Avoid_: sandbox name, label
 
 **Suspend**:
@@ -378,7 +386,7 @@ _Avoid_: manual initial port requirement
 - An **Agent Template** can create one or more **Agents**.
 - A **Deploy (Agent)** reconciles the saved **Agent** configuration to its Kubernetes SandboxTemplate and SandboxWarmPool.
 - An **Agent** can have zero or more **Agent Environment Variables**.
-- A running **Agent** has exactly one **Agent Runtime Secret**.
+- A running **Agent** has one shared **Agent Runtime Secret** and each running **Agent Sandbox** has one **Sandbox Virtual Key Secret**.
 - An **Agent** uses exactly one **LLM Gateway**.
 - A **Suspended Sandbox** can be **Resumed** by its sandbox name or by its **Custom Tag**.
 - **Suspend** operates on the Sandbox and keeps it; **Stop** deletes the **SandboxClaim** and everything it owns.

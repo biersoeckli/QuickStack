@@ -75,7 +75,7 @@ export default function WorkloadsTable({
                 ['status', 'Status', true, (item: WorkloadRow) => (
                     item.kind === 'APP'
                         ? <PodStatusIndicator appId={item.id} />
-                        : <span className="text-muted-foreground">{item.warmPoolReplicas} warm</span>
+                        : <span className="text-muted-foreground">Warm pool disabled</span>
                 )],
                 ['sourceType', 'Source Type', false],
                 ['llmGateway', 'LLM Gateway', false, (item: WorkloadRow) => (
