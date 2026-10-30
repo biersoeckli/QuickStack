@@ -18,6 +18,8 @@ export type LiteLlmGenerateKeyRequest = Partial<components["schemas"]["GenerateK
 };
 export type LiteLlmGenerateKeyResponse = components["schemas"]["GenerateKeyResponse"];
 export type LiteLlmDeleteKeyRequest = components["schemas"]["KeyRequest"];
+export type LiteLlmKeyListResponse = components["schemas"]["KeyListResponseObject"];
+export type LiteLlmUserApiKey = components["schemas"]["UserAPIKeyAuth"];
 export type LiteLlmCreateUserRequest = Partial<components["schemas"]["NewUserRequest"]> & {
     user_id: string;
     auto_create_key: false;

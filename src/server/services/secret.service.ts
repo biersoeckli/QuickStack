@@ -191,6 +191,8 @@ class SecretService {
     async listDecodedSecretsByLabels(namespace: string, labels: Record<string, string>): Promise<Array<{
         name: string;
         data: Record<string, string>;
+        labels: Record<string, string>;
+        annotations: Record<string, string>;
     }>> {
         const response = await k3s.core.listNamespacedSecret({ namespace });
         return response.items.flatMap((secret) => {
@@ -202,7 +204,12 @@ class SecretService {
                 key,
                 value ? Buffer.from(value, 'base64').toString('utf-8') : '',
             ]));
-            return [{ name: secret.metadata.name, data }];
+            return [{
+                name: secret.metadata.name,
+                data,
+                labels: secret.metadata.labels ?? {},
+                annotations: secret.metadata.annotations ?? {},
+            }];
         });
     }
 

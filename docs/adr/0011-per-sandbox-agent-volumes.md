@@ -12,5 +12,5 @@ PER_SANDBOX is built on the Agent Sandbox controller's native `volumeClaimTempla
 ## Consequences
 
 - `ReadWriteOnce` becomes valid for PER_SANDBOX Agent Volumes, because no two sandboxes share a claim.
-- PER_SANDBOX starts that carry a Custom Tag bypass the warm pool and cold-start; untagged starts may still use it.
+- PER_SANDBOX starts that carry a Custom Tag bypass the warm pool and cold-start. Warm pools are temporarily disabled for every Agent while per-sandbox LiteLLM keys are passed through SandboxClaim env (see ADR 0015), so untagged starts currently cold-start as well.
 - A PER_SANDBOX claim is not resized when the Agent Volume changes; only newly started sandboxes pick up new configuration.

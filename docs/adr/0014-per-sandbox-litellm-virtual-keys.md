@@ -12,3 +12,5 @@ QuickStack creates one LiteLLM virtual key and one Kubernetes **Sandbox Virtual 
 
 - LiteLLM user records outlive sandboxes. QuickStack does not delete a user when its last sandbox stops.
 - A LiteLLM delete failure is logged but does not fail Stop, and the Kubernetes Secret is still deleted; an orphaned LiteLLM key is an accepted operational risk.
+- The key is written to a **Sandbox Virtual Key Secret** and also passed as a plain `SandboxClaim.spec.env` value. The Secret remains while the Sandbox exists and is QuickStack's inventory view of open and valid keys; it is not mounted into the pod. Passing the value in the claim is required because the Agent Sandbox API has no `valueFrom.secretKeyRef` for claim env.
+- Warm pools are temporarily disabled while keys are assigned per Sandbox; see ADR 0015.

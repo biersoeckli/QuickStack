@@ -284,6 +284,96 @@ describe('LiteLlmApiAdapter', () => {
         });
     });
 
+    describe('deleteVirtualKeys', () => {
+        it('deletes multiple keys in one request', async () => {
+            let capturedBody: string | null = null;
+            vi.spyOn(global, 'fetch').mockImplementation(async (_url: any, init?: any) => {
+                capturedBody = init?.body ?? null;
+                return { ok: true, status: 200, json: vi.fn().mockResolvedValue({}) } as any;
+            });
+
+            await liteLlmApiAdapter.deleteVirtualKeys(
+                'https://litellm.example.com',
+                'admin-secret',
+                ['hash-1', 'hash-2'],
+            );
+
+            expect(JSON.parse(capturedBody!)).toEqual({ keys: ['hash-1', 'hash-2'] });
+        });
+
+        it('does nothing for an empty key list', async () => {
+            const fetchSpy = vi.spyOn(global, 'fetch');
+
+            await liteLlmApiAdapter.deleteVirtualKeys('https://litellm.example.com', 'admin-secret', []);
+
+            expect(fetchSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('listVirtualKeysByUserId', () => {
+        it('loads full key objects for a user across all pages', async () => {
+            const capturedUrls: string[] = [];
+            vi.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+                capturedUrls.push(url as string);
+                const page = new URL(url as string).searchParams.get('page');
+                return {
+                    ok: true,
+                    status: 200,
+                    json: vi.fn().mockResolvedValue(page === '1' ? {
+                        keys: [{
+                            token: 'hash-1',
+                            user_id: 'feature-branch',
+                            metadata: { quickstack: { agentId: 'agent-1', customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                        }],
+                        total_pages: 2,
+                        current_page: 1,
+                    } : {
+                        keys: [{
+                            token: 'hash-2',
+                            user_id: 'feature-branch',
+                            metadata: { quickstack: { agentId: 'agent-1', customTag: 'feature-branch', scope: 'agent-sandbox' } },
+                        }],
+                        total_pages: 2,
+                        current_page: 2,
+                    }),
+                } as any;
+            });
+
+            const keys = await liteLlmApiAdapter.listVirtualKeysByUserId(
+                'https://litellm.example.com',
+                'admin-secret',
+                'feature-branch',
+            );
+
+            expect(keys.map((key) => key.token)).toEqual(['hash-1', 'hash-2']);
+            expect(capturedUrls).toHaveLength(2);
+            expect(capturedUrls[0]).toContain('user_id=feature-branch');
+            expect(capturedUrls[0]).toContain('return_full_object=true');
+            expect(capturedUrls[0]).toContain('size=100');
+            expect(capturedUrls[1]).toContain('page=2');
+        });
+
+        it('ignores string entries in the key list', async () => {
+            vi.spyOn(global, 'fetch').mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: vi.fn().mockResolvedValue({
+                    keys: ['sk-some-key', { token: 'hash-1', metadata: {} }],
+                    total_pages: 1,
+                }),
+            } as any);
+
+            const keys = await liteLlmApiAdapter.listVirtualKeysByUserId(
+                'https://litellm.example.com',
+                'admin-secret',
+                'feature-branch',
+            );
+
+            expect(keys).toHaveLength(1);
+            expect(keys[0].token).toBe('hash-1');
+        });
+    });
+
     describe('users', () => {
         it('loads a user by its id', async () => {
             let capturedUrl: string | null = null;

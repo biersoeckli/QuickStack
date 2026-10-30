@@ -55,7 +55,8 @@ const namespaceServiceMocks = vi.hoisted(() => ({
 const agentRuntimeServiceMocks = vi.hoisted(() => ({
     listSandboxes: vi.fn(),
     stopAllSandboxes: vi.fn(),
-    deleteTaggedVirtualKeys: vi.fn(),
+    deleteAllSandboxVirtualKeys: vi.fn(),
+    deleteLegacyTaggedVirtualKeys: vi.fn(),
     refreshRuntimeSecret: vi.fn(),
 }));
 
@@ -700,7 +701,7 @@ describe('agent.service', () => {
             );
         });
 
-        it('reconciles WarmPool with configured replicas', async () => {
+        it('reconciles WarmPool with zero replicas even when a legacy value is stored', async () => {
             vi.mocked(dataAccess.client.agent.findFirstOrThrow).mockResolvedValue(mockAgentWithRelations('agent-1', 'Agent One', 'proj-test-agent', {
                 warmPoolReplicas: 2,
             }) as any);
@@ -709,7 +710,7 @@ describe('agent.service', () => {
 
             expect(agentSandboxAdapter.reconcileSandboxWarmPool).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    spec: { sandboxTemplateRef: { name: 'agent-1' }, replicas: 2 },
+                    spec: { sandboxTemplateRef: { name: 'agent-1' }, replicas: 0 },
                 }),
             );
         });
@@ -887,7 +888,7 @@ describe('agent.service', () => {
                 'proj-test-agent',
             );
             expect(agentRuntimeService.stopAllSandboxes).toHaveBeenCalledWith('agent-1');
-            expect(agentRuntimeService.deleteTaggedVirtualKeys).toHaveBeenCalledWith('agent-1');
+            expect(agentRuntimeService.deleteAllSandboxVirtualKeys).toHaveBeenCalledWith('agent-1');
             expect(pvcService.deleteAllPvcForAgent).toHaveBeenCalledWith('proj-test-agent', 'agent-1');
             expect(liteLlmApiAdapter.deleteVirtualKey).toHaveBeenCalledWith(
                 'https://litellm.example.com',
