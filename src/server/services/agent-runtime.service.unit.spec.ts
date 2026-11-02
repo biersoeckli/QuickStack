@@ -332,7 +332,9 @@ describe('agent-runtime.service', () => {
                     'qs-agent-sandbox-virtual-key': 'true',
                     'qs-sandbox-name': expect.stringMatching(/^ac-/),
                 }, {
+                    'qs-agent-id': AGENT_ID,
                     'qs-custom-tag': 'feature-branch',
+                    'qs-sandbox-name': expect.stringMatching(/^ac-/),
                 },
             );
             expect(agentSandboxAdapter.createSandboxClaim).toHaveBeenCalledWith(expect.objectContaining({
