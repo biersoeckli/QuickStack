@@ -331,6 +331,7 @@ describe('agent-runtime.service', () => {
                     'qs-agent-id': AGENT_ID,
                     'qs-agent-sandbox-virtual-key': 'true',
                     'qs-sandbox-name': expect.stringMatching(/^ac-/),
+                }, {
                     'qs-custom-tag': 'feature-branch',
                 },
             );

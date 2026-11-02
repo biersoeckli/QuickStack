@@ -134,6 +134,7 @@ class SecretService {
         namespace: string,
         data: Record<string, string>,
         labels?: Record<string, string>,
+        annotations?: Record<string, string>,
     ): Promise<void> {
         const base64Data: Record<string, string> = {};
         for (const [key, value] of Object.entries(data)) {
@@ -141,7 +142,11 @@ class SecretService {
         }
 
         const secretManifest: V1Secret = {
-            metadata: { name, ...(labels ? { labels } : {}) },
+            metadata: {
+                name,
+                ...(labels ? { labels } : {}),
+                ...(annotations ? { annotations } : {}),
+            },
             data: base64Data,
         };
 

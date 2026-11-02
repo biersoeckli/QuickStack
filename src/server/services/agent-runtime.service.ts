@@ -210,8 +210,11 @@ class AgentRuntimeService {
         }, {
             [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
             [Constants.QS_ANNOTATION_SANDBOX_NAME]: sandboxName,
-            ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
             [Constants.QS_LABEL_AGENT_SANDBOX_VIRTUAL_KEY]: Constants.QS_ANNOTATION_VALUE_TRUE,
+        }, {
+            [Constants.QS_ANNOTATION_AGENT_ID]: agent.id,
+            [Constants.QS_ANNOTATION_SANDBOX_NAME]: sandboxName,
+            ...(customTag ? { [Constants.QS_ANNOTATION_CUSTOM_TAG]: customTag } : {}),
         });
         return virtualKey;
     }
