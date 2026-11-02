@@ -18,6 +18,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "mcp:eval": "node scripts/mcp-eval.mjs",
     "openapi-generate": "bash scripts/update-k8s-custom-crds.sh && bash scripts/update-openapi.sh"
   },
   "dependencies": {

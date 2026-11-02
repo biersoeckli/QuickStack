@@ -10,8 +10,11 @@ export default async function McpSettingsPage() {
     if (!canaryEnabled) {
         notFound()
     }
-    const mcpEnabled = await paramService.getBoolean(ParamService.MCP_SERVER_ENABLED)
+    const [mcpMode, sendSecrets] = await Promise.all([
+        paramService.getMcpServerMode(),
+        paramService.getMcpSendSecrets(),
+    ])
     return <ServerSettingsPage title="MCP Server" category="Developer" categoryHref="/settings/developer/mcp">
-        <McpSettings mcpEnabled={mcpEnabled ?? false} />
+        <McpSettings mcpMode={mcpMode} sendSecrets={sendSecrets} />
     </ServerSettingsPage>
 }

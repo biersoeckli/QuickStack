@@ -5,8 +5,10 @@ import { ensureAdmin, ensureReadProject } from '@/server/utils/shared-authorizat
 import { UserGroupUtils } from '@/shared/utils/role.utils';
 import { ProjectModel } from '@/shared/model/generated-zod';
 import { ApiUtils } from '../../../utils/api-response.utils';
+import { ApiOperationDetailUtils } from '@/server/utils/api-operation-detail.utils';
 import { Project } from '@prisma/client';
 import { ApiNotFoundException, ApiUnauthorizedException } from '@/shared/model/service.exception.model';
+import paginationUtils, { paginationQueryZodModel } from '@/shared/utils/pagination.utils';
 
 const projectWriteSchema = ProjectModel
     .omit({ createdAt: true, updatedAt: true })
@@ -16,21 +18,30 @@ const projectWriteSchema = ProjectModel
 
 export const projectRoutes = new Elysia()
     .derive(ApiUtils.deriveFunc)
-    .get('/projects', async ({ identity }) => {
+    .get('/projects', async ({ query, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
 
         const projects = await projectService.getAll();
 
-        if (UserGroupUtils.isAdmin(identity.session)) {
-            return projects;
-        }
+        const visibleProjects = UserGroupUtils.isAdmin(identity.session)
+            ? projects
+            : projects.filter(project =>
+                UserGroupUtils.sessionHasReadAccessToProject(identity.session, project.id)
+            );
 
-        return projects.filter(project =>
-            UserGroupUtils.sessionHasReadAccessToProject(identity.session, project.id)
-        );
+        return paginationUtils.isRequested(query)
+            ? paginationUtils.page(visibleProjects, query)
+            : visibleProjects;
     }, {
-        response: ApiUtils.mapResponseModel(z.array(ProjectModel)),
-        detail: { summary: 'List projects', operationId: 'listProjects', tags: ['Projects'], security: [{ bearerAuth: [] }] }
+        query: paginationQueryZodModel,
+        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(ProjectModel)),
+        detail: {
+            summary: 'List projects',
+            description: 'Returns all projects as an array. Set limit (and optionally cursor) to receive the paginated envelope { items, total, limit, nextCursor } instead.',
+            operationId: 'listProjects',
+            tags: ['Projects'],
+            security: [{ bearerAuth: [] }],
+        }
 
     })
     .get('/projects/:id', async ({ params, identity }) => {
@@ -66,7 +77,17 @@ export const projectRoutes = new Elysia()
     }, {
         body: projectWriteSchema,
         response: ApiUtils.mapResponseModel(ProjectModel),
-        detail: { summary: 'Create or update project', operationId: 'saveProject', tags: ['Projects'], security: [{ bearerAuth: [] }] }
+        detail: ApiOperationDetailUtils.create({
+            summary: 'Create or update project',
+            description: 'Creates a project when id is omitted, otherwise updates the existing project. Requires admin.',
+            'x-mcp-description': `Upsert one project. Omit id to create; send id to update an existing project.
+Example create: {"name":"team-demo"}
+Example update: {"id":"<projectId>","name":"team-demo-renamed"}
+Requires admin. Every project maps to a Kubernetes namespace; saveProject only stores metadata, deployApp or deployAgent creates the namespace.`,
+            operationId: 'saveProject',
+            tags: ['Projects'],
+            security: [{ bearerAuth: [] }],
+        })
     })
     .delete('/projects/:id', async ({ params, identity }) => {
         if (!identity) throw new ApiUnauthorizedException()
@@ -82,5 +103,12 @@ export const projectRoutes = new Elysia()
             id: z.string(),
         }),
         response: ApiUtils.mapResponseModel(z.undefined()),
-        detail: { summary: 'Delete project', operationId: 'deleteProject', tags: ['Projects'], security: [{ bearerAuth: [] }] }
+        detail: ApiOperationDetailUtils.create({
+            summary: 'Delete project',
+            description: 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. Requires admin.',
+            'x-mcp-description': 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. No request body.\nExample: DELETE /api/v1/projects/<projectId>.\nRequires admin and confirmation because this cannot be undone.',
+            operationId: 'deleteProject',
+            tags: ['Projects'],
+            security: [{ bearerAuth: [] }],
+        })
     });

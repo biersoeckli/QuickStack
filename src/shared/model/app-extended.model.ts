@@ -23,8 +23,16 @@ export const AppExtendedZodModel = z.lazy(() => AppModel.omit({
     appNodePorts: AppNodePortModel.array(),
     appFileMounts: AppFileMountModel.array(),
     appVolumes: AppVolumeModel.array(),
-    appBasicAuths: AppBasicAuthModel.array(),
+    appBasicAuths: AppBasicAuthModel.extend({
+        password: z.string().meta({ secret: true }),
+    }).array(),
     appNetworkPolicy: AppNetworkPolicyWithRulesZodModel.nullish(),
+    containerRegistryPassword: z.string().nullish().meta({ secret: true }),
+    gitToken: z.string().nullish().meta({ secret: true }),
+    envVars: z.string().meta({ secret: true }),
+    buildArgs: z.string().meta({ secret: true }),
+    webhookId: z.string().nullish().meta({ secret: true }),
+    healthCheckHttpHeadersJson: z.string().nullish().meta({ secret: true }),
 }))
 
 export type AppExtendedModel = z.infer<typeof AppExtendedZodModel>;

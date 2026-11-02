@@ -7,11 +7,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { setMcpServerEnabled } from '../../actions';
+import { MCP_SERVER_MODE_LABELS, McpServerMode, mcpServerModeZodModel } from '@/shared/model/mcp-settings.model';
+import { McpSettingsUtils } from '@/shared/utils/mcp.utils';
+import { setMcpSendSecrets, setMcpServerMode } from '../../actions';
 
 function Snippet({ value }: { value: string }) {
     return (
@@ -44,8 +47,9 @@ function Step({ title, children }: { title: string; children: ReactNode }) {
     );
 }
 
-export default function McpSettings({ mcpEnabled }: { mcpEnabled: boolean }) {
-    const [isEnabled, setIsEnabled] = useState(mcpEnabled);
+export default function McpSettings({ mcpMode, sendSecrets }: { mcpMode: McpServerMode; sendSecrets: boolean }) {
+    const [mode, setMode] = useState<McpServerMode>(mcpMode);
+    const [sendSecretsViaMcp, setSendSecretsViaMcp] = useState(sendSecrets);
     const [loading, setLoading] = useState(false);
     const [origin, setOrigin] = useState('');
 
@@ -54,20 +58,44 @@ export default function McpSettings({ mcpEnabled }: { mcpEnabled: boolean }) {
     }, []);
 
     const mcpUrl = `${origin || 'https://<your-quickstack-url>'}/api/mcp`;
+    const isEnabled = McpSettingsUtils.isMcpServerEnabled(mode);
 
-    const handleToggle = async (checked: boolean) => {
-        const previousState = isEnabled;
+    const handleModeChange = async (value: string | null) => {
+        const parsedMode = mcpServerModeZodModel.safeParse(value);
+        if (!parsedMode.success) {
+            return;
+        }
+
+        const previousMode = mode;
         try {
             setLoading(true);
-            setIsEnabled(checked);
+            setMode(parsedMode.data);
 
             await Toast.fromAction(
-                () => setMcpServerEnabled(checked),
-                `MCP server ${checked ? 'enabled' : 'disabled'}`,
-                `Updating MCP server...`
+                () => setMcpServerMode(parsedMode.data),
+                `MCP server set to ${MCP_SERVER_MODE_LABELS[parsedMode.data]}`,
+                'Updating MCP server...'
             );
         } catch {
-            setIsEnabled(previousState);
+            setMode(previousMode);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendSecretsToggle = async (checked: boolean) => {
+        const previousState = sendSecretsViaMcp;
+        try {
+            setLoading(true);
+            setSendSecretsViaMcp(checked);
+
+            await Toast.fromAction(
+                () => setMcpSendSecrets(checked),
+                `MCP secrets ${checked ? 'enabled' : 'disabled'}`,
+                'Updating MCP secret handling...'
+            );
+        } catch {
+            setSendSecretsViaMcp(previousState);
         } finally {
             setLoading(false);
         }
@@ -117,11 +145,10 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                 <ShieldAlert />
                 <AlertTitle>Canary feature: secrets can flow through MCP</AlertTitle>
                 <AlertDescription>
-                    The MCP server is a canary feature and still in active developement. Tool arguments and results are passed to the AI host and model.
-                    Because the MCP server is currently built ontop of the QuickStack REST API, read operations can return secrets in plaintext, including App environment variables, build arguments,
-                    Git tokens, container registry credentials and App basic-auth passwords. Write operations can send the
-                    same values. Only connect trusted clients and use a REST API
-                    Key from a user with the minimum required permissions.
+                    The MCP server is a canary feature and still in active development. Tool arguments and results are passed to the AI host and model.
+                    Read responses redact secret fields unless <strong>Send secrets</strong> is enabled. Write tool arguments are still sent to QuickStack,
+                    so never put secrets into a prompt that should not reach the AI host. Only connect trusted clients and use a REST API Key
+                    from a user with the minimum required permissions.
                 </AlertDescription>
             </Alert>
 
@@ -136,13 +163,46 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                         Codex and GitHub Copilot can then act on QuickStack through the REST API using a REST API Key.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex gap-4 items-center">
-                        <div className="flex items-center space-x-3">
-                            <Switch disabled={loading} checked={isEnabled} onCheckedChange={handleToggle} />
-                            <Label>Enable the MCP server at /api/mcp</Label>
+                <CardContent className="space-y-5">
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Label htmlFor="mcp-server-mode">MCP access at /api/mcp</Label>
+                            <Select value={mode} onValueChange={handleModeChange} disabled={loading}>
+                                <SelectTrigger id="mcp-server-mode" className="w-[180px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {mcpServerModeZodModel.options.map((option) => (
+                                        <SelectItem key={option} value={option}>
+                                            {MCP_SERVER_MODE_LABELS[option]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {loading && <LoadingSpinner />}
                         </div>
-                        {loading && <LoadingSpinner />}
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Read only</span> exposes the search and read tools.
+                            <span className="font-medium"> Read &amp; write</span> also exposes the mutating tool.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center space-x-3">
+                            <Switch
+                                id="mcp-send-secrets"
+                                disabled={loading || !isEnabled}
+                                checked={sendSecretsViaMcp}
+                                onCheckedChange={handleSendSecretsToggle}
+                            />
+                            <Label htmlFor="mcp-send-secrets">Send secrets in MCP responses</Label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            When off, fields marked as secret (environment variables, build arguments, registry passwords,
+                            Git tokens, SSH private keys, basic-auth passwords, webhook IDs, health-check headers and
+                            LLM admin keys) are removed from MCP results. Temporary sandbox access URLs and API tokens
+                            are also redacted. The normal REST API is not affected.
+                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -152,9 +212,11 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                     <CardTitle>Connection</CardTitle>
                     <CardDescription>
                         Use the endpoint URL below and authenticate with a REST API Key created under
-                        {' '}Settings &rarr; Account &amp; Access &rarr; API Keys. QuickStack exposes two tools:
-                        {' '}<span className="font-mono">search_operations</span> to discover operations and
-                        {' '}<span className="font-mono">execute_operation</span> to run one.
+                        {' '}Settings &rarr; Account &amp; Access &rarr; API Keys. QuickStack exposes
+                        {' '}<span className="font-mono">quickstack_search_operations</span> to discover operations and
+                        {' '}<span className="font-mono">quickstack_execute_read_operation</span> for read-only calls.
+                        Read &amp; write mode adds <span className="font-mono">quickstack_execute_operation</span> for
+                        mutating calls.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -215,8 +277,10 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                                 <Snippet value={genericJson} />
                             </Step>
                             <p className="text-sm text-muted-foreground">
-                                Call <span className="font-mono">search_operations</span> first to discover operation ids and their
-                                input/output schemas, then call <span className="font-mono">execute_operation</span> with
+                                Call <span className="font-mono">quickstack_search_operations</span> first to discover operation ids
+                                and their input/output schemas, then call
+                                {' '}<span className="font-mono">quickstack_execute_read_operation</span> or
+                                {' '}<span className="font-mono">quickstack_execute_operation</span> with
                                 {' '}<span className="font-mono">pathParams</span>, <span className="font-mono">query</span> and
                                 {' '}<span className="font-mono">body</span>. Clients set the MCP protocol headers themselves.
                             </p>
