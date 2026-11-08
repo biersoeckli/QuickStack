@@ -5,7 +5,9 @@ import clusterService from "./cluster.service";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
-import longhornApiAdapter from "../adapter/longhorn-api.adapter";
+import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
+import { supportsVolumeFilesystemMetrics } from "./volume-filesystem-drivers";
+import { VolumeFilesystemUsage } from "@/shared/model/app-volume-monitoring-usage.model";
 import dataAccess from "../adapter/db.client";
 import pvcService from "./pvc.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
@@ -14,63 +16,65 @@ import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.mod
 
 class MonitorService {
 
-    async getAllAppVolumesUsage() {
-        const [longhornData, appVolumes, pvcs] = await Promise.all([
-            longhornApiAdapter.getAllLonghornVolumes(),
-            dataAccess.client.appVolume.findMany({
-                include: {
-                    app: {
-                        include: {
-                            project: true
-                        }
-                    }
-                },
-                orderBy: {
-                    appId: 'asc'
-                }
-            }),
-            pvcService.getAllPvc()
+    private async getVolumeFilesystemUsage(volumes: { id: string; sharedVolumeId: string | null; projectId: string }[]): Promise<Map<string, VolumeFilesystemUsage>> {
+        const [pvcs, persistentVolumes, samples] = await Promise.all([
+            pvcService.getAllPvc().catch(() => []),
+            k3s.core.listPersistentVolume().then(result => result.items).catch(() => []),
+            volumeSummaryAdapter.getSamples().catch(() => []),
         ]);
-
-        const appVolumesWithUsage: AppVolumeMonitoringUsageModel[] = [];
-        const volumeMap = new Map(appVolumes.map(volume => [volume.id, volume]));
-        const pvcByName = new Map(pvcs.map(pvc => [pvc.metadata?.name, pvc]));
-        const longhornVolumeByName = new Map(longhornData.map(volume => [volume.name, volume]));
-
-        for (const appVolume of appVolumes) {
-            const sharedVolumeId = (appVolume as { sharedVolumeId?: string | null }).sharedVolumeId;
-            const baseVolumeId = sharedVolumeId ?? appVolume.id;
-            const baseVolume = volumeMap.get(baseVolumeId);
-            const pvc = pvcByName.get(KubeObjectNameUtils.toPvcName(baseVolumeId));
-            if (!pvc) {
+        const pvcByKey = new Map(pvcs.map(pvc => [`${pvc.metadata?.namespace}/${pvc.metadata?.name}`, pvc]));
+        const pvByName = new Map(persistentVolumes.map(pv => [pv.metadata?.name, pv]));
+        const result = new Map<string, VolumeFilesystemUsage>();
+        const now = Date.now();
+        for (const volume of volumes) {
+            const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
+            const key = `${volume.projectId}/${pvcName}`;
+            if (result.has(key)) continue;
+            const pvc = pvcByKey.get(key);
+            const pv = pvc?.spec?.volumeName ? pvByName.get(pvc.spec.volumeName) : undefined;
+            if (!pv) {
+                result.set(key, { pvcName, status: 'unavailable' });
                 continue;
             }
-            const volumeName = pvc.spec?.volumeName;
-            const longhornVolume = volumeName ? longhornVolumeByName.get(volumeName) : undefined;
-            if (!longhornVolume) {
+            if (!supportsVolumeFilesystemMetrics(pv)) {
+                result.set(key, { pvcName, status: 'unsupported' });
                 continue;
             }
-
-            appVolumesWithUsage.push({
-                projectId: appVolume.app.projectId,
-                projectName: appVolume.app.project.name,
-                appName: appVolume.app.name,
-                appId: appVolume.appId,
-                mountPath: appVolume.containerMountPath,
-                usedBytes: longhornVolume.actualSizeBytes,
-                capacityBytes: KubeSizeConverter.fromMegabytesToBytes(baseVolume?.size ?? appVolume.size),
-                isBaseVolume: !sharedVolumeId
-            });
+            const candidates = samples.filter(sample => sample.pvcRef?.namespace === volume.projectId && sample.pvcRef.name === pvcName)
+                .filter(sample => {
+                    const values = [sample.usedBytes, sample.availableBytes, sample.capacityBytes];
+                    return values.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)
+                        && !!sample.capacityBytes && Number.isFinite(Date.parse(sample.time ?? ''));
+                }).sort ( (a, b) => Date.parse(b.time!) - Date.parse(a.time!));
+            const sample = candidates[0];
+            const age = sample ? now - Date.parse(sample.time!) : Infinity;
+            if (!sample || age > 5 * 60 * 1000 || age < -60 * 1000) {
+                result.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });
+                continue;
+            }
+            result.set(key, { pvcName, status: 'available', usedBytes: sample.usedBytes, availableBytes: sample.availableBytes, capacityBytes: sample.capacityBytes, measuredAt: sample.time });
         }
+        return result;
+    }
 
-        // sort appVolumesWithUsage first by projectName (asc) then by appName
-        appVolumesWithUsage.sort((a, b) => {
-            if (a.projectName === b.projectName) {
-                return a.appName.localeCompare(b.appName);
-            }
-            return a.projectName.localeCompare(b.projectName);
+    async getAllAppVolumesUsage(): Promise<AppVolumeMonitoringUsageModel[]> {
+        const appVolumes = await dataAccess.client.appVolume.findMany({
+            include: { app: { include: { project: true } } },
+            orderBy: { appId: 'asc' },
         });
-        return appVolumesWithUsage;
+        const usages = await this.getVolumeFilesystemUsage(appVolumes.map(volume => ({ ...volume, projectId: volume.app.projectId })));
+        return appVolumes.map(volume => {
+            const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
+            return {
+                ...usages.get(`${volume.app.projectId}/${pvcName}`)!,
+                projectId: volume.app.projectId,
+                projectName: volume.app.project.name,
+                appName: volume.app.name,
+                appId: volume.appId,
+                mountPath: volume.containerMountPath,
+                isBaseVolume: !volume.sharedVolumeId,
+            };
+        }).sort((a, b) => a.projectName.localeCompare(b.projectName) || a.appName.localeCompare(b.appName));
     }
 
     async getMonitoringForAllApps() {
@@ -185,34 +189,13 @@ class MonitorService {
         return totalResourcesNodes;
     }
 
-    async getPvcUsageFromApp(appId: string, projectId: string): Promise<Array<{ pvcName: string, usedBytes: number }>> {
-        const appVolumes = await dataAccess.client.appVolume.findMany({
-            where: {
-                appId
-            },
-            select: {
-                id: true,
-                sharedVolumeId: true
-            }
+    async getPvcUsageFromApp(appId: string, projectId: string): Promise<VolumeFilesystemUsage[]> {
+        const volumes = await dataAccess.client.appVolume.findMany({
+            where: { appId },
+            select: { id: true, sharedVolumeId: true },
         });
-        if (appVolumes.length === 0) {
-            return [];
-        }
-        const baseVolumeIds = Array.from(new Set(appVolumes.map(volume => (volume as { sharedVolumeId?: string | null }).sharedVolumeId || volume.id)));
-        const pvcNames = new Set(baseVolumeIds.map(id => KubeObjectNameUtils.toPvcName(id)));
-        const pvcFromProject = await k3s.core.listNamespacedPersistentVolumeClaim({ namespace: projectId });
-        const pvcUsageData: Array<{ pvcName: string, usedBytes: number }> = [];
-
-        for (const pvc of pvcFromProject.items) {
-            const pvcName = pvc.metadata?.name;
-            const volumeName = pvc.spec?.volumeName;
-
-            if (pvcName && volumeName && pvcNames.has(pvcName as `pvc-${string}`)) {
-                const usedBytes = await longhornApiAdapter.getLonghornVolume(volumeName);
-                pvcUsageData.push({ pvcName, usedBytes });
-            }
-        }
-        return pvcUsageData;
+        const usages = await this.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })));
+        return Array.from(usages.values());
     }
 }
 

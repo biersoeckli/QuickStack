@@ -14,7 +14,7 @@ vi.mock('@kubernetes/client-node', async (importOriginal) => {
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
-        core: {},
+        core: { listNode: vi.fn(), listPersistentVolume: vi.fn(), connectGetNodeProxyWithPath: vi.fn() },
         getKubeConfig: vi.fn(() => ({})),
     },
 }));
@@ -26,13 +26,6 @@ vi.mock('@/server/adapter/db.client', () => ({
                 findMany: vi.fn(),
             },
         },
-    },
-}));
-
-vi.mock('@/server/adapter/longhorn-api.adapter', () => ({
-    default: {
-        getAllLonghornVolumes: vi.fn(),
-        getLonghornVolume: vi.fn(),
     },
 }));
 
@@ -60,8 +53,8 @@ vi.mock('@/server/services/standalone-services/standalone-pod.service', () => ({
     },
 }));
 
+import k3s from '@/server/adapter/kubernetes-api.adapter';
 import dataAccess from '@/server/adapter/db.client';
-import longhornApiAdapter from '@/server/adapter/longhorn-api.adapter';
 import projectService from '@/server/services/project.service';
 import clusterService from '@/server/services/cluster.service';
 import pvcService from '@/server/services/pvc.service';
@@ -70,7 +63,6 @@ import monitoringService from './monitoring.service';
 
 const mockedTopPods = vi.mocked(k8sMocks.topPods);
 const mockedFindMany = vi.mocked(dataAccess.client.appVolume.findMany);
-const mockedGetAllLonghornVolumes = vi.mocked(longhornApiAdapter.getAllLonghornVolumes);
 const mockedProjectGetAll = vi.mocked(projectService.getAll);
 const mockedGetNodeInfo = vi.mocked(clusterService.getNodeInfo);
 const mockedGetAllPvc = vi.mocked(pvcService.getAllPvc);
@@ -114,10 +106,6 @@ function appVolume(id: string, appId: string, size: number, sharedVolumeId: stri
             project: { name: 'Project 1' },
         },
     };
-}
-
-function pvc(name: string, volumeName: string) {
-    return { metadata: { name }, spec: { volumeName } };
 }
 
 describe('monitoringService.getMonitoringForAllApps', () => {
@@ -166,69 +154,63 @@ describe('monitoringService.getMonitoringForAllApps', () => {
 });
 
 describe('monitoringService.getAllAppVolumesUsage', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+    it('reports fresh Longhorn filesystem usage for the configured volume', async () => {
+        mockedFindMany.mockResolvedValue([appVolume('vol-1', 'app-1', 1024, null)] as never);
+        mockedGetAllPvc.mockResolvedValue([{ metadata: { name: 'pvc-vol-1', namespace: 'proj-1' }, spec: { volumeName: 'pv-1' } }] as never);
+        vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [{ metadata: { name: 'pv-1' }, spec: { csi: { driver: 'driver.longhorn.io' } } }] } as never);
+        vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'node-1' } }] } as never);
+        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockResolvedValue(JSON.stringify({ pods: [{ podRef: { namespace: 'proj-1' }, volume: [{ pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 111, availableBytes: 889, capacityBytes: 1000 }] }] }));
 
-    it('resolves the correct pvc and longhorn volume for each app volume', async () => {
-        mockedGetAllLonghornVolumes.mockResolvedValue([
-            { name: 'lh-1', actualSizeBytes: 111, sizeBytes: 1000 },
-            { name: 'lh-2', actualSizeBytes: 222, sizeBytes: 2000 },
-        ]);
+        const result = await monitoringService.getAllAppVolumesUsage();
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({ usedBytes: 111, availableBytes: 889, capacityBytes: 1000, status: 'available' });
+    });
+    it('keeps shared and unavailable volumes while using fresh samples across nodes', async () => {
         mockedFindMany.mockResolvedValue([
-            appVolume('vol-1', 'app-1', 1024, null),
-            appVolume('vol-2', 'app-2', 2048, null),
+            appVolume('vol-1', 'app-1', 1, null),
+            appVolume('vol-2', 'app-2', 1, 'vol-1'),
+            appVolume('vol-3', 'app-3', 1, null),
+            appVolume('vol-4', 'app-4', 1, null),
+            appVolume('vol-5', 'app-5', 1, null),
         ] as never);
         mockedGetAllPvc.mockResolvedValue([
-            pvc('pvc-vol-1', 'lh-1'),
-            pvc('pvc-vol-2', 'lh-2'),
+            { metadata: { namespace: 'proj-1', name: 'pvc-vol-1' }, spec: { volumeName: 'pv-1' } },
+            { metadata: { namespace: 'proj-1', name: 'pvc-vol-3' }, spec: { volumeName: 'pv-3' } },
+            { metadata: { namespace: 'proj-1', name: 'pvc-vol-4' }, spec: { volumeName: 'pv-4' } },
         ] as never);
-
+        vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [
+            { metadata: { name: 'pv-1' }, spec: { csi: { driver: 'driver.longhorn.io' } } },
+            { metadata: { name: 'pv-3' }, spec: { csi: { driver: 'driver.longhorn.io' } } },
+            { metadata: { name: 'pv-4' }, spec: { csi: { driver: 'rancher.io/local-path' } } },
+        ] } as never);
+        vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'broken' } }, { metadata: { name: 'healthy' } }] } as never);
+        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockImplementation(async ({ name }) => {
+            if (name === 'broken') throw new Error('node unavailable');
+            return JSON.stringify({ pods: [{ volume: [
+                { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, availableBytes: 1000, capacityBytes: 1000 },
+                { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-3' }, time: new Date(Date.now() - 600000).toISOString(), usedBytes: 500, availableBytes: 500, capacityBytes: 1000 },
+                { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-4' }, time: new Date().toISOString(), usedBytes: 500, availableBytes: 500, capacityBytes: 1000 },
+            ] }] });
+        });
         const result = await monitoringService.getAllAppVolumesUsage();
-
-        expect(result).toHaveLength(2);
-        expect(result.find((volume) => volume.appId === 'app-1')).toMatchObject({
-            usedBytes: 111,
-            capacityBytes: 1024 * 1024 * 1024,
-            isBaseVolume: true,
-        });
-        expect(result.find((volume) => volume.appId === 'app-2')).toMatchObject({
-            usedBytes: 222,
-            capacityBytes: 2048 * 1024 * 1024,
-            isBaseVolume: true,
-        });
+        expect(result).toHaveLength(5);
+        expect(result.find(v => v.appId === 'app-1')).toMatchObject({ status: 'available', usedBytes: 0 });
+        expect(result.find(v => v.appId === 'app-2')).toMatchObject({ status: 'available', usedBytes: 0, pvcName: 'pvc-vol-1' });
+        expect(result.find(v => v.appId === 'app-3')).toMatchObject({ status: 'stale' });
+        expect(result.find(v => v.appId === 'app-4')).toMatchObject({ status: 'unsupported' });
+        expect(result.find(v => v.appId === 'app-5')).toMatchObject({ status: 'unavailable' });
     });
 
-    it('derives a shared volume from its base volume and longhorn counterpart', async () => {
-        mockedGetAllLonghornVolumes.mockResolvedValue([
-            { name: 'lh-1', actualSizeBytes: 111, sizeBytes: 1000 },
-        ]);
-        mockedFindMany.mockResolvedValue([
-            appVolume('vol-1', 'app-1', 1024, null),
-            appVolume('vol-3', 'app-3', 9999, 'vol-1'),
-        ] as never);
-        mockedGetAllPvc.mockResolvedValue([
-            pvc('pvc-vol-1', 'lh-1'),
-        ] as never);
-
-        const result = await monitoringService.getAllAppVolumesUsage();
-
-        expect(result.find((volume) => volume.appId === 'app-3')).toMatchObject({
-            usedBytes: 111,
-            capacityBytes: 1024 * 1024 * 1024,
-            isBaseVolume: false,
-        });
+    it('treats missing fields and zero capacity as unavailable', async () => {
+        mockedFindMany.mockResolvedValue([appVolume('vol-1', 'app-1', 1, null)] as never);
+        mockedGetAllPvc.mockResolvedValue([{ metadata: { namespace: 'proj-1', name: 'pvc-vol-1' }, spec: { volumeName: 'pv-1' } }] as never);
+        vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [{ metadata: { name: 'pv-1' }, spec: { csi: { driver: 'driver.longhorn.io' } } }] } as never);
+        vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'node-1' } }] } as never);
+        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockResolvedValue(JSON.stringify({ pods: [{ volume: [
+            { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, capacityBytes: 100 },
+            { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, availableBytes: 0, capacityBytes: 0 },
+        ] }] }));
+        expect((await monitoringService.getAllAppVolumesUsage())[0]).toMatchObject({ status: 'unavailable' });
     });
 
-    it('skips volumes without a matching pvc or longhorn volume', async () => {
-        mockedGetAllLonghornVolumes.mockResolvedValue([]);
-        mockedFindMany.mockResolvedValue([
-            appVolume('vol-1', 'app-1', 1024, null),
-        ] as never);
-        mockedGetAllPvc.mockResolvedValue([] as never);
-
-        const result = await monitoringService.getAllAppVolumesUsage();
-
-        expect(result).toHaveLength(0);
-    });
 });
