@@ -439,17 +439,19 @@ export default function AgentSandboxesCard({
                                         Filter{statusFilter.length > 0 && ` (${statusFilter.length})`}
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-44">
-                                        <DropdownMenuLabel>Status</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {SANDBOX_STATUSES.map((status) => (
-                                            <DropdownMenuCheckboxItem
-                                                key={status}
-                                                checked={statusFilter.includes(status)}
-                                                onCheckedChange={(checked) => toggleStatusFilter(status, checked)}
-                                            >
-                                                {SANDBOX_STATUS_LABELS[status]}
-                                            </DropdownMenuCheckboxItem>
-                                        ))}
+                                        <DropdownMenuGroup>
+                                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                                            <DropdownMenuSeparator />
+                                            {SANDBOX_STATUSES.map((status) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={status}
+                                                    checked={statusFilter.includes(status)}
+                                                    onCheckedChange={(checked) => toggleStatusFilter(status, checked)}
+                                                >
+                                                    {SANDBOX_STATUS_LABELS[status]}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuGroup>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
