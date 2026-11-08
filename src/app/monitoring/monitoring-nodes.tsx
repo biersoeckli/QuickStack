@@ -38,7 +38,6 @@ export default function ResourcesNodes({
 }) {
 
   const getDiskUsageAbsolut = (node: NodeResourceModel) => node.diskUsageAbsolut ?? 0;
-  const getDiskUsageReserved = (node: NodeResourceModel) => node.diskUsageReserved ?? 0;
   const getDiskUsageCapacity = (node: NodeResourceModel) => node.diskUsageCapacity ?? 0;
   const toPercent = (used: number, capacity: number) => (capacity > 0 ? (used / capacity) * 100 : 0);
 
@@ -53,7 +52,7 @@ export default function ResourcesNodes({
     if (!updatedNodeRessources) return {
       cpuUsage: 0, cpuCapacity: 1,
       ramUsage: 0, ramCapacity: 1,
-      diskUsageAbsolut: 0, diskUsageReserved: 0, diskCapacity: 1
+      diskUsageAbsolut: 0, diskCapacity: 1
     };
 
     return updatedNodeRessources.reduce((acc, node) => ({
@@ -62,12 +61,11 @@ export default function ResourcesNodes({
       ramUsage: acc.ramUsage + node.ramUsage,
       ramCapacity: acc.ramCapacity + node.ramCapacity,
       diskUsageAbsolut: acc.diskUsageAbsolut + getDiskUsageAbsolut(node),
-      diskUsageReserved: acc.diskUsageReserved + getDiskUsageReserved(node),
       diskCapacity: acc.diskCapacity + getDiskUsageCapacity(node),
     }), {
       cpuUsage: 0, cpuCapacity: 0,
       ramUsage: 0, ramCapacity: 0,
-      diskUsageAbsolut: 0, diskUsageReserved: 0, diskCapacity: 0
+      diskUsageAbsolut: 0, diskCapacity: 0
     });
   }, [updatedNodeRessources]);
 
@@ -83,22 +81,7 @@ export default function ResourcesNodes({
       color: "var(--chart-1)",
     },
     free: {
-      label: "Free",
-      color: "var(--muted)",
-    },
-  } satisfies ChartConfig;
-
-  const storagePieChartConfig = {
-    used: {
-      label: "Used",
-      color: "var(--chart-1)",
-    },
-    reserved: {
-      label: "Reserved",
-      color: "var(--chart-2)",
-    },
-    free: {
-      label: "Free",
+      label: "Remaining",
       color: "var(--muted)",
     },
   } satisfies ChartConfig;
@@ -108,14 +91,6 @@ export default function ResourcesNodes({
     return [
       { status: 'used', value: used, fill: getUsageColor(percentage) },
       { status: 'free', value: Math.max(0, capacity - used), fill: 'var(--color-free)' },
-    ];
-  };
-
-  const getStorageChartData = (used: number, reserved: number, capacity: number) => {
-    return [
-      { status: 'used', value: used, fill: "var(--chart-1)" },
-      { status: 'reserved', value: reserved, fill: "var(--chart-2)" },
-      { status: 'free', value: Math.max(0, capacity - used - reserved), fill: 'var(--color-free)' },
     ];
   };
 
@@ -192,38 +167,29 @@ export default function ResourcesNodes({
         <Card className="flex flex-col">
           <CardHeader className="items-center pb-0">
             <CardTitle>Cluster Storage</CardTitle>
-            <CardDescription>Total Disk Usage</CardDescription>
+            <CardDescription>Node filesystem usage</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            <ChartContainer config={storagePieChartConfig} className="mx-auto aspect-square max-h-[250px]">
-              <PieChart>
-                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => {
-                  if (value === clusterStats.diskUsageAbsolut) {
-                    return KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageAbsolut) + ' (Used)';
-                  }
-                  if (value === clusterStats.diskUsageReserved) {
-                    return KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageReserved) + ' (Free but unusable)';
-                  }
-                  return KubeSizeConverter.convertBytesToReadableSize(value as number) + ' (Free)';
-                }} />} />
-                <Pie data={getStorageChartData(clusterStats.diskUsageAbsolut, clusterStats.diskUsageReserved, clusterStats.diskCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
-                  <Label content={({ viewBox }) => {
-                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                      return (
-                        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                          <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                            {toPercent(clusterStats.diskUsageAbsolut + clusterStats.diskUsageReserved, clusterStats.diskCapacity).toFixed(0)}%
-                          </tspan>
-                          <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
-                            Used
-                          </tspan>
-                        </text>
-                      )
-                    }
-                  }} />
-                </Pie>
-              </PieChart>
-            </ChartContainer>
+            {updatedNodeRessources.some(node => node.diskUsageCapacity === undefined) && (
+              <p className="text-center text-sm text-muted-foreground">Incomplete: some node filesystem metrics are unavailable.</p>
+            )}
+            {clusterStats.diskCapacity > 0 ? (
+              <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
+                <PieChart>
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => KubeSizeConverter.convertBytesToReadableSize(value as number)} />} />
+                  <Pie data={getChartData(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
+                    <Label content={({ viewBox }) => viewBox && "cx" in viewBox && "cy" in viewBox ? (
+                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                        <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
+                          {toPercent(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity).toFixed(0)}%
+                        </tspan>
+                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">Used</tspan>
+                      </text>
+                    ) : null} />
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            ) : <p className="py-12 text-center text-muted-foreground">Storage metrics unavailable</p>}
           </CardContent>
         </Card>
       </div>
@@ -270,10 +236,10 @@ export default function ResourcesNodes({
                     <div className="space-y-1">
                       {(() => {
                         const diskUsed = getDiskUsageAbsolut(node);
-                        const diskReserved = getDiskUsageReserved(node);
                         const diskCapacity = getDiskUsageCapacity(node);
-                        const diskUsedAndReserved = diskUsed + diskReserved;
+                        const diskUsedAndReserved = diskUsed;
                         const diskPercent = toPercent(diskUsedAndReserved, diskCapacity);
+                        if (node.diskUsageCapacity === undefined) return <span className="text-muted-foreground">Unavailable</span>;
                         return (
                           <>
                             <div className="flex justify-between text-xs text-muted-foreground">
@@ -472,7 +438,7 @@ function NodeDetailsSheet({ node }: { node: NodeResourceModel }) {
                                 y={(viewBox.cy || 0) + 30}
                                 className="fill-muted-foreground"
                               >
-                                {(node.ramUsage / (1024 * 1024 * 1024)).toFixed(2)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
+                                {KubeSizeConverter.convertBytesToReadableSize(node.ramUsage)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
                               </tspan>
                             </text>
                           );

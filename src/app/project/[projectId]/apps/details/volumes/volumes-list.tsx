@@ -173,7 +173,7 @@ export default function StorageList({ app, readonly, storageClasses }: {
                         {volumesWithStorage.map(volume => (
                             <TableRow key={volume.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MB</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MiB</TableCell>
                                 <TableCell className="font-medium space-y-2">
                                     {volume.usedPercentage !== undefined && volume.usedBytes !== undefined && volume.capacityBytes !== undefined && volume.availableBytes !== undefined ? <>
                                         <Progress value={volume.usedPercentage}

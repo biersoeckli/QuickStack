@@ -13,8 +13,8 @@ import { deleteAgentVolume } from "../configuration/actions";
 import { Constants } from "@/shared/utils/constants";
 
 function formatSize(mb: number): string {
-    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-    return `${mb} MB`;
+    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GiB`;
+    return `${mb} MiB`;
 }
 
 function volumeTypeLabel(volumeType: string): string {

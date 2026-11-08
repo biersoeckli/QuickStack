@@ -4,9 +4,7 @@ import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
-import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
-import { CatchUtils } from "@/shared/utils/catch.utils";
 import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
 
 class ClusterService {
@@ -146,7 +144,23 @@ class ClusterService {
             nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
             const latestUsageItem = nodeMetrics[0];
 
-            const diskInfo = await CatchUtils.resultOrUndefined(() => longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!));
+            let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
+            try {
+                const summary = await k3s.getNodeSummary(node.Node.metadata?.name!) as {
+                    node?: { fs?: typeof filesystem };
+                };
+                const fs = summary.node?.fs;
+                const timestamp = Date.parse(fs?.time ?? '');
+                if (fs && Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 5 * 60_000 &&
+                    typeof fs.usedBytes === 'number' && Number.isFinite(fs.usedBytes) && fs.usedBytes >= 0 &&
+                    typeof fs.availableBytes === 'number' && Number.isFinite(fs.availableBytes) && fs.availableBytes >= 0 &&
+                    typeof fs.capacityBytes === 'number' && Number.isFinite(fs.capacityBytes) && fs.capacityBytes > 0 &&
+                    fs.usedBytes <= fs.capacityBytes && fs.availableBytes <= fs.capacityBytes) {
+                    filesystem = fs;
+                }
+            } catch {
+                // A node without a summary must not hide the other nodes' metrics.
+            }
 
             return {
                 name: node.Node.metadata?.name!,
@@ -154,10 +168,9 @@ class ClusterService {
                 cpuCapacity: Number(node.CPU?.Capacity!),
                 ramUsage: latestUsageItem.ramUsage,
                 ramCapacity: Number(node.Memory?.Capacity!),
-                diskUsageAbsolut: diskInfo ? diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable : undefined,
-                diskUsageReserved: diskInfo?.totalStorageReserved,
-                diskUsageCapacity: diskInfo?.totalStorageMaximum,
-                diskSpaceSchedulable: diskInfo?.totalSchedulableStorage
+                diskUsageAbsolut: filesystem?.usedBytes,
+                diskUsageAvailable: filesystem?.availableBytes,
+                diskUsageCapacity: filesystem?.capacityBytes
             }
         }));
     }

@@ -202,6 +202,10 @@ _Avoid_: disk, storage, PVC when referring to the domain concept
 A **Volume** attached to an **App**, optionally shareable with other Apps in the same project.
 _Avoid_: app storage, app disk
 
+**App Volume Filesystem Usage**:
+The occupied and available space and the capacity of the filesystem of an **App Volume**. It excludes storage consumed by snapshots outside that filesystem.
+_Avoid_: Longhorn actual size, physical replica usage
+
 **Agent Volume**:
 A **Volume** attached to an **Agent**, without backup scheduling. An Agent Volume is not shareable with other Agents or Apps. Its **Volume Type** is a **Shared Agent Volume**, a **Per-Sandbox Agent Volume**, or a **Per-Custom-Tag Agent Volume**.
 _Avoid_: agent storage, agent disk

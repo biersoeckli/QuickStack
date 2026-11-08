@@ -11,14 +11,14 @@ export class KubeSizeConverter {
 
     /**
      * Converts a size in bytes to a human-readable format.
-     * eg. 1024 -> 1 KB, 1024 * 1024 -> 1 MB, etc.
+     * eg. 1024 -> 1 KiB, 1024 * 1024 -> 1 MiB, etc.
      */
     static convertBytesToReadableSize(bytes: number, fractionDigits = 2, hideSize = false): string {
         if (isNaN(bytes) || bytes === 0) {
             return '0 B';
         }
 
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
 
         return parseFloat((bytes / Math.pow(1024, i)).toFixed(fractionDigits)) + (hideSize ? '' : (' ' + sizes[i]));

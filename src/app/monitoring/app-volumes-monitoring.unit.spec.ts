@@ -16,8 +16,8 @@ it('counts shared volumes once and marks incomplete totals', () => {
         { ...base, appId: 'b', appName: 'Other', isBaseVolume: false },
         { ...base, appId: 'c', pvcName: 'pvc-2', status: 'unavailable', usedBytes: undefined, capacityBytes: undefined, availableBytes: undefined },
     ] }));
-    expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('1 KB');
-    expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('4 KB');
+    expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('1 KiB');
+    expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('4 KiB');
     expect(screen.getByText('Unavailable (unavailable)')).toBeTruthy();
     expect(screen.getAllByText(/25%/)).toHaveLength(2);
 });

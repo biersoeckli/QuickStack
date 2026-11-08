@@ -4,10 +4,10 @@ describe(KubeSizeConverter.name, () => {
 
     describe('convertBytesToReadableSize', () => {
         it('should convert bytes to human-readable format', () => {
-            expect(KubeSizeConverter.convertBytesToReadableSize(1024)).toBe('1 KB');
-            expect(KubeSizeConverter.convertBytesToReadableSize(1024 * 1024)).toBe('1 MB');
-            expect(KubeSizeConverter.convertBytesToReadableSize(1024 * 1024 * 1024)).toBe('1 GB');
-            expect(KubeSizeConverter.convertBytesToReadableSize(1500)).toBe('1.46 KB');
+            expect(KubeSizeConverter.convertBytesToReadableSize(1024)).toBe('1 KiB');
+            expect(KubeSizeConverter.convertBytesToReadableSize(1024 * 1024)).toBe('1 MiB');
+            expect(KubeSizeConverter.convertBytesToReadableSize(1024 * 1024 * 1024)).toBe('1 GiB');
+            expect(KubeSizeConverter.convertBytesToReadableSize(1500)).toBe('1.46 KiB');
         });
 
         it('should handle zero bytes', () => {
