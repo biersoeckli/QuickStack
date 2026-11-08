@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 
-import { EditAppDialog } from "./app-components/edit-app-dialog";
+import { EditAppDialog } from "./apps/create/edit-app-dialog";
 import { Blocks, Bot, Database, File, Plus } from "lucide-react";
 import ChooseTemplateDialog from "./choose-template-dialog";
 import {
@@ -14,7 +14,7 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CreateAgentDialog } from "./agent-components/create-agent-dialog";
+import { CreateAgentDialog } from "./agents/create/create-agent-dialog";
 import { useDialog } from "@/frontend/states/zustand.states";
 
 

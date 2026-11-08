@@ -68,14 +68,7 @@ export function SidebarCient({
   const showSettingsNavigation = path.startsWith("/settings")
 
   useEffect(() => {
-    if (path.startsWith('/project/app/')) {
-      const appId = path.split('/')[3];
-      const project = projects.find(p => p.apps.some(a => a.id === appId));
-      setCurrentlySelectedProjectId(project?.id || null);
-      setCurrentlySelectedAppId(appId);
-      setCurrentlySelectedAgentId(null);
-
-    } else if (path.startsWith("/project")) {
+    if (path.startsWith("/project")) {
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(searchParams.get('drawerAppId'));

@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { EditIcon, Plus, TrashIcon } from "lucide-react";
@@ -12,12 +12,11 @@ import FileMountEditOverlay from "@/components/custom/file-mount-edit-overlay";
 import { deleteFileMount } from "@/app/project/actions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly, hideCard = false }: {
+export default function FileMountsCard({ fileMounts, workloadId, workloadType, readonly }: {
     fileMounts: FileMountEditModel[];
     workloadId: string;
     workloadType: WorkloadType;
     readonly: boolean;
-    hideCard?: boolean;
 }) {
     const { openConfirmDialog } = useConfirmDialog();
     const { openDialog } = useDialog();
@@ -42,15 +41,14 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
         });
     };
 
-    const CardWrapper = hideCard ? 'div' : Card;
 
     return <>
-        <CardWrapper>
+        <div>
             <CardHeader>
                 <CardTitle>File Mounts</CardTitle>
                 <CardDescription>Create files which are mounted into the container.</CardDescription>
             </CardHeader>
-            {fileMounts.length > 0 && <CardContent className={hideCard ? "px-0" : undefined}>
+            {fileMounts.length > 0 && <CardContent className="px-0">
                 <Table>
                     <TableCaption>{fileMounts.length} File Mounts</TableCaption>
                     <TableHeader>
@@ -74,9 +72,9 @@ export default function FileMountsCard({ fileMounts, workloadId, workloadType, r
                     </TableBody>
                 </Table>
             </CardContent>}
-            {!readonly && <CardFooter className={hideCard ? "px-0" : undefined}>
+            {!readonly && <CardFooter className="px-0">
                 <Button variant="outline" onClick={() => openEditFileMountDialog()}><Plus /> Add File Mount</Button>
             </CardFooter>}
-        </CardWrapper>
+        </div>
     </>;
 }

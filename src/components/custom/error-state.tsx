@@ -48,6 +48,7 @@ export default function ErrorState({
                             </Button>
                         )}
                         <Button
+                            nativeButton={false}
                             render={
                                 <a href={homeHref}>
                                     <Home />

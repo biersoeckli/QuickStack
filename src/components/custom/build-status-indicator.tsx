@@ -5,7 +5,7 @@ import { CircleAlert } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/frontend/utils/utils';
 import { useDialog } from '@/frontend/states/zustand.states';
-import { BuildLogsDialogContent } from '@/app/project/app/[appId]/overview/build-logs-overlay';
+import { BuildLogsDialogContent } from '@/app/project/workload-components/build-logs-dialog-content';
 import {
     Tooltip,
     TooltipContent,

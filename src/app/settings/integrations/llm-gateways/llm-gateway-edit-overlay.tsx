@@ -35,7 +35,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { CloudUpload, FilePenLine } from "lucide-react";
 import { ProjectExtendedModel } from "@/shared/model/project-extended.model";
-import { deploy } from "@/app/project/app/[appId]/actions";
+import { deploy } from "@/app/project/[projectId]/apps/details/actions";
 
 function LlmGatewayForm({ gateway }: { gateway?: LlmGatewayModel }) {
     const { closeDialog } = useDialogContext();

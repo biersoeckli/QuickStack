@@ -1,0 +1,216 @@
+'use client';
+
+import { SubmitButton } from "@/components/custom/submit-button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { FormUtils } from "@/frontend/utils/form.utilts";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { saveGeneralAppContainerConfig } from "./actions";
+import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useActionState, useEffect, useId } from "react";
+import { toast } from "sonner";
+import { AppExtendedModel } from "@/shared/model/app-extended.model";
+import { z } from "zod";
+import { appContainerConfigZodModel } from "@/shared/model/app-container-config.model";
+import ContainerCommandArgsFields, { LabelWithHint } from "@/components/custom/container-command-args-fields";
+import { NestedDrawerFooter } from "../../../../workload-components/drawer/nested-drawer";
+import { ContainerCommangArgsUtils } from "@/shared/utils/container-command-args.utils";
+
+export type AppContainerConfigInputModel = z.infer<typeof appContainerConfigZodModel>;
+
+export default function GeneralAppContainerConfig({ app, readonly }: {
+    app: AppExtendedModel;
+    readonly: boolean;
+}) {
+    const formId = useId();
+    const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
+    // Parse containerArgs from JSON string to array
+    const form = useForm<z.input<typeof appContainerConfigZodModel>, unknown, z.output<typeof appContainerConfigZodModel>>({
+        resolver: zodResolver(appContainerConfigZodModel),
+        defaultValues: {
+            containerCommand: ContainerCommangArgsUtils.parseStoredContainerCommandItems(app.containerCommand),
+            containerArgs: app.containerArgs
+                ? JSON.parse(app.containerArgs).map((arg: string) => ({ value: arg }))
+                : [],
+            securityContextRunAsUser: app.securityContextRunAsUser ?? undefined,
+            securityContextRunAsGroup: app.securityContextRunAsGroup ?? undefined,
+            securityContextFsGroup: app.securityContextFsGroup ?? undefined,
+            securityContextPrivileged: app.securityContextPrivileged ?? false,
+        },
+        disabled: readonly,
+    });
+
+    const [state, formAction] = useActionState(
+        (state: ServerActionResult<any, any>, payload: AppContainerConfigInputModel) =>
+            saveGeneralAppContainerConfig(state, payload, app.id),
+        FormUtils.getInitialFormState<typeof appContainerConfigZodModel>()
+    );
+
+    useEffect(() => {
+        if (state.status === 'success') {
+            toast.success('Container Configuration Saved', {
+                description: "Click \"deploy\" to apply the changes to your app.",
+            });
+        }
+        FormUtils.mapValidationErrorsToForm<typeof appContainerConfigZodModel>(state, form)
+    }, [form, state]);
+
+    const values = form.watch();
+
+    return (
+        <Form {...form}>
+            <TooltipProvider delay={150}>
+                <form id={formId} action={() => form.handleSubmit((data) => {
+                    return formAction(data);
+                })()}>
+                    <div className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">Runtime</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Leave these fields empty to keep the command and arguments from the container image.
+                                </p>
+                            </div>
+
+                            <ContainerCommandArgsFields form={form} readonly={readonly} />
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">Security Context</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Change these values only when your image, mounted volumes, or tooling require specific Linux permissions.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextRunAsUser"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <LabelWithHint hint="Linux user ID for the main container process. Maps to runAsUser in the Kubernetes securityContext.">
+                                                Run As User
+                                            </LabelWithHint>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={inputValue(field.value)}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextRunAsGroup"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <LabelWithHint hint="Linux group ID for the main container process. Maps to runAsGroup in the Kubernetes securityContext.">
+                                                Run As Group
+                                            </LabelWithHint>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={inputValue(field.value)}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="securityContextFsGroup"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <LabelWithHint hint="Supplemental group ID applied at pod level so mounted volumes can be owned and writable by that group. Maps to fsGroup in the Kubernetes securityContext.">
+                                                FS Group
+                                            </LabelWithHint>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g., 1001"
+                                                    {...field}
+                                                    value={inputValue(field.value)}
+                                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="securityContextPrivileged"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-3 rounded-md border p-4">
+                                        <div className="flex items-start gap-4">
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value ?? false}
+                                                    onCheckedChange={field.onChange}
+                                                    disabled={readonly}
+                                                />
+                                            </FormControl>
+                                            <div className="space-y-3 pt-0.5">
+                                                <LabelWithHint
+                                                    hint={(
+                                                        <>
+                                                            <p>
+                                                                Removes most container isolation. The container gets all Linux capabilities,
+                                                                access to host devices, and can interact with the node almost like a root
+                                                                process on the host.
+                                                            </p>
+                                                            <p className="mt-2">
+                                                                If the container is compromised, it can affect the Kubernetes node and
+                                                                other workloads. Use this only for workloads such as Docker-in-Docker
+                                                                or low-level system tooling.
+                                                            </p>
+                                                        </>
+                                                    )}
+                                                >
+                                                    Privileged Mode
+                                                </LabelWithHint>
+
+                                                {values.securityContextPrivileged && <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+                                                    <AlertDescription>
+                                                        Enable this only if you fully understand the implications and risks.
+                                                    </AlertDescription>
+                                                </Alert>}
+                                            </div>
+
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </div>
+                    {!readonly && (
+                        <NestedDrawerFooter>
+                            <SubmitButton form={formId} className="w-fit">Save</SubmitButton>
+                            <p className="text-red-500">{state?.message}</p>
+                        </NestedDrawerFooter>
+                    )}
+                </form>
+            </TooltipProvider>
+        </Form>
+    );
+}

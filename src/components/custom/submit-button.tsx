@@ -7,8 +7,9 @@ import { Button } from "../ui/button";
 export function SubmitButton(props: {
     children: React.ReactNode,
     variant?: "default" | "destructive" | "ghost" | "link" | "outline" | "secondary" | null | undefined,
-    className?: string
+    className?: string,
+    form?: string,
 }) {
     const { pending } = useFormStatus();
-    return <Button type="submit" variant={props.variant} className={props.className} disabled={pending}>{pending ? <LoadingSpinner></LoadingSpinner> : props.children}</Button>
+    return <Button type="submit" form={props.form} variant={props.variant} className={props.className} disabled={pending}>{pending ? <LoadingSpinner></LoadingSpinner> : props.children}</Button>
 }

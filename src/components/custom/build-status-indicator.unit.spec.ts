@@ -12,7 +12,7 @@ vi.mock('@/components/ui/tooltip', () => ({
     TooltipContent: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-vi.mock('@/app/project/app/[appId]/overview/build-logs-overlay', () => ({
+vi.mock('@/app/project/workload-components/build-logs-dialog-content', () => ({
     BuildLogsDialogContent: () => null,
 }));
 

@@ -2,7 +2,7 @@
 
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import projectService from "@/server/services/project.service";
-import AppProjectOverview from "./app-components/project-overview";
+import AppProjectOverview from "./overview/project-overview";
 import appService from "@/server/services/app.service";
 import agentService from "@/server/services/agent.service";
 import ProjectBreadcrumbs from "./project-breadcrumbs";
