@@ -142,6 +142,11 @@ describe('QuickStack MCP integration', () => {
 
         expect(response.status).toBe(200);
         expect(body.result.isError).not.toBe(true);
-        expect(body.result.structuredContent.result).toEqual([]);
+        expect(body.result.structuredContent.result).toEqual({
+            items: [],
+            total: 0,
+            limit: 50,
+            nextCursor: null,
+        });
     }, 120_000);
 });
