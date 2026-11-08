@@ -7,7 +7,7 @@ import { usePolling } from '@/frontend/hooks/use-polling';
 import { AppMonitoringUsageModel } from '@/shared/model/app-monitoring-usage.model';
 import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitoring-usage.model';
 import { NodeResourceModel } from '@/shared/model/node-resource.model';
-import { getMonitoringForAllApps, getNodeResourceUsage, getVolumeMonitoringUsage } from './actions';
+import { getMonitoringForAllApps, getNodeResourceUsage, getReservedVolumeStorage, getVolumeMonitoringUsage } from './actions';
 import AppRessourceMonitoring from './app-monitoring';
 import AppVolumeMonitoring from './app-volumes-monitoring';
 import ResourcesNodes from './monitoring-nodes';
@@ -23,24 +23,29 @@ export default function MonitoringClient({
     resourcesNodes,
     appsRessourceUsage,
     volumesUsage,
+    reservedVolumeStorage,
 }: {
     resourcesNodes?: NodeResourceModel[];
     appsRessourceUsage?: AppMonitoringUsageModel[];
     volumesUsage?: AppVolumeMonitoringUsageModel[];
+    reservedVolumeStorage?: number;
 }) {
 
+    const [updatedReservedStorage, setUpdatedReservedStorage] = useState(reservedVolumeStorage);
     const [updatedNodes, setUpdatedNodes] = useState(resourcesNodes);
     const [updatedApps, setUpdatedApps] = useState(appsRessourceUsage);
     const [updatedVolumes, setUpdatedVolumes] = useState(volumesUsage);
 
     const refreshMonitoringData = useCallback(async () => {
         try {
-            const [nodes, volumes, apps] = await Promise.all([
+            const [nodes, volumes, apps, reservedStorage] = await Promise.all([
                 Actions.run(() => getNodeResourceUsage()),
                 Actions.run(() => getVolumeMonitoringUsage()),
                 Actions.run(() => getMonitoringForAllApps()),
+                Actions.run(() => getReservedVolumeStorage()).catch(() => undefined),
             ]);
             setUpdatedNodes(nodes);
+            setUpdatedReservedStorage(reservedStorage);
             setUpdatedVolumes(volumes?.filter((volume) => !!volume.isBaseVolume));
             setUpdatedApps(apps);
         } catch (ex) {
@@ -53,7 +58,7 @@ export default function MonitoringClient({
 
     return (
         <div className="space-y-6">
-            <ResourcesNodes resourcesNodes={updatedNodes} />
+            <ResourcesNodes resourcesNodes={updatedNodes} reservedVolumeStorage={updatedReservedStorage} />
             <AppRessourceMonitoring appsRessourceUsage={updatedApps} />
             <AppVolumeMonitoring volumesUsage={updatedVolumes} />
         </div>

@@ -1,12 +1,12 @@
+import { getCachedNodeSummary } from './node-summary-cache.service';
+import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
 import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from "@/shared/model/node-info.model";
 import { NodeResourceModel } from "@/shared/model/node-resource.model";
 import { Tags } from "../utils/cache-tag-generator.utils";
 import { revalidateTag, unstable_cache } from "next/cache";
-import longhornApiAdapter from "../adapter/longhorn-api.adapter";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
-import { CatchUtils } from "@/shared/utils/catch.utils";
 import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
 
 class ClusterService {
@@ -68,8 +68,8 @@ class ClusterService {
     }
 
     async getRuntimeClasses(): Promise<string[]> {
-
-          const allowedRuntimes = ['gvisor', 'kata'];
+        return await unstable_cache(async () => {
+            const allowedRuntimes = ['gvisor', 'kata'];
 
             const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
                 group: 'node.k8s.io',
@@ -83,27 +83,11 @@ class ClusterService {
                 .sort((a, b) => a.localeCompare(b));
 
             return runtimeNames.filter(rn => allowedRuntimes.includes(rn.toLocaleLowerCase()));
-     /*return await unstable_cache(async () => {
-
-            const allowedRuntimes = ['gVisor', 'kata'];
-
-            const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
-                group: 'node.k8s.io',
-                version: 'v1',
-                plural: 'runtimeclasses',
-            }) as { items?: { metadata?: { name?: string } }[] };
-
-            const runtimeNames = (runtimeClasses.items ?? [])
-                .map((runtimeClass) => runtimeClass.metadata?.name)
-                .filter((name): name is string => !!name)
-                .sort((a, b) => a.localeCompare(b));
-
-            return runtimeNames.filter(rn => allowedRuntimes.includes(rn));
         },
             [Tags.runtimeClasses()], {
             revalidate: 60,
             tags: [Tags.runtimeClasses()]
-        })();*/
+        })();
     }
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {
@@ -127,6 +111,14 @@ class ClusterService {
         }
     }
 
+    async getReservedVolumeStorage(): Promise<number> {
+        const claims = await volumeSummaryAdapter.getPersistentVolumeClaims();
+        return claims.reduce((total, claim) => {
+            const size = claim.spec?.resources?.requests?.storage;
+            return total + (size ? KubeSizeConverter.fromKubeSizeToBytes(size) : 0);
+        }, 0);
+    }
+
     async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
         const topNodes = await k8s.topNodes(k3s.core);
 
@@ -146,7 +138,23 @@ class ClusterService {
             nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
             const latestUsageItem = nodeMetrics[0];
 
-            const diskInfo = await CatchUtils.resultOrUndefined(() => longhornApiAdapter.getNodeStorageInfo(node.Node.metadata?.name!));
+            let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
+            try {
+                const summary = await getCachedNodeSummary(node.Node.metadata?.name!) as {
+                    node?: { fs?: typeof filesystem };
+                };
+                const fs = summary.node?.fs;
+                const timestamp = Date.parse(fs?.time ?? '');
+                if (fs && Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 5 * 60_000 &&
+                    typeof fs.usedBytes === 'number' && Number.isFinite(fs.usedBytes) && fs.usedBytes >= 0 &&
+                    typeof fs.availableBytes === 'number' && Number.isFinite(fs.availableBytes) && fs.availableBytes >= 0 &&
+                    typeof fs.capacityBytes === 'number' && Number.isFinite(fs.capacityBytes) && fs.capacityBytes > 0 &&
+                    fs.usedBytes <= fs.capacityBytes && fs.availableBytes <= fs.capacityBytes) {
+                    filesystem = fs;
+                }
+            } catch {
+                // A node without a summary must not hide the other nodes' metrics.
+            }
 
             return {
                 name: node.Node.metadata?.name!,
@@ -154,10 +162,9 @@ class ClusterService {
                 cpuCapacity: Number(node.CPU?.Capacity!),
                 ramUsage: latestUsageItem.ramUsage,
                 ramCapacity: Number(node.Memory?.Capacity!),
-                diskUsageAbsolut: diskInfo ? diskInfo.totalStorageMaximum - diskInfo.totalStorageAvailable : undefined,
-                diskUsageReserved: diskInfo?.totalStorageReserved,
-                diskUsageCapacity: diskInfo?.totalStorageMaximum,
-                diskSpaceSchedulable: diskInfo?.totalSchedulableStorage
+                diskUsageAbsolut: filesystem?.usedBytes,
+                diskUsageAvailable: filesystem?.availableBytes,
+                diskUsageCapacity: filesystem?.capacityBytes
             }
         }));
     }

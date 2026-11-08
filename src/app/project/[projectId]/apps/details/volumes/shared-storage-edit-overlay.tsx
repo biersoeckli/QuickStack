@@ -133,7 +133,7 @@ export default function SharedStorageEditDialog({ app }: {
                                             label="Select Shared Volume"
                                             values={shareableVolumes.map(v => [
                                                 v.id,
-                                                `${v.app.name} - ${v.containerMountPath} (${v.size}MB)`
+                                                `${v.app.name} - ${v.containerMountPath} (${v.size}MiB)`
                                             ])}
                                             placeholder="Select volume to share..."
                                         />
@@ -153,7 +153,7 @@ export default function SharedStorageEditDialog({ app }: {
                                         />
 
                                         <div className="text-sm text-muted-foreground space-y-1">
-                                            <p><strong>Size:</strong> {form.watch("size")} MB (inherited from shared volume)</p>
+                                            <p><strong>Size:</strong> {form.watch("size")} MiB (inherited from shared volume)</p>
                                             <p><strong>Storage Class:</strong> {form.watch("storageClassName")} (inherited from shared volume)</p>
                                         </div>
                                     </>

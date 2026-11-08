@@ -111,7 +111,7 @@ export default function AgentVolumeEditOverlay({
                     name="size"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Size (MB)</FormLabel>
+                            <FormLabel>Size (MiB)</FormLabel>
                             <FormControl>
                                 <Input type="number" placeholder="1024" {...field} />
                             </FormControl>

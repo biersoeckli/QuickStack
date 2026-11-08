@@ -30,3 +30,9 @@ export const getMonitoringForAllApps = async () =>
         updatedNodeRessources = updatedNodeRessources?.filter((app) => UserGroupUtils.sessionHasReadAccessForApp(session, app.appId));
         return updatedNodeRessources;
     }) as Promise<ServerActionResult<unknown, AppMonitoringUsageModel[]>>;
+
+export const getReservedVolumeStorage = async () =>
+    simpleAction(async () => {
+        await getAuthUserSession();
+        return await clusterService.getReservedVolumeStorage();
+    }) as Promise<ServerActionResult<unknown, number>>;

@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useEffect, useState } from "react";
 import { createNewWebhookUrl } from "./actions";
@@ -49,20 +48,12 @@ export default function WebhookDeploymentInfo({
         toast.success('Webhook URL has been copied to clipboard.');
     }
 
-    return <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Webhook Deployment</CardTitle>
-                <CardDescription>Use this webhook URL to trigger deployments from external services (for example GitHub Actions or GitLab Pipelines).</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex gap-4">
-                    {webhookUrl && <Button className="flex-1 truncate" variant="secondary" onClick={copyWebhookUrl}>
-                        <span className="truncate">{webhookUrl}</span> <ClipboardCopy />
-                    </Button>}
-                    {role === RolePermissionEnum.READWRITE && <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>{webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}</Button>}
-                </div>
-            </CardContent>
-        </Card>
-    </>;
+    return (
+        <div className="flex flex-wrap gap-4">
+            {webhookUrl && <Button className="min-w-0 flex-1 truncate" variant="secondary" onClick={copyWebhookUrl}>
+                <span className="truncate">{webhookUrl}</span> <ClipboardCopy />
+            </Button>}
+            {role === RolePermissionEnum.READWRITE && <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>{webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}</Button>}
+        </div>
+    );
 }

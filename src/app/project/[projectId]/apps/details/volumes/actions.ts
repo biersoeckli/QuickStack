@@ -105,7 +105,7 @@ export const getPvcUsage = async (appId: string, projectId: string) =>
     simpleAction(async () => {
         await isAuthorizedReadForApp(appId);
         return monitoringService.getPvcUsageFromApp(appId, projectId);
-    }) as Promise<ServerActionResult<any, { pvcName: string, usedBytes: number }[]>>;
+    }) as Promise<ServerActionResult<any, import("@/shared/model/app-volume-monitoring-usage.model").VolumeFilesystemUsage[]>>;
 
 export const getShareableVolumes = async (appId: string) =>
     simpleAction(async () => {

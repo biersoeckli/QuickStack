@@ -264,20 +264,20 @@ export function AppDetailsDrawer({
                                     <Logs key={app.id} app={app} role={role} />
                                 </TabsContent>
                                 <TabsContent value="stats" className="flex min-h-0 min-w-0 flex-1 flex-col">
-                                    <DrawerTabScrollArea>
+                                    <ScrollArea className="min-h-0 min-w-0 flex-1 px-6 pt-2" contentClassName="flex min-h-full w-full min-w-0! max-w-full flex-col">
                                         <MonitoringTab key={app.id} app={app} />
-                                    </DrawerTabScrollArea>
+                                    </ScrollArea>
                                 </TabsContent>
                                 {hasVolumes && (
                                     <TabsContent value="backups" className="flex min-h-0 min-w-0 flex-1 flex-col">
-                                        <DrawerTabScrollArea>
+                                        <ScrollArea className="min-h-0 min-w-0 flex-1 px-6 pt-2" contentClassName="flex min-h-full w-full min-w-0! max-w-full flex-col">
                                             <DrawerBackupsTab
                                                 app={app}
                                                 role={role}
                                                 s3Targets={s3Targets}
                                                 volumeBackups={volumeBackups}
                                             />
-                                        </DrawerTabScrollArea>
+                                        </ScrollArea>
                                     </TabsContent>
                                 )}
                                 {app.appType !== 'APP' && (

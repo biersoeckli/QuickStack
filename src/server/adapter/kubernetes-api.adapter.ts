@@ -1,6 +1,8 @@
 import { ServiceException } from '@/shared/model/service.exception.model';
 import * as k8s from '@kubernetes/client-node';
 import { ConfigurationOptions, PatchStrategy } from '@kubernetes/client-node';
+import * as http from 'node:http';
+import * as https from 'node:https';
 
 export function kubernetesPatchOptions(contentType: PatchStrategy): ConfigurationOptions {
     return {
@@ -98,6 +100,37 @@ export class K3sApiAdapter {
 
     getMetricsApiClient = () => {
         return new k8s.Metrics(this.getKubeConfig());
+    }
+
+    /** Read the fixed kubelet summary endpoint through the Kubernetes API server. */
+    async getNodeSummary(nodeName: string): Promise<unknown> {
+        const config = this.getKubeConfig();
+        const cluster = config.getCurrentCluster();
+        if (!cluster) throw new Error('No Kubernetes cluster configured');
+        const url = new URL(cluster.server);
+        url.pathname = `${url.pathname.replace(/\/$/, '')}/api/v1/nodes/${encodeURIComponent(nodeName)}/proxy/stats/summary`;
+        const options: https.RequestOptions = { method: 'GET', headers: { Accept: 'application/json' } };
+        await config.applyToHTTPSOptions(options);
+        const transport = url.protocol === 'https:' ? https : http;
+        return new Promise((resolve, reject) => {
+            const request = transport.request(url, options, response => {
+                if (response.statusCode !== 200) {
+                    response.resume();
+                    reject(new Error(`Node summary returned HTTP ${response.statusCode}`));
+                    return;
+                }
+                let body = '';
+                response.setEncoding('utf8');
+                response.on('data', chunk => { body += chunk; });
+                response.on('error', reject);
+                response.on('end', () => {
+                    try { resolve(JSON.parse(body)); } catch (error) { reject(error); }
+                });
+            });
+            request.setTimeout(10000, () => request.destroy(new Error('Node summary timed out')));
+            request.on('error', reject);
+            request.end();
+        });
     }
 
     /**

@@ -36,7 +36,7 @@ export default function DrawerDeploymentsTab({
     const showWebhookCard = () => {
         openNestedDrawer({
             title: 'Webhook',
-            description: ``,
+            description: 'Use this webhook URL to trigger deployments from external services (for example GitHub Actions or GitLab Pipelines).',
             content: (
                 <WebhookDeploymentInfo
                     app={app}

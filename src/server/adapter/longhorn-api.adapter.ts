@@ -70,58 +70,6 @@ class LonghornApiAdapter {
     }
 
 
-    async getNodeStorageInfo(nodeName: String) {
-        const response = await fetch(`${this.longhornBaseUrl}/v1/nodes/${nodeName}`, {
-            cache: 'no-cache',
-            method: 'GET',
-            headers: {
-
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP-Error: ${response.status}`);
-        }
-
-        const data = await response.json() as {
-            disks: {
-                [key: string]: {
-                    storageMaximum: number,
-                    storageAvailable: number,
-                    storageReserved: number,
-                    storageScheduled: number
-                }
-            }
-        };
-
-        if (!data.disks || typeof data.disks !== "object") {
-            throw new Error("Invalid node data: 'disks' property is missing or not an object.");
-        }
-
-        let totalStorageMaximum = 0;
-        let totalStorageAvailable = 0;
-        let totalStorageReserved = 0;
-        Object.values(data.disks).forEach(disk => {
-            totalStorageMaximum += disk.storageMaximum;
-            totalStorageAvailable += disk.storageAvailable;
-            totalStorageReserved += disk.storageReserved;
-        });
-
-        // The available Storage is the total storage minus the reserved storage (which is not available for scheduling --> 30% of disk space)
-        const totalSchedulableStorage = totalStorageAvailable - totalStorageReserved;
-
-        return {
-            totalStorageMaximum,
-            totalStorageAvailable,
-            totalSchedulableStorage,
-            totalStorageReserved
-        };
-
-    }
-
-
     async backupPvc(pvcName: string) {
         const snapshot = await this.createSnapshot(pvcName);
         await this.createBackup(pvcName, snapshot.id);

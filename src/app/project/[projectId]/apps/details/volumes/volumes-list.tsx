@@ -28,6 +28,7 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedBytes?: number;
     capacityBytes?: number;
     usedPercentage?: number;
+    usageStatus?: string;
 });
 
 export default function StorageList({ app, readonly, storageClasses }: {
@@ -49,8 +50,9 @@ export default function StorageList({ app, readonly, storageClasses }: {
                 const volume = response.data.find(x => x.pvcName === KubeObjectNameUtils.toPvcName(item.sharedVolumeId || item.id));
                 if (volume) {
                     item.usedBytes = volume.usedBytes;
-                    item.capacityBytes = KubeSizeConverter.fromMegabytesToBytes(item.size);
-                    item.usedPercentage = Math.round(volume.usedBytes / item.capacityBytes * 100);
+                    item.capacityBytes = volume.capacityBytes;
+                    item.usageStatus = volume.status;
+                    item.usedPercentage = volume.usedBytes !== undefined && volume.capacityBytes ? Math.round(volume.usedBytes / volume.capacityBytes * 100) : undefined;
                 }
             }
             setVolumesWithStorage(mappedVolumeData);
@@ -169,15 +171,15 @@ export default function StorageList({ app, readonly, storageClasses }: {
                         {volumesWithStorage.map(volume => (
                             <TableRow key={volume.containerMountPath} className="group transition-colors duration-150 hover:bg-muted/30">
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
-                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MB</TableCell>
+                                <TableCell className="hidden font-medium xl:table-cell">{volume.size} MiB</TableCell>
                                 <TableCell className="font-medium space-y-2">
-                                    {volume.usedPercentage && <>
+                                    {volume.usedPercentage !== undefined && volume.usedBytes !== undefined && volume.capacityBytes !== undefined ? <>
                                         <Progress value={volume.usedPercentage}
                                             color={volume.usedPercentage >= 90 ? 'red' : (volume.usedPercentage >= 80 ? 'orange' : undefined)} />
                                         <div className='text-xs text-slate-500'>
-                                            {KubeSizeConverter.convertBytesToReadableSize(volume.usedBytes!)} used ({volume.usedPercentage}%)
+                                            {KubeSizeConverter.convertBytesToReadableSize(volume.usedBytes)} / {KubeSizeConverter.convertBytesToReadableSize(volume.capacityBytes)}
                                         </div>
-                                    </>}
+                                    </> : <span>Unavailable{volume.usageStatus ? ` (${volume.usageStatus})` : ""}</span>}
                                 </TableCell>
                                 <TableCell className="hidden font-medium capitalize 2xl:table-cell">{volume.storageClassName?.replace('-', ' ')}</TableCell>
                                 <TableCell className="hidden font-medium 2xl:table-cell">{volume.accessMode}</TableCell>

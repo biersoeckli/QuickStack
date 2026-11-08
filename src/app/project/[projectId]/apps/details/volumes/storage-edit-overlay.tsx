@@ -140,7 +140,7 @@ export default function StorageEditDialog({ volume, app, storageClasses }: {
                   name="size"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Size in MB</FormLabel>
+                      <FormLabel>Size in MiB</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="ex. 20" {...field} />
                       </FormControl>
