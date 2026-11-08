@@ -1,6 +1,6 @@
 import { CheckCircle2, FileCode2, Loader2, RefreshCw, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { IconInput } from "../../[projectId]/app-components/app-detail/general/app-source-wizard/source-wizard-fields";
+import { IconInput } from '@/app/project/workload-components/source-wizard/fields/icon-input';
 import { defaultDockerfilePath } from "./types";
 
 export function DockerfilePathStep({ value, isDetecting, detectionResult, onChange, onRetry }: {

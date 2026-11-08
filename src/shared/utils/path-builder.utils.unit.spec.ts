@@ -1,5 +1,5 @@
 import { PathBuilderUtils } from './path-builder.utils';
-import { DrawerSessionUtils } from '@/app/project/[projectId]/app-components/project-network-graph/project-network-graph-drawer-session';
+import { DrawerSessionUtils } from '@/app/project/[projectId]/overview/network-graph/project-network-graph-drawer-session';
 
 describe('PathBuilderUtils.projectAppDrawer', () => {
     it('builds an encoded drawer URL with the default tab', () => {

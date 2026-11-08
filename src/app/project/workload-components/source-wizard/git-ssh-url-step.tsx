@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, ClipboardCopy, KeyRound, Link as LinkIcon, RefreshCw } from "lucide-react";
-import { BranchLoadingState, IconInput } from "../../[projectId]/app-components/app-detail/general/app-source-wizard/source-wizard-fields";
+import { BranchLoadingState } from '@/app/project/workload-components/source-wizard/fields/branch-loading-state';
+import { IconInput } from '@/app/project/workload-components/source-wizard/fields/icon-input';
 import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function GitSshUrlStep({ formData, publicKey, isEnsuringKey, isLoadingBranches, branchError, onChange, onCopy, onRegenerate, onRetry }: {

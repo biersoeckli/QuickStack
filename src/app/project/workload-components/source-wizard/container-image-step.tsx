@@ -1,5 +1,6 @@
 import { LockKeyhole, Package, User } from "lucide-react";
-import { IconInput, SecretInput } from "../../[projectId]/app-components/app-detail/general/app-source-wizard/source-wizard-fields";
+import { IconInput } from '@/app/project/workload-components/source-wizard/fields/icon-input';
+import { SecretInput } from '@/app/project/workload-components/source-wizard/fields/secret-input';
 import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function ContainerImageStep({ formData, showCredentials, showPassword, setShowPassword, onChange }: {

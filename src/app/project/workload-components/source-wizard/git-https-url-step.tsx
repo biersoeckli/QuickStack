@@ -1,5 +1,7 @@
 import { Link as LinkIcon, LockKeyhole, User } from "lucide-react";
-import { BranchLoadingState, IconInput, SecretInput } from "../../[projectId]/app-components/app-detail/general/app-source-wizard/source-wizard-fields";
+import { BranchLoadingState } from '@/app/project/workload-components/source-wizard/fields/branch-loading-state';
+import { IconInput } from '@/app/project/workload-components/source-wizard/fields/icon-input';
+import { SecretInput } from '@/app/project/workload-components/source-wizard/fields/secret-input';
 import { SourceFormPatch, SourceWizardInput } from "./types";
 
 export function GitHttpsUrlStep({ formData, showCredentials, showToken, setShowToken, onChange, isLoadingBranches, branchError, onRetry }: {

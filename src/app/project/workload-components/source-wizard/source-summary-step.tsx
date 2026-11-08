@@ -1,6 +1,7 @@
 import { AppBuildMethod } from "@/shared/model/app-source-info.model";
 import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
-import { SecretSummaryRow, SummaryRow } from "../../[projectId]/app-components/app-detail/general/app-source-wizard/source-wizard-fields";
+import { SecretSummaryRow } from '@/app/project/workload-components/source-wizard/fields/secret-summary-row';
+import { SummaryRow } from '@/app/project/workload-components/source-wizard/fields/summary-row';
 import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels, SourceWizardInput } from "./types";
 
 export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGitToken, showRegistryPassword, setShowRegistryPassword }: {
