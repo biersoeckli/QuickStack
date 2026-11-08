@@ -10,78 +10,66 @@ import { KubeSizeConverter } from '../../shared/utils/kubernetes-size-converter.
 import { StorageClassUtils } from '@/shared/utils/storage-class.utils';
 
 class ClusterService {
-  async getNodeInfo(): Promise<NodeInfoModel[]> {
-    return await unstable_cache(
-      async () => {
-        const nodeReturnInfo = await k3s.core.listNode();
-        return nodeReturnInfo.items.map((node) => {
-          return {
-            name: node.metadata?.name!,
-            status: node.status?.conditions?.filter((condition) => condition.type === 'Ready')[0].status!,
-            os: node.status?.nodeInfo?.osImage!,
-            architecture: node.status?.nodeInfo?.architecture!,
-            cpuCapacity: node.status?.capacity?.cpu!,
-            ramCapacity: node.status?.capacity?.memory!,
-            ip: node.status?.addresses?.filter((address) => address.type === 'InternalIP')[0].address!,
-            kernelVersion: node.status?.nodeInfo?.kernelVersion!,
-            containerRuntimeVersion: node.status?.nodeInfo?.containerRuntimeVersion!,
-            kubeProxyVersion: node.status?.nodeInfo?.kubeProxyVersion!,
-            kubeletVersion: node.status?.nodeInfo?.kubeletVersion!,
-            isMasterNode: node.metadata?.labels?.['node-role.kubernetes.io/master'] === 'true',
 
-            memoryOk: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].status === 'False',
-            memoryStatusText: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].message,
-            diskOk: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].status === 'False',
-            diskStatusText: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].message,
-            pidOk: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].status === 'False',
-            pidStatusText: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].message,
-            schedulable: !node.spec?.unschedulable
-          };
-        });
-      },
-      [Tags.nodeInfos()],
-      { revalidate: 10, tags: [Tags.nodeInfos()] }
-    )();
-  }
+    async getNodeInfo(): Promise<NodeInfoModel[]> {
+        return await unstable_cache(async () => {
+            const nodeReturnInfo = await k3s.core.listNode();
+            return nodeReturnInfo.items.map((node) => {
+                return {
+                    name: node.metadata?.name!,
+                    status: node.status?.conditions?.filter((condition) => condition.type === 'Ready')[0].status!,
+                    os: node.status?.nodeInfo?.osImage!,
+                    architecture: node.status?.nodeInfo?.architecture!,
+                    cpuCapacity: node.status?.capacity?.cpu!,
+                    ramCapacity: node.status?.capacity?.memory!,
+                    ip: node.status?.addresses?.filter((address) => address.type === 'InternalIP')[0].address!,
+                    kernelVersion: node.status?.nodeInfo?.kernelVersion!,
+                    containerRuntimeVersion: node.status?.nodeInfo?.containerRuntimeVersion!,
+                    kubeProxyVersion: node.status?.nodeInfo?.kubeProxyVersion!,
+                    kubeletVersion: node.status?.nodeInfo?.kubeletVersion!,
+                    isMasterNode: node.metadata?.labels?.['node-role.kubernetes.io/master'] === 'true',
 
-  async getFirstMasterNode(): Promise<NodeInfoModel> {
-    const nodes = await this.getNodeInfo();
-    nodes.sort((a, b) => a.name.localeCompare(b.name));
-    return nodes.find((node) => node.isMasterNode)!; // even on HA Cluster, only one node is returned
-  }
+                    memoryOk: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].status === 'False',
+                    memoryStatusText: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].message,
+                    diskOk: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].status === 'False',
+                    diskStatusText: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].message,
+                    pidOk: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].status === 'False',
+                    pidStatusText: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].message,
+                    schedulable: !node.spec?.unschedulable
+                }
+            });
+        },
+            [Tags.nodeInfos()], {
+            revalidate: 10,
+            tags: [Tags.nodeInfos()]
+        })();
+    }
 
-  async getStorageClasses(): Promise<string[]> {
-    return await unstable_cache(
-      async () => {
-        const storageClasses = await k3s.storage.listStorageClass();
-        return StorageClassUtils.sortStorageClasses(
-          storageClasses.items
-            .map((storageClass) => storageClass.metadata?.name)
-            .filter((name): name is string => !!name)
-            .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
-        );
-      },
-      [Tags.storageClasses()],
-      { revalidate: 60, tags: [Tags.storageClasses()] }
-    )();
-  }
+    async getFirstMasterNode(): Promise<NodeInfoModel> {
+        const nodes = await this.getNodeInfo();
+        nodes.sort((a, b) => a.name.localeCompare(b.name));
+        return nodes.find(node => node.isMasterNode)!; // even on HA Cluster, only one node is returned
+    }
 
-  async getRuntimeClasses(): Promise<string[]> {
-    const allowedRuntimes = ['gvisor', 'kata'];
+    async getStorageClasses(): Promise<string[]> {
+        return await unstable_cache(async () => {
+            const storageClasses = await k3s.storage.listStorageClass();
+            return StorageClassUtils.sortStorageClasses(
+                storageClasses.items
+                    .map((storageClass) => storageClass.metadata?.name)
+                    .filter((name): name is string => !!name)
+                    .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
+            );
+        },
+            [Tags.storageClasses()], {
+            revalidate: 60,
+            tags: [Tags.storageClasses()]
+        })();
+    }
 
-    const runtimeClasses = (await k3s.customObjects.listClusterCustomObject({ group: 'node.k8s.io', version: 'v1', plural: 'runtimeclasses' })) as {
-      items?: { metadata?: { name?: string } }[];
-    };
-
-    const runtimeNames = (runtimeClasses.items ?? [])
-      .map((runtimeClass) => runtimeClass.metadata?.name)
-      .filter((name): name is string => !!name)
-      .sort((a, b) => a.localeCompare(b));
-
-    return runtimeNames.filter((rn) => allowedRuntimes.includes(rn.toLocaleLowerCase()));
-    /*return await unstable_cache(async () => {
-
-            const allowedRuntimes = ['gVisor', 'kata'];
+    async getRuntimeClasses(): Promise<string[]> {
+        return await unstable_cache(async () => {
+            const allowedRuntimes = ['gvisor', 'kata'];
 
             const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
                 group: 'node.k8s.io',
@@ -94,28 +82,32 @@ class ClusterService {
                 .filter((name): name is string => !!name)
                 .sort((a, b) => a.localeCompare(b));
 
-            return runtimeNames.filter(rn => allowedRuntimes.includes(rn));
+            return runtimeNames.filter(rn => allowedRuntimes.includes(rn.toLocaleLowerCase()));
         },
             [Tags.runtimeClasses()], {
             revalidate: 60,
             tags: [Tags.runtimeClasses()]
-        })();*/
-  }
+        })();
+    }
 
-  async setNodeStatus(nodeName: string, schedulable: boolean) {
-    try {
-      await k3s.core.patchNode(
-        { name: nodeName, body: { spec: { unschedulable: schedulable ? null : true } } },
-        kubernetesPatchOptions('application/strategic-merge-patch+json')
-      );
+    async setNodeStatus(nodeName: string, schedulable: boolean) {
+        try {
+            await k3s.core.patchNode(
+                { name: nodeName, body: { spec: { unschedulable: schedulable ? null : true } } },
+                kubernetesPatchOptions('application/strategic-merge-patch+json'),
+            );
 
-      if (!schedulable) {
-        // delete all pods on node
-        const pods = await k3s.core.listPodForAllNamespaces();
-        for (const pod of pods.items) {
-          if (pod.spec?.nodeName === nodeName) {
-            await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: pod.metadata?.namespace! });
-          }
+            if (!schedulable) {
+                // delete all pods on node
+                const pods = await k3s.core.listPodForAllNamespaces();
+                for (const pod of pods.items) {
+                    if (pod.spec?.nodeName === nodeName) {
+                        await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: pod.metadata?.namespace! });
+                    }
+                }
+            }
+        } finally {
+            revalidateTag(Tags.nodeInfos());
         }
       }
     } finally {
