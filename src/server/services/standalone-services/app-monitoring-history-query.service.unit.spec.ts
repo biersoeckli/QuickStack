@@ -1,6 +1,7 @@
 vi.mock('@/server/adapter/app-history.adapter', () => ({
     default: { getRetentionHours: vi.fn().mockResolvedValue(24), getHistory: vi.fn() },
 }));
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 import adapter from '@/server/adapter/app-history.adapter';
 import historyService from '@/server/services/standalone-services/app-monitoring-history.service';
 
