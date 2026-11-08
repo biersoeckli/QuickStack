@@ -1,3 +1,4 @@
+import { getCachedNodeSummary } from './node-summary-cache.service';
 import k3s from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import standalonePodService from "./standalone-services/standalone-pod.service";
@@ -23,6 +24,7 @@ class MonitorService {
         const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(
             appVolumes.map(volume => ({ ...volume, projectId: volume.app.projectId })),
             () => pvcService.getAllPvc(),
+            getCachedNodeSummary,
         );
         return appVolumes.map(volume => {
             return {
@@ -154,7 +156,7 @@ class MonitorService {
             where: { appId },
             select: { id: true, sharedVolumeId: true },
         });
-        const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })), () => pvcService.getAllPvc());
+        const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })), () => pvcService.getAllPvc(), getCachedNodeSummary);
         const uniqueUsages = new Map(
             Array.from(usages.values(), usage => [AppVolumeIdentityUtils.observationKey(projectId, usage.pvcName), usage]),
         );

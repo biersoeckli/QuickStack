@@ -8,17 +8,30 @@ class AppVolumeFilesystemService {
     async getVolumeFilesystemUsage(
         volumes: { id: string; sharedVolumeId: string | null; projectId: string }[],
         getClaims: () => Promise<V1PersistentVolumeClaim[]> = () => volumeSummaryAdapter.getPersistentVolumeClaims(),
+        getNodeSummary?: (nodeName: string) => Promise<unknown>,
     ): Promise<Map<string, VolumeFilesystemUsage>> {
         const [pvcs, persistentVolumes, samples] = await Promise.all([
             getClaims().catch(() => []),
             volumeSummaryAdapter.getPersistentVolumes().catch(() => []),
-            volumeSummaryAdapter.getSamples().catch(() => []),
+            volumeSummaryAdapter.getSamples(getNodeSummary).catch(() => []),
         ]);
         const pvcByKey = new Map(pvcs.map(pvc => [`${pvc.metadata?.namespace}/${pvc.metadata?.name}`, pvc]));
         const pvByName = new Map(persistentVolumes.map(pv => [pv.metadata?.name, pv]));
         const result = new Map<string, VolumeFilesystemUsage>();
         const observations = new Map<string, VolumeFilesystemUsage>();
         const now = Date.now();
+        const latestSampleByKey = new Map<string, typeof samples[number]>();
+        for (const sample of samples) {
+            const namespace = sample.pvcRef?.namespace;
+            const name = sample.pvcRef?.name;
+            const timestamp = Date.parse(sample.time ?? '');
+            const values = [sample.usedBytes, sample.availableBytes, sample.capacityBytes];
+            if (!namespace || !name || !Number.isFinite(timestamp) || !sample.capacityBytes ||
+                !values.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)) continue;
+            const key = AppVolumeIdentityUtils.observationKey(namespace, name);
+            const previous = latestSampleByKey.get(key);
+            if (!previous || timestamp > Date.parse(previous.time!)) latestSampleByKey.set(key, sample);
+        }
         for (const volume of volumes) {
             const pvcName = KubeObjectNameUtils.toPvcName(AppVolumeIdentityUtils.underlyingId(volume.id, volume.sharedVolumeId));
             const key = AppVolumeIdentityUtils.observationKey(volume.projectId, pvcName);
@@ -39,15 +52,7 @@ class AppVolumeFilesystemService {
                 result.set(volume.id, observations.get(key)!);
                 continue;
             }
-            const candidates = samples
-                .filter(sample => sample.pvcRef?.namespace === volume.projectId && sample.pvcRef.name === pvcName)
-                .filter(sample => {
-                    const values = [sample.usedBytes, sample.availableBytes, sample.capacityBytes];
-                    return values.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)
-                        && !!sample.capacityBytes && Number.isFinite(Date.parse(sample.time ?? ''));
-                })
-                .sort((a, b) => Date.parse(b.time!) - Date.parse(a.time!));
-            const sample = candidates[0];
+            const sample = latestSampleByKey.get(key);
             const age = sample ? now - Date.parse(sample.time!) : Infinity;
             if (!sample || age > 5 * 60 * 1000 || age < -60 * 1000) {
                 observations.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });

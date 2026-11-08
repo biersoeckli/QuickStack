@@ -1,3 +1,5 @@
+vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn, revalidateTag: vi.fn() }));
+
 import * as k8s from '@kubernetes/client-node';
 
 const k8sMocks = vi.hoisted(() => ({

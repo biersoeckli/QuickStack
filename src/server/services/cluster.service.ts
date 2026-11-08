@@ -1,3 +1,4 @@
+import { getCachedNodeSummary } from './node-summary-cache.service';
 import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
 import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
@@ -155,7 +156,7 @@ class ClusterService {
 
             let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
             try {
-                const summary = await k3s.getNodeSummary(node.Node.metadata?.name!) as {
+                const summary = await getCachedNodeSummary(node.Node.metadata?.name!) as {
                     node?: { fs?: typeof filesystem };
                 };
                 const fs = summary.node?.fs;

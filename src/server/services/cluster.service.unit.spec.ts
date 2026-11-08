@@ -1,3 +1,5 @@
+vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn, revalidateTag: vi.fn() }));
+
 
 
 const mocks = vi.hoisted(() => ({ topNodes: vi.fn(), getNodeMetrics: vi.fn(), getNodeSummary: vi.fn(), getPersistentVolumeClaims: vi.fn() }));
