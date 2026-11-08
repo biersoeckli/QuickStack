@@ -2,10 +2,6 @@
 
 import {
   Label,
-  PolarGrid,
-  PolarRadiusAxis,
-  RadialBar,
-  RadialBarChart,
   Pie,
   PieChart,
 } from 'recharts';
@@ -22,19 +18,17 @@ import {
   useBreadcrumbs,
 } from '@/frontend/states/zustand.states';
 import { useEffect, useMemo } from 'react';
-import ChartDiskRessources from './disk-chart';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Activity, Cpu, HardDrive, MemoryStick } from 'lucide-react';
 
 export default function ResourcesNodes({
   resourcesNodes,
+  reservedVolumeStorage,
 }: {
   resourcesNodes?: NodeResourceModel[];
+  reservedVolumeStorage?: number;
 }) {
 
   const getDiskUsageAbsolut = (node: NodeResourceModel) => node.diskUsageAbsolut ?? 0;
@@ -167,12 +161,22 @@ export default function ResourcesNodes({
         <Card className="flex flex-col">
           <CardHeader className="items-center pb-0">
             <CardTitle>Cluster Storage</CardTitle>
-            <CardDescription>Node filesystem usage</CardDescription>
+            <CardDescription>Node filesystem usage and volume reservations</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
             {updatedNodeRessources.some(node => node.diskUsageCapacity === undefined) && (
               <p className="text-center text-sm text-muted-foreground">Incomplete: some node filesystem metrics are unavailable.</p>
             )}
+            <div className="space-y-1 text-center text-sm text-muted-foreground">
+              <p>Used: {clusterStats.diskCapacity > 0 ? KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageAbsolut) : 'Unavailable'}</p>
+              <p>Reserved by volumes: {reservedVolumeStorage === undefined ? 'Unavailable' : KubeSizeConverter.convertBytesToReadableSize(reservedVolumeStorage)}</p>
+              {reservedVolumeStorage !== undefined && clusterStats.diskCapacity > 0 && (
+                <div className="mx-auto max-w-[200px] space-y-1">
+                  <Progress value={Math.min(100, toPercent(reservedVolumeStorage, clusterStats.diskCapacity))} className="h-2" />
+                  <p>{toPercent(reservedVolumeStorage, clusterStats.diskCapacity).toFixed(0)}% of node capacity</p>
+                </div>
+              )}
+            </div>
             {clusterStats.diskCapacity > 0 ? (
               <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
                 <PieChart>
@@ -207,7 +211,6 @@ export default function ResourcesNodes({
                 <TableHead>CPU</TableHead>
                 <TableHead>RAM</TableHead>
                 <TableHead>Storage</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,9 +255,6 @@ export default function ResourcesNodes({
                       })()}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <NodeDetailsSheet node={node} />
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -265,205 +265,3 @@ export default function ResourcesNodes({
   );
 }
 
-function NodeDetailsSheet({ node }: { node: NodeResourceModel }) {
-  const chartData = [
-    { browser: 'safari', usage: 1, fill: 'var(--color-safari)' },
-  ];
-
-  const chartConfig = {
-    usage: {
-      label: 'Usage',
-    },
-    safari: {
-      label: 'Safari',
-      color: 'var(--chart-2)',
-    },
-  } satisfies ChartConfig;
-
-  return (
-    <Sheet>
-      <SheetTrigger render={<Button variant="outline" size="sm">View Details</Button>} />
-      <SheetContent className="overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            {node.name}
-          </SheetTitle>
-          <SheetDescription>
-            Detailed resource usage metrics
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="grid gap-6 py-6">
-          {/* CPU Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Cpu className="h-4 w-4" /> CPU Usage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={chartConfig}
-                className="mx-auto aspect-square max-h-[250px]"
-              >
-                <RadialBarChart
-                  data={chartData}
-                  startAngle={0}
-                  endAngle={360 * node.cpuUsage / node.cpuCapacity}
-                  innerRadius={80}
-                  outerRadius={110}
-                >
-                  <PolarGrid
-                    gridType="circle"
-                    radialLines={false}
-                    stroke="none"
-                    className="first:fill-muted last:fill-background"
-                    polarRadius={[86, 74]}
-                  />
-                  <RadialBar
-                    dataKey="usage"
-                    background
-                    cornerRadius={10}
-                  />
-                  <PolarRadiusAxis
-                    tick={false}
-                    tickLine={false}
-                    axisLine={false}
-                  >
-                    <Label
-                      content={({ viewBox }) => {
-                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                          return (
-                            <text
-                              x={viewBox.cx}
-                              y={viewBox.cy}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                            >
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) - 10}
-                                className="fill-foreground text-4xl font-bold"
-                              >
-                                {(node.cpuUsage / node.cpuCapacity * 100).toFixed(0)}%
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) + 14}
-                                className="fill-muted-foreground"
-                              >
-                                CPU
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) + 30}
-                                className="fill-muted-foreground"
-                              >
-                                Load: {(node.cpuUsage).toFixed(2)}
-                              </tspan>
-                            </text>
-                          );
-                        }
-                      }}
-                    />
-                  </PolarRadiusAxis>
-                </RadialBarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* RAM Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <MemoryStick className="h-4 w-4" /> Memory Usage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={chartConfig}
-                className="mx-auto aspect-square max-h-[250px]"
-              >
-                <RadialBarChart
-                  data={chartData}
-                  startAngle={0}
-                  endAngle={360 * node.ramUsage / node.ramCapacity}
-                  innerRadius={80}
-                  outerRadius={110}
-                >
-                  <PolarGrid
-                    gridType="circle"
-                    radialLines={false}
-                    stroke="none"
-                    className="first:fill-muted last:fill-background"
-                    polarRadius={[86, 74]}
-                  />
-                  <RadialBar
-                    dataKey="usage"
-                    background
-                    cornerRadius={10}
-                  />
-                  <PolarRadiusAxis
-                    tick={false}
-                    tickLine={false}
-                    axisLine={false}
-                  >
-                    <Label
-                      content={({ viewBox }) => {
-                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                          return (
-                            <text
-                              x={viewBox.cx}
-                              y={viewBox.cy}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                            >
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) - 10}
-                                className="fill-foreground text-4xl font-bold"
-                              >
-                                {(node.ramUsage / node.ramCapacity * 100).toFixed(0)}%
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) + 14}
-                                className="fill-muted-foreground"
-                              >
-                                RAM
-                              </tspan>
-                              <tspan
-                                x={viewBox.cx}
-                                y={(viewBox.cy || 0) + 30}
-                                className="fill-muted-foreground"
-                              >
-                                {KubeSizeConverter.convertBytesToReadableSize(node.ramUsage)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
-                              </tspan>
-                            </text>
-                          );
-                        }
-                      }}
-                    />
-                  </PolarRadiusAxis>
-                </RadialBarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* Disk Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <HardDrive className="h-4 w-4" /> Storage Usage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartDiskRessources nodeRessource={node} />
-            </CardContent>
-          </Card>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}

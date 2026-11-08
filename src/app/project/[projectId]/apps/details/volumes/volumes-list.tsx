@@ -28,7 +28,6 @@ type AppVolumeWithCapacity = (AppVolume & {
     usedBytes?: number;
     capacityBytes?: number;
     usedPercentage?: number;
-    availableBytes?: number;
     usageStatus?: string;
 });
 
@@ -52,7 +51,6 @@ export default function StorageList({ app, readonly, storageClasses }: {
                 if (volume) {
                     item.usedBytes = volume.usedBytes;
                     item.capacityBytes = volume.capacityBytes;
-                    item.availableBytes = volume.availableBytes;
                     item.usageStatus = volume.status;
                     item.usedPercentage = volume.usedBytes !== undefined && volume.capacityBytes ? Math.round(volume.usedBytes / volume.capacityBytes * 100) : undefined;
                 }
@@ -175,11 +173,11 @@ export default function StorageList({ app, readonly, storageClasses }: {
                                 <TableCell className="font-medium">{volume.containerMountPath}</TableCell>
                                 <TableCell className="hidden font-medium xl:table-cell">{volume.size} MiB</TableCell>
                                 <TableCell className="font-medium space-y-2">
-                                    {volume.usedPercentage !== undefined && volume.usedBytes !== undefined && volume.capacityBytes !== undefined && volume.availableBytes !== undefined ? <>
+                                    {volume.usedPercentage !== undefined && volume.usedBytes !== undefined && volume.capacityBytes !== undefined ? <>
                                         <Progress value={volume.usedPercentage}
                                             color={volume.usedPercentage >= 90 ? 'red' : (volume.usedPercentage >= 80 ? 'orange' : undefined)} />
                                         <div className='text-xs text-slate-500'>
-                                            {KubeSizeConverter.convertBytesToReadableSize(volume.usedBytes)} used / {KubeSizeConverter.convertBytesToReadableSize(volume.capacityBytes)} ({volume.usedPercentage}%) | {KubeSizeConverter.convertBytesToReadableSize(volume.availableBytes)} available
+                                            {KubeSizeConverter.convertBytesToReadableSize(volume.usedBytes)} / {KubeSizeConverter.convertBytesToReadableSize(volume.capacityBytes)}
                                         </div>
                                     </> : <span>Unavailable{volume.usageStatus ? ` (${volume.usageStatus})` : ""}</span>}
                                 </TableCell>

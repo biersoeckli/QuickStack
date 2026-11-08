@@ -1,4 +1,6 @@
-import appHistoryMetricsService from './app-history-metrics.service';
+vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+
+import appHistoryMetricsService from './app-history.service';
 
 vi.mock('@/server/adapter/app-history-metrics.adapter', () => ({
     default: { getPods: vi.fn(), getMetrics: vi.fn() },

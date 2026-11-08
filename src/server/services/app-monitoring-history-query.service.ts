@@ -1,10 +1,10 @@
-import appHistoryAdapter from '@/server/adapter/app-history.adapter';
+import appHistoryService from '@/server/services/standalone-services/app-history.service';
 import { AppHistoryPoint, AppMonitoringHistory, AppVolumeHistory } from '@/shared/model/app-monitoring-history.model';
 
 class AppMonitoringHistoryQueryService {
     async getHistory(appIds: string[]): Promise<AppMonitoringHistory> {
-        const retention = await appHistoryAdapter.getRetentionHours();
-        const [apps, volumes] = await appHistoryAdapter.getHistory(appIds, new Date(Date.now() - retention * 3600_000));
+        const retention = await appHistoryService.getRetentionHours();
+        const [apps, volumes] = await appHistoryService.getHistory(appIds, new Date(Date.now() - retention * 3600_000));
         const appsByTime = new Map<number, typeof apps>();
         const volumesByTime = new Map<number, typeof volumes>();
         for (const item of apps) {
@@ -83,7 +83,7 @@ class AppMonitoringHistoryQueryService {
                 volume.points.push({ time: now, usedBytes: null, measuredAt: null });
             }
         }
-        return { points, volumes: [...volumeSeries.values()], latestCpuMeasurement, latestRamMeasurement, latestVolumeMeasurement };
+        return { retentionHours: retention, points, volumes: [...volumeSeries.values()], latestCpuMeasurement, latestRamMeasurement, latestVolumeMeasurement };
     }
 }
 const appMonitoringHistoryQueryService = new AppMonitoringHistoryQueryService();

@@ -1,6 +1,6 @@
 
 
-const mocks = vi.hoisted(() => ({ topNodes: vi.fn(), getNodeMetrics: vi.fn(), getNodeSummary: vi.fn() }));
+const mocks = vi.hoisted(() => ({ topNodes: vi.fn(), getNodeMetrics: vi.fn(), getNodeSummary: vi.fn(), getPersistentVolumeClaims: vi.fn() }));
 vi.mock('@kubernetes/client-node', async (importOriginal) => ({
     ...await importOriginal<typeof import('@kubernetes/client-node')>(),
     topNodes: mocks.topNodes,
@@ -8,6 +8,9 @@ vi.mock('@kubernetes/client-node', async (importOriginal) => ({
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: { core: {}, metrics: { getNodeMetrics: mocks.getNodeMetrics }, getNodeSummary: mocks.getNodeSummary },
     kubernetesPatchOptions: vi.fn(),
+}));
+vi.mock('@/server/adapter/volume-summary.adapter', () => ({
+    default: { getPersistentVolumeClaims: mocks.getPersistentVolumeClaims },
 }));
 import clusterService from './cluster.service';
 
@@ -39,5 +42,17 @@ describe('cluster node storage', () => {
         } }));
         const nodes = await clusterService.getNodeResourceUsage();
         expect(nodes.map(node => node.diskUsageCapacity)).toEqual([undefined, undefined]);
+    });
+});
+
+describe('reserved volume storage', () => {
+    it('sums requested storage across all claims', async () => {
+        mocks.getPersistentVolumeClaims.mockResolvedValue([
+            { spec: { resources: { requests: { storage: '2Gi' } } } },
+            { spec: { resources: { requests: { storage: '512Mi' } } } },
+            { spec: {} },
+        ]);
+
+        expect(await clusterService.getReservedVolumeStorage()).toBe(2684354560);
     });
 });

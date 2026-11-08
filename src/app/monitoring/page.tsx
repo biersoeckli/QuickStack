@@ -12,10 +12,11 @@ export default async function ResourceNodesInfoPage() {
 
     const session = await getAuthUserSession();
 
-    let [resourcesNode, volumesUsage, updatedNodeRessources] = await Promise.all([
+    let [resourcesNode, volumesUsage, updatedNodeRessources, reservedVolumeStorage] = await Promise.all([
         CatchUtils.resultOrUndefined(() => clusterService.getNodeResourceUsage()),
         CatchUtils.resultOrUndefined(() => monitoringService.getAllAppVolumesUsage()),
-        CatchUtils.resultOrUndefined(() => monitoringService.getMonitoringForAllApps())
+        CatchUtils.resultOrUndefined(() => monitoringService.getMonitoringForAllApps()),
+        CatchUtils.resultOrUndefined(() => clusterService.getReservedVolumeStorage())
     ]);
 
     // filter by role
@@ -33,6 +34,7 @@ export default async function ResourceNodesInfoPage() {
             <div className="space-y-6">
                 <MonitoringClient
                     resourcesNodes={resourcesNode}
+                    reservedVolumeStorage={reservedVolumeStorage}
                     appsRessourceUsage={updatedNodeRessources}
                     volumesUsage={volumesUsage}
                 />

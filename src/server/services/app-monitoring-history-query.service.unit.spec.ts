@@ -1,7 +1,7 @@
-vi.mock('@/server/adapter/app-history.adapter', () => ({
+vi.mock('@/server/services/standalone-services/app-history.service', () => ({
     default: { getRetentionHours: vi.fn().mockResolvedValue(24), getHistory: vi.fn() },
 }));
-import adapter from '@/server/adapter/app-history.adapter';
+import adapter from '@/server/services/standalone-services/app-history.service';
 import historyService from './app-monitoring-history-query.service';
 
 it('shows incomplete App totals as gaps and counts shared volumes once', async () => {
@@ -13,6 +13,7 @@ it('shows incomplete App totals as gaps and counts shared volumes once', async (
         [volume('base', null, 'available', 20), volume('shared', 'base', 'available', 20), volume('missing', null, 'unavailable', null)],
     ]);
     const history = await historyService.getHistory(['one', 'two']);
+    expect(history.retentionHours).toBe(24);
     expect(history.points[0]).toMatchObject({ cpuCores: null, ramBytes: null, storageBytes: 20, availableVolumes: 1, unavailableVolumes: 1 });
 });
 

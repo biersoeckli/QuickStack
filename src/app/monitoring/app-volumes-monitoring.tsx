@@ -71,8 +71,8 @@ export default function AppVolumeMonitoring({
                                 <TableCell>{item.appName}</TableCell>
                                 <TableCell>{item.mountPath}</TableCell>
                                 <TableCell className='space-y-1'>
-                                    {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.capacityBytes > 0 && item.availableBytes !== undefined ? (
-                                        <VolumeUsage usedBytes={item.usedBytes} capacityBytes={item.capacityBytes} availableBytes={item.availableBytes} />
+                                    {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.capacityBytes > 0 ? (
+                                        <VolumeUsage usedBytes={item.usedBytes} capacityBytes={item.capacityBytes} />
                                     ) : <span>Unavailable ({item.status})</span>}
                                 </TableCell>
                                 <TableCell>
@@ -91,16 +91,15 @@ export default function AppVolumeMonitoring({
     );
 }
 
-function VolumeUsage({ usedBytes, capacityBytes, availableBytes }: {
+function VolumeUsage({ usedBytes, capacityBytes }: {
     usedBytes: number;
     capacityBytes: number;
-    availableBytes: number;
 }) {
     const percentage = Math.round(usedBytes / capacityBytes * 100);
     return <>
         <Progress value={percentage} color={percentage >= 90 ? 'red' : percentage >= 80 ? 'orange' : undefined} />
         <div className='text-xs text-slate-500'>
-            {KubeSizeConverter.convertBytesToReadableSize(usedBytes)} used ({percentage}%) / {KubeSizeConverter.convertBytesToReadableSize(capacityBytes)} | {KubeSizeConverter.convertBytesToReadableSize(availableBytes)} available
+            {KubeSizeConverter.convertBytesToReadableSize(usedBytes)} / {KubeSizeConverter.convertBytesToReadableSize(capacityBytes)}
         </div>
     </>;
 }

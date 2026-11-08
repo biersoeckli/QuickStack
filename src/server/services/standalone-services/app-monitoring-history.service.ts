@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import appHistoryAdapter from '@/server/adapter/app-history.adapter';
+import appHistoryService from '@/server/services/standalone-services/app-history.service';
 import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
-import appHistoryMetricsService from './app-history-metrics.service';
 import appVolumeFilesystemService from './app-volume-filesystem.service';
 import scheduleService from './schedule.service';
 
@@ -23,9 +22,9 @@ class AppMonitoringHistoryService {
         this.running = true;
         try {
             const sampledAt = new Date();
-            const { apps, volumes } = await appHistoryAdapter.getPopulation();
+            const { apps, volumes } = await appHistoryService.getPopulation();
             const [metrics, filesystem, retention] = await Promise.all([
-                appHistoryMetricsService.getAppMetrics(apps).catch(error => {
+                appHistoryService.getAppMetrics(apps).catch(error => {
                     console.error('App metrics collection failed', error);
                     return new Map();
                 }),
@@ -35,7 +34,7 @@ class AppMonitoringHistoryService {
                     console.error('Volume metrics collection failed', error);
                     return new Map();
                 }),
-                appHistoryAdapter.getRetentionHours(),
+                appHistoryService.getRetentionHours(),
             ]);
             const samples = new Map<string, VolumeSample>();
             const memberships: Prisma.AppVolumeMonitoringMembershipCreateManyInput[] = [];
@@ -59,7 +58,7 @@ class AppMonitoringHistoryService {
                 }
                 memberships.push({ sampleId: sample.id, volumeId: volume.id });
             }
-            await appHistoryAdapter.save(
+            await appHistoryService.save(
                 apps.map(app => ({
                     appId: app.id,
                     sampledAt,

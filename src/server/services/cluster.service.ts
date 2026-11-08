@@ -1,3 +1,4 @@
+import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
 import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
 import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from "@/shared/model/node-info.model";
@@ -123,6 +124,14 @@ class ClusterService {
         } finally {
             revalidateTag(Tags.nodeInfos());
         }
+    }
+
+    async getReservedVolumeStorage(): Promise<number> {
+        const claims = await volumeSummaryAdapter.getPersistentVolumeClaims();
+        return claims.reduce((total, claim) => {
+            const size = claim.spec?.resources?.requests?.storage;
+            return total + (size ? KubeSizeConverter.fromKubeSizeToBytes(size) : 0);
+        }, 0);
     }
 
     async getNodeResourceUsage(): Promise<NodeResourceModel[]> {

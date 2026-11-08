@@ -129,7 +129,7 @@ export function DrawerBackupsTab({ app, role, s3Targets, volumeBackups }: {
 
     // ScrollArea renders its vertical scrollbar over the right edge. Reserve space
     // so the split-button trigger stays reachable instead of sitting underneath it.
-    return <div className="flex min-w-0 flex-col gap-4 pr-4">
+    return <div className="flex min-h-full min-w-0 flex-1 flex-col gap-4 pr-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pl-2">
             <div className="min-w-0 font-semibold text-lg text-foreground/80">Backups</div>
             {!readonly && <SplitButton
@@ -153,7 +153,7 @@ export function DrawerBackupsTab({ app, role, s3Targets, volumeBackups }: {
         {hasLoadError ? <Alert variant="destructive">
             <AlertTitle>Backups could not be loaded</AlertTitle>
             <AlertDescription>Check the backup storage connection and try again.</AlertDescription>
-        </Alert> : !backups ? <div className="flex justify-center py-12"><LoadingSpinner /></div> : backups.length === 0 ? <Empty>
+        </Alert> : !backups ? <div className="flex flex-1 items-center justify-center py-4"><LoadingSpinner /></div> : backups.length === 0 ? <Empty>
             <EmptyHeader>
                 <EmptyMedia variant="icon"><Archive /></EmptyMedia>
                 <EmptyTitle>No backups yet</EmptyTitle>

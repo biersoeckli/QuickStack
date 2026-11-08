@@ -1,10 +1,9 @@
-vi.mock('@/server/adapter/app-history.adapter', () => ({ default: { getPopulation: vi.fn(), getRetentionHours: vi.fn(), save: vi.fn() } }));
-vi.mock('./app-history-metrics.service', () => ({ default: { getAppMetrics: vi.fn() } }));
+vi.mock('./app-history.service', () => ({ default: { getPopulation: vi.fn(), getRetentionHours: vi.fn(), save: vi.fn(), getAppMetrics: vi.fn() } }));
 vi.mock('./app-volume-filesystem.service', () => ({ default: { getVolumeFilesystemUsage: vi.fn() } }));
 vi.mock('./schedule.service', () => ({ default: { scheduleJob: vi.fn() } }));
 import history from './app-monitoring-history.service';
-import adapter from '@/server/adapter/app-history.adapter';
-import metrics from './app-history-metrics.service';
+import adapter from '@/server/services/standalone-services/app-history.service';
+import metrics from './app-history.service';
 import filesystem from './app-volume-filesystem.service';
 
 it('records a gap for failed App metrics while preserving successful volume data', async () => {

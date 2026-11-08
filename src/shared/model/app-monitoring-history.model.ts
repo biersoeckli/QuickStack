@@ -13,6 +13,7 @@ export interface AppVolumeHistory {
     points: { time: number; usedBytes: number | null; measuredAt: number | null }[];
 }
 export interface AppMonitoringHistory {
+    retentionHours: number;
     points: AppHistoryPoint[];
     volumes: AppVolumeHistory[];
     latestCpuMeasurement: number | null;

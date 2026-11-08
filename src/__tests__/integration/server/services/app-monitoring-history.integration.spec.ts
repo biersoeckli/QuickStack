@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
-import adapter from '@/server/adapter/app-history.adapter';
+import adapter from '@/server/services/standalone-services/app-history.service';
 import history from '@/server/services/app-monitoring-history-query.service';
 
 describe('App monitoring history persistence', () => {
