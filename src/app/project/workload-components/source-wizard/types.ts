@@ -32,4 +32,4 @@ export const sourceTypeLabels: Record<SourceType, string> = {
 
 export const buildMethodLabels: Record<AppBuildMethod, string> = appBuildMethodLabels;
 
-export const defaultDockerfilePath = '../../[projectId]/app-components/app-detail/general/app-source-wizard/Dockerfile';
+export const defaultDockerfilePath = './Dockerfile';
