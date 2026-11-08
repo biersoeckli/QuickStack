@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ApiOperationDetailUtils } from '../utils/api-operation-detail.utils';
 
 export type McpSourceApp = {
     routes: unknown[];
@@ -38,6 +39,7 @@ type ElysiaRoute = {
             operationId?: string;
             summary?: string;
             description?: string;
+            'x-mcp-description'?: string;
             tags?: string[];
         };
     };
@@ -84,7 +86,7 @@ class OperationRegistry {
                 method: route.method,
                 path: route.path,
                 summary: detail?.summary,
-                description: detail?.description,
+                description: ApiOperationDetailUtils.mcpDescription(detail),
                 tags: detail?.tags ?? [],
                 pathParamsSchema: this.toJsonSchema(route.hooks?.params),
                 querySchema: this.toJsonSchema(route.hooks?.query),

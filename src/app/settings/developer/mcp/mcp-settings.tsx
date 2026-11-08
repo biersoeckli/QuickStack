@@ -1,17 +1,20 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Copy, ShieldAlert } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { CircleHelp, Copy, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { Toast } from '@/frontend/utils/toast.utils';
-import { setMcpServerEnabled } from '../../actions';
+import { MCP_SERVER_MODE_LABELS, McpServerMode, mcpServerModeZodModel } from '@/shared/model/mcp-settings.model';
+import { McpSettingsUtils } from '@/shared/utils/mcp.utils';
+import { setMcpSendSecrets, setMcpServerMode } from '../../actions';
+import Link from 'next/link';
 
 function Snippet({ value }: { value: string }) {
     return (
@@ -35,17 +38,9 @@ function Snippet({ value }: { value: string }) {
     );
 }
 
-function Step({ title, children }: { title: string; children: ReactNode }) {
-    return (
-        <div className="space-y-2">
-            <h4 className="text-sm font-medium">{title}</h4>
-            {children}
-        </div>
-    );
-}
-
-export default function McpSettings({ mcpEnabled }: { mcpEnabled: boolean }) {
-    const [isEnabled, setIsEnabled] = useState(mcpEnabled);
+export default function McpSettings({ mcpMode, sendSecrets }: { mcpMode: McpServerMode; sendSecrets: boolean }) {
+    const [mode, setMode] = useState<McpServerMode>(mcpMode);
+    const [sendSecretsViaMcp, setSendSecretsViaMcp] = useState(sendSecrets);
     const [loading, setLoading] = useState(false);
     const [origin, setOrigin] = useState('');
 
@@ -54,95 +49,108 @@ export default function McpSettings({ mcpEnabled }: { mcpEnabled: boolean }) {
     }, []);
 
     const mcpUrl = `${origin || 'https://<your-quickstack-url>'}/api/mcp`;
+    const isEnabled = McpSettingsUtils.isMcpServerEnabled(mode);
 
-    const handleToggle = async (checked: boolean) => {
-        const previousState = isEnabled;
+    const handleModeChange = async (value: string | null) => {
+        const parsedMode = mcpServerModeZodModel.safeParse(value);
+        if (!parsedMode.success) {
+            return;
+        }
+
+        const previousMode = mode;
         try {
             setLoading(true);
-            setIsEnabled(checked);
+            setMode(parsedMode.data);
 
             await Toast.fromAction(
-                () => setMcpServerEnabled(checked),
-                `MCP server ${checked ? 'enabled' : 'disabled'}`,
-                `Updating MCP server...`
+                () => setMcpServerMode(parsedMode.data),
+                `MCP server set to ${MCP_SERVER_MODE_LABELS[parsedMode.data]}`,
+                'Updating MCP server...'
             );
         } catch {
-            setIsEnabled(previousState);
+            setMode(previousMode);
         } finally {
             setLoading(false);
         }
     };
 
-    const claudeJson = `{
-  "mcpServers": {
-    "quickstack": {
-      "type": "http",
-      "url": "${mcpUrl}",
-      "headers": { "Authorization": "Bearer <YOUR_REST_API_KEY>" }
-    }
-  }
-}`;
+    const handleSendSecretsToggle = async (checked: boolean) => {
+        const previousState = sendSecretsViaMcp;
+        try {
+            setLoading(true);
+            setSendSecretsViaMcp(checked);
 
-    const claudeCli = `claude mcp add --transport http quickstack ${mcpUrl} \\
-  --header "Authorization: Bearer <YOUR_REST_API_KEY>"`;
-
-    const codexToml = `[mcp_servers.quickstack]
-url = "${mcpUrl}"
-bearer_token_env_var = "QUICKSTACK_API_KEY"`;
-
-    const codexStaticToml = `[mcp_servers.quickstack]
-url = "${mcpUrl}"
-http_headers = { Authorization = "Bearer <YOUR_REST_API_KEY>" }`;
-
-    const copilotJson = `{
-  "servers": {
-    "quickstack": {
-      "type": "http",
-      "url": "${mcpUrl}",
-      "headers": { "Authorization": "Bearer \${input:quickstack-api-key}" }
-    }
-  }
-}`;
-
-    const genericJson = `POST ${mcpUrl}
-Content-Type: application/json
-Accept: application/json, text/event-stream
-Authorization: Bearer <YOUR_REST_API_KEY>
-
-{"jsonrpc":"2.0","id":1,"method":"tools/list"}`;
+            await Toast.fromAction(
+                () => setMcpSendSecrets(checked),
+                `MCP secrets ${checked ? 'enabled' : 'disabled'}`,
+                'Updating MCP secret handling...'
+            );
+        } catch {
+            setSendSecretsViaMcp(previousState);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
-            <Alert variant="destructive">
-                <ShieldAlert />
-                <AlertTitle>Canary feature: secrets can flow through MCP</AlertTitle>
-                <AlertDescription>
-                    The MCP server is a canary feature and still in active developement. Tool arguments and results are passed to the AI host and model.
-                    Because the MCP server is currently built ontop of the QuickStack REST API, read operations can return secrets in plaintext, including App environment variables, build arguments,
-                    Git tokens, container registry credentials and App basic-auth passwords. Write operations can send the
-                    same values. Only connect trusted clients and use a REST API
-                    Key from a user with the minimum required permissions.
-                </AlertDescription>
-            </Alert>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         MCP Server
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">Canary</span>
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">Beta</span>
                     </CardTitle>
                     <CardDescription>
                         Expose QuickStack as a remote Model Context Protocol server. AI clients such as Claude Code,
                         Codex and GitHub Copilot can then act on QuickStack through the REST API using a REST API Key.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex gap-4 items-center">
-                        <div className="flex items-center space-x-3">
-                            <Switch disabled={loading} checked={isEnabled} onCheckedChange={handleToggle} />
-                            <Label>Enable the MCP server at /api/mcp</Label>
+                <CardContent className="space-y-5">
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Label htmlFor="mcp-server-mode">MCP status</Label>
+                            <Select value={mode} onValueChange={handleModeChange} disabled={loading}>
+                                <SelectTrigger id="mcp-server-mode" className="w-[180px]">
+                                    <SelectValue>{MCP_SERVER_MODE_LABELS[mode]}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {mcpServerModeZodModel.options.map((option) => (
+                                        <SelectItem key={option} value={option}>
+                                            {MCP_SERVER_MODE_LABELS[option]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {loading && <LoadingSpinner />}
                         </div>
-                        {loading && <LoadingSpinner />}
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Read only</span> exposes the search and read tools.
+                            <span className="font-medium"> Read &amp; write</span> also exposes the mutating tool.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center space-x-3">
+                            <Switch
+                                id="mcp-send-secrets"
+                                disabled={loading || !isEnabled}
+                                checked={sendSecretsViaMcp}
+                                onCheckedChange={handleSendSecretsToggle}
+                            />
+                            <Label htmlFor="mcp-send-secrets">Expose secrets in MCP responses</Label>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger render={<button type="button" aria-label="About secrets in MCP responses" className="text-muted-foreground"><CircleHelp className="h-4 w-4" /></button>} />
+                                    <TooltipContent className="max-w-80">
+                                        When off, fields marked as secret (environment variables, build arguments, registry passwords,
+                                        Git tokens, SSH private keys, basic-auth passwords, webhook IDs, health-check headers and
+                                        LLM admin keys) are removed from MCP results. Temporary sandbox access URLs and API tokens
+                                        are also redacted. The normal REST API is not affected.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -151,10 +159,7 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                 <CardHeader>
                     <CardTitle>Connection</CardTitle>
                     <CardDescription>
-                        Use the endpoint URL below and authenticate with a REST API Key created under
-                        {' '}Settings &rarr; Account &amp; Access &rarr; API Keys. QuickStack exposes two tools:
-                        {' '}<span className="font-mono">search_operations</span> to discover operations and
-                        {' '}<span className="font-mono">execute_operation</span> to run one.
+                        Use the endpoint URL below and authenticate with a REST API Key.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -165,65 +170,13 @@ Authorization: Bearer <YOUR_REST_API_KEY>
                         the MCP Streamable HTTP transport and is stateless.
                     </p>
                 </CardContent>
+                <CardFooter>
+                    <Link href="/settings/account/api-keys" className="mr-auto">
+                        <Button variant={'secondary'}><Key /> Manage API Keys</Button>
+                    </Link>
+                </CardFooter>
             </Card>}
 
-            {isEnabled && <Card>
-                <CardHeader>
-                    <CardTitle>Client setup</CardTitle>
-                    <CardDescription>Add QuickStack as a remote MCP server in your AI client.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Tabs defaultValue="claude">
-                        <TabsList>
-                            <TabsTrigger value="claude">Claude Code</TabsTrigger>
-                            <TabsTrigger value="codex">Codex</TabsTrigger>
-                            <TabsTrigger value="copilot">GitHub Copilot</TabsTrigger>
-                            <TabsTrigger value="generic">Generic</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="claude" className="space-y-4 pt-4">
-                            <Step title="Add to .mcp.json in your project root, or to your user configuration:">
-                                <Snippet value={claudeJson} />
-                            </Step>
-                            <Step title="Or add it with the CLI:">
-                                <Snippet value={claudeCli} />
-                            </Step>
-                        </TabsContent>
-
-                        <TabsContent value="codex" className="space-y-4 pt-4">
-                            <Step title="Add a Streamable HTTP server to ~/.codex/config.toml and export the key:">
-                                <Snippet value={codexToml} />
-                                <Snippet value={`export QUICKSTACK_API_KEY="<YOUR_REST_API_KEY>"`} />
-                            </Step>
-                            <Step title="Or embed a static header (not recommended in shared repositories):">
-                                <Snippet value={codexStaticToml} />
-                            </Step>
-                        </TabsContent>
-
-                        <TabsContent value="copilot" className="space-y-4 pt-4">
-                            <Step title="Add the server to .vscode/mcp.json. VS Code prompts for the key through the input variable:">
-                                <Snippet value={copilotJson} />
-                            </Step>
-                            <p className="text-sm text-muted-foreground">
-                                VS Code also reads a portable <span className="font-mono">.mcp.json</span> at the workspace root,
-                                which uses the same <span className="font-mono">mcpServers</span> shape as Claude Code.
-                            </p>
-                        </TabsContent>
-
-                        <TabsContent value="generic" className="space-y-4 pt-4">
-                            <Step title="Any MCP Streamable HTTP client can call the endpoint directly:">
-                                <Snippet value={genericJson} />
-                            </Step>
-                            <p className="text-sm text-muted-foreground">
-                                Call <span className="font-mono">search_operations</span> first to discover operation ids and their
-                                input/output schemas, then call <span className="font-mono">execute_operation</span> with
-                                {' '}<span className="font-mono">pathParams</span>, <span className="font-mono">query</span> and
-                                {' '}<span className="font-mono">body</span>. Clients set the MCP protocol headers themselves.
-                            </p>
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
-            </Card>}
         </div>
     );
 }

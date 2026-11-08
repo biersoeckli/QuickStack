@@ -10,7 +10,16 @@ const problemResponseSchema = z.object({
     title: z.string(),
     status: z.number(),
     detail: z.string().optional(),
+    errors: z.array(z.object({
+        path: z.string(),
+        message: z.string(),
+    })).optional(),
 });
+
+type ProblemFieldError = {
+    path: string;
+    message: string;
+};
 
 export class ApiUtils {
 
@@ -35,52 +44,61 @@ export class ApiUtils {
                 mappedObject = mappedObject.catchall(ApiUtils.mapDateSchemaToStringDate(catchall));
             }
 
-            return mappedObject;
+            return ApiUtils.withMeta(schema, mappedObject);
         }
 
         if (schema instanceof z.ZodArray) {
-            return z.array(ApiUtils.mapDateSchemaToStringDate(schema.element));
+            return ApiUtils.withMeta(schema, z.array(ApiUtils.mapDateSchemaToStringDate(schema.element)));
         }
 
         if (schema instanceof z.ZodOptional) {
-            return ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).optional();
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).optional());
         }
 
         if (schema instanceof z.ZodNullable) {
-            return ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).nullable();
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema.unwrap()).nullable());
         }
 
         if (schema instanceof z.ZodDefault) {
-            return ApiUtils.mapDateSchemaToStringDate(schema._def.innerType).default(schema._def.defaultValue);
+            return ApiUtils.withMeta(schema, ApiUtils.mapDateSchemaToStringDate(schema._def.innerType).default(schema._def.defaultValue));
         }
 
         if (schema instanceof z.ZodUnion) {
-            return z.union((schema._def.options).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+            return ApiUtils.withMeta(schema, z.union((schema._def.options).map(option => ApiUtils.mapDateSchemaToStringDate(option)) as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]));
         }
 
         if (schema instanceof z.ZodTuple) {
             const mappedItems = (schema._def.items).map(item => ApiUtils.mapDateSchemaToStringDate(item)) as [z.ZodTypeAny, ...z.ZodTypeAny[]];
             const mappedTuple = z.tuple(mappedItems);
 
-            return schema._def.rest ? mappedTuple.rest(ApiUtils.mapDateSchemaToStringDate(schema._def.rest)) : mappedTuple;
+            return ApiUtils.withMeta(schema, schema._def.rest ? mappedTuple.rest(ApiUtils.mapDateSchemaToStringDate(schema._def.rest)) : mappedTuple);
         }
 
         if (schema instanceof z.ZodRecord) {
-            return z.record(
+            return ApiUtils.withMeta(schema, z.record(
                 schema._def.keyType as z.ZodString | z.ZodNumber | z.ZodSymbol,
                 ApiUtils.mapDateSchemaToStringDate(schema._def.valueType)
-            );
+            ));
         }
 
         if (schema instanceof z.ZodLazy) {
-            return z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter()));
+            return ApiUtils.withMeta(schema, z.lazy(() => ApiUtils.mapDateSchemaToStringDate(schema._def.getter())));
         }
 
         if (schema instanceof z.ZodPromise) {
-            return z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap()));
+            return ApiUtils.withMeta(schema, z.promise(ApiUtils.mapDateSchemaToStringDate(schema.unwrap())));
         }
 
         return schema;
+    }
+
+    /** Preserves `.meta()` when the date mapper has to rebuild a schema wrapper. */
+    private static withMeta<T extends z.ZodTypeAny>(source: z.ZodTypeAny, target: T): T {
+        const meta = z.globalRegistry.get(source);
+        if (!meta) {
+            return target;
+        }
+        return target.meta(meta) as T;
     }
 
     static toJsonSchema<T>(schema: z.ZodType<T>) {
@@ -116,12 +134,13 @@ export class ApiUtils {
         return { identity };
     };
 
-    static problem(status: number, title: string, detail?: string): Response {
+    static problem(status: number, title: string, detail?: string, errors?: ProblemFieldError[]): Response {
         return new Response(JSON.stringify({
             type: 'about:blank',
             title,
             status,
-            ...(detail ? { detail } : {})
+            ...(detail ? { detail } : {}),
+            ...(errors && errors.length > 0 ? { errors } : {}),
         }), {
             status,
             headers: { 'content-type': 'application/problem+json' }
@@ -130,10 +149,18 @@ export class ApiUtils {
 
     static mapError(error: unknown): Response {
         if (error instanceof ValidationError) {
-            return ApiUtils.problem(422, 'Unprocessable Entity', 'Request validation failed.');
+            const errors = this.toFieldErrors(error);
+            const detail = errors.length > 0
+                ? `Request validation failed: ${errors.map(entry => `${entry.path || '(root)'} - ${entry.message}`).join('; ')}`
+                : 'Request validation failed.';
+            return ApiUtils.problem(422, 'Unprocessable Entity', detail, errors);
         }
         if (error instanceof z.ZodError) {
-            return ApiUtils.problem(400, 'Bad Request', 'Request validation failed. ' + error.issues.map(e => `${e.path.join('.')} - ${e.message}`).join('; '));
+            const errors = error.issues.map(issue => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+            }));
+            return ApiUtils.problem(400, 'Bad Request', 'Request validation failed. ' + errors.map(entry => `${entry.path} - ${entry.message}`).join('; '), errors);
         }
         if (error instanceof ServiceException) {
             return ApiUtils.problem(400, 'Bad Request', error.message);
@@ -143,6 +170,24 @@ export class ApiUtils {
         }
         console.error(error);
         return ApiUtils.problem(500, 'Internal Server Error', 'An unknown error occurred.');
+    }
+
+    private static toFieldErrors(error: ValidationError): ProblemFieldError[] {
+        try {
+            return error.all.map((issue) => ({
+                path: this.normalizeFieldPath(issue.path),
+                message: issue.message || 'Invalid value.',
+            }));
+        } catch {
+            return [];
+        }
+    }
+
+    private static normalizeFieldPath(path: string | undefined): string {
+        if (!path) {
+            return '';
+        }
+        return path.replace(/^\//, '').replace(/\//g, '.');
     }
 
     static mapResponseModel<T>(schema: z.ZodType<T>) {

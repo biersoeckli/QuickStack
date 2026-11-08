@@ -5,9 +5,12 @@ import {
 } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import type { McpAuthResolver } from './mcp-auth';
+import { McpResponseUtils } from '@/server/utils/mcp-response.utils';
 import mcpServerFactory from './mcp-server.factory';
 import operationRegistry from './operation-registry';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
+import { McpServerMode } from '@/shared/model/mcp-settings.model';
+import { McpSettingsUtils } from '@/shared/utils/mcp.utils';
 
 export type QuickStackMcpHandlerOptions = {
     app: McpSourceApp;
@@ -16,35 +19,42 @@ export type QuickStackMcpHandlerOptions = {
     allowedHosts?: string[];
 };
 
+export type QuickStackMcpRequestOptions = {
+    mode?: McpServerMode;
+    sendSecrets?: boolean;
+};
+
 export type QuickStackMcpHandler = {
-    fetch: (request: Request) => Promise<Response>;
+    fetch: (request: Request, options?: QuickStackMcpRequestOptions) => Promise<Response>;
     close: () => Promise<void>;
     operations: OperationDescriptor[];
 };
 
-function unauthorizedResponse(): Response {
-    return new Response(
-        JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } }),
-        {
-            status: 401,
-            headers: {
-                'content-type': 'application/json',
-                'www-authenticate': 'Bearer',
-            },
-        }
-    );
-}
+const MCP_SERVER_MODE_EXTRA_KEY = 'mcpServerMode';
+const MCP_SEND_SECRETS_EXTRA_KEY = 'mcpSendSecrets';
 
 export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions): QuickStackMcpHandler {
     const { app, resolveAuthInfo, allowedOrigins = [], allowedHosts } = options;
     const operations = operationRegistry.build(app);
 
     const handler = createMcpHandler(
-        ({ authInfo }) => mcpServerFactory.build({ app, operations, authInfo }),
+        ({ authInfo }) => {
+            const extra = authInfo?.extra ?? {};
+            const configuredMode = extra[MCP_SERVER_MODE_EXTRA_KEY];
+            const mode = McpSettingsUtils.isMcpServerMode(configuredMode) ? configuredMode : 'readwrite';
+
+            return mcpServerFactory.build({
+                app,
+                operations,
+                authInfo,
+                mode,
+                sendSecrets: extra[MCP_SEND_SECRETS_EXTRA_KEY] === true,
+            });
+        },
         { responseMode: 'json' }
     );
 
-    const fetch = async (request: Request): Promise<Response> => {
+    const fetch = async (request: Request, options?: QuickStackMcpRequestOptions): Promise<Response> => {
         if (allowedHosts && allowedHosts.length > 0) {
             const hostRejected = hostHeaderValidationResponse(request, allowedHosts);
             if (hostRejected) {
@@ -66,10 +76,19 @@ export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions)
         }
 
         if (!authInfo) {
-            return unauthorizedResponse();
+            return McpResponseUtils.unauthorizedResponse();
         }
 
-        return handler.fetch(request, { authInfo });
+        return handler.fetch(request, {
+            authInfo: {
+                ...authInfo,
+                extra: {
+                    ...(authInfo.extra ?? {}),
+                    [MCP_SERVER_MODE_EXTRA_KEY]: options?.mode ?? 'readwrite',
+                    [MCP_SEND_SECRETS_EXTRA_KEY]: options?.sendSecrets ?? false,
+                },
+            },
+        });
     };
 
     return { fetch, close: () => handler.close(), operations };

@@ -1,7 +1,8 @@
 import { v1Api } from '@/server/api/v1/api-index';
 import { resolveQuickStackAuthInfo } from '@/server/mcp/mcp-auth';
 import { createQuickStackMcpHandler } from '@/server/mcp/mcp-handler';
-import paramService, { ParamService } from '@/server/services/param.service';
+import paramService from '@/server/services/param.service';
+import { MCP_ERROR_CODES, McpResponseUtils } from '@/server/utils/mcp-response.utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,24 +12,22 @@ const mcpHandler = createQuickStackMcpHandler({
 });
 
 async function handleRequest(request: Request): Promise<Response> {
-    const [canaryEnabled, enabled] = await Promise.all([
-        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL),
-        paramService.getBoolean(ParamService.MCP_SERVER_ENABLED),
+    const [mode, sendSecrets] = await Promise.all([
+        paramService.getMcpServerMode(),
+        paramService.getMcpSendSecrets(),
     ]);
 
-    if (!canaryEnabled || !enabled) {
-        return new Response(
-            JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32002, message: 'MCP server is disabled.' } }),
-            {
-                status: 404,
-                headers: { 'content-type': 'application/json' },
-            }
-        );
+    if (mode === 'off') {
+        return McpResponseUtils.jsonRpcErrorResponse({
+            code: MCP_ERROR_CODES.SERVER_DISABLED,
+            message: 'MCP server is disabled.',
+            status: 404,
+        });
     }
 
-    return mcpHandler.fetch(request);
+    return mcpHandler.fetch(request, { mode, sendSecrets });
 }
 
+// The MCP 2026-07-28 transport is stateless: only POST is supported.
+// Next.js answers unsupported methods with 405 automatically.
 export const POST = handleRequest;
-export const GET = handleRequest;
-export const DELETE = handleRequest;

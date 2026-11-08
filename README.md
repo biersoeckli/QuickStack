@@ -53,7 +53,7 @@ After installation, open QuickStack in your browser and start deploying your app
 - **Backups you control:** Schedule volume backups to S3-compatible storage, optionally run them before deployments, and create native database dumps.
 - **Team-ready access:** Control project and app access with user groups, roles, OIDC SSO, 2FA, and expiring API keys.
 - **Automation and rollbacks:** Deploy via webhook or REST API and roll back to a previous version in one click.
-- **MCP integration (canary):** Enable the remote Model Context Protocol server for controlled QuickStack access from compatible AI clients.
+- **MCP integration (canary):** Expose read-only or read-write Model Context Protocol access to compatible AI clients, with secret fields redacted by default.
 - **Self-hosted and open source:** Install with one command, update from the UI, and avoid lock-in with GPL-3.0 source code.
 
 <img src="/github-assets/qs-app-overview.png" alt="QuickStack app overview" width="100%" />

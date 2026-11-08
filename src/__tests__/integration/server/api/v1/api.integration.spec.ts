@@ -218,7 +218,8 @@ describe('REST API v1 integration', () => {
         const allAgents = await expectApiJson(
             await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
         );
-        expect(allAgents).toEqual(expect.arrayContaining([
+        expect(allAgents).toMatchObject({ total: 1, limit: 50, nextCursor: null });
+        expect(allAgents.items).toEqual(expect.arrayContaining([
             expect.objectContaining({
                 id: createdAgent.id,
             }),
@@ -238,7 +239,8 @@ describe('REST API v1 integration', () => {
             const agentsAfterDelete = await expectApiJson(
                 await apiFetch(`/api/v1/agents?projectId=${createdProject.id}`, apiKey),
             );
-            expect(agentsAfterDelete).toEqual(expect.not.arrayContaining([
+            expect(agentsAfterDelete).toMatchObject({ total: 0, limit: 50, nextCursor: null });
+            expect(agentsAfterDelete.items).toEqual(expect.not.arrayContaining([
                 expect.objectContaining({
                     id: createdAgent.id,
                 }),
@@ -367,7 +369,8 @@ describe('REST API v1 integration', () => {
         const deploymentList = await expectApiJson(
             await apiFetch(`/api/v1/apps/${app.id}/deploy`, apiKey),
         );
-        expect(deploymentList).toEqual(
+        expect(deploymentList).toMatchObject({ total: 1, limit: 50, nextCursor: null });
+        expect(deploymentList.items).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
                     appId: app.id,
