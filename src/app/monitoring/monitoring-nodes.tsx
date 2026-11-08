@@ -167,32 +167,44 @@ export default function ResourcesNodes({
             {updatedNodeRessources.some(node => node.diskUsageCapacity === undefined) && (
               <p className="text-center text-sm text-muted-foreground">Incomplete: some node filesystem metrics are unavailable.</p>
             )}
-            <div className="space-y-1 text-center text-sm text-muted-foreground">
-              <p>Used: {clusterStats.diskCapacity > 0 ? KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageAbsolut) : 'Unavailable'}</p>
-              <p>Reserved by volumes: {reservedVolumeStorage === undefined ? 'Unavailable' : KubeSizeConverter.convertBytesToReadableSize(reservedVolumeStorage)}</p>
-              {reservedVolumeStorage !== undefined && clusterStats.diskCapacity > 0 && (
-                <div className="mx-auto max-w-[200px] space-y-1">
-                  <Progress value={Math.min(100, toPercent(reservedVolumeStorage, clusterStats.diskCapacity))} className="h-2" />
-                  <p>{toPercent(reservedVolumeStorage, clusterStats.diskCapacity).toFixed(0)}% of node capacity</p>
-                </div>
-              )}
-            </div>
             {clusterStats.diskCapacity > 0 ? (
-              <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
-                <PieChart>
-                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => KubeSizeConverter.convertBytesToReadableSize(value as number)} />} />
-                  <Pie data={getChartData(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
-                    <Label content={({ viewBox }) => viewBox && "cx" in viewBox && "cy" in viewBox ? (
-                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                        <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                          {toPercent(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity).toFixed(0)}%
-                        </tspan>
-                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">Used</tspan>
-                      </text>
-                    ) : null} />
-                  </Pie>
-                </PieChart>
-              </ChartContainer>
+              <>
+                <ChartContainer config={{
+                  used: { label: 'Used', color: 'var(--chart-2)' },
+                  reserved: { label: 'Reserved beyond node usage', color: 'var(--chart-3)' },
+                  free: { label: 'Remaining', color: 'var(--muted)' },
+                } satisfies ChartConfig} className="mx-auto aspect-square max-h-[250px]">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value, name) => (
+                      <span>{name === 'reserved' ? 'Reserved beyond node usage' : name === 'used' ? 'Used' : 'Remaining'}: {KubeSizeConverter.convertBytesToReadableSize(value as number)}</span>
+                    )} />} />
+                    <Pie
+                      data={[
+                        { status: 'used', value: Math.min(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity), fill: getUsageColor(toPercent(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity)) },
+                        { status: 'reserved', value: Math.max(0, Math.min(reservedVolumeStorage ?? 0, clusterStats.diskCapacity) - clusterStats.diskUsageAbsolut), fill: 'var(--color-reserved)' },
+                        { status: 'free', value: Math.max(0, clusterStats.diskCapacity - Math.max(clusterStats.diskUsageAbsolut, reservedVolumeStorage ?? 0)), fill: 'var(--color-free)' },
+                      ]}
+                      dataKey="value" nameKey="status" innerRadius={60} outerRadius={96} strokeWidth={3}
+                    >
+                      <Label content={({ viewBox }) => viewBox && 'cx' in viewBox && 'cy' in viewBox ? (
+                        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                          <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 12} className="fill-foreground text-lg font-semibold">
+                            {toPercent(clusterStats.diskUsageAbsolut, clusterStats.diskCapacity).toFixed(0)}% used
+                          </tspan>
+                          <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 12} className="fill-muted-foreground text-xs">
+                            {reservedVolumeStorage === undefined ? 'Reserved unavailable' : `${toPercent(reservedVolumeStorage, clusterStats.diskCapacity).toFixed(0)}% reserved`}
+                          </tspan>
+                        </text>
+                      ) : null} />
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+                <p className="sr-only">
+                  Node filesystem: {KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskUsageAbsolut)} used.
+                  Volume reservation: {reservedVolumeStorage === undefined ? 'reservation unavailable' : `${KubeSizeConverter.convertBytesToReadableSize(reservedVolumeStorage)} reserved`}.
+                  Total node capacity: {KubeSizeConverter.convertBytesToReadableSize(clusterStats.diskCapacity)}.
+                </p>
+              </>
             ) : <p className="py-12 text-center text-muted-foreground">Storage metrics unavailable</p>}
           </CardContent>
         </Card>
