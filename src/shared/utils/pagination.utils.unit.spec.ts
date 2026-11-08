@@ -7,17 +7,6 @@ import paginationUtils, {
 } from './pagination.utils';
 
 describe('pagination.utils', () => {
-    describe('isRequested', () => {
-        it('is false for an empty query', () => {
-            expect(paginationUtils.isRequested({})).toBe(false);
-        });
-
-        it('is true when limit or cursor is supplied', () => {
-            expect(paginationUtils.isRequested({ limit: 10 })).toBe(true);
-            expect(paginationUtils.isRequested({ cursor: '20' })).toBe(true);
-        });
-    });
-
     describe('page', () => {
         const items = Array.from({ length: 60 }, (_value, index) => index + 1);
 
@@ -62,11 +51,11 @@ describe('pagination.utils', () => {
         });
     });
 
-    describe('responseSchema', () => {
-        const schema = paginationUtils.responseSchema(z.object({ id: z.string() }));
+    describe('envelopeSchema', () => {
+        const schema = paginationUtils.envelopeSchema(z.object({ id: z.string() }));
 
-        it('accepts the legacy bare array response', () => {
-            expect(schema.parse([{ id: 'a' }])).toEqual([{ id: 'a' }]);
+        it('rejects a bare array response', () => {
+            expect(schema.safeParse([{ id: 'a' }]).success).toBe(false);
         });
 
         it('accepts the paginated envelope response', () => {

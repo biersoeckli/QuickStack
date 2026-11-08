@@ -30,19 +30,17 @@ export const appDeployRoutes = new Elysia()
                 appId: app.id,
             }));
 
-        return paginationUtils.isRequested(query)
-            ? paginationUtils.page(deplyoments, query)
-            : deplyoments;
+        return paginationUtils.page(deplyoments, query);
     }, {
         params: z.object({
             appId: z.string()
         }),
         query: paginationQueryZodModel,
-        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(deploymentDetailsResponseZodModel)),
+        response: ApiUtils.mapResponseModel(paginationUtils.envelopeSchema(deploymentDetailsResponseZodModel)),
         detail: ApiOperationDetailUtils.create({
             summary: 'List app deployments',
-            description: 'Returns the deployment history as an array. Set limit (and optionally cursor) for the paginated envelope.',
-            'x-mcp-description': 'Returns the deployment history as an array. Set limit (and optionally cursor) for the paginated envelope. Poll this after deployApp until the newest entry reports success or failure.',
+            description: 'Returns a paginated deployment history. The default limit is 50.',
+            'x-mcp-description': 'Returns a paginated deployment history. The default limit is 50. Poll this after deployApp until the newest entry reports success or failure.',
             operationId: 'listAppDeployments',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
@@ -127,7 +125,6 @@ export const appDeployRoutes = new Elysia()
             summary: 'Deploy app',
             description: 'Starts a build and rollout and returns the deploymentId immediately. Pass forceRebuild=true to rebuild even when the commit/image did not change. This changes live Kubernetes workloads.',
             'x-mcp-description': `Starts a build and rollout and returns {"deploymentId":"..."} immediately. Pass query.forceRebuild=true to rebuild even when the commit/image did not change.
-Example: POST /api/v1/apps/<appId>/deploy?forceRebuild=true.
 Poll listAppDeployments or getAppDeployment with that deploymentId until the status is successful or failed. On failure, call getAppDeploymentLogs to inspect the build logs. This changes live Kubernetes workloads; ask for confirmation first.`,
             operationId: 'deployApp',
             tags: ['Apps'],

@@ -57,13 +57,17 @@ describe('MCP route enablement', () => {
         expect(routeMocks.mcpFetch).not.toHaveBeenCalled();
     });
 
-    it('rejects requests when the canary channel is disabled', async () => {
+    it('handles requests when the canary channel is disabled', async () => {
         setParams({ canary: false, mode: 'readwrite' });
+        routeMocks.mcpFetch.mockResolvedValue(new Response('handled', { status: 200 }));
 
         const response = await POST(new Request('http://localhost/api/mcp', { method: 'POST' }));
 
-        expect(response.status).toBe(404);
-        expect(routeMocks.mcpFetch).not.toHaveBeenCalled();
+        expect(response.status).toBe(200);
+        expect(routeMocks.mcpFetch).toHaveBeenCalledWith(expect.any(Request), {
+            mode: 'readwrite',
+            sendSecrets: false,
+        });
     });
 
     it('passes the read-only mode to the MCP handler', async () => {

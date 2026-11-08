@@ -29,15 +29,13 @@ export const projectRoutes = new Elysia()
                 UserGroupUtils.sessionHasReadAccessToProject(identity.session, project.id)
             );
 
-        return paginationUtils.isRequested(query)
-            ? paginationUtils.page(visibleProjects, query)
-            : visibleProjects;
+        return paginationUtils.page(visibleProjects, query);
     }, {
         query: paginationQueryZodModel,
-        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(ProjectModel)),
+        response: ApiUtils.mapResponseModel(paginationUtils.envelopeSchema(ProjectModel)),
         detail: {
             summary: 'List projects',
-            description: 'Returns all projects as an array. Set limit (and optionally cursor) to receive the paginated envelope { items, total, limit, nextCursor } instead.',
+            description: 'Returns a paginated list of projects. The default limit is 50.',
             operationId: 'listProjects',
             tags: ['Projects'],
             security: [{ bearerAuth: [] }],
@@ -106,7 +104,7 @@ Requires admin. Every project maps to a Kubernetes namespace; saveProject only s
         detail: ApiOperationDetailUtils.create({
             summary: 'Delete project',
             description: 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. Requires admin.',
-            'x-mcp-description': 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. No request body.\nExample: DELETE /api/v1/projects/<projectId>.\nRequires admin and confirmation because this cannot be undone.',
+            'x-mcp-description': 'Permanently deletes the project, all its Apps and Agents, and the Kubernetes namespace with their workloads and volumes. No request body.\nRequires admin and confirmation because this cannot be undone.',
             operationId: 'deleteProject',
             tags: ['Projects'],
             security: [{ bearerAuth: [] }],

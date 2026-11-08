@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import packageJson from '../../../package.json';
 import operationExecutor from './operation-executor';
 import mcpSecretRedactionUtils from './mcp-secret-redaction';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
@@ -18,7 +17,7 @@ const READ_TOOL = MCP_TOOL_NAMES.read;
 const WRITE_TOOL = MCP_TOOL_NAMES.write;
 
 const SERVER_NAME = 'quickstack';
-const SERVER_VERSION = packageJson.version;
+const SERVER_VERSION = '1.1.0';
 
 const DEFAULT_SEARCH_LIMIT = 25;
 const MAX_SEARCH_LIMIT = 100;
@@ -91,7 +90,7 @@ function buildServerInstructions(mode: McpServerMode, sendSecrets: boolean): str
         ? `then run the read-only operation with ${READ_TOOL}.`
         : `then run the operation with ${READ_TOOL} or ${WRITE_TOOL}.`;
     const instructions = [
-        'QuickStack is a self-hosted platform for deploying Apps and Agents on Kubernetes.',
+        'QuickStack is a self-hosted platform (PaaS) for deploying Apps and Agents Sandboxes on a server/cluster where QuickStack is installed on.',
         `Workflow: call ${SEARCH_TOOL} to find the operation id, call it again with detail "full" to read the exact input schema, ${runStep}`,
         `Only pass a readOnly operation to ${READ_TOOL}.`,
         'deployApp returns a deploymentId immediately; poll listAppDeployments or getAppDeployment until it reports success or failure. deployAgent applies CONTAINER configs synchronously; GIT builds continue asynchronously in the QuickStack UI, so poll listAgentSandboxes before starting a sandbox.',
@@ -113,7 +112,7 @@ function buildServerInstructions(mode: McpServerMode, sendSecrets: boolean): str
 
 const SEARCH_TOOL_DESCRIPTION = [
     'Search the QuickStack operations catalog.',
-    'QuickStack is a self-hosted platform for deploying Apps and Agents.',
+    'QuickStack is a self-hosted platform for deploying Apps and Agent Sandboxes.',
     'Use this tool first to discover the operation id for the action you need.',
     'Always start with detail "summary" to see the operation list, then repeat the search with detail "full" for the one operation whose schema you need.',
     'Each operation reports readOnly and the tool to call:',

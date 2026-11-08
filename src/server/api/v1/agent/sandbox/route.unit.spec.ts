@@ -131,6 +131,16 @@ describe('agent sandbox routes', () => {
         routeMocks.createApiToken.mockResolvedValue({ token: 'api-token', expiresAt: 1_800_000_000 });
     });
 
+    it('returns a paginated file list with the default limit', async () => {
+        const response = await app.handle(new Request(
+            'http://localhost/agents/agent-1/sandboxes/sandbox-1/files/list?path=%2Fworkspace',
+        ));
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ items: [], total: 0, limit: 50, nextCursor: null });
+        expect(routeMocks.listFiles).toHaveBeenCalledWith('agent-1', 'sandbox-1', '/workspace');
+    });
+
     it('passes create env and idle timeout body to service', async () => {
         const response = await app.handle(new Request('http://localhost/agents/agent-1/sandboxes?timeoutMs=120000', {
             method: 'POST',

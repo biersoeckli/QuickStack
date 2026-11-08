@@ -20,7 +20,7 @@ export const v1Api = new Elysia({ prefix: '/api/v1' })
         documentation: {
             info: {
                 title: 'QuickStack REST API',
-                version: '1.0.0',
+                version: '1.1.0',
                 description: 'This is the REST API for QuickStack. Furhter details about QuickStack can be found in the [documentation](https://quickstack.dev).',
             },
             tags: [

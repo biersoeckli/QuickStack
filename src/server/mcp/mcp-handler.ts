@@ -5,7 +5,7 @@ import {
 } from '@modelcontextprotocol/server';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import type { McpAuthResolver } from './mcp-auth';
-import { jsonRpcErrorResponse, MCP_ERROR_CODES } from './mcp-errors';
+import { McpResponseUtils } from '@/server/utils/mcp-response.utils';
 import mcpServerFactory from './mcp-server.factory';
 import operationRegistry from './operation-registry';
 import type { McpSourceApp, OperationDescriptor } from './operation-registry';
@@ -32,15 +32,6 @@ export type QuickStackMcpHandler = {
 
 const MCP_SERVER_MODE_EXTRA_KEY = 'mcpServerMode';
 const MCP_SEND_SECRETS_EXTRA_KEY = 'mcpSendSecrets';
-
-function unauthorizedResponse(): Response {
-    return jsonRpcErrorResponse({
-        code: MCP_ERROR_CODES.UNAUTHORIZED,
-        message: 'Unauthorized',
-        status: 401,
-        headers: { 'www-authenticate': 'Bearer' },
-    });
-}
 
 export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions): QuickStackMcpHandler {
     const { app, resolveAuthInfo, allowedOrigins = [], allowedHosts } = options;
@@ -85,7 +76,7 @@ export function createQuickStackMcpHandler(options: QuickStackMcpHandlerOptions)
         }
 
         if (!authInfo) {
-            return unauthorizedResponse();
+            return McpResponseUtils.unauthorizedResponse();
         }
 
         return handler.fetch(request, {

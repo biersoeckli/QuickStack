@@ -47,17 +47,15 @@ export const agentRoutes = new Elysia()
                 UserGroupUtils.sessionHasReadAccessForProjectWorkload(identity.session, agent.id)
             );
 
-        return paginationUtils.isRequested(query)
-            ? paginationUtils.page(visibleAgents, query)
-            : visibleAgents;
+        return paginationUtils.page(visibleAgents, query);
     }, {
         query: paginationQueryZodModel.extend({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(AgentExtendedZodModel)),
+        response: ApiUtils.mapResponseModel(paginationUtils.envelopeSchema(AgentExtendedZodModel)),
         detail: {
             summary: 'List agents',
-            description: 'Returns all agent templates as an array. Set limit (and optionally cursor) for the paginated envelope { items, total, limit, nextCursor }.',
+            description: 'Returns a paginated list of agents. The default limit is 50.',
             operationId: 'listAgents',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }],
@@ -137,7 +135,7 @@ Example update (read getAgent first and keep all sub-resource ids you do not wan
         detail: ApiOperationDetailUtils.create({
             summary: 'Delete agent',
             description: 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy).',
-            'x-mcp-description': 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy). No request body.\nExample: DELETE /api/v1/agents/<agentId>.\nRequires confirmation because this cannot be undone.',
+            'x-mcp-description': 'Permanently deletes the agent template and its sub-resources (domains, volumes, file mounts, network policy). No request body.\nRequires confirmation because this cannot be undone.',
             operationId: 'deleteAgent',
             tags: ['Agents'],
             security: [{ bearerAuth: [] }],

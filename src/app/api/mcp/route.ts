@@ -1,8 +1,8 @@
 import { v1Api } from '@/server/api/v1/api-index';
 import { resolveQuickStackAuthInfo } from '@/server/mcp/mcp-auth';
-import { jsonRpcErrorResponse, MCP_ERROR_CODES } from '@/server/mcp/mcp-errors';
 import { createQuickStackMcpHandler } from '@/server/mcp/mcp-handler';
-import paramService, { ParamService } from '@/server/services/param.service';
+import paramService from '@/server/services/param.service';
+import { MCP_ERROR_CODES, McpResponseUtils } from '@/server/utils/mcp-response.utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,14 +12,13 @@ const mcpHandler = createQuickStackMcpHandler({
 });
 
 async function handleRequest(request: Request): Promise<Response> {
-    const [canaryEnabled, mode, sendSecrets] = await Promise.all([
-        paramService.getBoolean(ParamService.USE_CANARY_CHANNEL),
+    const [mode, sendSecrets] = await Promise.all([
         paramService.getMcpServerMode(),
         paramService.getMcpSendSecrets(),
     ]);
 
-    if (!canaryEnabled || mode === 'off') {
-        return jsonRpcErrorResponse({
+    if (mode === 'off') {
+        return McpResponseUtils.jsonRpcErrorResponse({
             code: MCP_ERROR_CODES.SERVER_DISABLED,
             message: 'MCP server is disabled.',
             status: 404,

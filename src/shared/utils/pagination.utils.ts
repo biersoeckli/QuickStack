@@ -6,7 +6,7 @@ export const MAX_PAGE_SIZE = 100;
 
 export const paginationQueryZodModel = z.object({
     limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional()
-        .describe(`Maximum number of items to return (1-${MAX_PAGE_SIZE}).`),
+        .describe(`Maximum number of items to return (1-${MAX_PAGE_SIZE}, default ${DEFAULT_PAGE_SIZE}).`),
     cursor: z.string().optional()
         .describe('Opaque continuation cursor from a previous response. Send it together with limit.'),
 });
@@ -27,11 +27,6 @@ export type PaginatedResult<T> = {
 };
 
 class PaginationUtils {
-
-    /** True when the caller explicitly opted into the paginated response envelope. */
-    isRequested(query: PaginationQuery): boolean {
-        return query.limit !== undefined || query.cursor !== undefined;
-    }
 
     page<T>(items: T[], query: PaginationQuery): PaginatedResult<T> {
         const limit = query.limit ?? DEFAULT_PAGE_SIZE;
@@ -54,11 +49,6 @@ class PaginationUtils {
             limit: z.number().int(),
             nextCursor: z.string().nullable(),
         });
-    }
-
-    /** Bare array for existing callers, paginated envelope when limit/cursor is supplied. */
-    responseSchema<T extends z.ZodTypeAny>(itemSchema: T) {
-        return z.union([z.array(itemSchema), this.envelopeSchema(itemSchema)]);
     }
 
     private parseCursor(cursor?: string): number {

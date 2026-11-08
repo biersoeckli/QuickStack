@@ -50,17 +50,15 @@ export const appRoutes = new Elysia()
                 UserGroupUtils.sessionHasReadAccessForApp(identity.session, app.id)
             );
 
-        return paginationUtils.isRequested(query)
-            ? paginationUtils.page(visibleApps, query)
-            : visibleApps;
+        return paginationUtils.page(visibleApps, query);
     }, {
         query: paginationQueryZodModel.extend({
             projectId: z.string().optional(),
         }),
-        response: ApiUtils.mapResponseModel(paginationUtils.responseSchema(AppExtendedZodModel)),
+        response: ApiUtils.mapResponseModel(paginationUtils.envelopeSchema(AppExtendedZodModel)),
         detail: {
             summary: 'List apps',
-            description: 'Returns all apps as an array. Set limit (and optionally cursor) to receive the paginated envelope { items, total, limit, nextCursor } instead.',
+            description: 'Returns a paginated list of apps. The default limit is 50.',
             operationId: 'listApps',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
@@ -200,7 +198,7 @@ Example update (read getApp first and keep all sub-resource ids you do not want 
         detail: ApiOperationDetailUtils.create({
             summary: 'Delete app',
             description: 'Permanently deletes the app and its sub-resources (domains, volumes, file mounts, basic auth).',
-            'x-mcp-description': 'Permanently deletes the app and its sub-resources (domains, volumes, file mounts, basic auth). No request body.\nExample: DELETE /api/v1/apps/<appId>.\nRequires confirmation because this cannot be undone.',
+            'x-mcp-description': 'Permanently deletes the app and its sub-resources (domains, volumes, file mounts, basic auth). No request body.\nRequires confirmation because this cannot be undone.',
             operationId: 'deleteApp',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
