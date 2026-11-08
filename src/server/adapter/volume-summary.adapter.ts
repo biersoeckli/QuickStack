@@ -13,12 +13,15 @@ interface NodeSummary {
 }
 
 class VolumeSummaryAdapter {
+    async getPersistentVolumes() {
+        return (await k3s.core.listPersistentVolume()).items;
+    }
+
     async getSamples(): Promise<VolumeFilesystemSample[]> {
         const nodes = await k3s.core.listNode();
         const summaries = await Promise.allSettled(nodes.items.map(async node => {
             if (!node.metadata?.name) return [];
-            const raw = await k3s.core.connectGetNodeProxyWithPath({ name: node.metadata.name, path: 'stats/summary' });
-            const summary: NodeSummary = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const summary = await k3s.getNodeSummary(node.metadata.name) as NodeSummary;
             return summary.pods?.flatMap(pod => pod.volume ?? []) ?? [];
         }));
         return summaries.flatMap(result => result.status === 'fulfilled' ? result.value : []);

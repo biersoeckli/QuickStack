@@ -71,10 +71,9 @@ export default function AppVolumeMonitoring({
                                 <TableCell>{item.appName}</TableCell>
                                 <TableCell>{item.mountPath}</TableCell>
                                 <TableCell className='space-y-1'>
-                                    {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.availableBytes !== undefined ? <>
-                                        <Progress value={Math.round(item.usedBytes / item.capacityBytes * 100)} />
-                                        <div className='text-xs text-slate-500'>{KubeSizeConverter.convertBytesToReadableSize(item.usedBytes)} used / {KubeSizeConverter.convertBytesToReadableSize(item.capacityBytes)} | {KubeSizeConverter.convertBytesToReadableSize(item.availableBytes)} available</div>
-                                    </> : <span>Unavailable ({item.status})</span>}
+                                    {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.capacityBytes > 0 && item.availableBytes !== undefined ? (
+                                        <VolumeUsage usedBytes={item.usedBytes} capacityBytes={item.capacityBytes} availableBytes={item.availableBytes} />
+                                    ) : <span>Unavailable ({item.status})</span>}
                                 </TableCell>
                                 <TableCell>
                                     <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'settings')} >
@@ -90,4 +89,18 @@ export default function AppVolumeMonitoring({
             </CardContent>
         </Card>
     );
+}
+
+function VolumeUsage({ usedBytes, capacityBytes, availableBytes }: {
+    usedBytes: number;
+    capacityBytes: number;
+    availableBytes: number;
+}) {
+    const percentage = Math.round(usedBytes / capacityBytes * 100);
+    return <>
+        <Progress value={percentage} color={percentage >= 90 ? 'red' : percentage >= 80 ? 'orange' : undefined} />
+        <div className='text-xs text-slate-500'>
+            {KubeSizeConverter.convertBytesToReadableSize(usedBytes)} used ({percentage}%) / {KubeSizeConverter.convertBytesToReadableSize(capacityBytes)} | {KubeSizeConverter.convertBytesToReadableSize(availableBytes)} available
+        </div>
+    </>;
 }

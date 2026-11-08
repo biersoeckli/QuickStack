@@ -16,10 +16,12 @@ import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.mod
 
 class MonitorService {
 
-    private async getVolumeFilesystemUsage(volumes: { id: string; sharedVolumeId: string | null; projectId: string }[]): Promise<Map<string, VolumeFilesystemUsage>> {
+    private async getVolumeFilesystemUsage(
+        volumes: { id: string; sharedVolumeId: string | null; projectId: string }[],
+    ): Promise<Map<string, VolumeFilesystemUsage>> {
         const [pvcs, persistentVolumes, samples] = await Promise.all([
             pvcService.getAllPvc().catch(() => []),
-            k3s.core.listPersistentVolume().then(result => result.items).catch(() => []),
+            volumeSummaryAdapter.getPersistentVolumes().catch(() => []),
             volumeSummaryAdapter.getSamples().catch(() => []),
         ]);
         const pvcByKey = new Map(pvcs.map(pvc => [`${pvc.metadata?.namespace}/${pvc.metadata?.name}`, pvc]));
@@ -40,19 +42,28 @@ class MonitorService {
                 result.set(key, { pvcName, status: 'unsupported' });
                 continue;
             }
-            const candidates = samples.filter(sample => sample.pvcRef?.namespace === volume.projectId && sample.pvcRef.name === pvcName)
+            const candidates = samples
+                .filter(sample => sample.pvcRef?.namespace === volume.projectId && sample.pvcRef.name === pvcName)
                 .filter(sample => {
                     const values = [sample.usedBytes, sample.availableBytes, sample.capacityBytes];
                     return values.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)
                         && !!sample.capacityBytes && Number.isFinite(Date.parse(sample.time ?? ''));
-                }).sort ( (a, b) => Date.parse(b.time!) - Date.parse(a.time!));
+                })
+                .sort((a, b) => Date.parse(b.time!) - Date.parse(a.time!));
             const sample = candidates[0];
             const age = sample ? now - Date.parse(sample.time!) : Infinity;
             if (!sample || age > 5 * 60 * 1000 || age < -60 * 1000) {
                 result.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });
                 continue;
             }
-            result.set(key, { pvcName, status: 'available', usedBytes: sample.usedBytes, availableBytes: sample.availableBytes, capacityBytes: sample.capacityBytes, measuredAt: sample.time });
+            result.set(key, {
+                pvcName,
+                status: 'available',
+                usedBytes: sample.usedBytes,
+                availableBytes: sample.availableBytes,
+                capacityBytes: sample.capacityBytes,
+                measuredAt: sample.time,
+            });
         }
         return result;
     }
@@ -62,7 +73,9 @@ class MonitorService {
             include: { app: { include: { project: true } } },
             orderBy: { appId: 'asc' },
         });
-        const usages = await this.getVolumeFilesystemUsage(appVolumes.map(volume => ({ ...volume, projectId: volume.app.projectId })));
+        const usages = await this.getVolumeFilesystemUsage(
+            appVolumes.map(volume => ({ ...volume, projectId: volume.app.projectId })),
+        );
         return appVolumes.map(volume => {
             const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
             return {

@@ -19,4 +19,5 @@ it('counts shared volumes once and marks incomplete totals', () => {
     expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('1 KB');
     expect(screen.getByText(/Total used.*incomplete/).textContent).toContain('4 KB');
     expect(screen.getByText('Unavailable (unavailable)')).toBeTruthy();
+    expect(screen.getAllByText(/25%/)).toHaveLength(2);
 });

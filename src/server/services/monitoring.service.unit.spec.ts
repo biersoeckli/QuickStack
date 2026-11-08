@@ -14,7 +14,8 @@ vi.mock('@kubernetes/client-node', async (importOriginal) => {
 
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
     default: {
-        core: { listNode: vi.fn(), listPersistentVolume: vi.fn(), connectGetNodeProxyWithPath: vi.fn() },
+        core: { listNode: vi.fn(), listPersistentVolume: vi.fn() },
+        getNodeSummary: vi.fn(),
         getKubeConfig: vi.fn(() => ({})),
     },
 }));
@@ -159,7 +160,7 @@ describe('monitoringService.getAllAppVolumesUsage', () => {
         mockedGetAllPvc.mockResolvedValue([{ metadata: { name: 'pvc-vol-1', namespace: 'proj-1' }, spec: { volumeName: 'pv-1' } }] as never);
         vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [{ metadata: { name: 'pv-1' }, spec: { csi: { driver: 'driver.longhorn.io' } } }] } as never);
         vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'node-1' } }] } as never);
-        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockResolvedValue(JSON.stringify({ pods: [{ podRef: { namespace: 'proj-1' }, volume: [{ pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 111, availableBytes: 889, capacityBytes: 1000 }] }] }));
+        vi.mocked(k3s.getNodeSummary).mockResolvedValue({ pods: [{ podRef: { namespace: 'proj-1' }, volume: [{ pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 111, availableBytes: 889, capacityBytes: 1000 }] }] });
 
         const result = await monitoringService.getAllAppVolumesUsage();
         expect(result).toHaveLength(1);
@@ -184,13 +185,13 @@ describe('monitoringService.getAllAppVolumesUsage', () => {
             { metadata: { name: 'pv-4' }, spec: { csi: { driver: 'rancher.io/local-path' } } },
         ] } as never);
         vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'broken' } }, { metadata: { name: 'healthy' } }] } as never);
-        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockImplementation(async ({ name }) => {
+        vi.mocked(k3s.getNodeSummary).mockImplementation(async (name) => {
             if (name === 'broken') throw new Error('node unavailable');
-            return JSON.stringify({ pods: [{ volume: [
+            return { pods: [{ volume: [
                 { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, availableBytes: 1000, capacityBytes: 1000 },
                 { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-3' }, time: new Date(Date.now() - 600000).toISOString(), usedBytes: 500, availableBytes: 500, capacityBytes: 1000 },
                 { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-4' }, time: new Date().toISOString(), usedBytes: 500, availableBytes: 500, capacityBytes: 1000 },
-            ] }] });
+            ] }] };
         });
         const result = await monitoringService.getAllAppVolumesUsage();
         expect(result).toHaveLength(5);
@@ -206,11 +207,44 @@ describe('monitoringService.getAllAppVolumesUsage', () => {
         mockedGetAllPvc.mockResolvedValue([{ metadata: { namespace: 'proj-1', name: 'pvc-vol-1' }, spec: { volumeName: 'pv-1' } }] as never);
         vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [{ metadata: { name: 'pv-1' }, spec: { csi: { driver: 'driver.longhorn.io' } } }] } as never);
         vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'node-1' } }] } as never);
-        vi.mocked(k3s.core.connectGetNodeProxyWithPath).mockResolvedValue(JSON.stringify({ pods: [{ volume: [
+        vi.mocked(k3s.getNodeSummary).mockResolvedValue({ pods: [{ volume: [
             { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, capacityBytes: 100 },
             { pvcRef: { namespace: 'proj-1', name: 'pvc-vol-1' }, time: new Date().toISOString(), usedBytes: 0, availableBytes: 0, capacityBytes: 0 },
-        ] }] }));
+        ] }] });
         expect((await monitoringService.getAllAppVolumesUsage())[0]).toMatchObject({ status: 'unavailable' });
+    });
+
+    it('reports unknown drivers and unmounted bound volumes without exposing host usage', async () => {
+        mockedFindMany.mockResolvedValue([
+            appVolume('unknown', 'app-1', 1, null),
+            appVolume('unmounted', 'app-2', 1, null),
+        ] as never);
+        mockedGetAllPvc.mockResolvedValue([
+            { metadata: { namespace: 'proj-1', name: 'pvc-unknown' }, spec: { volumeName: 'pv-unknown' } },
+            { metadata: { namespace: 'proj-1', name: 'pvc-unmounted' }, spec: { volumeName: 'pv-unmounted' } },
+        ] as never);
+        vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [
+            { metadata: { name: 'pv-unknown' }, spec: { csi: { driver: 'example.org/unknown' } } },
+            { metadata: { name: 'pv-unmounted' }, spec: { csi: { driver: 'driver.longhorn.io' } } },
+        ] } as never);
+        vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [] } as never);
+        const result = await monitoringService.getAllAppVolumesUsage();
+        expect(result.find(v => v.appId === 'app-1')).toMatchObject({ status: 'unsupported' });
+        expect(result.find(v => v.appId === 'app-2')).toMatchObject({ status: 'unavailable' });
+    });
+
+    it('returns the underlying PVC measurement for an app shared volume', async () => {
+        mockedFindMany.mockResolvedValue([{ id: 'shared', sharedVolumeId: 'base' }] as never);
+        mockedGetAllPvc.mockResolvedValue([{ metadata: { namespace: 'proj-1', name: 'pvc-base' }, spec: { volumeName: 'pv-base' } }] as never);
+        vi.mocked(k3s.core.listPersistentVolume).mockResolvedValue({ items: [{ metadata: { name: 'pv-base' }, spec: { csi: { driver: 'driver.longhorn.io' } } }] } as never);
+        vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'node-1' } }] } as never);
+        vi.mocked(k3s.getNodeSummary).mockResolvedValue({ pods: [{ volume: [{
+            pvcRef: { namespace: 'proj-1', name: 'pvc-base' }, time: new Date().toISOString(),
+            usedBytes: 90, availableBytes: 10, capacityBytes: 100,
+        }] }] });
+        expect(await monitoringService.getPvcUsageFromApp('app-1', 'proj-1')).toEqual([
+            expect.objectContaining({ pvcName: 'pvc-base', status: 'available', usedBytes: 90, availableBytes: 10, capacityBytes: 100 }),
+        ]);
     });
 
 });
