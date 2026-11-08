@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, List, Waypoints } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -19,6 +19,7 @@ import { useConfirmDialog, useDialog } from '@/frontend/states/zustand.states';
 import AppNetworkPolicyRuleDialog from './app-network-policy-rule-dialog';
 import AppNetworkPolicyRuleSection, { AppNetworkPolicyDirection } from './app-network-policy-rule-section';
 import NetworkPolicyGraph from './network-policy-graph';
+import { NestedDrawerFooter } from '@/app/project/workload-components/drawer/nested-drawer';
 
 type Project = { id: string; name: string; apps: { id: string; name: string; appType: AppExtendedModel['appType'] }[]; agents: { id: string; name: string }[] };
 
@@ -95,33 +96,30 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         onAdd={addRule}
     />, { maxWidth: 'max-w-md' });
 
-    return <Card>
-        {<CardHeader><CardTitle>Network Policy</CardTitle><CardDescription>Control which traffic can reach this app and where it can connect.</CardDescription></CardHeader>}
-        <CardContent className={"space-y-6"}>
-            <Card className="p-0">
-                <CardContent className="space-y-4 p-4">
-                    <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
-                </CardContent>
-            </Card>
+    return <div className="space-y-6 pb-2">
+        <Card className="p-0">
+            <CardContent className="space-y-4 p-4">
+                <SettingRow label="Network Policies" description="Apply traffic restrictions to this app." checked={draft.useNetworkPolicy} disabled={readonly} onChange={useNetworkPolicy => setDraft(current => ({ ...current, useNetworkPolicy }))} />
+            </CardContent>
+        </Card>
 
-            {draft.useNetworkPolicy && <Tabs value={view} onValueChange={(value) => setView(value as 'rules' | 'graph')}>
-                <TabsList>
-                    <TabsTrigger value="rules"><List className="mr-2 h-4 w-4" />Rules</TabsTrigger>
-                    <TabsTrigger value="graph"><Waypoints className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
-                </TabsList>
-                <TabsContent value="rules" className="mt-5 space-y-8">
-                    <AppNetworkPolicyRuleSection direction="INGRESS" rules={draft.rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} />
-                    <AppNetworkPolicyRuleSection direction="EGRESS" rules={draft.rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={draft.allowInternetAccess} onInternetAccessChange={changeInternetAccess} />
-                </TabsContent>
-                <TabsContent value="graph" className="mt-5">
-                    <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={graphRules} allowInternetAccess={draft.allowInternetAccess} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />
-                </TabsContent>
-            </Tabs>}
-        </CardContent>
-        {!readonly && dirty && <CardFooter className={"flex items-center justify-between gap-4 border-t pt-6"}>
-            <Button onClick={saveChanges} disabled={saving}>Save & Apply Changes</Button>
-        </CardFooter>}
-    </Card>;
+        {draft.useNetworkPolicy && <Tabs value={view} onValueChange={(value) => setView(value as 'rules' | 'graph')}>
+            <TabsList>
+                <TabsTrigger value="rules"><List className="mr-2 h-4 w-4" />Rules</TabsTrigger>
+                <TabsTrigger value="graph"><Waypoints className="mr-2 h-4 w-4" />Network Graph</TabsTrigger>
+            </TabsList>
+            <TabsContent value="rules" className="mt-5 space-y-8">
+                <AppNetworkPolicyRuleSection direction="INGRESS" rules={draft.rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} />
+                <AppNetworkPolicyRuleSection direction="EGRESS" rules={draft.rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={draft.allowInternetAccess} onInternetAccessChange={changeInternetAccess} />
+            </TabsContent>
+            <TabsContent value="graph" className="mt-5">
+                <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={graphRules} allowInternetAccess={draft.allowInternetAccess} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />
+            </TabsContent>
+        </Tabs>}
+        {!readonly && dirty && <NestedDrawerFooter>
+            <Button className="w-fit" onClick={saveChanges} disabled={saving}>Save & Apply Changes</Button>
+        </NestedDrawerFooter>}
+    </div>;
 }
 
 function SettingRow({ label, description, checked, disabled, onChange, hint }: { label: string; description: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void; hint?: string }) {

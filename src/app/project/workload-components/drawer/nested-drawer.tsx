@@ -9,10 +9,12 @@ import {
     type ReactNode,
 } from 'react';
 import { Button } from '@/components/ui/button';
+import { createPortal } from 'react-dom';
 import {
     Drawer,
     DrawerContent,
     DrawerDescription,
+    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
@@ -27,12 +29,14 @@ type NestedDrawerOptions = {
 type NestedDrawerContextValue = {
     openNestedDrawer: (options: NestedDrawerOptions) => void;
     closeNestedDrawer: () => void;
+    footerTarget: HTMLDivElement | null;
 };
 
 const NestedDrawerContext = createContext<NestedDrawerContextValue | null>(null);
 
 export function NestedDrawerProvider({ children }: { children: ReactNode }) {
     const [drawer, setDrawer] = useState<NestedDrawerOptions | null>(null);
+    const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
     const closeNestedDrawer = useCallback(() => setDrawer(null), []);
     const openNestedDrawer = useCallback(
         (options: NestedDrawerOptions) => setDrawer(options),
@@ -41,7 +45,7 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
 
     return (
         <NestedDrawerContext.Provider
-            value={{ openNestedDrawer, closeNestedDrawer }}
+            value={{ openNestedDrawer, closeNestedDrawer, footerTarget }}
         >
             {children}
             <Drawer
@@ -79,10 +83,20 @@ export function NestedDrawerProvider({ children }: { children: ReactNode }) {
                             {drawer?.content}
                         </div>
                     </ScrollArea>
+                    <div ref={setFooterTarget} />
                 </DrawerContent>
             </Drawer>
         </NestedDrawerContext.Provider>
     );
+}
+
+export function NestedDrawerFooter({ children }: { children: ReactNode }) {
+    const { footerTarget } = useNestedDrawer();
+
+    return footerTarget ? createPortal(
+        <DrawerFooter className="border-t px-6 py-4">{children}</DrawerFooter>,
+        footerTarget,
+    ) : null;
 }
 
 export function useNestedDrawer() {

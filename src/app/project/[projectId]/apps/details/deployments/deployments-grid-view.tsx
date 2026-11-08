@@ -8,6 +8,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Item, ItemContent, ItemTitle } from '@/components/ui/item';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDateTime } from '@/frontend/utils/format.utils';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
 import { appBuildMethodLabels } from '@/shared/model/app-source-info.model';
@@ -82,10 +83,15 @@ export function DeploymentsGridView({
                                 </div>
                             )}
                         </ItemContent>
-                        <Button size="icon" variant="ghost" className="size-7 shrink-0" onClick={() => onShowLogs(deployment)}>
-                            <LucideTerminal />
-                            <span className="sr-only">Open Terminal</span>
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger render={<Button size="icon" variant="ghost" className="size-7 shrink-0" onClick={() => onShowLogs(deployment)}>
+                                    <LucideTerminal />
+                                    <span className="sr-only">Show Deployment Logs</span>
+                                </Button>} />
+                                <TooltipContent>Show Deployment Logs</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         {(canStopBuild(deployment) || canRollback(deployment)) && <DropdownMenu>
                             <DropdownMenuTrigger render={<Button size="icon" variant="ghost" className="size-7 shrink-0">
                                     <EllipsisVertical />

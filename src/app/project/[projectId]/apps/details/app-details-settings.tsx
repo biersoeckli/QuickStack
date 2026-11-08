@@ -94,6 +94,7 @@ export function DrawerSettings({
                                 onClick={() =>
                                     openNestedDrawer({
                                         title: 'Advanced settings',
+                                        description: 'Override image defaults only when your workload needs custom startup behavior or Linux security settings.',
                                         content: (
                                             <GeneralAppContainerConfig
                                                 app={app}
@@ -141,6 +142,7 @@ export function DrawerSettings({
                                 onClick={() =>
                                     openNestedDrawer({
                                         title: 'Network policies',
+                                        description: 'Control which traffic can reach this app and where it can connect.',
                                         content: (
                                             <NetworkPolicy
                                                 app={app}
@@ -204,6 +206,7 @@ export function DrawerSettings({
                                 onClick={() =>
                                     openNestedDrawer({
                                         title: 'Health checks',
+                                        description: 'Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic.',
                                         content: (
                                             <HealthCheckSettings
                                                 readonly={readonly}

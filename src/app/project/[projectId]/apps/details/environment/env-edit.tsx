@@ -2,24 +2,25 @@
 
 import type { z } from "zod";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { CardContent, CardFooter } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormUtils } from "@/frontend/utils/form.utilts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { saveEnvVariables } from "./actions";
 import { ServerActionResult } from "@/shared/model/server-action-error-return.model";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useId } from "react";
 import { toast } from "sonner";
 import { AppEnvVariablesModel, appEnvVariablesZodModel } from "@/shared/model/env-edit.model";
 import { Textarea } from "@/components/ui/textarea";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
-
+import { NestedDrawerFooter } from "@/app/project/workload-components/drawer/nested-drawer";
 
 export default function EnvEdit({ app, readonly }: {
     app: AppExtendedModel;
     readonly: boolean;
 }) {
+    const formId = useId();
     const form = useForm<z.input<typeof appEnvVariablesZodModel>, unknown, z.output<typeof appEnvVariablesZodModel>>({
         resolver: zodResolver(appEnvVariablesZodModel),
         defaultValues: app,
@@ -40,9 +41,9 @@ export default function EnvEdit({ app, readonly }: {
 
     return <>
         <div>
-            
+
             <Form {...form}>
-                <form action={() => form.handleSubmit((data) => {
+                <form id={formId} action={() => form.handleSubmit((data) => {
                     return formAction(data);
                 })()}>
                     <CardContent className={"space-y-6 px-0"}>
@@ -88,9 +89,9 @@ export default function EnvEdit({ app, readonly }: {
                             )}
                         />
                     </CardContent>
-                    {!readonly && <CardFooter className={"px-0 pt-4 mb-2"}>
-                        <SubmitButton>Save</SubmitButton>
-                    </CardFooter>}
+                    {!readonly && <NestedDrawerFooter>
+                        <SubmitButton form={formId} className="w-fit">Save</SubmitButton>
+                    </NestedDrawerFooter>}
                 </form>
             </Form >
         </div>

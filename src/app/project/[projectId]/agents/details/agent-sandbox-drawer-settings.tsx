@@ -69,6 +69,7 @@ export default function AgentSandboxDrawerSettings({
                             onClick={() =>
                                 openNestedDrawer({
                                     title: 'Advanced container settings',
+                                    description: 'Configure agent sandbox startup.',
                                     content: <AgentContainerConfigCard agent={agent} readonly={readonly} runtimeClasses={runtimeClasses} />,
                                 })
                             }>
@@ -88,6 +89,7 @@ export default function AgentSandboxDrawerSettings({
                             onClick={() =>
                                 openNestedDrawer({
                                     title: 'Health checks',
+                                    description: 'Configure healthchecks so that k3s can automatically monitor when your agent sandbox is fully started up and ready to receive traffic.',
                                     content: (
                                         <HealthCheckSettings
                                             readonly={readonly}

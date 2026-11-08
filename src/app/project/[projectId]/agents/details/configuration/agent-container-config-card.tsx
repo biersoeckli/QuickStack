@@ -1,13 +1,13 @@
 'use client';
 
 import type { z } from "zod";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import ContainerCommandArgsFields from "@/components/custom/container-command-args-fields";
 import { SubmitButton } from "@/components/custom/submit-button";
-import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from "@/components/custom/drawer-card";
+import { NestedDrawerFooter } from "../../../../workload-components/drawer/nested-drawer";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,7 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
     readonly: boolean;
     runtimeClasses: string[];
 }) {
+    const formId = useId();
     const inputValue = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? value : '';
     const form = useForm<z.input<typeof agentContainerConfigZodModel>, unknown, z.output<typeof agentContainerConfigZodModel>>({
         resolver: zodResolver(agentContainerConfigZodModel),
@@ -61,116 +62,108 @@ export default function AgentContainerConfigCard({ agent, readonly, runtimeClass
     return (
         <Form {...form}>
             <TooltipProvider delay={150}>
-                <form action={() => form.handleSubmit((data) => formAction(data))()}>
-                    <DrawerCard>
-                        <DrawerCardHeader>
-                            <DrawerCardTitle>Container Configuration</DrawerCardTitle>
-                            <DrawerCardDescription>
-                                Configure agent sandbox startup.
-                            </DrawerCardDescription>
-                        </DrawerCardHeader>
-                        <DrawerCardContent className="space-y-6">
-                            <div className="space-y-4">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium">Runtime</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Leave command and arguments empty to use the QuickStack default container startup.
-                                    </p>
-                                </div>
-                                <ContainerCommandArgsFields
-                                    form={form}
-                                    readonly={readonly}
-                                    commandHint="Overrides the agent sandbox ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
-                                    argsHint="Overrides the agent sandbox CMD. Add one item per argument in the order the process should receive them."
-                                />
+                <form id={formId} action={() => form.handleSubmit((data) => formAction(data))()}>
+                    <div className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">Runtime</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Leave command and arguments empty to use the QuickStack default container startup.
+                                </p>
                             </div>
+                            <ContainerCommandArgsFields
+                                form={form}
+                                readonly={readonly}
+                                commandHint="Overrides the agent sandbox ENTRYPOINT. Leave command and arguments empty to use the QuickStack default container startup."
+                                argsHint="Overrides the agent sandbox CMD. Add one item per argument in the order the process should receive them."
+                            />
+                        </div>
 
-                            <FormField
-                                control={form.control}
-                                name="runtimeClassName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Runtime Class</FormLabel>
-                                        <Select
-                                            value={field.value || DEFAULT_RUNTIME_CLASS}
-                                            onValueChange={(value) => field.onChange(value === DEFAULT_RUNTIME_CLASS ? null : value)}
-                                            disabled={readonly}
-                                            items={[
-                                                { value: DEFAULT_RUNTIME_CLASS, label: 'K3s default runtime' },
-                                                ...runtimeClasses.map((runtimeClass) => ({ value: runtimeClass, label: runtimeClass })),
-                                            ]}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="K3s default runtime" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value={DEFAULT_RUNTIME_CLASS}>K3s default runtime</SelectItem>
-                                                {runtimeClasses.map((runtimeClass) => (
-                                                    <SelectItem key={runtimeClass} value={runtimeClass}>
-                                                        {runtimeClass}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                        <FormField
+                            control={form.control}
+                            name="runtimeClassName"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Runtime Class</FormLabel>
+                                    <Select
+                                        value={field.value || DEFAULT_RUNTIME_CLASS}
+                                        onValueChange={(value) => field.onChange(value === DEFAULT_RUNTIME_CLASS ? null : value)}
+                                        disabled={readonly}
+                                        items={[
+                                            { value: DEFAULT_RUNTIME_CLASS, label: 'K3s default runtime' },
+                                            ...runtimeClasses.map((runtimeClass) => ({ value: runtimeClass, label: runtimeClass })),
+                                        ]}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="K3s default runtime" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value={DEFAULT_RUNTIME_CLASS}>K3s default runtime</SelectItem>
+                                            {runtimeClasses.map((runtimeClass) => (
+                                                <SelectItem key={runtimeClass} value={runtimeClass}>
+                                                    {runtimeClass}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-sm text-muted-foreground">
+                                        Selects the Kubernetes RuntimeClass for new agent sandboxes.
+                                    </p>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="workingDir"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Working Directory</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="/workspace"
+                                            {...field}
+                                            value={inputValue(field.value)}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="deployFileBrowser"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Deploy File Browser</FormLabel>
                                         <p className="text-sm text-muted-foreground">
-                                            Selects the Kubernetes RuntimeClass for new agent sandboxes.
+                                            Adds a File Browser sidecar pod to each agent sandbox.
                                         </p>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="workingDir"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Working Directory</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="/workspace"
-                                                {...field}
-                                                value={inputValue(field.value)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="deployFileBrowser"
-                                render={({ field }) => (
-                                    <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Deploy File Browser</FormLabel>
-                                            <p className="text-sm text-muted-foreground">
-                                                Adds a File Browser sidecar pod to each agent sandbox.
-                                            </p>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                disabled={readonly}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                        </DrawerCardContent>
-                        {!readonly && (
-                            <DrawerCardFooter className="gap-4">
-                                <SubmitButton>Save</SubmitButton>
-                                {state?.status === 'error' && !state?.errors && (
-                                    <p className="text-sm text-red-500">{state.message}</p>
-                                )}
-                            </DrawerCardFooter>
-                        )}
-                    </DrawerCard>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            disabled={readonly}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    {!readonly && (
+                        <NestedDrawerFooter>
+                            <SubmitButton form={formId} className="w-fit">Save</SubmitButton>
+                            {state?.status === 'error' && !state?.errors && (
+                                <p className="text-sm text-red-500">{state.message}</p>
+                            )}
+                        </NestedDrawerFooter>
+                    )}
                 </form>
             </TooltipProvider>
         </Form>
