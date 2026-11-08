@@ -1,5 +1,6 @@
 vi.mock("next/cache", () => ({
     revalidateTag: vi.fn(),
+    unstable_cache: (fn: (...args: any[]) => any) => fn,
 }));
 
 const dbProjectMocks = vi.hoisted(() => ({

@@ -68,8 +68,8 @@ class ClusterService {
     }
 
     async getRuntimeClasses(): Promise<string[]> {
-
-          const allowedRuntimes = ['gvisor', 'kata'];
+        return await unstable_cache(async () => {
+            const allowedRuntimes = ['gvisor', 'kata'];
 
             const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
                 group: 'node.k8s.io',
@@ -83,27 +83,11 @@ class ClusterService {
                 .sort((a, b) => a.localeCompare(b));
 
             return runtimeNames.filter(rn => allowedRuntimes.includes(rn.toLocaleLowerCase()));
-     /*return await unstable_cache(async () => {
-
-            const allowedRuntimes = ['gVisor', 'kata'];
-
-            const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
-                group: 'node.k8s.io',
-                version: 'v1',
-                plural: 'runtimeclasses',
-            }) as { items?: { metadata?: { name?: string } }[] };
-
-            const runtimeNames = (runtimeClasses.items ?? [])
-                .map((runtimeClass) => runtimeClass.metadata?.name)
-                .filter((name): name is string => !!name)
-                .sort((a, b) => a.localeCompare(b));
-
-            return runtimeNames.filter(rn => allowedRuntimes.includes(rn));
         },
             [Tags.runtimeClasses()], {
             revalidate: 60,
             tags: [Tags.runtimeClasses()]
-        })();*/
+        })();
     }
 
     async setNodeStatus(nodeName: string, schedulable: boolean) {

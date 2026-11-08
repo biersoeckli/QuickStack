@@ -1,4 +1,6 @@
 // @vitest-environment node
+vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
+
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
 import adapter from '@/server/adapter/app-history.adapter';
 import history from '@/server/services/standalone-services/app-monitoring-history.service';
