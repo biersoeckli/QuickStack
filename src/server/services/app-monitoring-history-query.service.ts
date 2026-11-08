@@ -27,7 +27,7 @@ class AppMonitoringHistoryQueryService {
         const volumeSeries = new Map<string, AppVolumeHistory>();
         for (const time of [...times].sort((a, b) => a - b)) {
             if (points.length && time - points[points.length - 1].time > 7 * 60_000) {
-                points.push({ time: points[points.length - 1].time + 5 * 60_000, cpuCores: null, ramBytes: null, storageBytes: null, availableVolumes: 0, unavailableVolumes: 0 });
+                points.push({ time: points[points.length - 1].time + 5 * 60_000, isGap: true, cpuCores: null, ramBytes: null, storageBytes: null, availableVolumes: 0, unavailableVolumes: 0 });
             }
             const currentApps = appsByTime.get(time) ?? [];
             const currentVolumes = volumesByTime.get(time) ?? [];
@@ -63,6 +63,25 @@ class AppMonitoringHistoryQueryService {
                 availableVolumes: available.length,
                 unavailableVolumes: uniqueVolumes.size - available.length,
             });
+        }
+        const now = Date.now();
+        const lastPoint = points.at(-1);
+        if (lastPoint && now - lastPoint.time > 7 * 60_000) {
+            points.push({
+                time: now,
+                isGap: true,
+                cpuCores: null,
+                ramBytes: null,
+                storageBytes: null,
+                availableVolumes: 0,
+                unavailableVolumes: 0,
+            });
+        }
+        for (const volume of volumeSeries.values()) {
+            const lastSample = volume.points.at(-1);
+            if (lastSample && now - lastSample.time > 7 * 60_000) {
+                volume.points.push({ time: now, usedBytes: null, measuredAt: null });
+            }
         }
         return { points, volumes: [...volumeSeries.values()], latestCpuMeasurement, latestRamMeasurement, latestVolumeMeasurement };
     }

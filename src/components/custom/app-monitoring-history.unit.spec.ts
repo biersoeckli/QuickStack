@@ -29,3 +29,23 @@ it('shows an error when history cannot be loaded', async () => {
     render(React.createElement(AppMonitoringHistoryView));
     expect((await screen.findByRole('alert')).textContent).toContain('Unable to load monitoring history.');
 });
+
+it('shows a stopped collection gap without treating it as a new volume sample', async () => {
+    const now = Date.now();
+    vi.mocked(getAppMonitoringHistory).mockResolvedValue({
+        status: 'success',
+        data: {
+            points: [
+                { time: now - 900_000, cpuCores: 1, ramBytes: 2, storageBytes: 10, availableVolumes: 1, unavailableVolumes: 2 },
+                { time: now, isGap: true, cpuCores: null, ramBytes: null, storageBytes: null, availableVolumes: 0, unavailableVolumes: 0 },
+            ],
+            volumes: [],
+            latestCpuMeasurement: null,
+            latestRamMeasurement: null,
+            latestVolumeMeasurement: null,
+        },
+    } as never);
+    render(React.createElement(AppMonitoringHistoryView));
+    expect(await screen.findByText(/Collection has stopped or is delayed/)).toBeTruthy();
+    expect(screen.getByText(/1 available and 2 unavailable volumes/)).toBeTruthy();
+});

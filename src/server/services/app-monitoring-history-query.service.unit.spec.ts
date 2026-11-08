@@ -23,3 +23,19 @@ it('inserts a gap across collection downtime', async () => {
     const result = await historyService.getHistory(['app']);
     expect(result.points.map(point => point.cpuCores)).toEqual([1, null, 1]);
 });
+
+it('shows a trailing gap while collection remains stopped', async () => {
+    const now = Date.now();
+    const sampledAt = new Date(now - 30 * 60_000);
+    vi.mocked(adapter.getHistory).mockResolvedValue([[{
+        id: 'one', appId: 'app', sampledAt, cpuCores: 1, ramBytes: 100, measuredAt: sampledAt,
+    }], [{
+        id: 'volume-sample', volumeId: 'volume', sampledAt, status: 'available', usedBytes: 42,
+        availableBytes: 58, capacityBytes: 100, measuredAt: sampledAt,
+        volume: { appId: 'app', sharedVolumeId: null, containerMountPath: '/data', app: { projectId: 'project' } },
+    }]]);
+    const result = await historyService.getHistory(['app']);
+    expect(result.points.at(-1)).toMatchObject({ time: expect.any(Number), cpuCores: null, ramBytes: null, storageBytes: null, isGap: true });
+    expect(result.points.at(-1)!.time).toBeGreaterThanOrEqual(now);
+    expect(result.volumes[0].points.at(-1)).toMatchObject({ usedBytes: null });
+});

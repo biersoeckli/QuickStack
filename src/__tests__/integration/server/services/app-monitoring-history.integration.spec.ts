@@ -15,7 +15,8 @@ describe('App monitoring history persistence', () => {
             { appId: 'app', sampledAt: new Date(cutoff.getTime() - 1), cpuCores: 1, ramBytes: 2 },
             { appId: 'app', sampledAt: cutoff, cpuCores: 3, ramBytes: 4 },
         ], [], [], cutoff);
-        expect((await history.getHistory(['app'])).points).toMatchObject([{ cpuCores: 3, ramBytes: 4 }]);
+        expect((await history.getHistory(['app'])).points.filter(point => !point.isGap))
+            .toMatchObject([{ cpuCores: 3, ramBytes: 4 }]);
         await db.app.delete({ where: { id: 'app' } });
         expect((await history.getHistory(['app'])).points).toEqual([]);
     });

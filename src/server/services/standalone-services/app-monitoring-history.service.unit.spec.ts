@@ -50,3 +50,15 @@ it('stores one filesystem measurement for a shared Volume with a link for each m
     expect(samples).toHaveLength(1);
     expect(memberships).toHaveLength(2);
 });
+
+it('collects promptly on startup and resumes collection after a restart', async () => {
+    vi.clearAllMocks();
+    vi.mocked(adapter.getPopulation).mockResolvedValue({ apps: [], volumes: [] });
+    vi.mocked(adapter.getRetentionHours).mockResolvedValue(24);
+    vi.mocked(metrics.getAppMetrics).mockResolvedValue(new Map());
+    vi.mocked(filesystem.getVolumeFilesystemUsage).mockResolvedValue(new Map());
+    history.initialize();
+    await vi.waitFor(() => expect(adapter.save).toHaveBeenCalledTimes(1));
+    history.initialize();
+    await vi.waitFor(() => expect(adapter.save).toHaveBeenCalledTimes(2));
+});

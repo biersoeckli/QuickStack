@@ -1,5 +1,6 @@
 export interface AppHistoryPoint {
     time: number;
+    isGap?: boolean;
     cpuCores: number | null;
     ramBytes: number | null;
     storageBytes: number | null;
