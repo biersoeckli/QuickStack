@@ -1,15 +1,6 @@
-import * as z from 'zod';
+import * as z from "zod"
 
-import {
-  CompleteApp,
-  RelatedAppModel,
-  CompleteVolumeBackup,
-  RelatedVolumeBackupModel,
-  CompleteAppVolumeMonitoringSample,
-  RelatedAppVolumeMonitoringSampleModel,
-  CompleteAppVolumeMonitoringMembership,
-  RelatedAppVolumeMonitoringMembershipModel
-} from './index';
+import { CompleteApp, RelatedAppModel, CompleteVolumeBackup, RelatedVolumeBackupModel, CompleteAppVolumeMonitoringSample, RelatedAppVolumeMonitoringSampleModel, CompleteAppVolumeMonitoringMembership, RelatedAppVolumeMonitoringMembershipModel } from "./index"
 
 export const AppVolumeModel = z.object({
   id: z.string(),
@@ -21,16 +12,16 @@ export const AppVolumeModel = z.object({
   sharedVolumeId: z.string().nullish(),
   appId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
-});
+  updatedAt: z.date(),
+})
 
 export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
-  app: CompleteApp;
-  volumeBackups: CompleteVolumeBackup[];
-  monitoringSamples: CompleteAppVolumeMonitoringSample[];
-  monitoringMemberships: CompleteAppVolumeMonitoringMembership[];
-  sharedVolume?: CompleteAppVolume | null;
-  sharedVolumes: CompleteAppVolume[];
+  app: CompleteApp
+  volumeBackups: CompleteVolumeBackup[]
+  monitoringSamples: CompleteAppVolumeMonitoringSample[]
+  monitoringMemberships: CompleteAppVolumeMonitoringMembership[]
+  sharedVolume?: CompleteAppVolume | null
+  sharedVolumes: CompleteAppVolume[]
 }
 
 /**
@@ -38,13 +29,11 @@ export interface CompleteAppVolume extends z.infer<typeof AppVolumeModel> {
  *
  * NOTE: Lazy required in case of potential circular dependencies within schema
  */
-export const RelatedAppVolumeModel: z.ZodSchema<CompleteAppVolume> = z.lazy(() =>
-  AppVolumeModel.extend({
-    app: RelatedAppModel,
-    volumeBackups: RelatedVolumeBackupModel.array(),
-    monitoringSamples: RelatedAppVolumeMonitoringSampleModel.array(),
-    monitoringMemberships: RelatedAppVolumeMonitoringMembershipModel.array(),
-    sharedVolume: RelatedAppVolumeModel.nullish(),
-    sharedVolumes: RelatedAppVolumeModel.array()
-  })
-);
+export const RelatedAppVolumeModel: z.ZodSchema<CompleteAppVolume> = z.lazy(() => AppVolumeModel.extend({
+  app: RelatedAppModel,
+  volumeBackups: RelatedVolumeBackupModel.array(),
+  monitoringSamples: RelatedAppVolumeMonitoringSampleModel.array(),
+  monitoringMemberships: RelatedAppVolumeMonitoringMembershipModel.array(),
+  sharedVolume: RelatedAppVolumeModel.nullish(),
+  sharedVolumes: RelatedAppVolumeModel.array(),
+}))
