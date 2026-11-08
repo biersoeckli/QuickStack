@@ -1,4 +1,4 @@
-vi.mock('@/server/services/app-monitoring-history-query.service', () => ({
+vi.mock('@/server/services/standalone-services/app-monitoring-history.service', () => ({
     default: { getHistory: vi.fn().mockResolvedValue({ points: [] }) },
 }));
 vi.mock('@/server/services/app.service', () => ({ default: {} }));
@@ -15,7 +15,7 @@ vi.mock('@/server/utils/action-wrapper.utils', () => ({
         catch { return { status: 'error' }; }
     },
 }));
-import history from '@/server/services/app-monitoring-history-query.service';
+import history from '@/server/services/standalone-services/app-monitoring-history.service';
 import { isAuthorizedReadForApp } from '@/server/utils/action-wrapper.utils';
 import { getAppMonitoringHistory } from './actions';
 

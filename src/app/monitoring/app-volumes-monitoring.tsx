@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress"
 import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
+import { AppVolumeIdentityUtils } from '@/shared/utils/app-volume-identity.utils';
 
 export default function AppVolumeMonitoring({
     volumesUsage
@@ -27,7 +28,7 @@ export default function AppVolumeMonitoring({
     const updatedVolumeUsage = volumesUsage;
     const totals = useMemo(() => {
         const unique = new Map<string, AppVolumeMonitoringUsageModel>();
-        for (const volume of volumesUsage ?? []) unique.set(`${volume.projectId}/${volume.pvcName}`, volume);
+        for (const volume of volumesUsage ?? []) unique.set(AppVolumeIdentityUtils.observationKey(volume.projectId, volume.pvcName), volume);
         const values = [...unique.values()];
         return {
             used: values.reduce((sum, value) => sum + (value.usedBytes ?? 0), 0),

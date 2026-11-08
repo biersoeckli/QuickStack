@@ -1,6 +1,6 @@
 'use server';
 
-import appHistoryService from '@/server/services/standalone-services/app-history.service';
+import appHistoryService from '@/server/services/standalone-services/app-monitoring-history.service';
 import { getAdminUserSession, simpleAction } from '@/server/utils/action-wrapper.utils';
 import { z } from 'zod';
 

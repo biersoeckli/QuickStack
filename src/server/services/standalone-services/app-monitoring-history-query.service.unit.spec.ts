@@ -1,8 +1,8 @@
-vi.mock('@/server/services/standalone-services/app-history.service', () => ({
+vi.mock('@/server/adapter/app-history.adapter', () => ({
     default: { getRetentionHours: vi.fn().mockResolvedValue(24), getHistory: vi.fn() },
 }));
-import adapter from '@/server/services/standalone-services/app-history.service';
-import historyService from './app-monitoring-history-query.service';
+import adapter from '@/server/adapter/app-history.adapter';
+import historyService from '@/server/services/standalone-services/app-monitoring-history.service';
 
 it('shows incomplete App totals as gaps and counts shared volumes once', async () => {
     const now = new Date();

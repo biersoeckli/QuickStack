@@ -9,7 +9,7 @@ import { VolumeFilesystemUsage } from "@/shared/model/app-volume-monitoring-usag
 import dataAccess from "../adapter/db.client";
 import appVolumeFilesystemService from "./standalone-services/app-volume-filesystem.service";
 import pvcService from "./pvc.service";
-import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
+import { AppVolumeIdentityUtils } from "@/shared/utils/app-volume-identity.utils";
 import projectService from "./project.service";
 import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.model";
 
@@ -25,9 +25,8 @@ class MonitorService {
             () => pvcService.getAllPvc(),
         );
         return appVolumes.map(volume => {
-            const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
             return {
-                ...usages.get(`${volume.app.projectId}/${pvcName}`)!,
+                ...usages.get(volume.id)!,
                 projectId: volume.app.projectId,
                 projectName: volume.app.project.name,
                 appName: volume.app.name,
@@ -156,7 +155,10 @@ class MonitorService {
             select: { id: true, sharedVolumeId: true },
         });
         const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })), () => pvcService.getAllPvc());
-        return Array.from(usages.values());
+        const uniqueUsages = new Map(
+            Array.from(usages.values(), usage => [AppVolumeIdentityUtils.observationKey(projectId, usage.pvcName), usage]),
+        );
+        return Array.from(uniqueUsages.values());
     }
 }
 

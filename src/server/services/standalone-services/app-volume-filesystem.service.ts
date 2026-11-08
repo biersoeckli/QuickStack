@@ -1,6 +1,6 @@
 import { V1PersistentVolumeClaim } from '@kubernetes/client-node';
 import volumeSummaryAdapter from '@/server/adapter/volume-summary.adapter';
-import { supportsVolumeFilesystemMetrics } from '../volume-filesystem-drivers';
+import { AppVolumeIdentityUtils } from '@/shared/utils/app-volume-identity.utils';
 import { VolumeFilesystemUsage } from '@/shared/model/app-volume-monitoring-usage.model';
 import { KubeObjectNameUtils } from '@/server/utils/kube-object-name.utils';
 
@@ -17,19 +17,26 @@ class AppVolumeFilesystemService {
         const pvcByKey = new Map(pvcs.map(pvc => [`${pvc.metadata?.namespace}/${pvc.metadata?.name}`, pvc]));
         const pvByName = new Map(persistentVolumes.map(pv => [pv.metadata?.name, pv]));
         const result = new Map<string, VolumeFilesystemUsage>();
+        const observations = new Map<string, VolumeFilesystemUsage>();
         const now = Date.now();
         for (const volume of volumes) {
-            const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
-            const key = `${volume.projectId}/${pvcName}`;
-            if (result.has(key)) continue;
+            const pvcName = KubeObjectNameUtils.toPvcName(AppVolumeIdentityUtils.underlyingId(volume.id, volume.sharedVolumeId));
+            const key = AppVolumeIdentityUtils.observationKey(volume.projectId, pvcName);
+            const existing = observations.get(key);
+            if (existing) {
+                result.set(volume.id, existing);
+                continue;
+            }
             const pvc = pvcByKey.get(key);
             const pv = pvc?.spec?.volumeName ? pvByName.get(pvc.spec.volumeName) : undefined;
             if (!pv) {
-                result.set(key, { pvcName, status: 'unavailable' });
+                observations.set(key, { pvcName, status: 'unavailable' });
+                result.set(volume.id, observations.get(key)!);
                 continue;
             }
-            if (!supportsVolumeFilesystemMetrics(pv)) {
-                result.set(key, { pvcName, status: 'unsupported' });
+            if (pv.spec?.csi?.driver !== 'driver.longhorn.io') {
+                observations.set(key, { pvcName, status: 'unsupported' });
+                result.set(volume.id, observations.get(key)!);
                 continue;
             }
             const candidates = samples
@@ -43,10 +50,11 @@ class AppVolumeFilesystemService {
             const sample = candidates[0];
             const age = sample ? now - Date.parse(sample.time!) : Infinity;
             if (!sample || age > 5 * 60 * 1000 || age < -60 * 1000) {
-                result.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });
+                observations.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });
+                result.set(volume.id, observations.get(key)!);
                 continue;
             }
-            result.set(key, {
+            observations.set(key, {
                 pvcName,
                 status: 'available',
                 usedBytes: sample.usedBytes,
@@ -54,6 +62,7 @@ class AppVolumeFilesystemService {
                 capacityBytes: sample.capacityBytes,
                 measuredAt: sample.time,
             });
+            result.set(volume.id, observations.get(key)!);
         }
         return result;
     }

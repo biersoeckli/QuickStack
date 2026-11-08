@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
-import adapter from '@/server/services/standalone-services/app-history.service';
-import history from '@/server/services/app-monitoring-history-query.service';
+import adapter from '@/server/adapter/app-history.adapter';
+import history from '@/server/services/standalone-services/app-monitoring-history.service';
+import metrics from '@/server/services/standalone-services/app-history.service';
+import filesystem from '@/server/services/standalone-services/app-volume-filesystem.service';
 
 describe('App monitoring history persistence', () => {
     const ctx = createPrismaTestContext('app-monitoring-history');
@@ -53,6 +55,35 @@ describe('App monitoring history persistence', () => {
         expect((await history.getHistory(['one', 'two'])).points).toEqual([]);
     });
 
+
+    it('collects shared Volume measurements and reads them through each App', async () => {
+        const db = ctx.getDataAccess().client;
+        await db.project.create({ data: { id: 'project', name: 'Project' } });
+        await db.app.createMany({ data: [
+            { id: 'one', name: 'One', projectId: 'project' },
+            { id: 'two', name: 'Two', projectId: 'project' },
+        ] });
+        await db.appVolume.create({ data: { id: 'base', appId: 'one', containerMountPath: '/data', size: 1 } });
+        await db.appVolume.create({ data: { id: 'shared', appId: 'two', containerMountPath: '/share', size: 1, sharedVolumeId: 'base' } });
+        const measuredAt = new Date();
+        const appMetrics = vi.spyOn(metrics, 'getAppMetrics').mockResolvedValue(new Map([
+            ['one', { cpuCores: 1, ramBytes: 100, measuredAt }],
+            ['two', { cpuCores: 2, ramBytes: 200, measuredAt }],
+        ]));
+        const volumeMetrics = vi.spyOn(filesystem, 'getVolumeFilesystemUsage').mockResolvedValue(new Map([
+            ['base', { pvcName: 'pvc-base', status: 'available', usedBytes: 42, measuredAt: measuredAt.toISOString() }],
+            ['shared', { pvcName: 'pvc-base', status: 'available', usedBytes: 42, measuredAt: measuredAt.toISOString() }],
+        ]));
+        try {
+            await history.collect();
+            expect(await db.appVolumeMonitoringSample.count()).toBe(1);
+            expect((await history.getHistory(['one', 'two'])).points[0]).toMatchObject({ cpuCores: 3, ramBytes: 300, storageBytes: 42, availableVolumes: 1 });
+            expect((await history.getHistory(['two'])).volumes.map(volume => volume.label)).toEqual(['/share']);
+        } finally {
+            appMetrics.mockRestore();
+            volumeMetrics.mockRestore();
+        }
+    });
 
     it('reads a day of five-minute history for 100 Apps', async () => {
         const db = ctx.getDataAccess().client;

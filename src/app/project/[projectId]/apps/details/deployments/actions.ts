@@ -1,6 +1,6 @@
 'use server'
 
-import appMonitoringHistoryQueryService from '@/server/services/app-monitoring-history-query.service';
+import appMonitoringHistoryQueryService from '@/server/services/standalone-services/app-monitoring-history.service';
 
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";

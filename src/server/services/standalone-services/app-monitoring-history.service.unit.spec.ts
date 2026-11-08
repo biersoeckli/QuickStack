@@ -1,8 +1,9 @@
-vi.mock('./app-history.service', () => ({ default: { getPopulation: vi.fn(), getRetentionHours: vi.fn(), save: vi.fn(), getAppMetrics: vi.fn() } }));
+vi.mock('@/server/adapter/app-history.adapter', () => ({ default: { getPopulation: vi.fn(), getRetentionHours: vi.fn(), save: vi.fn() } }));
+vi.mock('./app-history.service', () => ({ default: { getAppMetrics: vi.fn() } }));
 vi.mock('./app-volume-filesystem.service', () => ({ default: { getVolumeFilesystemUsage: vi.fn() } }));
 vi.mock('./schedule.service', () => ({ default: { scheduleJob: vi.fn() } }));
 import history from './app-monitoring-history.service';
-import adapter from '@/server/services/standalone-services/app-history.service';
+import adapter from '@/server/adapter/app-history.adapter';
 import metrics from './app-history.service';
 import filesystem from './app-volume-filesystem.service';
 
@@ -10,7 +11,7 @@ it('records a gap for failed App metrics while preserving successful volume data
     vi.mocked(adapter.getPopulation).mockResolvedValue({ apps: [{ id: 'app', projectId: 'p' }], volumes: [{ id: 'v', appId: 'app', sharedVolumeId: null, app: { projectId: 'p' } }] } as never);
     vi.mocked(adapter.getRetentionHours).mockResolvedValue(24);
     vi.mocked(metrics.getAppMetrics).mockRejectedValue(new Error('metrics unavailable'));
-    vi.mocked(filesystem.getVolumeFilesystemUsage).mockResolvedValue(new Map([['p/pvc-v', { pvcName: 'pvc-v', status: 'available', usedBytes: 4 }]]));
+    vi.mocked(filesystem.getVolumeFilesystemUsage).mockResolvedValue(new Map([['v', { pvcName: 'pvc-v', status: 'available', usedBytes: 4 }]]));
     await history.collect();
     expect(adapter.save).toHaveBeenCalledWith(
         [expect.objectContaining({ appId: 'app', cpuCores: null, ramBytes: null })],
@@ -43,7 +44,7 @@ it('stores one filesystem measurement for a shared Volume with a link for each m
     ] } as never);
     vi.mocked(adapter.getRetentionHours).mockResolvedValue(24);
     vi.mocked(metrics.getAppMetrics).mockResolvedValue(new Map());
-    vi.mocked(filesystem.getVolumeFilesystemUsage).mockResolvedValue(new Map([['p/pvc-v', { pvcName: 'pvc-v', status: 'available', usedBytes: 4 }]]));
+    vi.mocked(filesystem.getVolumeFilesystemUsage).mockResolvedValue(new Map([['v', { pvcName: 'pvc-v', status: 'available', usedBytes: 4 }]]));
     await history.collect();
     const [, samples, memberships] = vi.mocked(adapter.save).mock.calls[0];
     expect(samples).toHaveLength(1);
