@@ -8,7 +8,7 @@ import {
     SlidersHorizontal,
     Zap,
 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import BasicAuth from '@/app/project/app/[appId]/advanced/basic-auth';
@@ -28,6 +28,7 @@ import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import { SettingsSection } from './settings-section';
 import { DrawerEnvironment } from './app-details-environment';
 import { useNestedDrawer } from './nested-drawer';
+import { AppDrawerAppContext } from './app-drawer-app-context';
 import { DrawerCard, DrawerCardDescription, DrawerCardFooter, DrawerCardHeader, DrawerCardTitle } from '@/components/custom/drawer-card';
 
 export function DrawerSettings({
@@ -131,7 +132,6 @@ export function DrawerSettings({
                         workloadType="app"
                         hideCard
                     />
-                    <NodePortsCard app={app} readonly={readonly} hideCard />
                     <DrawerCard>
                         <DrawerCardHeader>
                             <DrawerCardTitle>Network Policies</DrawerCardTitle>
@@ -157,6 +157,24 @@ export function DrawerSettings({
                             </Button>
                         </DrawerCardFooter>
                     </DrawerCard>
+                    <DrawerCard>
+                        <DrawerCardHeader>
+                            <DrawerCardTitle>Advanced Network Settings</DrawerCardTitle>
+                            <DrawerCardDescription>Configure node ports and basic authentication.</DrawerCardDescription>
+                        </DrawerCardHeader>
+                        <DrawerCardFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => openNestedDrawer({
+                                    title: 'Advanced network settings',
+                                    content: <AdvancedNetworkSettings readonly={readonly} />,
+                                })}
+                            >
+                                Advanced network settings
+                            </Button>
+                        </DrawerCardFooter>
+                    </DrawerCard>
                 </SettingsSection>
                 <SettingsSection id="storage" title="Storage" icon={HardDrive}>
                     <StorageList
@@ -178,12 +196,11 @@ export function DrawerSettings({
                     title="Advanced"
                     icon={Globe2}
                 >
-                    <BasicAuth app={app} readonly={readonly} hideCard />
                     <div>
                         <CardHeader>
                             <CardTitle>Health Checks</CardTitle>
                             <CardDescription>
-                                Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic (In kubernetes terms, startup, readiness and liveness probes).
+                                Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic.
                             </CardDescription>
                         </CardHeader>
                         <CardFooter>
@@ -212,4 +229,14 @@ export function DrawerSettings({
             </div>
         </div>
     );
+}
+
+function AdvancedNetworkSettings({ readonly }: { readonly: boolean }) {
+    const app = useContext(AppDrawerAppContext);
+    if (!app) return null;
+
+    return <div className="flex flex-col gap-6">
+        <NodePortsCard app={app} readonly={readonly} />
+        <BasicAuth app={app} readonly={readonly} />
+    </div>;
 }

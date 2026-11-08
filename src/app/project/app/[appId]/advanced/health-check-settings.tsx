@@ -79,7 +79,7 @@ export default function HealthCheckSettings({ workload, readonly, saveHealthChec
             {!hideCard && <CardHeader>
                 <CardTitle>Health Check Settings</CardTitle>
                 <CardDescription>
-                    Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic (In kubernetes terms, startup, readiness and liveness probes).
+                    Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic.
                 </CardDescription>
             </CardHeader>}
             <Form {...form}>

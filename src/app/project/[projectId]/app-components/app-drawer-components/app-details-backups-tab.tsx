@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Archive, Download, Loader2, Pen, Play } from 'lucide-react';
+import { Archive, Database, Download, HardDrive, Loader2, Pen, Play } from 'lucide-react';
 import type { S3Target } from '@prisma/client';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { SplitButton } from '@/components/custom/split-button';
 import VolumeBackupList from '@/app/project/app/[appId]/volumes/volume-backup';
@@ -159,21 +160,31 @@ export function DrawerBackupsTab({ app, role, s3Targets, volumeBackups }: {
                 <EmptyTitle>No backups yet</EmptyTitle>
                 <EmptyDescription>None of this app&apos;s backup schedules has created a backup yet.</EmptyDescription>
             </EmptyHeader>
-        </Empty> : <Table className="min-w-[720px]">
+        </Empty> : <Table className="min-w-[560px] table-fixed">
             <TableHeader><TableRow>
-                <TableHead>Created</TableHead>
-                <TableHead>Size</TableHead>
+                <TableHead className="w-38">Created</TableHead>
+                <TableHead className="w-24">Size</TableHead>
                 <TableHead>Backup Location</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                <TableHead className="w-16">Type</TableHead>
+                <TableHead className="w-14"><span className="sr-only">Actions</span></TableHead>
             </TableRow></TableHeader>
             <TableBody>{backups.map((backup) => {
                 const backupId = `${backup.schedule.id}:${backup.key}`;
                 return <TableRow key={backupId}>
                     <TableCell>{formatDateTime(backup.backupDate, true)}</TableCell>
                     <TableCell>{backup.sizeBytes ? KubeSizeConverter.convertBytesToReadableSize(backup.sizeBytes) : 'Unknown'}</TableCell>
-                    <TableCell>{backup.schedule.target.name}</TableCell>
-                    <TableCell>{backupType(app, backup.schedule)}</TableCell>
+                    <TableCell><div className="truncate" title={backup.schedule.target.name}>{backup.schedule.target.name}</div></TableCell>
+                    <TableCell>
+                        <Tooltip>
+                            <TooltipTrigger render={<span tabIndex={0} className="inline-flex" />}>
+                                {app.appType !== 'APP' && backup.schedule.useDatabaseBackup
+                                    ? <Database aria-hidden="true" className="size-4" />
+                                    : <HardDrive aria-hidden="true" className="size-4" />}
+                                <span className="sr-only">{backupType(app, backup.schedule)}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>{backupType(app, backup.schedule)}</TooltipContent>
+                        </Tooltip>
+                    </TableCell>
                     <TableCell className="text-right"><Button type="button" variant="ghost" size="sm" onClick={() => void downloadBackup(backup)} disabled={downloadingBackup !== undefined}>
                         {downloadingBackup === backupId ? <Loader2 className="animate-spin" /> : <Download />}
                         <span className="sr-only">Download backup</span>

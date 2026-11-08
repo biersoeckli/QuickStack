@@ -63,6 +63,7 @@ import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials
 import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
 import { DrawerSettings } from './app-details-settings';
 import { NestedDrawerProvider } from './nested-drawer';
+import { AppDrawerAppContext } from './app-drawer-app-context';
 import { DrawerBackupsTab } from './app-details-backups-tab';
 import { EditAppDialog } from '@/app/project/[projectId]/app-components/edit-app-dialog';
 import type { S3Target } from '@prisma/client';
@@ -308,6 +309,7 @@ export function AppDetailsDrawer({
                 ref={contentRef}
                 className="min-w-0 border border-border/60 data-[swipe-axis=x]:w-[calc(100%-1rem)] sm:data-[swipe-axis=x]:w-1/2 shadow"
             >
+                <AppDrawerAppContext.Provider value={app}>
                 <NestedDrawerProvider>
                     <Button
                         type="button"
@@ -485,6 +487,7 @@ export function AppDetailsDrawer({
                         )}
                     </Tabs>
                 </NestedDrawerProvider>
+                </AppDrawerAppContext.Provider>
             </DrawerContent>
         </Drawer>
     );
