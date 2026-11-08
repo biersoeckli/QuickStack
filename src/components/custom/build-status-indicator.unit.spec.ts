@@ -7,92 +7,75 @@ import { useDialog } from '@/frontend/states/zustand.states';
 import BuildStatusIndicator from './build-status-indicator';
 
 vi.mock('@/components/ui/tooltip', () => ({
-    Tooltip: ({ children }: { children: React.ReactNode }) => children,
-    TooltipTrigger: ({ children, render }: { children?: React.ReactNode; render?: React.ReactNode }) => render ?? children,
-    TooltipContent: ({ children }: { children: React.ReactNode }) => children,
+  Tooltip: ({ children }: { children: React.ReactNode }) => children,
+  TooltipTrigger: ({ children, render }: { children?: React.ReactNode; render?: React.ReactNode }) => render ?? children,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => children
 }));
 
-vi.mock('@/app/project/workload-components/build-logs-dialog-content', () => ({
-    BuildLogsDialogContent: () => null,
-}));
+vi.mock('@/app/project/workload-components/build-logs-dialog-content', () => ({ BuildLogsDialogContent: () => null }));
 
 function status(workloadId: string, buildStatus: AppBuildStatusModel['status']): AppBuildStatusModel {
-    return {
-        workloadId,
-        workloadType: 'app',
-        workloadName: workloadId,
-        projectId: 'project-1',
-        projectName: 'Project 1',
-        status: buildStatus,
-    };
+  return { workloadId, workloadType: 'app', workloadName: workloadId, projectId: 'project-1', projectName: 'Project 1', status: buildStatus };
 }
 
 describe('BuildStatusIndicator', () => {
-    beforeEach(() => {
-        useBuildStatus.setState({
-            buildStatus: new Map(),
-            lastUpdate: null,
-            isLoading: false,
-            listeners: new Set(),
-        });
-        useDialog.setState({ openDialog: vi.fn() });
-    });
+  beforeEach(() => {
+    useBuildStatus.setState({ buildStatus: new Map(), lastUpdate: null, isLoading: false, listeners: new Set() });
+    useDialog.setState({ openDialog: vi.fn() });
+  });
 
-    afterEach(() => {
-        cleanup();
-    });
+  afterEach(() => {
+    cleanup();
+  });
 
-    it('shows a running label while a build is running', () => {
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'RUNNING')]]) });
+  it('shows a running label while a build is running', () => {
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'RUNNING')]]) });
 
-        render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+    render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
 
-        expect(screen.getByText('Building')).toBeTruthy();
-    });
+    expect(screen.getByText('Building')).toBeTruthy();
+  });
 
-    it('opens build logs for a running build', () => {
-        const openDialog = vi.fn();
-        useDialog.setState({ openDialog });
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', {
-            ...status('app-a', 'RUNNING'),
-            deploymentId: 'deployment-1',
-        }]]) });
+  it('opens build logs for a running build', () => {
+    const openDialog = vi.fn();
+    useDialog.setState({ openDialog });
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', { ...status('app-a', 'RUNNING'), deploymentId: 'deployment-1' }]]) });
 
-        render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
-        fireEvent.click(screen.getByRole('button'));
+    render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+    fireEvent.click(screen.getByRole('button'));
 
-        expect(openDialog).toHaveBeenCalledOnce();
-    });
+    expect(openDialog).toHaveBeenCalledOnce();
+  });
 
-    it('shows a pending label while a build is queued', () => {
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'PENDING')]]) });
+  it('shows a pending label while a build is queued', () => {
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'PENDING')]]) });
 
-        render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+    render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
 
-        expect(screen.getByText('Pending')).toBeTruthy();
-    });
+    expect(screen.getByText('Pending')).toBeTruthy();
+  });
 
-    it('shows a failed label when the last build failed', () => {
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'FAILED')]]) });
+  it('shows a failed label when the last build failed', () => {
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'FAILED')]]) });
 
-        render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+    render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
 
-        expect(screen.getByText('Build failed')).toBeTruthy();
-    });
+    expect(screen.getByText('Build failed')).toBeTruthy();
+  });
 
-    it('renders nothing when the last build succeeded', () => {
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'SUCCEEDED')]]) });
+  it('renders nothing when the last build succeeded', () => {
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'SUCCEEDED')]]) });
 
-        const { container } = render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
+    const { container } = render(React.createElement(BuildStatusIndicator, { appId: 'app-a', showLabel: true }));
 
-        expect(container.textContent).toBe('');
-    });
+    expect(container.textContent).toBe('');
+  });
 
-    it('renders nothing when there is no build yet', () => {
-        useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'NOT_BUILT')]]) });
+  it('renders nothing when there is no build yet', () => {
+    useBuildStatus.setState({ buildStatus: new Map([['app-a', status('app-a', 'NOT_BUILT')]]) });
 
-        const { container } = render(React.createElement(BuildStatusIndicator, { appId: 'app-a' }));
+    const { container } = render(React.createElement(BuildStatusIndicator, { appId: 'app-a' }));
 
-        expect(container.textContent).toBe('');
-    });
+    expect(container.textContent).toBe('');
+  });
 });

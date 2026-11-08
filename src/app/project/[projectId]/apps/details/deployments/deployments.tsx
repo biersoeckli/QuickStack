@@ -7,103 +7,91 @@ import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import type { DeploymentInfoModel } from '@/shared/model/deployment-info.model';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import { GitHashUtils } from '@/shared/utils/git-hash.utils';
-import {
-    deleteBuild,
-    getDeploymentsAndBuildsForApp,
-    rollbackToDeployment,
-} from './actions';
+import { deleteBuild, getDeploymentsAndBuildsForApp, rollbackToDeployment } from './actions';
 import { DeploymentsGridView } from './deployments-grid-view';
 
 export default function BuildsTab({
-    app,
-    role,
-    onShowLogs,
+  app,
+  role,
+  onShowLogs
 }: {
-    app: AppExtendedModel;
-    role: RolePermissionEnum;
-    onShowLogs: (deployment: DeploymentInfoModel) => void;
+  app: AppExtendedModel;
+  role: RolePermissionEnum;
+  onShowLogs: (deployment: DeploymentInfoModel) => void;
 }) {
-    const { openConfirmDialog } = useConfirmDialog();
-    const [appBuilds, setAppBuilds] = useState<DeploymentInfoModel[]>();
-    const [, setError] = useState<string>();
+  const { openConfirmDialog } = useConfirmDialog();
+  const [appBuilds, setAppBuilds] = useState<DeploymentInfoModel[]>();
+  const [, setError] = useState<string>();
 
-    const updateBuilds = useCallback(async () => {
-        setError(undefined);
-        try {
-            const response = await getDeploymentsAndBuildsForApp(app.id);
-            if (response.status === 'success' && response.data) {
-                setAppBuilds(response.data);
-            } else {
-                console.error(response);
-                setError(response.message ?? 'An unknown error occurred.');
-            }
-        } catch (error) {
-            console.error(error);
-            setError('An unknown error occurred.');
-        }
-    }, [app.id]);
+  const updateBuilds = useCallback(async () => {
+    setError(undefined);
+    try {
+      const response = await getDeploymentsAndBuildsForApp(app.id);
+      if (response.status === 'success' && response.data) {
+        setAppBuilds(response.data);
+      } else {
+        console.error(response);
+        setError(response.message ?? 'An unknown error occurred.');
+      }
+    } catch (error) {
+      console.error(error);
+      setError('An unknown error occurred.');
+    }
+  }, [app.id]);
 
-    const stopBuild = async (deployment: DeploymentInfoModel) => {
-        if (!deployment.buildJobName) return;
-        const confirmed = await openConfirmDialog({
-            title: 'Delete Build',
-            description: 'The build will be stopped and removed. Are you sure you want to stop this build?',
-            okButton: 'Stop & Remove Build',
-        });
-        if (!confirmed) return;
-        await Toast.fromAction(() => deleteBuild(deployment.buildJobName!));
-        await updateBuilds();
-    };
-
-    const rollback = async (deployment: DeploymentInfoModel) => {
-        const confirmed = await openConfirmDialog({
-            title: 'Rollback Deployment',
-            description: `Roll back to git commit ${GitHashUtils.shortGitHash(deployment.gitCommit)}? The App will be redeployed with the code from this commit.`,
-            okButton: 'Rollback',
-        });
-        if (!confirmed) return;
-        await Toast.fromAction(() => rollbackToDeployment(app.id, deployment.deploymentId));
-        await updateBuilds();
-    };
-
-    const canStopBuild = (deployment: DeploymentInfoModel) =>
-        role === RolePermissionEnum.READWRITE
-        && !!deployment.buildJobName
-        && deployment.status === 'BUILDING';
-    const canRollback = (deployment: DeploymentInfoModel) =>
-        role === RolePermissionEnum.READWRITE
-        && !!deployment.replicasetName
-        && !!deployment.gitCommit
-        && deployment.status !== 'DEPLOYING'
-        && deployment.status !== 'DEPLOYED';
-
-    const currentBuildStatus = useBuildStatus(state => state.buildStatus.get(app.id)?.status);
-
-    useEffect(() => {
-        if (currentBuildStatus === undefined) {
-            return;
-        }
-        void updateBuilds();
-    }, [currentBuildStatus, updateBuilds]);
-
-    usePolling(updateBuilds, {
-        intervalMs: 10000,
-        enabled: app.sourceType !== 'container',
-        runImmediately: true,
+  const stopBuild = async (deployment: DeploymentInfoModel) => {
+    if (!deployment.buildJobName) return;
+    const confirmed = await openConfirmDialog({
+      title: 'Delete Build',
+      description: 'The build will be stopped and removed. Are you sure you want to stop this build?',
+      okButton: 'Stop & Remove Build'
     });
+    if (!confirmed) return;
+    await Toast.fromAction(() => deleteBuild(deployment.buildJobName!));
+    await updateBuilds();
+  };
 
-    if (app.sourceType === 'container') return null;
+  const rollback = async (deployment: DeploymentInfoModel) => {
+    const confirmed = await openConfirmDialog({
+      title: 'Rollback Deployment',
+      description: `Roll back to git commit ${GitHashUtils.shortGitHash(deployment.gitCommit)}? The App will be redeployed with the code from this commit.`,
+      okButton: 'Rollback'
+    });
+    if (!confirmed) return;
+    await Toast.fromAction(() => rollbackToDeployment(app.id, deployment.deploymentId));
+    await updateBuilds();
+  };
 
-    const viewProps = {
-        deployments: appBuilds ?? [],
-        canStopBuild,
-        canRollback,
-        onShowLogs,
-        onStopBuild: (deployment: DeploymentInfoModel) => void stopBuild(deployment),
-        onRollback: (deployment: DeploymentInfoModel) => void rollback(deployment),
-    };
+  const canStopBuild = (deployment: DeploymentInfoModel) =>
+    role === RolePermissionEnum.READWRITE && !!deployment.buildJobName && deployment.status === 'BUILDING';
+  const canRollback = (deployment: DeploymentInfoModel) =>
+    role === RolePermissionEnum.READWRITE &&
+    !!deployment.replicasetName &&
+    !!deployment.gitCommit &&
+    deployment.status !== 'DEPLOYING' &&
+    deployment.status !== 'DEPLOYED';
 
-    return !appBuilds
-        ? <FullLoadingSpinner />
-        : <DeploymentsGridView {...viewProps} />;
+  const currentBuildStatus = useBuildStatus((state) => state.buildStatus.get(app.id)?.status);
+
+  useEffect(() => {
+    if (currentBuildStatus === undefined) {
+      return;
+    }
+    void updateBuilds();
+  }, [currentBuildStatus, updateBuilds]);
+
+  usePolling(updateBuilds, { intervalMs: 10000, enabled: app.sourceType !== 'container', runImmediately: true });
+
+  if (app.sourceType === 'container') return null;
+
+  const viewProps = {
+    deployments: appBuilds ?? [],
+    canStopBuild,
+    canRollback,
+    onShowLogs,
+    onStopBuild: (deployment: DeploymentInfoModel) => void stopBuild(deployment),
+    onRollback: (deployment: DeploymentInfoModel) => void rollback(deployment)
+  };
+
+  return !appBuilds ? <FullLoadingSpinner /> : <DeploymentsGridView {...viewProps} />;
 }

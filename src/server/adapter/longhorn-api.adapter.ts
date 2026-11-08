@@ -1,115 +1,82 @@
 class LonghornApiAdapter {
+  get longhornBaseUrl() {
+    return process.env.NODE_ENV === 'production' ? 'http://longhorn-frontend.longhorn-system.svc.cluster.local' : 'http://localhost:8000';
+  }
 
-    get longhornBaseUrl() {
-        return process.env.NODE_ENV === 'production' ? 'http://longhorn-frontend.longhorn-system.svc.cluster.local' : 'http://localhost:8000';
+  async getLonghornVolume(pvcName: String) {
+    const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}`, {
+      cache: 'no-cache',
+      method: 'GET',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP-Error: ${response.status}`);
     }
 
-    async getLonghornVolume(pvcName: String) {
-        const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}`, {
-            cache: 'no-cache',
-            method: 'GET',
-            headers: {
+    const data = await response.json();
 
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+    const usedStorageBytes = data.controllers?.[0]?.actualSize;
 
-        if (!response.ok) {
-            throw new Error(`HTTP-Error: ${response.status}`);
+    return usedStorageBytes;
+  }
+
+  async getAllLonghornVolumes(): Promise<{ actualSizeBytes: number; sizeBytes: number; name: string }[]> {
+    const response = await fetch(`${this.longhornBaseUrl}/v1/volumes`, {
+      cache: 'no-cache',
+      method: 'GET',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP-Error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { data: { id: string; controllers: { actualSize: string; name: string; size: string }[] }[] };
+
+    return data.data
+      .map((volume) => {
+        const firstController = volume.controllers.find((x) => !!x);
+        if (!firstController || !firstController.actualSize || !firstController.size || !firstController.name) {
+          return undefined;
         }
+        return { actualSizeBytes: parseInt(firstController.actualSize), sizeBytes: parseInt(firstController.size), name: volume.id };
+      })
+      .filter((x) => !!x);
+  }
 
-        const data = await response.json();
+  async backupPvc(pvcName: string) {
+    const snapshot = await this.createSnapshot(pvcName);
+    await this.createBackup(pvcName, snapshot.id);
+  }
 
-        const usedStorageBytes = data.controllers?.[0]?.actualSize;
+  private async createBackup(pvcName: string, snapshotId: string) {
+    const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}?action=snapshotBackup`, {
+      cache: 'no-cache',
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: snapshotId })
+    });
 
-        return usedStorageBytes;
+    if (!response.ok) {
+      throw new Error(`HTTP-Error: ${response.status}`);
     }
 
-    async getAllLonghornVolumes(): Promise<{
-        actualSizeBytes: number;
-        sizeBytes: number;
-        name: string;
-    }[]> {
-        const response = await fetch(`${this.longhornBaseUrl}/v1/volumes`, {
-            cache: 'no-cache',
-            method: 'GET',
-            headers: {
+    return await response.json();
+  }
 
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+  private async createSnapshot(pvcName: string) {
+    const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}?action=snapshotCreate`, {
+      cache: 'no-cache',
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' }
+    });
 
-        if (!response.ok) {
-            throw new Error(`HTTP-Error: ${response.status}`);
-        }
-
-        const data = await response.json() as {
-            data: {
-                id: string;
-                controllers: {
-                    actualSize: string;
-                    name: string;
-                    size: string;
-                }[]
-            }[]
-        };
-
-        return data.data.map(volume => {
-            const firstController = volume.controllers.find(x => !!x);
-            if (!firstController || !firstController.actualSize || !firstController.size || !firstController.name) {
-                return undefined;
-            }
-            return {
-                actualSizeBytes: parseInt(firstController.actualSize),
-                sizeBytes: parseInt(firstController.size),
-                name: volume.id
-            };
-        }).filter(x => !!x);
+    if (!response.ok) {
+      throw new Error(`HTTP-Error: ${response.status}`);
     }
 
-
-    async backupPvc(pvcName: string) {
-        const snapshot = await this.createSnapshot(pvcName);
-        await this.createBackup(pvcName, snapshot.id);
-    }
-
-    private async createBackup(pvcName: string, snapshotId: string) {
-        const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}?action=snapshotBackup`, {
-            cache: 'no-cache',
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                "name": snapshotId
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP-Error: ${response.status}`);
-        }
-
-        return await response.json();
-    }
-
-    private async createSnapshot(pvcName: string) {
-        const response = await fetch(`${this.longhornBaseUrl}/v1/volumes/${pvcName}?action=snapshotCreate`, {
-            cache: 'no-cache',
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP-Error: ${response.status}`);
-        }
-
-        /*
+    /*
         Response:
         {
             "actions": {},
@@ -132,9 +99,8 @@ class LonghornApiAdapter {
         }
         */
 
-        return await response.json();
-    }
-
+    return await response.json();
+  }
 }
 const longhornApiAdapter = new LonghornApiAdapter();
 export default longhornApiAdapter;

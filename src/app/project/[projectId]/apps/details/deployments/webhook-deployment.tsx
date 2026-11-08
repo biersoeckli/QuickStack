@@ -1,59 +1,61 @@
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { useEffect, useState } from "react";
-import { createNewWebhookUrl } from "./actions";
-import { Button } from "@/components/ui/button";
-import { useConfirmDialog } from "@/frontend/states/zustand.states";
-import { Toast } from "@/frontend/utils/toast.utils";
-import { ClipboardCopy } from "lucide-react";
-import { toast } from "sonner";
-import { RolePermissionEnum } from "@/shared/model/role-extended.model";
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import { useEffect, useState } from 'react';
+import { createNewWebhookUrl } from './actions';
+import { Button } from '@/components/ui/button';
+import { useConfirmDialog } from '@/frontend/states/zustand.states';
+import { Toast } from '@/frontend/utils/toast.utils';
+import { ClipboardCopy } from 'lucide-react';
+import { toast } from 'sonner';
+import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 
-export default function WebhookDeploymentInfo({
-    app,
-    role
-}: {
-    app: AppExtendedModel;
-    role: RolePermissionEnum;
-}) {
-    const { openConfirmDialog } = useConfirmDialog();
-    const [webhookUrl, setWebhookUrl] = useState<string | undefined>(undefined);
+export default function WebhookDeploymentInfo({ app, role }: { app: AppExtendedModel; role: RolePermissionEnum }) {
+  const { openConfirmDialog } = useConfirmDialog();
+  const [webhookUrl, setWebhookUrl] = useState<string | undefined>(undefined);
 
-    const setWebhookId = (webhookId?: string | null | void) => {
-        if (webhookId) {
-            const hostname = window.location.hostname;
-            const port = window.location.port && ![80, 443].includes(Number(window.location.port)) ? `:${window.location.port}` : '';
-            const protocol = window.location.protocol;
-            setWebhookUrl(`${protocol}//${hostname}${port}/api/v1/webhook/deploy?id=${webhookId}`);
-        }
+  const setWebhookId = (webhookId?: string | null | void) => {
+    if (webhookId) {
+      const hostname = window.location.hostname;
+      const port = window.location.port && ![80, 443].includes(Number(window.location.port)) ? `:${window.location.port}` : '';
+      const protocol = window.location.protocol;
+      setWebhookUrl(`${protocol}//${hostname}${port}/api/v1/webhook/deploy?id=${webhookId}`);
     }
+  };
 
-    useEffect(() => {
-        setWebhookId(app.webhookId);
-    }, [app, app.webhookId]);
+  useEffect(() => {
+    setWebhookId(app.webhookId);
+  }, [app, app.webhookId]);
 
-    const createNewWebhookUrlAsync = async () => {
-        if (!await openConfirmDialog({
-            title: 'Generate new Webhook URL',
-            description: 'Are you sure you want to generate a new Webhook URL? The old URL will be invalidated.',
-            okButton: 'Generate new URL'
-        })) {
-            return;
-        }
-        const newWebhookId = await Toast.fromAction(() => createNewWebhookUrl(app.id), 'Webhook URL has been regenerated.');
-        setWebhookId(newWebhookId.data);
+  const createNewWebhookUrlAsync = async () => {
+    if (
+      !(await openConfirmDialog({
+        title: 'Generate new Webhook URL',
+        description: 'Are you sure you want to generate a new Webhook URL? The old URL will be invalidated.',
+        okButton: 'Generate new URL'
+      }))
+    ) {
+      return;
     }
+    const newWebhookId = await Toast.fromAction(() => createNewWebhookUrl(app.id), 'Webhook URL has been regenerated.');
+    setWebhookId(newWebhookId.data);
+  };
 
-    const copyWebhookUrl = () => {
-        navigator.clipboard.writeText(webhookUrl!);
-        toast.success('Webhook URL has been copied to clipboard.');
-    }
+  const copyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl!);
+    toast.success('Webhook URL has been copied to clipboard.');
+  };
 
-    return (
-        <div className="flex flex-wrap gap-4">
-            {webhookUrl && <Button className="min-w-0 flex-1 truncate" variant="secondary" onClick={copyWebhookUrl}>
-                <span className="truncate">{webhookUrl}</span> <ClipboardCopy />
-            </Button>}
-            {role === RolePermissionEnum.READWRITE && <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>{webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}</Button>}
-        </div>
-    );
+  return (
+    <div className="flex flex-wrap gap-4">
+      {webhookUrl && (
+        <Button className="min-w-0 flex-1 truncate" variant="secondary" onClick={copyWebhookUrl}>
+          <span className="truncate">{webhookUrl}</span> <ClipboardCopy />
+        </Button>
+      )}
+      {role === RolePermissionEnum.READWRITE && (
+        <Button onClick={createNewWebhookUrlAsync} variant={webhookUrl ? 'ghost' : 'secondary'}>
+          {webhookUrl ? 'Generate new Webhook URL' : 'Enable Webhook deployments'}
+        </Button>
+      )}
+    </div>
+  );
 }

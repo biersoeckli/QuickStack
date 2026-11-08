@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   Sidebar,
   SidebarContent,
@@ -16,25 +16,36 @@ import {
   SidebarFooter,
   SidebarMenuAction,
   useSidebar
-} from "@/components/ui/sidebar"
-import { BookOpen, ChartNoAxesCombined, ChevronDown, ChevronRight, ChevronUp, Dot, FolderClosed, Hammer, History, Info, Plus, Settings2, User } from "lucide-react"
-import Link from "next/link"
-import { EditProjectDialog } from "./projects/edit-project-dialog"
-import { SidebarLogoutButton } from "./sidebar-logout-button"
+} from '@/components/ui/sidebar';
 import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar"
-import { ProjectNavigationModel } from "@/shared/model/project-extended.model"
-import { UserSession } from "@/shared/model/sim-session.model"
-import { usePathname, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import QuickStackLogo from "@/components/custom/quickstack-logo"
-import { UserGroupUtils } from "@/shared/utils/role.utils"
-import type { QuickStackReleaseInfo } from "@/server/adapter/qs-versioninfo.adapter"
-import { settingsNavigation } from "@/shared/utils/settings-navigation"
-import { PathBuilderUtils } from "@/shared/utils/path-builder.utils"
-import { SettingsNavigationContent } from "@/components/custom/settings-navigation-content"
+  BookOpen,
+  ChartNoAxesCombined,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Dot,
+  FolderClosed,
+  Hammer,
+  History,
+  Info,
+  Plus,
+  Settings2,
+  User
+} from 'lucide-react';
+import Link from 'next/link';
+import { EditProjectDialog } from './projects/edit-project-dialog';
+import { SidebarLogoutButton } from './sidebar-logout-button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ProjectNavigationModel } from '@/shared/model/project-extended.model';
+import { UserSession } from '@/shared/model/sim-session.model';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import QuickStackLogo from '@/components/custom/quickstack-logo';
+import { UserGroupUtils } from '@/shared/utils/role.utils';
+import type { QuickStackReleaseInfo } from '@/server/adapter/qs-versioninfo.adapter';
+import { settingsNavigation } from '@/shared/utils/settings-navigation';
+import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
+import { SettingsNavigationContent } from '@/components/custom/settings-navigation-content';
 
 export function SidebarCient({
   projects,
@@ -49,279 +60,312 @@ export function SidebarCient({
   agentsAvailable: boolean;
   canaryEnabled: boolean;
 }) {
-
   const path = usePathname();
   const searchParams = useSearchParams();
 
   const [currentlySelectedProjectId, setCurrentlySelectedProjectId] = useState<string | null>(null);
   const [currentlySelectedAppId, setCurrentlySelectedAppId] = useState<string | null>(null);
   const [currentlySelectedAgentId, setCurrentlySelectedAgentId] = useState<string | null>(null);
-  const [settingsNavigationOpen, setSettingsNavigationOpen] = useState(false)
+  const [settingsNavigationOpen, setSettingsNavigationOpen] = useState(false);
 
-  const isAdmin = UserGroupUtils.isAdmin(session)
-  const visibleSettingsGroups = settingsNavigation.map((group) => ({
-    ...group,
-    items: group.items.filter((item) =>
-      (!item.adminOnly || isAdmin) && (item.href !== "/settings/integrations/llm-gateways" || agentsAvailable)
-    ),
-  })).filter((group) => group.items.length > 0)
-  const showSettingsNavigation = path.startsWith("/settings")
+  const isAdmin = UserGroupUtils.isAdmin(session);
+  const visibleSettingsGroups = settingsNavigation
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => (!item.adminOnly || isAdmin) && (item.href !== '/settings/integrations/llm-gateways' || agentsAvailable))
+    }))
+    .filter((group) => group.items.length > 0);
+  const showSettingsNavigation = path.startsWith('/settings');
 
   useEffect(() => {
-    if (path.startsWith("/project")) {
+    if (path.startsWith('/project')) {
       const projectId = path.split('/')[2];
       setCurrentlySelectedProjectId(projectId);
       setCurrentlySelectedAppId(searchParams.get('drawerAppId'));
       setCurrentlySelectedAgentId(searchParams.get('drawerAgentId'));
-
     } else {
       setCurrentlySelectedProjectId(null);
       setCurrentlySelectedAppId(null);
       setCurrentlySelectedAgentId(null);
-
     }
   }, [path, projects, searchParams]);
 
-  const {
-    open,
-    isMobile,
-  } = useSidebar()
+  const { open, isMobile } = useSidebar();
 
   return (
     <>
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuButton size="lg"
-                  className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-gray-100 text-sidebar-primary-foreground">
-                    <QuickStackLogo className="h-5 w-auto" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight my-4 pl-1">
-                    <span className="truncate font-semibold">QuickStack</span>
-                    <span className="truncate text-xs">Admin Panel</span>
-                  </div>
-                  <ChevronDown className="ml-auto" />
-                </SidebarMenuButton>} />
-              <DropdownMenuContent className="w-(--anchor-width)">
-                <Link href="https://quickstack.dev" target="_blank">
-                  <DropdownMenuItem>
-                    <Info />
-                    <span>QuickStack Website</span>
-                  </DropdownMenuItem>
-                </Link>
-                <Link href="https://quickstack.dev/docs" target="_blank">
-                  <DropdownMenuItem>
-                    <BookOpen />
-                    <span>QuickStack Docs</span>
-                  </DropdownMenuItem>
-                </Link>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
+                      <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-gray-100 text-sidebar-primary-foreground">
+                        <QuickStackLogo className="h-5 w-auto" />
+                      </div>
+                      <div className="my-4 grid flex-1 pl-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">QuickStack</span>
+                        <span className="truncate text-xs">Admin Panel</span>
+                      </div>
+                      <ChevronDown className="ml-auto" />
+                    </SidebarMenuButton>
+                  }
+                />
+                <DropdownMenuContent className="w-(--anchor-width)">
+                  <Link href="https://quickstack.dev" target="_blank">
+                    <DropdownMenuItem>
+                      <Info />
+                      <span>QuickStack Website</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="https://quickstack.dev/docs" target="_blank">
+                    <DropdownMenuItem>
+                      <BookOpen />
+                      <span>QuickStack Docs</span>
+                    </DropdownMenuItem>
+                  </Link>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{
-                  children: 'All Projects',
-                  hidden: open,
-                }} isActive={path === '/'} render={<Link href="/">
-                    <FolderClosed />
-                    <span>Projects</span>
-                  </Link>} />
-                {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
-                  <SidebarMenuAction>
-                    <Plus />
-                  </SidebarMenuAction>
-                </EditProjectDialog>}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Menu</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={{ children: 'All Projects', hidden: open }}
+                    isActive={path === '/'}
+                    render={
+                      <Link href="/">
+                        <FolderClosed />
+                        <span>Projects</span>
+                      </Link>
+                    }
+                  />
+                  {UserGroupUtils.isAdmin(session) && (
+                    <EditProjectDialog>
+                      <SidebarMenuAction>
+                        <Plus />
+                      </SidebarMenuAction>
+                    </EditProjectDialog>
+                  )}
+                  <SidebarMenu>
+                    {projects.map((item) => {
+                      const workloads = [
+                        ...(item.apps || []).map((app) => ({ ...app, kind: 'APP' as const })),
+                        ...(item.agents || []).map((agent) => ({ ...agent, kind: 'AGENT' as const }))
+                      ];
+
+                      return (
+                        <DropdownMenu key={item.id}>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton
+                              tooltip={{ children: `Project: ${item.name}`, hidden: open }}
+                              isActive={currentlySelectedProjectId === item.id}
+                              render={
+                                <Link href={`/project/${item.id}`}>
+                                  <Dot /> <span>{item.name}</span>
+                                </Link>
+                              }
+                            />
+                            {workloads.length ? (
+                              <>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <SidebarMenuAction className="">
+                                      <ChevronRight />
+                                      <span className="sr-only">Toggle</span>
+                                    </SidebarMenuAction>
+                                  }
+                                />
+
+                                <DropdownMenuContent side={isMobile ? 'bottom' : 'right'} align={isMobile ? 'end' : 'start'} className="min-w-56 rounded-lg">
+                                  {workloads.map((workload) => {
+                                    const isSelected =
+                                      workload.kind === 'AGENT' ? currentlySelectedAgentId === workload.id : currentlySelectedAppId === workload.id;
+                                    return (
+                                      <DropdownMenuItem
+                                        key={`${workload.kind}:${workload.id}`}
+                                        className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                                        render={
+                                          <a
+                                            href={
+                                              workload.kind === 'AGENT'
+                                                ? PathBuilderUtils.projectAgentDrawer(item.id, workload.id)
+                                                : PathBuilderUtils.projectAppDrawer(item.id, workload.id)
+                                            }
+                                          >
+                                            {workload.name}
+                                          </a>
+                                        }
+                                      />
+                                    );
+                                  })}
+                                </DropdownMenuContent>
+                              </>
+                            ) : null}
+                          </SidebarMenuItem>
+                        </DropdownMenu>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={{ children: 'Builds', hidden: open }}
+                    isActive={path.startsWith('/builds')}
+                    render={
+                      <Link href="/builds">
+                        <Hammer />
+                        <span>Builds</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={{ children: 'Monitoring', hidden: open }}
+                    isActive={path.startsWith('/monitoring')}
+                    render={
+                      <Link href="/monitoring">
+                        <ChartNoAxesCombined />
+                        <span>Monitoring</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {UserGroupUtils.sessionHasAccessToBackups(session) && (
+            <SidebarGroup>
+              <SidebarGroupContent>
                 <SidebarMenu>
-                  {projects.map((item) => {
-                    const workloads = [
-                      ...(item.apps || []).map(app => ({ ...app, kind: 'APP' as const })),
-                      ...(item.agents || []).map(agent => ({ ...agent, kind: 'AGENT' as const })),
-                    ];
-
-                    return (
-                      <DropdownMenu key={item.id}>
-                        <SidebarMenuItem>
-                          <SidebarMenuButton tooltip={{
-                            children: `Project: ${item.name}`,
-                            hidden: open,
-                          }} isActive={currentlySelectedProjectId === item.id} render={<Link href={`/project/${item.id}`}>
-                              <Dot />  <span>{item.name}</span>
-                            </Link>} />
-                          {workloads.length ? (<>
-                            <DropdownMenuTrigger render={<SidebarMenuAction className="">
-                                <ChevronRight />
-                                <span className="sr-only">Toggle</span>
-                              </SidebarMenuAction>} />
-
-                            <DropdownMenuContent
-                              side={isMobile ? "bottom" : "right"}
-                              align={isMobile ? "end" : "start"}
-                              className="min-w-56 rounded-lg"
-                            >
-                              {workloads.map((workload) => {
-                                const isSelected = workload.kind === 'AGENT'
-                                  ? currentlySelectedAgentId === workload.id
-                                  : currentlySelectedAppId === workload.id;
-                                return (
-                                  <DropdownMenuItem key={`${workload.kind}:${workload.id}`} className={isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''} render={<a href={workload.kind === 'AGENT' ? PathBuilderUtils.projectAgentDrawer(item.id, workload.id) : PathBuilderUtils.projectAppDrawer(item.id, workload.id)}>{workload.name}</a>} />
-                                );
-                              })}
-                            </DropdownMenuContent>
-                          </>) : null}
-                        </SidebarMenuItem>
-                      </DropdownMenu>
-                    )
-                  })}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      tooltip={{ children: 'Backups', hidden: open }}
+                      isActive={path.startsWith('/backups')}
+                      render={
+                        <Link href="/backups">
+                          <History />
+                          <span>Backups</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
                 </SidebarMenu>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{
-                  children: 'Builds',
-                  hidden: open,
-                }} isActive={path.startsWith('/builds')} render={<Link href="/builds">
-                    <Hammer />
-                    <span>Builds</span>
-                  </Link>} />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{
-                  children: 'Monitoring',
-                  hidden: open,
-                }} isActive={path.startsWith('/monitoring')} render={<Link href="/monitoring">
-                    <ChartNoAxesCombined />
-                    <span>Monitoring</span>
-                  </Link>} />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {UserGroupUtils.sessionHasAccessToBackups(session) && <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{
-                  children: 'Backups',
-                  hidden: open,
-                }} isActive={path.startsWith('/backups')} render={<Link href="/backups">
-                    <History />
-                    <span>Backups</span>
-                  </Link>} />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>}
-
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{
-                  children: 'Settings',
-                  hidden: open,
-                }} isActive={showSettingsNavigation} render={<Link href="/settings/account/profile">
-                    <Settings2 />
-                    <span>Settings</span>
-                    {newVersionInfo && <span className="ml-auto size-2 rounded-full bg-orange-500 animate-pulse" />}
-                  </Link>} />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuButton
-                  size="lg"
-                  className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">{session.email.substring(0, 1)?.toUpperCase() || 'Q'}</AvatarFallback>
-                  </Avatar>
-                  {session.email}
-                  <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>} />
-              <DropdownMenuContent
-                side="top"
-                className="w-(--anchor-width)"
-              >
-                <Link href="/settings/account/profile">
-                  <DropdownMenuItem>
-                    <User />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                </Link>
-                <SidebarLogoutButton />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
-    {showSettingsNavigation && <>
-      <div className="fixed top-18 left-7 md:hidden">
-        <Sheet open={settingsNavigationOpen} onOpenChange={setSettingsNavigationOpen}>
-          <SheetTrigger render={<Button variant="outline" className="bg-white z-10 shadow" size="icon-sm" aria-label="Open settings navigation" />}>
-            <Settings2 />
-            <span className="sr-only">Open settings navigation</span>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-3/4 max-w-sm bg-sidebar p-0 text-sidebar-foreground">
-            <SheetHeader className="border-b">
-              <SheetTitle>Settings</SheetTitle>
-            </SheetHeader>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={{ children: 'Settings', hidden: open }}
+                    isActive={showSettingsNavigation}
+                    render={
+                      <Link href="/settings/account/profile">
+                        <Settings2 />
+                        <span>Settings</span>
+                        {newVersionInfo && <span className="ml-auto size-2 animate-pulse rounded-full bg-orange-500" />}
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground">
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarFallback className="rounded-lg">{session.email.substring(0, 1)?.toUpperCase() || 'Q'}</AvatarFallback>
+                      </Avatar>
+                      {session.email}
+                      <ChevronUp className="ml-auto" />
+                    </SidebarMenuButton>
+                  }
+                />
+                <DropdownMenuContent side="top" className="w-(--anchor-width)">
+                  <Link href="/settings/account/profile">
+                    <DropdownMenuItem>
+                      <User />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <SidebarLogoutButton />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      {showSettingsNavigation && (
+        <>
+          <div className="fixed top-18 left-7 md:hidden">
+            <Sheet open={settingsNavigationOpen} onOpenChange={setSettingsNavigationOpen}>
+              <SheetTrigger render={<Button variant="outline" className="z-10 bg-white shadow" size="icon-sm" aria-label="Open settings navigation" />}>
+                <Settings2 />
+                <span className="sr-only">Open settings navigation</span>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-3/4 max-w-sm bg-sidebar p-0 text-sidebar-foreground">
+                <SheetHeader className="border-b">
+                  <SheetTitle>Settings</SheetTitle>
+                </SheetHeader>
+                <SettingsNavigationContent
+                  path={path}
+                  visibleSettingsGroups={visibleSettingsGroups}
+                  isAdmin={isAdmin}
+                  canaryEnabled={canaryEnabled}
+                  newVersionInfo={newVersionInfo}
+                  onNavigate={() => setSettingsNavigationOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
+          <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col self-start border-r bg-sidebar text-sidebar-foreground md:flex">
+            <div className="flex h-16 items-center gap-2 border-b px-4 text-sm font-semibold">
+              <Settings2 className="size-4" />
+              Settings
+            </div>
             <SettingsNavigationContent
               path={path}
               visibleSettingsGroups={visibleSettingsGroups}
               isAdmin={isAdmin}
               canaryEnabled={canaryEnabled}
               newVersionInfo={newVersionInfo}
-              onNavigate={() => setSettingsNavigationOpen(false)}
             />
-          </SheetContent>
-        </Sheet>
-      </div>
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 self-start flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-      <div className="flex h-16 items-center gap-2 border-b px-4 text-sm font-semibold">
-        <Settings2 className="size-4" />
-        Settings
-      </div>
-      <SettingsNavigationContent
-        path={path}
-        visibleSettingsGroups={visibleSettingsGroups}
-        isAdmin={isAdmin}
-        canaryEnabled={canaryEnabled}
-        newVersionInfo={newVersionInfo}
-      />
-    </aside>
-    </>}
+          </aside>
+        </>
+      )}
     </>
-  )
+  );
 }

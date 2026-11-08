@@ -1,56 +1,75 @@
-import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
+import { AppBuildMethod } from '@/shared/model/app-source-info.model';
+import { JsFramework, jsFrameworkPresets } from '@/shared/model/js-framework.model';
 import { SecretSummaryRow } from '@/app/project/workload-components/source-wizard/fields/secret-summary-row';
 import { SummaryRow } from '@/app/project/workload-components/source-wizard/fields/summary-row';
-import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels, SourceWizardInput } from "./types";
+import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels, SourceWizardInput } from './types';
 
-export function SourceSummaryStep({ formData, publicKey, showGitToken, setShowGitToken, showRegistryPassword, setShowRegistryPassword }: {
-    formData: SourceWizardInput;
-    publicKey?: string;
-    showGitToken: boolean;
-    setShowGitToken: (show: boolean) => void;
-    showRegistryPassword: boolean;
-    setShowRegistryPassword: (show: boolean) => void;
+export function SourceSummaryStep({
+  formData,
+  publicKey,
+  showGitToken,
+  setShowGitToken,
+  showRegistryPassword,
+  setShowRegistryPassword
+}: {
+  formData: SourceWizardInput;
+  publicKey?: string;
+  showGitToken: boolean;
+  setShowGitToken: (show: boolean) => void;
+  showRegistryPassword: boolean;
+  setShowRegistryPassword: (show: boolean) => void;
 }) {
-    const isGitSource = formData.sourceType === 'GIT' || formData.sourceType === 'GIT_SSH';
-    return (
-        <div className="max-h-[50vh] overflow-y-auto overscroll-contain rounded-2xl border">
-            <div className="space-y-4 p-4">
-                <SummaryRow label="Source Type" value={sourceTypeLabels[formData.sourceType as SourceType]} />
-                {isGitSource && (
-                    <>
-                        <SummaryRow label="Git URL" value={formData.gitUrl ?? ''} mono />
-                        <SummaryRow label="Git Branch" value={formData.gitBranch ?? ''} />
-                        <SummaryRow label="Build Method" value={buildMethodLabels[(formData.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK']} />
-                        {formData.buildMethod === 'DOCKERFILE' && <SummaryRow label="Dockerfile Path" value={formData.dockerfilePath ?? defaultDockerfilePath} mono />}
-                        {formData.buildMethod === 'FRAMEWORK' && (
-                            <>
-                                <SummaryRow label="Framework" value={formData.framework && jsFrameworkPresets[formData.framework as JsFramework] ? jsFrameworkPresets[formData.framework as JsFramework].label : 'Not selected'} />
-                                <SummaryRow label="Install Command" value={formData.installCommand || 'Auto-detected from lockfile'} mono />
-                                <SummaryRow label="Build Command" value={formData.buildCommand || 'Not configured'} mono />
-                                <SummaryRow label="Run Command" value={formData.runCommand || 'Static output'} mono />
-                                <SummaryRow label="Root Directory" value={formData.rootDirectory || './'} mono />
-                                <SummaryRow label="Output Directory" value={formData.outputDirectory || 'Not configured'} mono />
-                                <SummaryRow label="Node Version" value={formData.nodeVersion || 'Default (lts)'} mono />
-                            </>
-                        )}
-                    </>
-                )}
-                {formData.sourceType === 'GIT' && (
-                    <>
-                        <SummaryRow label="Git Username" value={formData.gitUsername || 'Not configured'} />
-                        <SecretSummaryRow label="Git Password or Token" value={formData.gitToken ?? ''} visible={showGitToken} onVisibleChange={setShowGitToken} />
-                    </>
-                )}
-                {formData.sourceType === 'GIT_SSH' && <SummaryRow label="Deploy Key" value={publicKey ? 'Deploy key generated' : 'Not generated'} />}
-                {formData.sourceType === 'CONTAINER' && (
-                    <>
-                        <SummaryRow label="Image Name" value={formData.containerImageSource ?? ''} mono />
-                        <SummaryRow label="Registry Username" value={formData.containerRegistryUsername || 'Not configured'} />
-                        <SecretSummaryRow label="Registry Password" value={formData.containerRegistryPassword ?? ''} visible={showRegistryPassword} onVisibleChange={setShowRegistryPassword} />
-                    </>
-                )}
-            </div>
-        </div>
-    );
+  const isGitSource = formData.sourceType === 'GIT' || formData.sourceType === 'GIT_SSH';
+  return (
+    <div className="max-h-[50vh] overflow-y-auto overscroll-contain rounded-2xl border">
+      <div className="space-y-4 p-4">
+        <SummaryRow label="Source Type" value={sourceTypeLabels[formData.sourceType as SourceType]} />
+        {isGitSource && (
+          <>
+            <SummaryRow label="Git URL" value={formData.gitUrl ?? ''} mono />
+            <SummaryRow label="Git Branch" value={formData.gitBranch ?? ''} />
+            <SummaryRow label="Build Method" value={buildMethodLabels[(formData.buildMethod as AppBuildMethod | undefined) ?? 'RAILPACK']} />
+            {formData.buildMethod === 'DOCKERFILE' && <SummaryRow label="Dockerfile Path" value={formData.dockerfilePath ?? defaultDockerfilePath} mono />}
+            {formData.buildMethod === 'FRAMEWORK' && (
+              <>
+                <SummaryRow
+                  label="Framework"
+                  value={
+                    formData.framework && jsFrameworkPresets[formData.framework as JsFramework]
+                      ? jsFrameworkPresets[formData.framework as JsFramework].label
+                      : 'Not selected'
+                  }
+                />
+                <SummaryRow label="Install Command" value={formData.installCommand || 'Auto-detected from lockfile'} mono />
+                <SummaryRow label="Build Command" value={formData.buildCommand || 'Not configured'} mono />
+                <SummaryRow label="Run Command" value={formData.runCommand || 'Static output'} mono />
+                <SummaryRow label="Root Directory" value={formData.rootDirectory || './'} mono />
+                <SummaryRow label="Output Directory" value={formData.outputDirectory || 'Not configured'} mono />
+                <SummaryRow label="Node Version" value={formData.nodeVersion || 'Default (lts)'} mono />
+              </>
+            )}
+          </>
+        )}
+        {formData.sourceType === 'GIT' && (
+          <>
+            <SummaryRow label="Git Username" value={formData.gitUsername || 'Not configured'} />
+            <SecretSummaryRow label="Git Password or Token" value={formData.gitToken ?? ''} visible={showGitToken} onVisibleChange={setShowGitToken} />
+          </>
+        )}
+        {formData.sourceType === 'GIT_SSH' && <SummaryRow label="Deploy Key" value={publicKey ? 'Deploy key generated' : 'Not generated'} />}
+        {formData.sourceType === 'CONTAINER' && (
+          <>
+            <SummaryRow label="Image Name" value={formData.containerImageSource ?? ''} mono />
+            <SummaryRow label="Registry Username" value={formData.containerRegistryUsername || 'Not configured'} />
+            <SecretSummaryRow
+              label="Registry Password"
+              value={formData.containerRegistryPassword ?? ''}
+              visible={showRegistryPassword}
+              onVisibleChange={setShowRegistryPassword}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
 }

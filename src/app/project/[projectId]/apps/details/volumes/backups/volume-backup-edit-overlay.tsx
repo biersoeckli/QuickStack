@@ -1,36 +1,28 @@
-'use client'
+'use client';
 
-import type { z } from "zod";
-import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import type { z } from 'zod';
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
-import { useActionState, useEffect } from "react";
-import { FormUtils } from "@/frontend/utils/form.utilts";
-import { SubmitButton } from "@/components/custom/submit-button";
-import { AppVolume, S3Target, VolumeBackup } from "@prisma/client"
-import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
-import { saveBackupVolume } from "../actions"
-import { toast } from "sonner"
-import { VolumeBackupEditModel, volumeBackupEditZodModel } from "@/shared/model/backup-volume-edit.model"
-import SelectFormField from "@/components/custom/select-form-field"
-import Link from "next/link"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
-import FormLabelWithQuestion from "@/components/custom/form-label-with-question"
-import { AppExtendedModel } from "@/shared/model/app-extended.model"
-import { useDialog } from "@/frontend/states/zustand.states";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useActionState, useEffect } from 'react';
+import { FormUtils } from '@/frontend/utils/form.utilts';
+import { SubmitButton } from '@/components/custom/submit-button';
+import { AppVolume, S3Target, VolumeBackup } from '@prisma/client';
+import { ServerActionResult } from '@/shared/model/server-action-error-return.model';
+import { saveBackupVolume } from '../actions';
+import { toast } from 'sonner';
+import { VolumeBackupEditModel, volumeBackupEditZodModel } from '@/shared/model/backup-volume-edit.model';
+import SelectFormField from '@/components/custom/select-form-field';
+import Link from 'next/link';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import FormLabelWithQuestion from '@/components/custom/form-label-with-question';
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import { useDialog } from '@/frontend/states/zustand.states';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function VolumeBackupEditDialog({
   volumeBackup,
@@ -43,7 +35,6 @@ export default function VolumeBackupEditDialog({
   volumes: AppVolume[];
   app: AppExtendedModel;
 }) {
-
   const { closeDialog } = useDialog();
 
   const isDatabaseApp = app.appType !== 'APP';
@@ -63,24 +54,21 @@ export default function VolumeBackupEditDialog({
       volumeId: volumeBackup?.volumeId || (volumes.length === 1 ? volumes[0].id : undefined),
       useDatabaseBackup: volumeBackup?.useDatabaseBackup ?? (isDatabaseApp && isDatabaseBackupSupported),
       backupBeforeDeployment: volumeBackup?.backupBeforeDeployment ?? false,
-      failSilently: volumeBackup?.failSilently ?? false,
+      failSilently: volumeBackup?.failSilently ?? false
     }
   });
 
   const backupBeforeDeployment = form.watch('backupBeforeDeployment');
 
-  const [state, formAction] = useActionState((state: ServerActionResult<any, any>,
-    payload: VolumeBackupEditModel) =>
-    saveBackupVolume(state, {
-      ...payload
-    }), FormUtils.getInitialFormState<typeof volumeBackupEditZodModel>());
+  const [state, formAction] = useActionState(
+    (state: ServerActionResult<any, any>, payload: VolumeBackupEditModel) => saveBackupVolume(state, { ...payload }),
+    FormUtils.getInitialFormState<typeof volumeBackupEditZodModel>()
+  );
 
   useEffect(() => {
     if (state.status === 'success') {
       form.reset();
-      toast.success('Volume Backup saved successfully', {
-        description: "From now on the volume will be backed up according to the new settings.",
-      });
+      toast.success('Volume Backup saved successfully', { description: 'From now on the volume will be backed up according to the new settings.' });
       closeDialog();
     }
     FormUtils.mapValidationErrorsToForm<typeof volumeBackupEditZodModel>(state, form);
@@ -92,139 +80,125 @@ export default function VolumeBackupEditDialog({
 
   return (
     <Form {...form}>
-      <form
-        className="flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden"
-        action={() => form.handleSubmit(
-          (data) => formAction(data),
-          console.error,
-        )()}
-      >
+      <form className="flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden" action={() => form.handleSubmit((data) => formAction(data), console.error)()}>
         <DialogHeader>
           <DialogTitle>Edit Backup Configuration</DialogTitle>
-          <DialogDescription>
-            Configure the backup settings for this volume.
-          </DialogDescription>
+          <DialogDescription>Configure the backup settings for this volume.</DialogDescription>
         </DialogHeader>
         <ScrollArea className="mt-4 min-h-0 flex-1">
           <div className="space-y-4 px-2">
-                <FormField
-                  control={form.control}
-                  name="cron"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cron expression</FormLabel>
-                      <FormControl>
-                        <Input placeholder="5 4 * * *" {...field} />
-                      </FormControl>
+            <FormField
+              control={form.control}
+              name="cron"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cron expression</FormLabel>
+                  <FormControl>
+                    <Input placeholder="5 4 * * *" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    To learn more about cron expressions, visit{' '}
+                    <a href="https://crontab.guru/" target="_blank" className="underline">
+                      crontab.guru
+                    </a>
+                    .
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="retention"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Retention</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="5" {...field} />
+                  </FormControl>
+                  <FormDescription>The number of backups to keep.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <SelectFormField
+              form={form}
+              name="volumeId"
+              label="Volume to backup"
+              values={volumes.map((volume) => [volume.id, `${volume.containerMountPath}`])}
+            />
+
+            <SelectFormField
+              form={form}
+              name="targetId"
+              label="Backup Location"
+              formDescription={
+                <>
+                  S3 Storage Locations can be configured{' '}
+                  <span className="underline">
+                    <Link href="/settings/integrations/s3-targets">here</Link>
+                  </span>
+                  .
+                </>
+              }
+              values={s3Targets.map((target) => [target.id, `${target.name}`])}
+            />
+
+            {isDatabaseApp && (
+              <FormField
+                control={form.control}
+                name="useDatabaseBackup"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={!isDatabaseBackupSupported} />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Use Database Backup</FormLabel>
                       <FormDescription>
-                        To learn more about cron expressions, visit <a href="https://crontab.guru/" target="_blank" className="underline">crontab.guru</a>.
+                        {isDatabaseBackupSupported
+                          ? `Use ${app.appType.toLocaleLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
+                          : `Database backup for ${app.appType.toLocaleLowerCase()} is not yet implemented. Volume backup will be used.`}
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="retention"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Retention</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="5" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The number of backups to keep.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <SelectFormField
-                  form={form}
-                  name="volumeId"
-                  label="Volume to backup"
-                  values={volumes.map((volume) =>
-                    [volume.id, `${volume.containerMountPath}`])}
-                />
-
-                <SelectFormField
-                  form={form}
-                  name="targetId"
-                  label="Backup Location"
-                  formDescription={<>
-                    S3 Storage Locations can be configured <span className="underline"><Link href="/settings/integrations/s3-targets">here</Link></span>.
-                  </>}
-                  values={s3Targets.map((target) =>
-                    [target.id, `${target.name}`])}
-                />
-
-                {isDatabaseApp && (
-                  <FormField
-                    control={form.control}
-                    name="useDatabaseBackup"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={!isDatabaseBackupSupported}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            Use Database Backup
-                          </FormLabel>
-                          <FormDescription>
-                            {isDatabaseBackupSupported
-                              ? `Use ${app.appType.toLocaleLowerCase()}-specific backup tool instead of copying the entire volume. Recommended for database apps.`
-                              : `Database backup for ${app.appType.toLocaleLowerCase()} is not yet implemented. Volume backup will be used.`}
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                    </div>
+                  </FormItem>
                 )}
+              />
+            )}
 
-                <FormField
-                  control={form.control}
-                  name="backupBeforeDeployment"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                      <FormLabelWithQuestion hint="Run this backup automatically before a deployment is applied. This also applies when an app connected through a network policy is deployed.">
-                        Backup before deployment
-                      </FormLabelWithQuestion>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+            <FormField
+              control={form.control}
+              name="backupBeforeDeployment"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <FormLabelWithQuestion hint="Run this backup automatically before a deployment is applied. This also applies when an app connected through a network policy is deployed.">
+                    Backup before deployment
+                  </FormLabelWithQuestion>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-                {backupBeforeDeployment && (
-                  <FormField
-                    control={form.control}
-                    name="failSilently"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                        <FormLabelWithQuestion hint="Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.">
-                          Fail silently on deployment
-                        </FormLabelWithQuestion>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+            {backupBeforeDeployment && (
+              <FormField
+                control={form.control}
+                name="failSilently"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <FormLabelWithQuestion hint="Continue with the deployment even if this backup fails. When disabled, a failed backup aborts the deployment.">
+                      Fail silently on deployment
+                    </FormLabelWithQuestion>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
                 )}
+              />
+            )}
 
             <p className="text-red-500">{state.message}</p>
           </div>
@@ -234,8 +208,5 @@ export default function VolumeBackupEditDialog({
         </DialogFooter>
       </form>
     </Form>
-  )
-
-
-
+  );
 }
