@@ -3,6 +3,7 @@
 import { Copy, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 import { EnvVarUtils } from '@/shared/utils/env-var.utils';
 import { toast } from 'sonner';
@@ -60,9 +61,30 @@ function VariableList({
                                         </span>
                                     </Button>
                                 </div>
-                                <code className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground">
-                                    {isVisible ? variable.value : '••••••••'}
-                                </code>
+                                <TooltipProvider  >
+                                    <Tooltip>
+                                        <TooltipTrigger
+                                            render={
+                                                <button
+                                                    type="button"
+                                                    className="min-w-0 flex-1 cursor-pointer truncate text-right text-xs text-muted-foreground"
+                                                    aria-label={`Copy value of ${variable.name}`}
+                                                    onClick={async () => {
+                                                        try {
+                                                            await navigator.clipboard.writeText(variable.value);
+                                                            toast.success('Variable value copied');
+                                                        } catch {
+                                                            toast.error('Failed to copy variable value');
+                                                        }
+                                                    }}
+                                                />
+                                            }
+                                        >
+                                            <code>{isVisible ? variable.value : '••••••••'}</code>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">Click to copy</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                                 <Button
                                     type="button"
                                     variant="ghost"
