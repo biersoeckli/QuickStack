@@ -21,15 +21,15 @@ import {
 } from "./actions";
 import { deployAgent } from "../agent-actions";
 import { PathBuilderUtils } from "@/shared/utils/path-builder.utils";
-import { ContainerImageStep } from "@/app/project/app/[appId]/general/app-source-wizard/container-image-step";
-import { DockerfilePathStep } from "@/app/project/app/[appId]/general/app-source-wizard/dockerfile-path-step";
-import { GitBranchStep } from "@/app/project/app/[appId]/general/app-source-wizard/git-branch-step";
-import { GitHttpsUrlStep } from "@/app/project/app/[appId]/general/app-source-wizard/git-https-url-step";
-import { GitSshUrlStep } from "@/app/project/app/[appId]/general/app-source-wizard/git-ssh-url-step";
-import { SourceSummaryStep } from "@/app/project/app/[appId]/general/app-source-wizard/source-summary-step";
-import { SourceTypeStep } from "@/app/project/app/[appId]/general/app-source-wizard/source-type-step";
-import { defaultDockerfilePath, SourceFormPatch, sourceTypeLabels, SourceType, StepId } from "@/app/project/app/[appId]/general/app-source-wizard/types";
-import { WizardProgress } from "@/app/project/app/[appId]/general/app-source-wizard/wizard-progress";
+import { ContainerImageStep } from "@/app/project/workload-components/source-wizard/container-image-step";
+import { DockerfilePathStep } from "@/app/project/workload-components/source-wizard/dockerfile-path-step";
+import { GitBranchStep } from "@/app/project/workload-components/source-wizard/git-branch-step";
+import { GitHttpsUrlStep } from "@/app/project/workload-components/source-wizard/git-https-url-step";
+import { GitSshUrlStep } from "@/app/project/workload-components/source-wizard/git-ssh-url-step";
+import { SourceSummaryStep } from "@/app/project/workload-components/source-wizard/source-summary-step";
+import { SourceTypeStep } from "@/app/project/workload-components/source-wizard/source-type-step";
+import { defaultDockerfilePath, SourceFormPatch, sourceTypeLabels, SourceType, StepId } from "@/app/project/workload-components/source-wizard/types";
+import { WizardProgress } from "@/app/project/workload-components/source-wizard/wizard-progress";
 
 export function AgentSourceWizardDialog({ agent, gitSshPublicKey }: {
     agent: AgentExtendedModel;

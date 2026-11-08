@@ -27,7 +27,7 @@ import { Item, ItemContent, ItemTitle } from '@/components/ui/item';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import ShortCommitHash from '@/components/custom/short-commit-hash';
 import BuildStatusBadge from '@/app/builds/build-status-badge';
-import { BuildLogsDialogContent } from '@/app/project/app/[appId]/overview/build-logs-overlay';
+import { BuildLogsDialogContent } from '@/app/project/workload-components/build-logs-overlay';
 import { useNestedDrawer } from '@/app/project/[projectId]/app-components/app-drawer-components/nested-drawer';
 import { deleteWorkloadBuildAction, getWorkloadBuildsAction } from '@/app/project/actions';
 import { usePolling } from '@/frontend/hooks/use-polling';

@@ -15,16 +15,16 @@ vi.mock('@/components/ui/drawer', () => ({
     DrawerTitle: ({ children }: React.PropsWithChildren) => children,
 }));
 vi.mock('@/components/ui/scroll-area', () => ({ ScrollArea: ({ children }: React.PropsWithChildren) => children }));
-vi.mock('@/app/project/app/[appId]/domains/node-ports', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Ports: ${app.appNodePorts.length}`) }));
-vi.mock('@/app/project/app/[appId]/advanced/basic-auth', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Credentials: ${app.appBasicAuths.length}`) }));
-vi.mock('@/app/project/app/[appId]/advanced/actions', () => ({ saveHealthCheck: vi.fn() }));
-vi.mock('@/app/project/app/[appId]/advanced/health-check-settings', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/advanced/network-policy', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/environment/env-edit', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/general/app-container-config', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/general/app-rate-limits', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/general/app-source', () => ({ default: () => null }));
-vi.mock('@/app/project/app/[appId]/volumes/storages', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/domains/node-ports', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Ports: ${app.appNodePorts.length}`) }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/advanced/basic-auth', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Credentials: ${app.appBasicAuths.length}`) }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/advanced/actions', () => ({ saveHealthCheck: vi.fn() }));
+vi.mock('@/app/project/workload-components/health-check-settings', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/advanced/network-policy', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/environment/env-edit', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/general/app-container-config', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/general/app-rate-limits', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/general/app-source', () => ({ default: () => null }));
+vi.mock('@/app/project/[projectId]/app-components/app-detail/volumes/storages', () => ({ default: () => null }));
 vi.mock('@/components/custom/domains-card', () => ({ default: () => null }));
 vi.mock('@/components/custom/file-mounts-card', () => ({ default: () => null }));
 vi.mock('./app-details-environment', () => ({ DrawerEnvironment: () => null }));

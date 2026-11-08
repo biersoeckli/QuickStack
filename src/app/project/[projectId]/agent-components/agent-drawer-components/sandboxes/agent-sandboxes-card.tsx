@@ -20,7 +20,7 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import DeploymentStatusBadge from "@/app/project/app/[appId]/overview/deployment-status-badge";
+import DeploymentStatusBadge from "@/app/project/workload-components/deployment-status-badge";
 import type { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";

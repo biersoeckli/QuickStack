@@ -48,19 +48,19 @@ import {
     EmptyTitle,
 } from '@/components/ui/empty';
 import PodStatusIndicator from '@/components/custom/pod-status-indicator';
-import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
+import { deploy, startApp, stopApp } from '@/app/project/[projectId]/app-components/app-detail/actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { cn } from '@/frontend/utils/utils';
 import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
-import Logs from '@/app/project/app/[appId]/overview/logs';
-import MonitoringTab from '@/app/project/app/[appId]/overview/monitoring-app';
+import Logs from '@/app/project/[projectId]/app-components/app-detail/overview/logs';
+import MonitoringTab from '@/app/project/[projectId]/app-components/app-detail/overview/monitoring-app';
 import { RolePermissionEnum } from '@/shared/model/role-extended.model';
-import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
-import DbCredentials from '@/app/project/app/[appId]/credentials/db-crendentials';
-import DbToolsCard from '@/app/project/app/[appId]/credentials/db-tools';
+import GeneralAppSource from '@/app/project/[projectId]/app-components/app-detail/general/app-source';
+import DbCredentials from '@/app/project/[projectId]/app-components/app-detail/credentials/db-crendentials';
+import DbToolsCard from '@/app/project/[projectId]/app-components/app-detail/credentials/db-tools';
 import { DrawerSettings } from './app-details-settings';
 import { NestedDrawerProvider } from './nested-drawer';
 import { AppDrawerAppContext } from './app-drawer-app-context';
@@ -425,7 +425,6 @@ export function AppDetailsDrawer({
                         ) : needsSourceConfiguration ? (
                             <DrawerTabScrollArea>
                                 <GeneralAppSource
-                                    hideCard
                                     app={app}
                                     readonly={role !== RolePermissionEnum.READWRITE}
                                 />
@@ -438,11 +437,11 @@ export function AppDetailsDrawer({
                                     </DrawerTabScrollArea>
                                 </TabsContent>
                                 <TabsContent value="logs" className="flex min-h-0 min-w-0 flex-1 flex-col px-6 pt-3 pb-4">
-                                    <Logs key={app.id} app={app} role={role} hideCard useFullHeight />
+                                    <Logs key={app.id} app={app} role={role} />
                                 </TabsContent>
                                 <TabsContent value="stats" className="flex min-h-0 min-w-0 flex-1 flex-col">
                                     <DrawerTabScrollArea>
-                                        <MonitoringTab hideCard key={app.id} app={app} />
+                                        <MonitoringTab key={app.id} app={app} />
                                     </DrawerTabScrollArea>
                                 </TabsContent>
                                 {hasVolumes && (

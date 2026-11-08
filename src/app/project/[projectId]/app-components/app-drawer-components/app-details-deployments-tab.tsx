@@ -2,10 +2,10 @@ import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { RolePermissionEnum } from "@/shared/model/role-extended.model";
 import { useNestedDrawer } from "./nested-drawer";
 import { DeploymentInfoModel } from "@/shared/model/deployment-info.model";
-import { BuildLogsDialogContent } from "@/app/project/app/[appId]/overview/build-logs-overlay";
-import BuildsTab from "@/app/project/app/[appId]/overview/deployments";
+import { BuildLogsDialogContent } from "@/app/project/workload-components/build-logs-overlay";
+import BuildsTab from "@/app/project/[projectId]/app-components/app-detail/overview/deployments";
 import { formatDateTime } from "@/frontend/utils/format.utils";
-import WebhookDeploymentInfo from "@/app/project/app/[appId]/overview/webhook-deployment";
+import WebhookDeploymentInfo from "@/app/project/[projectId]/app-components/app-detail/overview/webhook-deployment";
 import { Button } from "@/components/ui/button";
 import { Webhook } from "lucide-react";
 
@@ -51,6 +51,6 @@ export default function DrawerDeploymentsTab({
             <div className="font-semibold text-lg text-foreground/80">Latest Deployments</div>
             <Button onClick={showWebhookCard} variant="outline"><Webhook /> Configure Webhooks</Button>
         </div>
-        <BuildsTab app={app} role={role} view="grid" onShowLogs={showLogs} />
+        <BuildsTab app={app} role={role} onShowLogs={showLogs} />
     </div>;
 }

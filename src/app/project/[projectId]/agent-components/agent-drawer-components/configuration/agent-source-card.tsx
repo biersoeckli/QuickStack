@@ -5,9 +5,9 @@ import { DrawerCard, DrawerCardContent, DrawerCardDescription, DrawerCardHeader,
 import { useDialog } from "@/frontend/states/zustand.states";
 import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
 import { Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
-import { ReadonlyInfo } from "@/app/project/app/[appId]/general/app-source-wizard/readonly-info";
-import { defaultDockerfilePath, SourceType, sourceTypeLabels } from "@/app/project/app/[appId]/general/app-source-wizard/types";
-import { PublicDeployKeyDialog } from "@/app/project/app/[appId]/general/app-source-wizard/public-deploy-key-dialog";
+import { ReadonlyInfo } from "@/app/project/workload-components/source-wizard/readonly-info";
+import { defaultDockerfilePath, SourceType, sourceTypeLabels } from "@/app/project/workload-components/source-wizard/types";
+import { PublicDeployKeyDialog } from "@/app/project/workload-components/source-wizard/public-deploy-key-dialog";
 import { AgentSourceWizardDialog } from "./agent-source-wizard-dialog";
 
 export default function AgentSourceCard({ agent, readonly }: {

@@ -11,12 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { SplitButton } from '@/components/custom/split-button';
-import VolumeBackupList from '@/app/project/app/[appId]/volumes/volume-backup';
+import VolumeBackupList from '@/app/project/[projectId]/app-components/app-detail/volumes/volume-backup';
 import {
     downloadBackupForVolumeSchedule,
     getBackupsForVolumeSchedule,
     runBackupVolumeSchedule,
-} from '@/app/project/app/[appId]/volumes/actions';
+} from '@/app/project/[projectId]/app-components/app-detail/volumes/actions';
 import { formatDateTime } from '@/frontend/utils/format.utils';
 import { Actions } from '@/frontend/utils/nextjs-actions.utils';
 import { Toast } from '@/frontend/utils/toast.utils';
@@ -77,7 +77,6 @@ export function DrawerBackupsTab({ app, role, s3Targets, volumeBackups }: {
                 readonly={readonly}
                 s3Targets={s3Targets}
                 volumeBackups={volumeBackups}
-                hideCard
             />
         ),
     });

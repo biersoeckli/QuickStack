@@ -10,17 +10,16 @@ import {
 } from 'lucide-react';
 import { useCallback, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import BasicAuth from '@/app/project/app/[appId]/advanced/basic-auth';
-import { saveHealthCheck } from '@/app/project/app/[appId]/advanced/actions';
-import HealthCheckSettings from '@/app/project/app/[appId]/advanced/health-check-settings';
-import NetworkPolicy from '@/app/project/app/[appId]/advanced/network-policy';
-import NodePortsCard from '@/app/project/app/[appId]/domains/node-ports';
-import EnvEdit from '@/app/project/app/[appId]/environment/env-edit';
-import GeneralAppContainerConfig from '@/app/project/app/[appId]/general/app-container-config';
-import GeneralAppRateLimits from '@/app/project/app/[appId]/general/app-rate-limits';
-import GeneralAppSource from '@/app/project/app/[appId]/general/app-source';
-import StorageList from '@/app/project/app/[appId]/volumes/storages';
+import BasicAuth from '@/app/project/[projectId]/app-components/app-detail/advanced/basic-auth';
+import { saveHealthCheck } from '@/app/project/[projectId]/app-components/app-detail/advanced/actions';
+import HealthCheckSettings from '@/app/project/workload-components/health-check-settings';
+import NetworkPolicy from '@/app/project/[projectId]/app-components/app-detail/advanced/network-policy';
+import NodePortsCard from '@/app/project/[projectId]/app-components/app-detail/domains/node-ports';
+import EnvEdit from '@/app/project/[projectId]/app-components/app-detail/environment/env-edit';
+import GeneralAppContainerConfig from '@/app/project/[projectId]/app-components/app-detail/general/app-container-config';
+import GeneralAppRateLimits from '@/app/project/[projectId]/app-components/app-detail/general/app-rate-limits';
+import GeneralAppSource from '@/app/project/[projectId]/app-components/app-detail/general/app-source';
+import StorageList from '@/app/project/[projectId]/app-components/app-detail/volumes/storages';
 import DomainsCard from '@/components/custom/domains-card';
 import FileMountsCard from '@/components/custom/file-mounts-card';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
@@ -52,7 +51,7 @@ export function DrawerSettings({
         openNestedDrawer({
             title: 'Environment variables',
             description: <>Values are encrypted at rest and never shown. Names starting with <code className="rounded bg-muted px-1 text-xs">QS_</code> are reserved by QuickStack.</>,
-            content: <EnvEdit app={app} readonly={readonly} hideCard={true} />,
+            content: <EnvEdit app={app} readonly={readonly} />,
         });
     }, [app, openNestedDrawer, readonly]);
 
@@ -71,7 +70,6 @@ export function DrawerSettings({
                     icon={Boxes}
                 >
                     <GeneralAppSource
-                        hideCard
                         app={app}
                         readonly={readonly}
                         gitSshPublicKey={gitSshPublicKey}
@@ -82,7 +80,7 @@ export function DrawerSettings({
                     title="Deployment"
                     icon={SlidersHorizontal}
                 >
-                    <GeneralAppRateLimits app={app} readonly={readonly} hideCard />
+                    <GeneralAppRateLimits app={app} readonly={readonly} />
 
                     <DrawerCard>
                         <DrawerCardHeader>
@@ -130,7 +128,6 @@ export function DrawerSettings({
                         domains={app.appDomains}
                         workloadId={app.id}
                         workloadType="app"
-                        hideCard
                     />
                     <DrawerCard>
                         <DrawerCardHeader>
@@ -148,7 +145,6 @@ export function DrawerSettings({
                                             <NetworkPolicy
                                                 app={app}
                                                 readonly={readonly}
-                                                hideCard={false}
                                             />
                                         ),
                                     })
@@ -181,14 +177,12 @@ export function DrawerSettings({
                         app={app}
                         readonly={readonly}
                         storageClasses={storageClasses}
-                        hideCard
                     />
                     <FileMountsCard
                         readonly={readonly}
                         fileMounts={app.appFileMounts}
                         workloadId={app.id}
                         workloadType="app"
-                        hideCard
                     />
                 </SettingsSection>
                 <SettingsSection
@@ -196,14 +190,14 @@ export function DrawerSettings({
                     title="Advanced"
                     icon={Globe2}
                 >
-                    <div>
-                        <CardHeader>
-                            <CardTitle>Health Checks</CardTitle>
-                            <CardDescription>
+                    <DrawerCard>
+                        <DrawerCardHeader>
+                            <DrawerCardTitle>Health Checks</DrawerCardTitle>
+                            <DrawerCardDescription>
                                 Configure healthchecks so that k3s can automatically monitor when your application is fully started up and ready to receive traffic.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardFooter>
+                            </DrawerCardDescription>
+                        </DrawerCardHeader>
+                        <DrawerCardFooter>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -215,7 +209,6 @@ export function DrawerSettings({
                                                 readonly={readonly}
                                                 workload={app}
                                                 saveHealthCheck={saveHealthCheck}
-                                                hideCard={false}
                                             />
                                         ),
                                     })
@@ -223,8 +216,8 @@ export function DrawerSettings({
                             >
                                 Edit health checks
                             </Button>
-                        </CardFooter>
-                    </div>
+                        </DrawerCardFooter>
+                    </DrawerCard>
                 </SettingsSection>
             </div>
         </div>

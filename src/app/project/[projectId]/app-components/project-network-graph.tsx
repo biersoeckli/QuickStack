@@ -39,8 +39,8 @@ import { AppNetworkPolicyRuleEditModel, NetworkPolicySelectableTarget } from '@/
 import { NetworkPolicyRuleUtils } from '@/shared/utils/network-policy-rule.utils';
 import { AppNetworkPolicyDraft, AppNetworkPolicyDraftUtils } from '@/shared/utils/app-network-policy-draft.utils';
 import { InternalHostnameUtils } from '@/shared/utils/internal-hostname.utils';
-import AppNetworkPolicyRuleDialog from '@/app/project/app/[appId]/advanced/app-network-policy-rule-dialog';
-import { saveAppNetworkPolicyConfiguration } from '@/app/project/app/[appId]/advanced/actions';
+import AppNetworkPolicyRuleDialog from '@/app/project/[projectId]/app-components/app-detail/advanced/app-network-policy-rule-dialog';
+import { saveAppNetworkPolicyConfiguration } from '@/app/project/[projectId]/app-components/app-detail/advanced/actions';
 import { deleteApp } from '@/app/project/[projectId]/actions';
 import type { ProjectNetworkGraphPositions } from '@/shared/model/project-network-graph-layout.model';
 import type { S3Target } from '@prisma/client';

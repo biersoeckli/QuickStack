@@ -12,7 +12,7 @@ import {
     ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { deploy, startApp, stopApp } from '@/app/project/app/[appId]/actions';
+import { deploy, startApp, stopApp } from '@/app/project/[projectId]/app-components/app-detail/actions';
 import { usePodsStatus } from '@/frontend/states/zustand.states';
 import { AppLifecycleUtils } from '@/frontend/utils/app-lifecycle.utils';
 import { Toast } from '@/frontend/utils/toast.utils';

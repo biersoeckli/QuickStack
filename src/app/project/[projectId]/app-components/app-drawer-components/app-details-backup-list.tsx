@@ -16,7 +16,7 @@ import type { VolumeBackupExtendedModel } from '@/shared/model/volume-backup-ext
 import {
     downloadBackupForVolumeSchedule,
     getBackupsForVolumeSchedule,
-} from '@/app/project/app/[appId]/volumes/actions';
+} from '@/app/project/[projectId]/app-components/app-detail/volumes/actions';
 
 export function DrawerBackupList({
     volumeBackup,

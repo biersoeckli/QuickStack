@@ -18,7 +18,7 @@ import AgentRateLimitsCard from './configuration/agent-rate-limits-card';
 import AgentVolumesCard from './configuration/agent-volumes-card';
 import AgentNetworkPolicyCard from './configuration/agent-network-policy-card';
 import AgentEnvVarsCard from './configuration/agent-env-vars-card';
-import HealthCheckSettings from '@/app/project/app/[appId]/advanced/health-check-settings';
+import HealthCheckSettings from '@/app/project/workload-components/health-check-settings';
 import { saveAgentHealthCheck } from './configuration/actions';
 import DomainsCard from '@/components/custom/domains-card';
 import FileMountsCard from '@/components/custom/file-mounts-card';
@@ -93,7 +93,6 @@ export default function AgentSandboxDrawerSettings({
                                             readonly={readonly}
                                             workload={agent}
                                             saveHealthCheck={saveAgentHealthCheck}
-                                            hideCard={false}
                                         />
                                     ),
                                 })
@@ -121,7 +120,6 @@ export default function AgentSandboxDrawerSettings({
                     workloadId={agent.id}
                     workloadType="agent"
                     readonly={readonly}
-                    hideCard
                 />
             </SettingsSection>
 
@@ -131,7 +129,6 @@ export default function AgentSandboxDrawerSettings({
                     workloadId={agent.id}
                     workloadType="agent"
                     readonly={readonly}
-                    hideCard
                 />
                 <DrawerCard>
                     <DrawerCardHeader>
