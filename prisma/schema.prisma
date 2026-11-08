@@ -465,6 +465,7 @@ model App {
   appPorts           AppPort[]
   appNodePorts       AppNodePort[]
   appVolumes         AppVolume[]
+  monitoringSamples  AppMonitoringSample[]
   appFileMounts      AppFileMount[]
   appBasicAuths      AppBasicAuth[]
   appGitSshKey       AppGitSshKey?
@@ -570,6 +571,8 @@ model AppVolume {
   appId              String
   app                App            @relation(fields: [appId], references: [id], onDelete: Cascade)
   volumeBackups      VolumeBackup[]
+  monitoringSamples  AppVolumeMonitoringSample[]
+  monitoringMemberships AppVolumeMonitoringMembership[]
   sharedVolume       AppVolume?     @relation("SharedVolume", fields: [sharedVolumeId], references: [id], onDelete: Cascade)
   sharedVolumes      AppVolume[]    @relation("SharedVolume")
 
@@ -642,4 +645,44 @@ model AppBasicAuth {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// One row per known App and Volume at each collection time. Null values are gaps.
+model AppMonitoringSample {
+  id         String   @id @default(uuid())
+  sampledAt  DateTime
+  appId      String
+  app        App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  cpuCores   Float?
+  ramBytes   Float?
+  measuredAt DateTime?
+
+  @@index([appId, sampledAt])
+  @@index([sampledAt])
+}
+
+model AppVolumeMonitoringSample {
+  id             String    @id @default(uuid())
+  sampledAt      DateTime
+  volumeId       String
+  volume         AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
+  status         String
+  usedBytes      Float?
+  availableBytes Float?
+  capacityBytes  Float?
+  measuredAt     DateTime?
+  memberships    AppVolumeMonitoringMembership[]
+
+  @@index([volumeId, sampledAt])
+  @@index([sampledAt])
+}
+
+model AppVolumeMonitoringMembership {
+  sampleId String
+  sample   AppVolumeMonitoringSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  volumeId String
+  volume   AppVolume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
+
+  @@id([sampleId, volumeId])
+  @@index([volumeId])
 }

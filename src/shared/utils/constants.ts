@@ -1,4 +1,5 @@
 export class Constants {
+    static readonly APP_MONITORING_HISTORY_RETENTION_HOURS = 'APP_MONITORING_HISTORY_RETENTION_HOURS';
     static readonly TERMINAL_MAX_SESSIONS_PER_SOCKET = 4;
     static readonly TERMINAL_MAX_OPENS_PER_MINUTE = 20;
     static readonly TERMINAL_MAX_INPUT_BYTES = 16384;

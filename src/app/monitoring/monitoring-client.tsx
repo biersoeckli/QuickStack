@@ -10,6 +10,7 @@ import { NodeResourceModel } from '@/shared/model/node-resource.model';
 import { getMonitoringForAllApps, getNodeResourceUsage, getVolumeMonitoringUsage } from './actions';
 import AppRessourceMonitoring from './app-monitoring';
 import AppVolumeMonitoring from './app-volumes-monitoring';
+import AppMonitoringHistoryView from '@/components/custom/app-monitoring-history';
 import ResourcesNodes from './monitoring-nodes';
 
 const MONITORING_POLL_INTERVAL_MS = 10000;
@@ -54,6 +55,7 @@ export default function MonitoringClient({
     return (
         <div className="space-y-6">
             <ResourcesNodes resourcesNodes={updatedNodes} />
+            <AppMonitoringHistoryView />
             <AppRessourceMonitoring appsRessourceUsage={updatedApps} />
             <AppVolumeMonitoring volumesUsage={updatedVolumes} />
         </div>

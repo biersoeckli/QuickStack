@@ -1,5 +1,7 @@
 'use server'
 
+import appMonitoringHistoryQueryService from '@/server/services/app-monitoring-history-query.service';
+
 import { SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import appService from "@/server/services/app.service";
 import buildService from "@/server/services/build.service";
@@ -46,4 +48,11 @@ export const createNewWebhookUrl = async (appId: string) =>
     simpleAction(async () => {
         await isAuthorizedWriteForWorkload(appId);
        return  await appService.regenerateWebhookId(appId);
+    });
+
+
+export const getAppMonitoringHistory = async (appId: string) =>
+    simpleAction(async () => {
+        await isAuthorizedReadForApp(appId);
+        return appMonitoringHistoryQueryService.getHistory([appId]);
     });

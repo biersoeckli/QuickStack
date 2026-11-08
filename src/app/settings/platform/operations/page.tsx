@@ -1,3 +1,4 @@
+import MonitoringHistorySettings from "./monitoring-history-settings"
 import { Constants } from "@/shared/utils/constants"
 import podService from "@/server/services/pod.service"
 import QuickStackMaintenanceSettings from "./qs-maintenance-settings"
@@ -10,6 +11,7 @@ export default async function MaintenanceSettingsPage() {
   return <ServerSettingsPage title="Maintenance">
     <div className="grid gap-6">
       <QuickStackMaintenanceSettings qsPodName={pod?.podName} />
+      <MonitoringHistorySettings />
     </div>
   </ServerSettingsPage>
 }

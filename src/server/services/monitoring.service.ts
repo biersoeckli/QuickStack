@@ -5,10 +5,9 @@ import clusterService from "./cluster.service";
 import { PodsResourceInfoModel } from "@/shared/model/pods-resource-info.model";
 import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
 import { AppVolumeMonitoringUsageModel } from "@/shared/model/app-volume-monitoring-usage.model";
-import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
-import { supportsVolumeFilesystemMetrics } from "./volume-filesystem-drivers";
 import { VolumeFilesystemUsage } from "@/shared/model/app-volume-monitoring-usage.model";
 import dataAccess from "../adapter/db.client";
+import appVolumeFilesystemService from "./standalone-services/app-volume-filesystem.service";
 import pvcService from "./pvc.service";
 import { KubeObjectNameUtils } from "../utils/kube-object-name.utils";
 import projectService from "./project.service";
@@ -16,65 +15,14 @@ import { AppMonitoringUsageModel } from "@/shared/model/app-monitoring-usage.mod
 
 class MonitorService {
 
-    private async getVolumeFilesystemUsage(
-        volumes: { id: string; sharedVolumeId: string | null; projectId: string }[],
-    ): Promise<Map<string, VolumeFilesystemUsage>> {
-        const [pvcs, persistentVolumes, samples] = await Promise.all([
-            pvcService.getAllPvc().catch(() => []),
-            volumeSummaryAdapter.getPersistentVolumes().catch(() => []),
-            volumeSummaryAdapter.getSamples().catch(() => []),
-        ]);
-        const pvcByKey = new Map(pvcs.map(pvc => [`${pvc.metadata?.namespace}/${pvc.metadata?.name}`, pvc]));
-        const pvByName = new Map(persistentVolumes.map(pv => [pv.metadata?.name, pv]));
-        const result = new Map<string, VolumeFilesystemUsage>();
-        const now = Date.now();
-        for (const volume of volumes) {
-            const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
-            const key = `${volume.projectId}/${pvcName}`;
-            if (result.has(key)) continue;
-            const pvc = pvcByKey.get(key);
-            const pv = pvc?.spec?.volumeName ? pvByName.get(pvc.spec.volumeName) : undefined;
-            if (!pv) {
-                result.set(key, { pvcName, status: 'unavailable' });
-                continue;
-            }
-            if (!supportsVolumeFilesystemMetrics(pv)) {
-                result.set(key, { pvcName, status: 'unsupported' });
-                continue;
-            }
-            const candidates = samples
-                .filter(sample => sample.pvcRef?.namespace === volume.projectId && sample.pvcRef.name === pvcName)
-                .filter(sample => {
-                    const values = [sample.usedBytes, sample.availableBytes, sample.capacityBytes];
-                    return values.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)
-                        && !!sample.capacityBytes && Number.isFinite(Date.parse(sample.time ?? ''));
-                })
-                .sort((a, b) => Date.parse(b.time!) - Date.parse(a.time!));
-            const sample = candidates[0];
-            const age = sample ? now - Date.parse(sample.time!) : Infinity;
-            if (!sample || age > 5 * 60 * 1000 || age < -60 * 1000) {
-                result.set(key, { pvcName, status: sample ? 'stale' : 'unavailable' });
-                continue;
-            }
-            result.set(key, {
-                pvcName,
-                status: 'available',
-                usedBytes: sample.usedBytes,
-                availableBytes: sample.availableBytes,
-                capacityBytes: sample.capacityBytes,
-                measuredAt: sample.time,
-            });
-        }
-        return result;
-    }
-
     async getAllAppVolumesUsage(): Promise<AppVolumeMonitoringUsageModel[]> {
         const appVolumes = await dataAccess.client.appVolume.findMany({
             include: { app: { include: { project: true } } },
             orderBy: { appId: 'asc' },
         });
-        const usages = await this.getVolumeFilesystemUsage(
+        const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(
             appVolumes.map(volume => ({ ...volume, projectId: volume.app.projectId })),
+            () => pvcService.getAllPvc(),
         );
         return appVolumes.map(volume => {
             const pvcName = KubeObjectNameUtils.toPvcName(volume.sharedVolumeId || volume.id);
@@ -207,7 +155,7 @@ class MonitorService {
             where: { appId },
             select: { id: true, sharedVolumeId: true },
         });
-        const usages = await this.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })));
+        const usages = await appVolumeFilesystemService.getVolumeFilesystemUsage(volumes.map(volume => ({ ...volume, projectId })), () => pvcService.getAllPvc());
         return Array.from(usages.values());
     }
 }

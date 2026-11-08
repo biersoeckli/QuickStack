@@ -13,6 +13,10 @@ interface NodeSummary {
 }
 
 class VolumeSummaryAdapter {
+    async getPersistentVolumeClaims() {
+        return (await k3s.core.listPersistentVolumeClaimForAllNamespaces()).items;
+    }
+
     async getPersistentVolumes() {
         return (await k3s.core.listPersistentVolume()).items;
     }

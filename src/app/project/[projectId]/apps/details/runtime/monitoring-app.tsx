@@ -1,3 +1,4 @@
+import AppMonitoringHistoryView from "@/components/custom/app-monitoring-history";
 import { CardContent } from "@/components/ui/card";
 import { AppExtendedModel } from "@/shared/model/app-extended.model";
 import { useCallback, useState } from "react";
@@ -17,7 +18,7 @@ export default function MonitoringTab({
 }) {
 
     const [selectedPod, setSelectedPod] = useState<PodsResourceInfoModel | undefined>(undefined);
-    const [, setError] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | undefined>(undefined);
 
     const updateValues = useCallback(async () => {
         setError(undefined);
@@ -40,7 +41,8 @@ export default function MonitoringTab({
 
     return <>
             <CardContent className={cn('space-y-4', 'p-0')}>
-                {!selectedPod ? <FullLoadingSpinner /> :
+                {error && <p role="alert">Unable to load current App metrics: {error}</p>}
+                {!selectedPod && !error ? <FullLoadingSpinner /> : selectedPod ?
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -63,8 +65,9 @@ export default function MonitoringTab({
                                 <TableCell className="font-medium">{KubeSizeConverter.convertBytesToReadableSize(selectedPod?.ramAbsolutBytes)}</TableCell>
                             </TableRow>
                         </TableBody>
-                    </Table>
+                    </Table> : null
                 }
             </CardContent>
+            <AppMonitoringHistoryView appId={app.id} />
     </>;
 }

@@ -1,5 +1,7 @@
 'use server'
 
+import appHistoryAdapter from "@/server/adapter/app-history.adapter";
+import appMonitoringHistoryQueryService from "@/server/services/app-monitoring-history-query.service";
 import monitoringService from "@/server/services/monitoring.service";
 import clusterService from "@/server/services/cluster.service";
 import { getAuthUserSession, simpleAction } from "@/server/utils/action-wrapper.utils";
@@ -30,3 +32,10 @@ export const getMonitoringForAllApps = async () =>
         updatedNodeRessources = updatedNodeRessources?.filter((app) => UserGroupUtils.sessionHasReadAccessForApp(session, app.appId));
         return updatedNodeRessources;
     }) as Promise<ServerActionResult<unknown, AppMonitoringUsageModel[]>>;
+export const getAppMonitoringHistory = async () =>
+    simpleAction(async () => {
+        const session = await getAuthUserSession();
+        const { apps } = await appHistoryAdapter.getPopulation();
+        const appIds = apps.filter(app => UserGroupUtils.sessionHasReadAccessForApp(session, app.id)).map(app => app.id);
+        return appMonitoringHistoryQueryService.getHistory(appIds);
+    });
