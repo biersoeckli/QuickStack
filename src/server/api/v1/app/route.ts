@@ -168,13 +168,14 @@ Returns stdout, stderr and exitCode. The command is executed inside the live Pod
             'x-mcp-description': `Upsert one App.
 - Omit id to create: projectId is required. appDomains, appNodePorts, appFileMounts, appVolumes and appBasicAuths are required arrays (empty allowed), and appNetworkPolicy must be null or an object.
 - Send id to update: projectId must equal the existing app's projectId and cannot be changed. The request replaces the stored app, so omitted or empty sub-resource arrays delete the existing entries. Call getApp first, then send the full object back with the ids of sub-resources you want to keep.
+- When MCP secret redaction is enabled, getApp omits envVars, buildArgs, gitToken, containerRegistryPassword and appBasicAuths[].password. Obtain the existing values from a secure source and include them when updating; do not substitute empty strings, which can overwrite secrets. If the values are unavailable, do not update the app.
 - This only saves desired state. Call deployApp afterwards to roll it out. Saving revalidates server caches but does not change Kubernetes resources.
 
 Example create:
 {"name":"web","appType":"APP","projectId":"<projectId>","sourceType":"CONTAINER","buildMethod":"RAILPACK","containerImageSource":"nginx:1.27","dockerfilePath":"./Dockerfile","replicas":1,"envVars":"","buildArgs":"","useNetworkPolicy":true,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"appDomains":[{"hostname":"web.example.com","port":80,"useSsl":true,"redirectHttps":true}],"appNodePorts":[],"appFileMounts":[],"appVolumes":[],"appBasicAuths":[],"appNetworkPolicy":null}
 
 Example update (read getApp first and keep all sub-resource ids you do not want to delete):
-{"id":"<appId>","name":"web","appType":"APP","projectId":"<projectId>","sourceType":"CONTAINER","buildMethod":"DOCKERFILE","containerImageSource":"nginx:1.27","dockerfilePath":"./Dockerfile","replicas":2,"envVars":"","buildArgs":"","useNetworkPolicy":true,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"appDomains":[{"id":"<domainId>","hostname":"web.example.com","port":80,"useSsl":true,"redirectHttps":true}],"appNodePorts":[],"appFileMounts":[],"appVolumes":[],"appBasicAuths":[],"appNetworkPolicy":null}`,
+{"id":"<appId>","name":"web","appType":"APP","projectId":"<projectId>","sourceType":"CONTAINER","buildMethod":"DOCKERFILE","containerImageSource":"nginx:1.27","dockerfilePath":"./Dockerfile","replicas":2,"envVars":"<existing envVars>","buildArgs":"<existing buildArgs>","useNetworkPolicy":true,"healthCheckPeriodSeconds":15,"healthCheckTimeoutSeconds":5,"healthCheckFailureThreshold":3,"appDomains":[{"id":"<domainId>","hostname":"web.example.com","port":80,"useSsl":true,"redirectHttps":true}],"appNodePorts":[],"appFileMounts":[],"appVolumes":[],"appBasicAuths":[],"appNetworkPolicy":null}`,
             operationId: 'saveApp',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }]

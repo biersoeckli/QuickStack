@@ -105,6 +105,7 @@ export const agentRoutes = new Elysia()
             'x-mcp-description': `Upsert one agent template.
 - Omit id to create: projectId, llmGatewayId and modelAlias (non-empty array) are required. agentDomains, agentVolumes, agentFileMounts are required arrays, and agentNetworkPolicy must be null or an object.
 - Send id to update: projectId must equal the existing agent's projectId and cannot be changed. The request replaces the stored agent, so omitted or empty sub-resource arrays delete the existing entries. Call getAgent first, then send the full object back with the ids of sub-resources you want to keep.
+- When MCP secret redaction is enabled, getAgent omits gitToken and containerRegistryPassword. Obtain existing values from a secure source and include them when updating; do not substitute empty strings, which can overwrite secrets. If the values are unavailable, do not update the agent.
 - This only saves the template. Call deployAgent to apply it, then startAgentSandbox to run a sandbox. Saving revalidates caches but does not create Kubernetes resources.
 
 Example create:
