@@ -10,6 +10,7 @@
   "arrowParens": "always",
   "objectWrap": "collapse",
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "app/globals.css",
-  "tailwindFunctions": ["cn", "cva"]
+  "tailwindStylesheet": "src/app/globals.css",
+  "tailwindFunctions": ["cn", "cva"],
+  "bracketSpacing": true
 }

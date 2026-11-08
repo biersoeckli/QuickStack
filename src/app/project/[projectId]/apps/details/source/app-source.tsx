@@ -1,147 +1,145 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
-import { useDialog } from "@/frontend/states/zustand.states";
-import { AppExtendedModel } from "@/shared/model/app-extended.model";
-import { AppBuildMethod } from "@/shared/model/app-source-info.model";
-import { JsFramework, jsFrameworkPresets } from "@/shared/model/js-framework.model";
-import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from "lucide-react";
-import { AppSourceWizardDialog } from "./app-source-wizard/app-source-wizard-dialog";
-import { PublicDeployKeyDialog } from "../../../../workload-components/source-wizard/public-deploy-key-dialog";
-import { ReadonlyInfo } from "../../../../workload-components/source-wizard/readonly-info";
-import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from "../../../../workload-components/source-wizard/types";
-import { AppSourceUtils } from "@/frontend/utils/app-source.utils";
+import { Button } from '@/components/ui/button';
+import { useDialog } from '@/frontend/states/zustand.states';
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import { AppBuildMethod } from '@/shared/model/app-source-info.model';
+import { JsFramework, jsFrameworkPresets } from '@/shared/model/js-framework.model';
+import { Boxes, Container, FileCode2, GitBranch, KeyRound, Link as LinkIcon, LockKeyhole, Package, Server } from 'lucide-react';
+import { AppSourceWizardDialog } from './app-source-wizard/app-source-wizard-dialog';
+import { PublicDeployKeyDialog } from '../../../../workload-components/source-wizard/public-deploy-key-dialog';
+import { ReadonlyInfo } from '../../../../workload-components/source-wizard/readonly-info';
+import { buildMethodLabels, defaultDockerfilePath, SourceType, sourceTypeLabels } from '../../../../workload-components/source-wizard/types';
+import { AppSourceUtils } from '@/frontend/utils/app-source.utils';
 import FrameworkConfigurationCard from './framework-configuration-card';
 
-export default function GeneralAppSource({
-    app,
-    readonly,
-    gitSshPublicKey }: {
-    app: AppExtendedModel;
-    readonly: boolean;
-    gitSshPublicKey?: string;
-}) {
-    const { openDialog } = useDialog();
-    const configured = AppSourceUtils.isConfiguredSource(app);
+export default function GeneralAppSource({ app, readonly, gitSshPublicKey }: { app: AppExtendedModel; readonly: boolean; gitSshPublicKey?: string }) {
+  const { openDialog } = useDialog();
+  const configured = AppSourceUtils.isConfiguredSource(app);
 
-    const openSourceWizard = () => {
-        openDialog(
-            <AppSourceWizardDialog app={app} gitSshPublicKey={gitSshPublicKey} />,
-            {
-                width: 'calc(100vw - 2rem)',
-                maxWidth: '760px',
-                maxHeight: '90vh',
-            }
-        );
-    };
+  const openSourceWizard = () => {
+    openDialog(<AppSourceWizardDialog app={app} gitSshPublicKey={gitSshPublicKey} />, { width: 'calc(100vw - 2rem)', maxWidth: '760px', maxHeight: '90vh' });
+  };
 
-    const cardContent = (
-        !configured ? (
-            <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
-        ) : (
-            <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} readonly={readonly} onConnect={openSourceWizard} />
-        )
-    );
+  const cardContent = !configured ? (
+    <EmptySourceState readonly={readonly} onConnect={openSourceWizard} />
+  ) : (
+    <ConfiguredSourceSummary app={app} gitSshPublicKey={gitSshPublicKey} readonly={readonly} onConnect={openSourceWizard} />
+  );
 
-    return <div className="space-y-4">
-        {cardContent}
-        {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
-    </div>;
+  return (
+    <div className='space-y-4'>
+      {cardContent}
+      {configured && app.buildMethod === 'FRAMEWORK' && <FrameworkConfigurationCard app={app} readonly={readonly} />}
+    </div>
+  );
 }
 
 function EmptySourceState({ readonly, onConnect }: { readonly: boolean; onConnect: () => void }) {
-    return (
-        <div className="flex min-h-40 flex-col items-center justify-center gap-4 rounded-md border border-dashed p-6 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-muted">
-                <Server className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-                <p className="font-medium">No app source connected</p>
-                <p className="max-w-md text-sm text-muted-foreground">Connect a Git repository or container image before deploying this app.</p>
-            </div>
-            {!readonly && (
-                <Button type="button" onClick={onConnect}>
-                    <LinkIcon className="h-4 w-4" />
-                    Connect App Source
-                </Button>
-            )}
-        </div>
-    );
+  return (
+    <div className='flex min-h-40 flex-col items-center justify-center gap-4 rounded-md border border-dashed p-6 text-center'>
+      <div className='flex h-11 w-11 items-center justify-center rounded-md bg-muted'>
+        <Server className='h-5 w-5 text-muted-foreground' />
+      </div>
+      <div className='space-y-1'>
+        <p className='font-medium'>No app source connected</p>
+        <p className='max-w-md text-sm text-muted-foreground'>Connect a Git repository or container image before deploying this app.</p>
+      </div>
+      {!readonly && (
+        <Button type='button' onClick={onConnect}>
+          <LinkIcon className='h-4 w-4' />
+          Connect App Source
+        </Button>
+      )}
+    </div>
+  );
 }
 
-function ConfiguredSourceSummary({ app, gitSshPublicKey, readonly, onConnect }: { app: AppExtendedModel; gitSshPublicKey?: string; readonly: boolean; onConnect: () => void; }) {
-    const { openDialog } = useDialog();
-    const sourceType = app.sourceType as SourceType;
-    const isGitSource = sourceType === 'GIT' || sourceType === 'GIT_SSH';
-    const Icon = sourceType === 'CONTAINER' ? Container : sourceType === 'GIT_SSH' ? KeyRound : GitBranch;
+function ConfiguredSourceSummary({
+  app,
+  gitSshPublicKey,
+  readonly,
+  onConnect
+}: {
+  app: AppExtendedModel;
+  gitSshPublicKey?: string;
+  readonly: boolean;
+  onConnect: () => void;
+}) {
+  const { openDialog } = useDialog();
+  const sourceType = app.sourceType as SourceType;
+  const isGitSource = sourceType === 'GIT' || sourceType === 'GIT_SSH';
+  const Icon = sourceType === 'CONTAINER' ? Container : sourceType === 'GIT_SSH' ? KeyRound : GitBranch;
 
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex w-full items-center gap-3 justify-between">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="font-medium">{sourceTypeLabels[sourceType]}</p>
-                        <p className="truncate font-mono text-sm text-muted-foreground">
-                            {isGitSource ? app.gitUrl : app.containerImageSource}
-                        </p>
-                    </div>
-                    <div className="flex-1"></div>
-                    {!readonly &&
-                        <Button type="button" variant="secondary" onClick={onConnect} >
-                            Change source
-                        </Button>
-                    }
-                </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-                {isGitSource && (
-                    <>
-                        <ReadonlyInfo icon={GitBranch} label="Git Branch" value={app.gitBranch ?? 'Not configured'} />
-                        {sourceType === 'GIT' && (
-                            <ReadonlyInfo icon={LockKeyhole} label="Git Credentials" value={app.gitUsername || app.gitToken ? 'Credentials configured' : 'No credentials'} />
-                        )}
-                        {sourceType === 'GIT_SSH' && (
-                            <ReadonlyInfo
-                                icon={KeyRound}
-                                label="Deploy Key"
-                                value={gitSshPublicKey ? "Deploy key configured" : "No deploy key found"}
-                                action={gitSshPublicKey ? (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="secondary"
-                                        onClick={() => openDialog(<PublicDeployKeyDialog publicKey={gitSshPublicKey} />, '680px')}
-                                    >
-                                        Show key
-                                    </Button>
-                                ) : undefined}
-                            />
-                        )}
-                        <ReadonlyInfo label="Build Method" value={buildMethodLabels[(app.buildMethod as AppBuildMethod) ?? 'RAILPACK']} />
-                        {app.buildMethod === 'DOCKERFILE' && (
-                            <ReadonlyInfo icon={FileCode2} label="Dockerfile Path" value={app.dockerfilePath || defaultDockerfilePath} />
-                        )}
-                        {app.buildMethod === 'FRAMEWORK' && (
-                            <>
-                                <ReadonlyInfo
-                                    icon={Boxes}
-                                    label="Framework"
-                                    value={app.framework ? jsFrameworkPresets[app.framework as JsFramework]?.label ?? app.framework : 'Not configured'}
-                                />
-                            </>
-                        )}
-                    </>
-                )}
-                {sourceType === 'CONTAINER' && (
-                    <>
-                        <ReadonlyInfo icon={Package} label="Image Name" value={app.containerImageSource ?? 'Not configured'} />
-                        <ReadonlyInfo icon={LockKeyhole} label="Registry Credentials" value={app.containerRegistryUsername || app.containerRegistryPassword ? 'Credentials configured' : 'No credentials'} />
-                    </>
-                )}
-            </div>
+  return (
+    <div className='space-y-4'>
+      <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
+        <div className='flex w-full items-center justify-between gap-3'>
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted'>
+            <Icon className='h-5 w-5 text-muted-foreground' />
+          </div>
+          <div className='min-w-0'>
+            <p className='font-medium'>{sourceTypeLabels[sourceType]}</p>
+            <p className='truncate font-mono text-sm text-muted-foreground'>{isGitSource ? app.gitUrl : app.containerImageSource}</p>
+          </div>
+          <div className='flex-1'></div>
+          {!readonly && (
+            <Button type='button' variant='secondary' onClick={onConnect}>
+              Change source
+            </Button>
+          )}
         </div>
-    );
+      </div>
+      <div className='grid gap-3 md:grid-cols-2'>
+        {isGitSource && (
+          <>
+            <ReadonlyInfo icon={GitBranch} label='Git Branch' value={app.gitBranch ?? 'Not configured'} />
+            {sourceType === 'GIT' && (
+              <ReadonlyInfo icon={LockKeyhole} label='Git Credentials' value={app.gitUsername || app.gitToken ? 'Credentials configured' : 'No credentials'} />
+            )}
+            {sourceType === 'GIT_SSH' && (
+              <ReadonlyInfo
+                icon={KeyRound}
+                label='Deploy Key'
+                value={gitSshPublicKey ? 'Deploy key configured' : 'No deploy key found'}
+                action={
+                  gitSshPublicKey ? (
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant='secondary'
+                      onClick={() => openDialog(<PublicDeployKeyDialog publicKey={gitSshPublicKey} />, '680px')}
+                    >
+                      Show key
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
+            <ReadonlyInfo label='Build Method' value={buildMethodLabels[(app.buildMethod as AppBuildMethod) ?? 'RAILPACK']} />
+            {app.buildMethod === 'DOCKERFILE' && <ReadonlyInfo icon={FileCode2} label='Dockerfile Path' value={app.dockerfilePath || defaultDockerfilePath} />}
+            {app.buildMethod === 'FRAMEWORK' && (
+              <>
+                <ReadonlyInfo
+                  icon={Boxes}
+                  label='Framework'
+                  value={app.framework ? (jsFrameworkPresets[app.framework as JsFramework]?.label ?? app.framework) : 'Not configured'}
+                />
+              </>
+            )}
+          </>
+        )}
+        {sourceType === 'CONTAINER' && (
+          <>
+            <ReadonlyInfo icon={Package} label='Image Name' value={app.containerImageSource ?? 'Not configured'} />
+            <ReadonlyInfo
+              icon={LockKeyhole}
+              label='Registry Credentials'
+              value={app.containerRegistryUsername || app.containerRegistryPassword ? 'Credentials configured' : 'No credentials'}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
 }

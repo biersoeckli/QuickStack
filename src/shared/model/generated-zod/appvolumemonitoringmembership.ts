@@ -1,15 +1,12 @@
-import * as z from "zod"
+import * as z from 'zod';
 
-import { CompleteAppVolumeMonitoringSample, RelatedAppVolumeMonitoringSampleModel, CompleteAppVolume, RelatedAppVolumeModel } from "./index"
+import { CompleteAppVolumeMonitoringSample, RelatedAppVolumeMonitoringSampleModel, CompleteAppVolume, RelatedAppVolumeModel } from './index';
 
-export const AppVolumeMonitoringMembershipModel = z.object({
-  sampleId: z.string(),
-  volumeId: z.string(),
-})
+export const AppVolumeMonitoringMembershipModel = z.object({ sampleId: z.string(), volumeId: z.string() });
 
 export interface CompleteAppVolumeMonitoringMembership extends z.infer<typeof AppVolumeMonitoringMembershipModel> {
-  sample: CompleteAppVolumeMonitoringSample
-  volume: CompleteAppVolume
+  sample: CompleteAppVolumeMonitoringSample;
+  volume: CompleteAppVolume;
 }
 
 /**
@@ -17,7 +14,6 @@ export interface CompleteAppVolumeMonitoringMembership extends z.infer<typeof Ap
  *
  * NOTE: Lazy required in case of potential circular dependencies within schema
  */
-export const RelatedAppVolumeMonitoringMembershipModel: z.ZodSchema<CompleteAppVolumeMonitoringMembership> = z.lazy(() => AppVolumeMonitoringMembershipModel.extend({
-  sample: RelatedAppVolumeMonitoringSampleModel,
-  volume: RelatedAppVolumeModel,
-}))
+export const RelatedAppVolumeMonitoringMembershipModel: z.ZodSchema<CompleteAppVolumeMonitoringMembership> = z.lazy(() =>
+  AppVolumeMonitoringMembershipModel.extend({ sample: RelatedAppVolumeMonitoringSampleModel, volume: RelatedAppVolumeModel })
+);

@@ -20,47 +20,46 @@ const MONITORING_POLL_INTERVAL_MS = 10000;
  * so the page runs one pausable poller instead of three independent intervals.
  */
 export default function MonitoringClient({
-    resourcesNodes,
-    appsRessourceUsage,
-    volumesUsage,
-    reservedVolumeStorage,
+  resourcesNodes,
+  appsRessourceUsage,
+  volumesUsage,
+  reservedVolumeStorage
 }: {
-    resourcesNodes?: NodeResourceModel[];
-    appsRessourceUsage?: AppMonitoringUsageModel[];
-    volumesUsage?: AppVolumeMonitoringUsageModel[];
-    reservedVolumeStorage?: number;
+  resourcesNodes?: NodeResourceModel[];
+  appsRessourceUsage?: AppMonitoringUsageModel[];
+  volumesUsage?: AppVolumeMonitoringUsageModel[];
+  reservedVolumeStorage?: number;
 }) {
+  const [updatedReservedStorage, setUpdatedReservedStorage] = useState(reservedVolumeStorage);
+  const [updatedNodes, setUpdatedNodes] = useState(resourcesNodes);
+  const [updatedApps, setUpdatedApps] = useState(appsRessourceUsage);
+  const [updatedVolumes, setUpdatedVolumes] = useState(volumesUsage);
 
-    const [updatedReservedStorage, setUpdatedReservedStorage] = useState(reservedVolumeStorage);
-    const [updatedNodes, setUpdatedNodes] = useState(resourcesNodes);
-    const [updatedApps, setUpdatedApps] = useState(appsRessourceUsage);
-    const [updatedVolumes, setUpdatedVolumes] = useState(volumesUsage);
+  const refreshMonitoringData = useCallback(async () => {
+    try {
+      const [nodes, volumes, apps, reservedStorage] = await Promise.all([
+        Actions.run(() => getNodeResourceUsage()),
+        Actions.run(() => getVolumeMonitoringUsage()),
+        Actions.run(() => getMonitoringForAllApps()),
+        Actions.run(() => getReservedVolumeStorage()).catch(() => undefined)
+      ]);
+      setUpdatedNodes(nodes);
+      setUpdatedReservedStorage(reservedStorage);
+      setUpdatedVolumes(volumes?.filter((volume) => !!volume.isBaseVolume));
+      setUpdatedApps(apps);
+    } catch (ex) {
+      toast.error('An error occurred while fetching current resource usage');
+      console.error('An error occurred while fetching monitoring data', ex);
+    }
+  }, []);
 
-    const refreshMonitoringData = useCallback(async () => {
-        try {
-            const [nodes, volumes, apps, reservedStorage] = await Promise.all([
-                Actions.run(() => getNodeResourceUsage()),
-                Actions.run(() => getVolumeMonitoringUsage()),
-                Actions.run(() => getMonitoringForAllApps()),
-                Actions.run(() => getReservedVolumeStorage()).catch(() => undefined),
-            ]);
-            setUpdatedNodes(nodes);
-            setUpdatedReservedStorage(reservedStorage);
-            setUpdatedVolumes(volumes?.filter((volume) => !!volume.isBaseVolume));
-            setUpdatedApps(apps);
-        } catch (ex) {
-            toast.error('An error occurred while fetching current resource usage');
-            console.error('An error occurred while fetching monitoring data', ex);
-        }
-    }, []);
+  usePolling(refreshMonitoringData, { intervalMs: MONITORING_POLL_INTERVAL_MS });
 
-    usePolling(refreshMonitoringData, { intervalMs: MONITORING_POLL_INTERVAL_MS });
-
-    return (
-        <div className="space-y-6">
-            <ResourcesNodes resourcesNodes={updatedNodes} reservedVolumeStorage={updatedReservedStorage} />
-            <AppRessourceMonitoring appsRessourceUsage={updatedApps} />
-            <AppVolumeMonitoring volumesUsage={updatedVolumes} />
-        </div>
-    );
+  return (
+    <div className='space-y-6'>
+      <ResourcesNodes resourcesNodes={updatedNodes} reservedVolumeStorage={updatedReservedStorage} />
+      <AppRessourceMonitoring appsRessourceUsage={updatedApps} />
+      <AppVolumeMonitoring volumesUsage={updatedVolumes} />
+    </div>
+  );
 }

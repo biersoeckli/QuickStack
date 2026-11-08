@@ -1,6 +1,33 @@
-import * as z from "zod"
+import * as z from 'zod';
 
-import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppNodePort, RelatedAppNodePortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppMonitoringSample, RelatedAppMonitoringSampleModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteAgentNetworkPolicyRule, RelatedAgentNetworkPolicyRuleModel, CompleteAppNetworkPolicyRule, RelatedAppNetworkPolicyRuleModel } from "./index"
+import {
+  CompleteProject,
+  RelatedProjectModel,
+  CompleteAppDomain,
+  RelatedAppDomainModel,
+  CompleteAppPort,
+  RelatedAppPortModel,
+  CompleteAppNodePort,
+  RelatedAppNodePortModel,
+  CompleteAppVolume,
+  RelatedAppVolumeModel,
+  CompleteAppMonitoringSample,
+  RelatedAppMonitoringSampleModel,
+  CompleteAppFileMount,
+  RelatedAppFileMountModel,
+  CompleteAppBasicAuth,
+  RelatedAppBasicAuthModel,
+  CompleteAppGitSshKey,
+  RelatedAppGitSshKeyModel,
+  CompleteAppNetworkPolicy,
+  RelatedAppNetworkPolicyModel,
+  CompleteRoleAppPermission,
+  RelatedRoleAppPermissionModel,
+  CompleteAgentNetworkPolicyRule,
+  RelatedAgentNetworkPolicyRuleModel,
+  CompleteAppNetworkPolicyRule,
+  RelatedAppNetworkPolicyRuleModel
+} from './index';
 
 export const AppModel = z.object({
   id: z.string(),
@@ -51,23 +78,23 @@ export const AppModel = z.object({
   healthCheckFailureThreshold: z.number().int(),
   healthCheckTcpPort: z.number().int().nullish(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-})
+  updatedAt: z.date()
+});
 
 export interface CompleteApp extends z.infer<typeof AppModel> {
-  project: CompleteProject
-  appDomains: CompleteAppDomain[]
-  appPorts: CompleteAppPort[]
-  appNodePorts: CompleteAppNodePort[]
-  appVolumes: CompleteAppVolume[]
-  monitoringSamples: CompleteAppMonitoringSample[]
-  appFileMounts: CompleteAppFileMount[]
-  appBasicAuths: CompleteAppBasicAuth[]
-  appGitSshKey?: CompleteAppGitSshKey | null
-  appNetworkPolicy?: CompleteAppNetworkPolicy | null
-  roleAppPermissions: CompleteRoleAppPermission[]
-  agentNetworkPolicyRules: CompleteAgentNetworkPolicyRule[]
-  appNetworkPolicyRules: CompleteAppNetworkPolicyRule[]
+  project: CompleteProject;
+  appDomains: CompleteAppDomain[];
+  appPorts: CompleteAppPort[];
+  appNodePorts: CompleteAppNodePort[];
+  appVolumes: CompleteAppVolume[];
+  monitoringSamples: CompleteAppMonitoringSample[];
+  appFileMounts: CompleteAppFileMount[];
+  appBasicAuths: CompleteAppBasicAuth[];
+  appGitSshKey?: CompleteAppGitSshKey | null;
+  appNetworkPolicy?: CompleteAppNetworkPolicy | null;
+  roleAppPermissions: CompleteRoleAppPermission[];
+  agentNetworkPolicyRules: CompleteAgentNetworkPolicyRule[];
+  appNetworkPolicyRules: CompleteAppNetworkPolicyRule[];
 }
 
 /**
@@ -75,18 +102,20 @@ export interface CompleteApp extends z.infer<typeof AppModel> {
  *
  * NOTE: Lazy required in case of potential circular dependencies within schema
  */
-export const RelatedAppModel: z.ZodSchema<CompleteApp> = z.lazy(() => AppModel.extend({
-  project: RelatedProjectModel,
-  appDomains: RelatedAppDomainModel.array(),
-  appPorts: RelatedAppPortModel.array(),
-  appNodePorts: RelatedAppNodePortModel.array(),
-  appVolumes: RelatedAppVolumeModel.array(),
-  monitoringSamples: RelatedAppMonitoringSampleModel.array(),
-  appFileMounts: RelatedAppFileMountModel.array(),
-  appBasicAuths: RelatedAppBasicAuthModel.array(),
-  appGitSshKey: RelatedAppGitSshKeyModel.nullish(),
-  appNetworkPolicy: RelatedAppNetworkPolicyModel.nullish(),
-  roleAppPermissions: RelatedRoleAppPermissionModel.array(),
-  agentNetworkPolicyRules: RelatedAgentNetworkPolicyRuleModel.array(),
-  appNetworkPolicyRules: RelatedAppNetworkPolicyRuleModel.array(),
-}))
+export const RelatedAppModel: z.ZodSchema<CompleteApp> = z.lazy(() =>
+  AppModel.extend({
+    project: RelatedProjectModel,
+    appDomains: RelatedAppDomainModel.array(),
+    appPorts: RelatedAppPortModel.array(),
+    appNodePorts: RelatedAppNodePortModel.array(),
+    appVolumes: RelatedAppVolumeModel.array(),
+    monitoringSamples: RelatedAppMonitoringSampleModel.array(),
+    appFileMounts: RelatedAppFileMountModel.array(),
+    appBasicAuths: RelatedAppBasicAuthModel.array(),
+    appGitSshKey: RelatedAppGitSshKeyModel.nullish(),
+    appNetworkPolicy: RelatedAppNetworkPolicyModel.nullish(),
+    roleAppPermissions: RelatedRoleAppPermissionModel.array(),
+    agentNetworkPolicyRules: RelatedAgentNetworkPolicyRuleModel.array(),
+    appNetworkPolicyRules: RelatedAppNetworkPolicyRuleModel.array()
+  })
+);

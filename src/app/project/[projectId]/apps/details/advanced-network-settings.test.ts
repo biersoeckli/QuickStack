@@ -8,15 +8,19 @@ import { RolePermissionEnum } from '@/shared/model/role-extended.model';
 import type { AppExtendedModel } from '@/shared/model/app-extended.model';
 
 vi.mock('@/components/ui/drawer', () => ({
-    Drawer: ({ children }: React.PropsWithChildren) => children,
-    DrawerContent: ({ children }: React.PropsWithChildren) => children,
-    DrawerDescription: ({ children }: React.PropsWithChildren) => children,
-    DrawerHeader: ({ children }: React.PropsWithChildren) => children,
-    DrawerTitle: ({ children }: React.PropsWithChildren) => children,
+  Drawer: ({ children }: React.PropsWithChildren) => children,
+  DrawerContent: ({ children }: React.PropsWithChildren) => children,
+  DrawerDescription: ({ children }: React.PropsWithChildren) => children,
+  DrawerHeader: ({ children }: React.PropsWithChildren) => children,
+  DrawerTitle: ({ children }: React.PropsWithChildren) => children
 }));
 vi.mock('@/components/ui/scroll-area', () => ({ ScrollArea: ({ children }: React.PropsWithChildren) => children }));
-vi.mock('@/app/project/[projectId]/apps/details/network/ports/node-ports-card', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Ports: ${app.appNodePorts.length}`) }));
-vi.mock('@/app/project/[projectId]/apps/details/network/policy/basic-auth', () => ({ default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Credentials: ${app.appBasicAuths.length}`) }));
+vi.mock('@/app/project/[projectId]/apps/details/network/ports/node-ports-card', () => ({
+  default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Ports: ${app.appNodePorts.length}`)
+}));
+vi.mock('@/app/project/[projectId]/apps/details/network/policy/basic-auth', () => ({
+  default: ({ app }: { app: AppExtendedModel }) => React.createElement('div', null, `Credentials: ${app.appBasicAuths.length}`)
+}));
 vi.mock('@/app/project/[projectId]/apps/details/network/policy/actions', () => ({ saveHealthCheck: vi.fn() }));
 vi.mock('@/app/project/workload-components/health-check-settings', () => ({ default: () => null }));
 vi.mock('@/app/project/[projectId]/apps/details/network/policy/network-policy', () => ({ default: () => null }));
@@ -32,16 +36,21 @@ vi.mock('./environment/app-details-environment', () => ({ DrawerEnvironment: () 
 afterEach(cleanup);
 
 it('updates network settings in an open drawer when app data changes', () => {
-    const app = { id: 'app', appNodePorts: [], appBasicAuths: [], appDomains: [], appFileMounts: [] } as unknown as AppExtendedModel;
-    const view = (value: AppExtendedModel) => React.createElement(AppDrawerAppContext.Provider, { value },
-        React.createElement(NestedDrawerProvider, null,
-            React.createElement(DrawerSettings, { app: value, role: RolePermissionEnum.READWRITE, storageClasses: [] }),
-        ),
+  const app = { id: 'app', appNodePorts: [], appBasicAuths: [], appDomains: [], appFileMounts: [] } as unknown as AppExtendedModel;
+  const view = (value: AppExtendedModel) =>
+    React.createElement(
+      AppDrawerAppContext.Provider,
+      { value },
+      React.createElement(
+        NestedDrawerProvider,
+        null,
+        React.createElement(DrawerSettings, { app: value, role: RolePermissionEnum.READWRITE, storageClasses: [] })
+      )
     );
-    const { rerender } = render(view(app));
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced network settings' }));
-    expect(screen.getByText('Ports: 0')).toBeTruthy();
-    rerender(view({ ...app, appNodePorts: [{}], appBasicAuths: [{}] } as AppExtendedModel));
-    expect(screen.getByText('Ports: 1')).toBeTruthy();
-    expect(screen.getByText('Credentials: 1')).toBeTruthy();
+  const { rerender } = render(view(app));
+  fireEvent.click(screen.getByRole('button', { name: 'Advanced network settings' }));
+  expect(screen.getByText('Ports: 0')).toBeTruthy();
+  rerender(view({ ...app, appNodePorts: [{}], appBasicAuths: [{}] } as AppExtendedModel));
+  expect(screen.getByText('Ports: 1')).toBeTruthy();
+  expect(screen.getByText('Credentials: 1')).toBeTruthy();
 });

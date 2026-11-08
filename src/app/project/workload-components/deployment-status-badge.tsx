@@ -1,88 +1,82 @@
-'use client'
+'use client';
 
-import { DeploymentStatus } from "@/shared/model/deployment-info.model";
+import { DeploymentStatus } from '@/shared/model/deployment-info.model';
 
-
-export default function DeploymentStatusBadge(
-    {
-        children
-    }: {
-        children: DeploymentStatus
-    }
-) {
-
-    return (<>
-        <span className={'px-2 py-1 rounded-lg text-sm font-semibold ' + getBackgroundColorForStatus(children) + ' ' + getTextColorForStatus(children)}>{getTextForStatus(children)}</span>
-    </>)
+export default function DeploymentStatusBadge({ children }: { children: DeploymentStatus }) {
+  return (
+    <>
+      <span className={'rounded-lg px-2 py-1 text-sm font-semibold ' + getBackgroundColorForStatus(children) + ' ' + getTextColorForStatus(children)}>
+        {getTextForStatus(children)}
+      </span>
+    </>
+  );
 }
 
 function getTextForStatus(status: DeploymentStatus) {
-    switch (status) {
-        case 'SHUTDOWN':
-            return 'Shutdown';
-        case 'SHUTTING_DOWN':
-            return 'Stopping';
-        case 'BUILDING':
-            return 'Building';
-        case 'ERROR':
-            return 'Error';
-        case 'DEPLOYING':
-            return 'Deploying';
-        case 'DEPLOYED':
-            return 'Deployed';
-        case 'SUSPENDED':
-            return 'Suspended';
-        case 'PENDING':
-            return 'Pending';
-        default:
-            return 'Unknown';
-    }
+  switch (status) {
+    case 'SHUTDOWN':
+      return 'Shutdown';
+    case 'SHUTTING_DOWN':
+      return 'Stopping';
+    case 'BUILDING':
+      return 'Building';
+    case 'ERROR':
+      return 'Error';
+    case 'DEPLOYING':
+      return 'Deploying';
+    case 'DEPLOYED':
+      return 'Deployed';
+    case 'SUSPENDED':
+      return 'Suspended';
+    case 'PENDING':
+      return 'Pending';
+    default:
+      return 'Unknown';
+  }
 }
 
 function getBackgroundColorForStatus(status: DeploymentStatus) {
-    switch (status) {
-
-        case 'SHUTDOWN':
-            return 'bg-slate-100';
-        case 'SHUTTING_DOWN':
-            return 'bg-yellow-100';
-        case 'ERROR':
-            return 'bg-red-100';
-        case 'BUILDING':
-            return 'bg-blue-100';
-        case 'DEPLOYING':
-            return 'bg-blue-100';
-        case 'DEPLOYED':
-            return 'bg-green-100';
-        case 'SUSPENDED':
-            return 'bg-amber-100';
-        case 'PENDING':
-            return 'bg-yellow-100';
-        default:
-            return 'bg-slate-100';
-    }
+  switch (status) {
+    case 'SHUTDOWN':
+      return 'bg-slate-100';
+    case 'SHUTTING_DOWN':
+      return 'bg-yellow-100';
+    case 'ERROR':
+      return 'bg-red-100';
+    case 'BUILDING':
+      return 'bg-blue-100';
+    case 'DEPLOYING':
+      return 'bg-blue-100';
+    case 'DEPLOYED':
+      return 'bg-green-100';
+    case 'SUSPENDED':
+      return 'bg-amber-100';
+    case 'PENDING':
+      return 'bg-yellow-100';
+    default:
+      return 'bg-slate-100';
+  }
 }
 
 function getTextColorForStatus(status: DeploymentStatus) {
-    switch (status) {
-
-        case 'SHUTDOWN':
-            return 'text-slate-800';
-        case 'SHUTTING_DOWN':
-            return 'text-yellow-800';
-        case 'ERROR':
-            return 'text-red-800';
-        case 'BUILDING':
-            return 'text-blue-800';
-        case 'DEPLOYING':
-            return 'text-blue-800';
-        case 'DEPLOYED':
-            return 'text-green-800';
-        case 'SUSPENDED':
-            return 'text-amber-800';
-        case 'PENDING':
-            return 'text-yellow-800';
-        default:
-            return 'text-slate-800';
-    }
+  switch (status) {
+    case 'SHUTDOWN':
+      return 'text-slate-800';
+    case 'SHUTTING_DOWN':
+      return 'text-yellow-800';
+    case 'ERROR':
+      return 'text-red-800';
+    case 'BUILDING':
+      return 'text-blue-800';
+    case 'DEPLOYING':
+      return 'text-blue-800';
+    case 'DEPLOYED':
+      return 'text-green-800';
+    case 'SUSPENDED':
+      return 'text-amber-800';
+    case 'PENDING':
+      return 'text-yellow-800';
+    default:
+      return 'text-slate-800';
+  }
 }
