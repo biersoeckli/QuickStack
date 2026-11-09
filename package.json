@@ -19,7 +19,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "mcp:eval": "node scripts/mcp-eval.mjs",
-    "openapi-generate": "bash scripts/update-k8s-custom-crds.sh && bash scripts/update-openapi.sh"
+    "openapi-generate": "bash scripts/update-k8s-custom-crds.sh && bash scripts/update-openapi.sh",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1159.0",
@@ -100,6 +101,8 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "jsdom": "^29.0.2",
     "postcss": "^8.4.47",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4.3.3",
     "tsc-alias": "^1.8.16",

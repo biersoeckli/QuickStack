@@ -1,173 +1,183 @@
 import { getCachedNodeSummary } from './node-summary-cache.service';
-import volumeSummaryAdapter from "../adapter/volume-summary.adapter";
-import k3s, { kubernetesPatchOptions } from "../adapter/kubernetes-api.adapter";
+import volumeSummaryAdapter from '../adapter/volume-summary.adapter';
+import k3s, { kubernetesPatchOptions } from '../adapter/kubernetes-api.adapter';
 import * as k8s from '@kubernetes/client-node';
-import { NodeInfoModel } from "@/shared/model/node-info.model";
-import { NodeResourceModel } from "@/shared/model/node-resource.model";
-import { Tags } from "../utils/cache-tag-generator.utils";
-import { revalidateTag, unstable_cache } from "next/cache";
-import { KubeSizeConverter } from "../../shared/utils/kubernetes-size-converter.utils";
-import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
+import { NodeInfoModel } from '@/shared/model/node-info.model';
+import { NodeResourceModel } from '@/shared/model/node-resource.model';
+import { Tags } from '../utils/cache-tag-generator.utils';
+import { revalidateTag, unstable_cache } from 'next/cache';
+import { KubeSizeConverter } from '../../shared/utils/kubernetes-size-converter.utils';
+import { StorageClassUtils } from '@/shared/utils/storage-class.utils';
 
 class ClusterService {
+  async getNodeInfo(): Promise<NodeInfoModel[]> {
+    return await unstable_cache(
+      async () => {
+        const nodeReturnInfo = await k3s.core.listNode();
+        return nodeReturnInfo.items.map((node) => {
+          return {
+            name: node.metadata?.name!,
+            status: node.status?.conditions?.filter((condition) => condition.type === 'Ready')[0].status!,
+            os: node.status?.nodeInfo?.osImage!,
+            architecture: node.status?.nodeInfo?.architecture!,
+            cpuCapacity: node.status?.capacity?.cpu!,
+            ramCapacity: node.status?.capacity?.memory!,
+            ip: node.status?.addresses?.filter((address) => address.type === 'InternalIP')[0].address!,
+            kernelVersion: node.status?.nodeInfo?.kernelVersion!,
+            containerRuntimeVersion: node.status?.nodeInfo?.containerRuntimeVersion!,
+            kubeProxyVersion: node.status?.nodeInfo?.kubeProxyVersion!,
+            kubeletVersion: node.status?.nodeInfo?.kubeletVersion!,
+            isMasterNode: node.metadata?.labels?.['node-role.kubernetes.io/master'] === 'true',
 
-    async getNodeInfo(): Promise<NodeInfoModel[]> {
-        return await unstable_cache(async () => {
-            const nodeReturnInfo = await k3s.core.listNode();
-            return nodeReturnInfo.items.map((node) => {
-                return {
-                    name: node.metadata?.name!,
-                    status: node.status?.conditions?.filter((condition) => condition.type === 'Ready')[0].status!,
-                    os: node.status?.nodeInfo?.osImage!,
-                    architecture: node.status?.nodeInfo?.architecture!,
-                    cpuCapacity: node.status?.capacity?.cpu!,
-                    ramCapacity: node.status?.capacity?.memory!,
-                    ip: node.status?.addresses?.filter((address) => address.type === 'InternalIP')[0].address!,
-                    kernelVersion: node.status?.nodeInfo?.kernelVersion!,
-                    containerRuntimeVersion: node.status?.nodeInfo?.containerRuntimeVersion!,
-                    kubeProxyVersion: node.status?.nodeInfo?.kubeProxyVersion!,
-                    kubeletVersion: node.status?.nodeInfo?.kubeletVersion!,
-                    isMasterNode: node.metadata?.labels?.['node-role.kubernetes.io/master'] === 'true',
+            memoryOk: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].status === 'False',
+            memoryStatusText: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].message,
+            diskOk: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].status === 'False',
+            diskStatusText: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].message,
+            pidOk: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].status === 'False',
+            pidStatusText: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].message,
+            schedulable: !node.spec?.unschedulable
+          };
+        });
+      },
+      [Tags.nodeInfos()],
+      { revalidate: 10, tags: [Tags.nodeInfos()] }
+    )();
+  }
 
-                    memoryOk: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].status === 'False',
-                    memoryStatusText: node.status?.conditions?.filter((condition) => condition.type === 'MemoryPressure')[0].message,
-                    diskOk: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].status === 'False',
-                    diskStatusText: node.status?.conditions?.filter((condition) => condition.type === 'DiskPressure')[0].message,
-                    pidOk: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].status === 'False',
-                    pidStatusText: node.status?.conditions?.filter((condition) => condition.type === 'PIDPressure')[0].message,
-                    schedulable: !node.spec?.unschedulable
-                }
-            });
-        },
-            [Tags.nodeInfos()], {
-            revalidate: 10,
-            tags: [Tags.nodeInfos()]
-        })();
-    }
+  async getFirstMasterNode(): Promise<NodeInfoModel> {
+    const nodes = await this.getNodeInfo();
+    nodes.sort((a, b) => a.name.localeCompare(b.name));
+    return nodes.find((node) => node.isMasterNode)!; // even on HA Cluster, only one node is returned
+  }
 
-    async getFirstMasterNode(): Promise<NodeInfoModel> {
-        const nodes = await this.getNodeInfo();
-        nodes.sort((a, b) => a.name.localeCompare(b.name));
-        return nodes.find(node => node.isMasterNode)!; // even on HA Cluster, only one node is returned
-    }
+  async getStorageClasses(): Promise<string[]> {
+    return await unstable_cache(
+      async () => {
+        const storageClasses = await k3s.storage.listStorageClass();
+        return StorageClassUtils.sortStorageClasses(
+          storageClasses.items
+            .map((storageClass) => storageClass.metadata?.name)
+            .filter((name): name is string => !!name)
+            .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
+        );
+      },
+      [Tags.storageClasses()],
+      { revalidate: 60, tags: [Tags.storageClasses()] }
+    )();
+  }
 
-    async getStorageClasses(): Promise<string[]> {
-        return await unstable_cache(async () => {
-            const storageClasses = await k3s.storage.listStorageClass();
-            return StorageClassUtils.sortStorageClasses(
-                storageClasses.items
-                    .map((storageClass) => storageClass.metadata?.name)
-                    .filter((name): name is string => !!name)
-                    .filter((name) => name !== 'longhorn-static') // filter out longhorn-static, because in longhorn setup only local path or longhorn should be used
-            );
-        },
-            [Tags.storageClasses()], {
-            revalidate: 60,
-            tags: [Tags.storageClasses()]
-        })();
-    }
+  async getRuntimeClasses(): Promise<string[]> {
+    return await unstable_cache(
+      async () => {
+        const allowedRuntimes = ['gvisor', 'kata'];
 
-    async getRuntimeClasses(): Promise<string[]> {
-        return await unstable_cache(async () => {
-            const allowedRuntimes = ['gvisor', 'kata'];
+        const runtimeClasses = (await k3s.customObjects.listClusterCustomObject({ group: 'node.k8s.io', version: 'v1', plural: 'runtimeclasses' })) as {
+          items?: { metadata?: { name?: string } }[];
+        };
 
-            const runtimeClasses = await k3s.customObjects.listClusterCustomObject({
-                group: 'node.k8s.io',
-                version: 'v1',
-                plural: 'runtimeclasses',
-            }) as { items?: { metadata?: { name?: string } }[] };
+        const runtimeNames = (runtimeClasses.items ?? [])
+          .map((runtimeClass) => runtimeClass.metadata?.name)
+          .filter((name): name is string => !!name)
+          .sort((a, b) => a.localeCompare(b));
 
-            const runtimeNames = (runtimeClasses.items ?? [])
-                .map((runtimeClass) => runtimeClass.metadata?.name)
-                .filter((name): name is string => !!name)
-                .sort((a, b) => a.localeCompare(b));
+        return runtimeNames.filter((rn) => allowedRuntimes.includes(rn.toLocaleLowerCase()));
+      },
+      [Tags.runtimeClasses()],
+      { revalidate: 60, tags: [Tags.runtimeClasses()] }
+    )();
+  }
 
-            return runtimeNames.filter(rn => allowedRuntimes.includes(rn.toLocaleLowerCase()));
-        },
-            [Tags.runtimeClasses()], {
-            revalidate: 60,
-            tags: [Tags.runtimeClasses()]
-        })();
-    }
+  async setNodeStatus(nodeName: string, schedulable: boolean) {
+    try {
+      await k3s.core.patchNode(
+        { name: nodeName, body: { spec: { unschedulable: schedulable ? null : true } } },
+        kubernetesPatchOptions('application/strategic-merge-patch+json')
+      );
 
-    async setNodeStatus(nodeName: string, schedulable: boolean) {
-        try {
-            await k3s.core.patchNode(
-                { name: nodeName, body: { spec: { unschedulable: schedulable ? null : true } } },
-                kubernetesPatchOptions('application/strategic-merge-patch+json'),
-            );
-
-            if (!schedulable) {
-                // delete all pods on node
-                const pods = await k3s.core.listPodForAllNamespaces();
-                for (const pod of pods.items) {
-                    if (pod.spec?.nodeName === nodeName) {
-                        await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: pod.metadata?.namespace! });
-                    }
-                }
-            }
-        } finally {
-            revalidateTag(Tags.nodeInfos());
+      if (!schedulable) {
+        // delete all pods on node
+        const pods = await k3s.core.listPodForAllNamespaces();
+        for (const pod of pods.items) {
+          if (pod.spec?.nodeName === nodeName) {
+            await k3s.core.deleteNamespacedPod({ name: pod.metadata?.name!, namespace: pod.metadata?.namespace! });
+          }
         }
+      }
+    } finally {
+      revalidateTag(Tags.nodeInfos());
     }
+  }
 
-    async getReservedVolumeStorage(): Promise<number> {
-        const claims = await volumeSummaryAdapter.getPersistentVolumeClaims();
-        return claims.reduce((total, claim) => {
-            const size = claim.spec?.resources?.requests?.storage;
-            return total + (size ? KubeSizeConverter.fromKubeSizeToBytes(size) : 0);
-        }, 0);
-    }
+  async getReservedVolumeStorage(): Promise<number> {
+    const claims = await volumeSummaryAdapter.getPersistentVolumeClaims();
+    return claims.reduce((total, claim) => {
+      const size = claim.spec?.resources?.requests?.storage;
+      return total + (size ? KubeSizeConverter.fromKubeSizeToBytes(size) : 0);
+    }, 0);
+  }
 
-    async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
-        const topNodes = await k8s.topNodes(k3s.core);
+  async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
+    const topNodes = await k8s.topNodes(k3s.core);
 
-        const metricsData: k8s.NodeMetricsList = await k3s.metrics.getNodeMetrics();
+    const metricsData: k8s.NodeMetricsList = await k3s.metrics.getNodeMetrics();
 
-        return await Promise.all(topNodes.map(async (node) => {
-            const nodeMetrics = metricsData.items.filter((metric) => metric.metadata.name === node.Node.metadata?.name)
-                .map((metric) => {
-                    return {
-                        timestamp: new Date(metric.timestamp),
-                        cpuUsage: KubeSizeConverter.fromNanoToFullCpu(KubeSizeConverter.fromKubeSizeToNanoCpu(metric.usage.cpu)),
-                        ramUsage: KubeSizeConverter.fromKubeSizeToBytes(metric.usage.memory)
-                    }
-                });
-
-            // sorted by timestamp descending
-            nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-            const latestUsageItem = nodeMetrics[0];
-
-            let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
-            try {
-                const summary = await getCachedNodeSummary(node.Node.metadata?.name!) as {
-                    node?: { fs?: typeof filesystem };
-                };
-                const fs = summary.node?.fs;
-                const timestamp = Date.parse(fs?.time ?? '');
-                if (fs && Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 5 * 60_000 &&
-                    typeof fs.usedBytes === 'number' && Number.isFinite(fs.usedBytes) && fs.usedBytes >= 0 &&
-                    typeof fs.availableBytes === 'number' && Number.isFinite(fs.availableBytes) && fs.availableBytes >= 0 &&
-                    typeof fs.capacityBytes === 'number' && Number.isFinite(fs.capacityBytes) && fs.capacityBytes > 0 &&
-                    fs.usedBytes <= fs.capacityBytes && fs.availableBytes <= fs.capacityBytes) {
-                    filesystem = fs;
-                }
-            } catch {
-                // A node without a summary must not hide the other nodes' metrics.
-            }
-
+    return await Promise.all(
+      topNodes.map(async (node) => {
+        const nodeMetrics = metricsData.items
+          .filter((metric) => metric.metadata.name === node.Node.metadata?.name)
+          .map((metric) => {
             return {
-                name: node.Node.metadata?.name!,
-                cpuUsage: latestUsageItem.cpuUsage,
-                cpuCapacity: Number(node.CPU?.Capacity!),
-                ramUsage: latestUsageItem.ramUsage,
-                ramCapacity: Number(node.Memory?.Capacity!),
-                diskUsageAbsolut: filesystem?.usedBytes,
-                diskUsageAvailable: filesystem?.availableBytes,
-                diskUsageCapacity: filesystem?.capacityBytes
-            }
-        }));
-    }
+              timestamp: new Date(metric.timestamp),
+              cpuUsage: KubeSizeConverter.fromNanoToFullCpu(KubeSizeConverter.fromKubeSizeToNanoCpu(metric.usage.cpu)),
+              ramUsage: KubeSizeConverter.fromKubeSizeToBytes(metric.usage.memory)
+            };
+          });
+
+        // sorted by timestamp descending
+        nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        const latestUsageItem = nodeMetrics[0];
+
+        let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
+        try {
+          const summary = (await getCachedNodeSummary(node.Node.metadata?.name!)) as { node?: { fs?: typeof filesystem } };
+          const fs = summary.node?.fs;
+          const timestamp = Date.parse(fs?.time ?? '');
+          if (
+            fs &&
+            Number.isFinite(timestamp) &&
+            timestamp <= Date.now() &&
+            Date.now() - timestamp <= 5 * 60_000 &&
+            typeof fs.usedBytes === 'number' &&
+            Number.isFinite(fs.usedBytes) &&
+            fs.usedBytes >= 0 &&
+            typeof fs.availableBytes === 'number' &&
+            Number.isFinite(fs.availableBytes) &&
+            fs.availableBytes >= 0 &&
+            typeof fs.capacityBytes === 'number' &&
+            Number.isFinite(fs.capacityBytes) &&
+            fs.capacityBytes > 0 &&
+            fs.usedBytes <= fs.capacityBytes &&
+            fs.availableBytes <= fs.capacityBytes
+          ) {
+            filesystem = fs;
+          }
+        } catch {
+          // A node without a summary must not hide the other nodes' metrics.
+        }
+
+        return {
+          name: node.Node.metadata?.name!,
+          cpuUsage: latestUsageItem.cpuUsage,
+          cpuCapacity: Number(node.CPU?.Capacity!),
+          ramUsage: latestUsageItem.ramUsage,
+          ramCapacity: Number(node.Memory?.Capacity!),
+          diskUsageAbsolut: filesystem?.usedBytes,
+          diskUsageAvailable: filesystem?.availableBytes,
+          diskUsageCapacity: filesystem?.capacityBytes
+        };
+      })
+    );
+  }
 }
 
 const clusterService = new ClusterService();

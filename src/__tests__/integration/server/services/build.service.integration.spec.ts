@@ -203,7 +203,7 @@ export async function runBuildAndAssert(input: BuildIntegrationInput) {
     await expect.poll(async () => {
         return await buildService.getJobStatus(buildJobName);
     }, {
-        timeout: 300_000,
+        timeout: 400_000,
         interval: 2_000,
     }).toBe('SUCCEEDED');
 

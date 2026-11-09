@@ -1,60 +1,38 @@
-'use client'
+'use client';
 
-import type { z } from "zod";
-import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/frontend/utils/utils"
-import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown, CircleHelp } from "lucide-react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import type { z } from 'zod';
+import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/frontend/utils/utils';
+import { Button } from '@/components/ui/button';
+import { Check, ChevronsUpDown, CircleHelp } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
-import { useActionState, useEffect } from "react";
-import { FormUtils } from "@/frontend/utils/form.utilts";
-import { SubmitButton } from "@/components/custom/submit-button";
-import { AppVolume } from "@prisma/client"
-import { AppVolumeEditModel, appVolumeEditZodModel } from "@/shared/model/volume-edit.model"
-import { ServerActionResult } from "@/shared/model/server-action-error-return.model"
-import { saveVolume } from "./actions"
-import { toast } from "sonner"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AppExtendedModel } from "@/shared/model/app-extended.model"
-import CheckboxFormField from "@/components/custom/checkbox-form-field"
-import StorageClassCombobox from "@/components/custom/storage-class-combobox"
-import { useDialog } from "@/frontend/states/zustand.states";
-import { StorageClassUtils } from "@/shared/utils/storage-class.utils";
+import { useActionState, useEffect } from 'react';
+import { FormUtils } from '@/frontend/utils/form.utilts';
+import { SubmitButton } from '@/components/custom/submit-button';
+import { AppVolume } from '@prisma/client';
+import { AppVolumeEditModel, appVolumeEditZodModel } from '@/shared/model/volume-edit.model';
+import { ServerActionResult } from '@/shared/model/server-action-error-return.model';
+import { saveVolume } from './actions';
+import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AppExtendedModel } from '@/shared/model/app-extended.model';
+import CheckboxFormField from '@/components/custom/checkbox-form-field';
+import StorageClassCombobox from '@/components/custom/storage-class-combobox';
+import { useDialog } from '@/frontend/states/zustand.states';
+import { StorageClassUtils } from '@/shared/utils/storage-class.utils';
 
 const accessModes = [
-  { label: "ReadWriteOnce", value: "ReadWriteOnce" },
-  { label: "ReadWriteMany", value: "ReadWriteMany" },
-] as const
+  { label: 'ReadWriteOnce', value: 'ReadWriteOnce' },
+  { label: 'ReadWriteMany', value: 'ReadWriteMany' }
+] as const;
 
-export default function StorageEditDialog({ volume, app, storageClasses }: {
-  volume?: AppVolume;
-  app: AppExtendedModel;
-  storageClasses: string[];
-}) {
-
+export default function StorageEditDialog({ volume, app, storageClasses }: { volume?: AppVolume; app: AppExtendedModel; storageClasses: string[] }) {
   const { closeDialog } = useDialog();
   const defaultStorageClassName = volume?.storageClassName ?? StorageClassUtils.getDefaultStorageClass(storageClasses);
 
@@ -63,33 +41,28 @@ export default function StorageEditDialog({ volume, app, storageClasses }: {
     defaultValues: {
       containerMountPath: volume?.containerMountPath ?? '',
       size: volume?.size ?? 0,
-      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? 'ReadWriteMany' : 'ReadWriteOnce'),
       storageClassName: defaultStorageClassName,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
-      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined
     }
   });
 
   // Watch accessMode to conditionally show shareWithOtherApps checkbox
-  const watchedAccessMode = form.watch("accessMode");
-  const watchedStorageClassName = form.watch("storageClassName");
-  const canBeShared = (!!volume ? volume.accessMode : watchedAccessMode === "ReadWriteMany") &&
-    watchedStorageClassName !== "local-path" &&
-    !volume?.sharedVolumeId;
+  const watchedAccessMode = form.watch('accessMode');
+  const watchedStorageClassName = form.watch('storageClassName');
+  const canBeShared =
+    (!!volume ? volume.accessMode : watchedAccessMode === 'ReadWriteMany') && watchedStorageClassName !== 'local-path' && !volume?.sharedVolumeId;
 
-  const [state, formAction] = useActionState((state: ServerActionResult<any, any>, payload: AppVolumeEditModel) =>
-    saveVolume(state, {
-      ...payload,
-      appId: app.id,
-      id: volume?.id
-    }), FormUtils.getInitialFormState<typeof appVolumeEditZodModel>());
+  const [state, formAction] = useActionState(
+    (state: ServerActionResult<any, any>, payload: AppVolumeEditModel) => saveVolume(state, { ...payload, appId: app.id, id: volume?.id }),
+    FormUtils.getInitialFormState<typeof appVolumeEditZodModel>()
+  );
 
   useEffect(() => {
     if (state.status === 'success') {
       form.reset();
-      toast.success('Volume saved successfully', {
-        description: "Click \"deploy\" to apply the changes to your app.",
-      });
+      toast.success('Volume saved successfully', { description: 'Click "deploy" to apply the changes to your app.' });
       closeDialog();
     }
     FormUtils.mapValidationErrorsToForm<typeof appVolumeEditZodModel>(state, form);
@@ -98,10 +71,10 @@ export default function StorageEditDialog({ volume, app, storageClasses }: {
   useEffect(() => {
     form.reset({
       ...volume,
-      accessMode: volume?.accessMode ?? (app.replicas > 1 ? "ReadWriteMany" : "ReadWriteOnce"),
+      accessMode: volume?.accessMode ?? (app.replicas > 1 ? 'ReadWriteMany' : 'ReadWriteOnce'),
       storageClassName: defaultStorageClassName,
       shareWithOtherApps: volume?.shareWithOtherApps ?? false,
-      sharedVolumeId: volume?.sharedVolumeId ?? undefined,
+      sharedVolumeId: volume?.sharedVolumeId ?? undefined
     });
   }, [app.replicas, defaultStorageClassName, form, volume]);
 
@@ -110,179 +83,169 @@ export default function StorageEditDialog({ volume, app, storageClasses }: {
 
   return (
     <>
-          <DialogHeader>
-            <DialogTitle>Edit Volume</DialogTitle>
-            <DialogDescription>
-              Configure your custom volume for this container.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form action={() => form.handleSubmit((data) => {
+      <DialogHeader>
+        <DialogTitle>Edit Volume</DialogTitle>
+        <DialogDescription>Configure your custom volume for this container.</DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
+        <form
+          action={() =>
+            form.handleSubmit((data) => {
               return formAction(data);
-            })()}>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="containerMountPath"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mount Path Container</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ex. /data" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            })()
+          }
+        >
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="containerMountPath"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mount Path Container</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex. /data" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size in MiB</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="ex. 20" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <FormField
+              control={form.control}
+              name="size"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Size in MiB</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="ex. 20" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                {volume && volume.size !== values.size && volume.shareWithOtherApps && <>
-                  <p className="text-sm text-yellow-600">
-                    When changing the size of a shared volume, ensure that all apps using this volume are shut down before deploying the changes.
-                  </p>
-                </>}
+            {volume && volume.size !== values.size && volume.shareWithOtherApps && (
+              <>
+                <p className="text-sm text-yellow-600">
+                  When changing the size of a shared volume, ensure that all apps using this volume are shut down before deploying the changes.
+                </p>
+              </>
+            )}
 
-                <FormField
-                  control={form.control}
-                  name="accessMode"
-                  disabled={!!volume}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="flex gap-2">
-                        <div>Access Mode</div>
-                        <div className="self-center">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger render={<CircleHelp className="h-4 w-4" />} />
-                              <TooltipContent>
-                                <p className="max-w-[350px]">
-                                  In most cases you will want to use ReadWriteOnce.
-                                  This means that the volume can be mounted only by a single container instance.<br /><br />
-                                  If you want to run multiple instances/replicas of the same container, you will need to use ReadWriteMany.
-                                  This will allow multiple container instances to use the same storage on the same volume.<br /><br />
-                                  After creation the access mode cannot be changed.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </FormLabel>
-                      <Popover>
-                        <PopoverTrigger render={<FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              disabled={!!volume}
-                              className={cn(
-                                "w-[200px] justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value
-                                ? accessModes.find(
-                                  (accessMode) => accessMode.value === field.value
-                                )?.label
-                                : "Select accessMode"}
-                              <ChevronsUpDown className="opacity-50" />
-                            </Button>
-                          </FormControl>} />
-                        <PopoverContent className="w-[200px] p-0">
-                          <Command>
-                            <CommandList>
-                              <CommandGroup>
-                                {accessModes.map((accessMode) => (
-                                  <CommandItem
-                                    value={accessMode.label}
-                                    key={accessMode.value}
-                                    onSelect={() => {
-                                      form.setValue("accessMode", accessMode.value)
-                                    }}
-                                  >
-                                    {accessMode.label}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto",
-                                        accessMode.value === field.value
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormDescription>
-                        This cannot be changed after creation.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                    control={form.control}
-                    name="storageClassName"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="flex gap-2">
-                          <div>Storage Class</div>
-                          <div className="self-center">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger render={<CircleHelp  className="h-4 w-4"/>} />
-                                <TooltipContent>
-                                  <p className="max-w-[350px]">
-                                    Choose where the volume is provisioned.<br /><br />
-                                    <b>Longhorn</b> keeps data replicated across nodes.<br />
-                                    <b>Local Path</b> stores data on a the master node and works only in single-node clusters.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </FormLabel>
+            <FormField
+              control={form.control}
+              name="accessMode"
+              disabled={!!volume}
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="flex gap-2">
+                    <div>Access Mode</div>
+                    <div className="self-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger render={<CircleHelp className="h-4 w-4" />} />
+                          <TooltipContent>
+                            <p className="max-w-[350px]">
+                              In most cases you will want to use ReadWriteOnce. This means that the volume can be mounted only by a single container instance.
+                              <br />
+                              <br />
+                              If you want to run multiple instances/replicas of the same container, you will need to use ReadWriteMany. This will allow multiple
+                              container instances to use the same storage on the same volume.
+                              <br />
+                              <br />
+                              After creation the access mode cannot be changed.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </FormLabel>
+                  <Popover>
+                    <PopoverTrigger
+                      render={
                         <FormControl>
-                          <StorageClassCombobox
-                            value={field.value}
-                            storageClasses={storageClassOptions}
+                          <Button
+                            variant="outline"
+                            role="combobox"
                             disabled={!!volume}
-                            onChange={(value) => form.setValue("storageClassName", value)}
-                          />
+                            className={cn('w-[200px] justify-between', !field.value && 'text-muted-foreground')}
+                          >
+                            {field.value ? accessModes.find((accessMode) => accessMode.value === field.value)?.label : 'Select accessMode'}
+                            <ChevronsUpDown className="opacity-50" />
+                          </Button>
                         </FormControl>
-                        <FormDescription>
-                          This cannot be changed after creation.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                {canBeShared && (
-                  <CheckboxFormField
-                    form={form}
-                    name="shareWithOtherApps"
-                    label="Allow other apps to attach this volume"
-                  />
-                )}
-                <p className="text-red-500">{state.message}</p>
-                <SubmitButton>Save</SubmitButton>
-              </div>
-            </form>
-          </Form >
+                      }
+                    />
+                    <PopoverContent className="w-[200px] p-0">
+                      <Command>
+                        <CommandList>
+                          <CommandGroup>
+                            {accessModes.map((accessMode) => (
+                              <CommandItem
+                                value={accessMode.label}
+                                key={accessMode.value}
+                                onSelect={() => {
+                                  form.setValue('accessMode', accessMode.value);
+                                }}
+                              >
+                                {accessMode.label}
+                                <Check className={cn('ml-auto', accessMode.value === field.value ? 'opacity-100' : 'opacity-0')} />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription>This cannot be changed after creation.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="storageClassName"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="flex gap-2">
+                    <div>Storage Class</div>
+                    <div className="self-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger render={<CircleHelp className="h-4 w-4" />} />
+                          <TooltipContent>
+                            <p className="max-w-[350px]">
+                              Choose where the volume is provisioned.
+                              <br />
+                              <br />
+                              <b>Longhorn</b> keeps data replicated across nodes.
+                              <br />
+                              <b>Local Path</b> stores data on a the master node and works only in single-node clusters.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </FormLabel>
+                  <FormControl>
+                    <StorageClassCombobox
+                      value={field.value}
+                      storageClasses={storageClassOptions}
+                      disabled={!!volume}
+                      onChange={(value) => form.setValue('storageClassName', value)}
+                    />
+                  </FormControl>
+                  <FormDescription>This cannot be changed after creation.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {canBeShared && <CheckboxFormField form={form} name="shareWithOtherApps" label="Allow other apps to attach this volume" />}
+            <p className="text-red-500">{state.message}</p>
+            <SubmitButton>Save</SubmitButton>
+          </div>
+        </form>
+      </Form>
     </>
-  )
+  );
 }
