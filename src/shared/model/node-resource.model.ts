@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const nodeResourceZodModel = z.object({
   name: z.string(),
@@ -8,7 +8,7 @@ export const nodeResourceZodModel = z.object({
   ramCapacity: z.number(),
   diskUsageAbsolut: z.number().optional(),
   diskUsageCapacity: z.number().optional(),
-  diskUsageAvailable: z.number().optional(),
-})
+  diskUsageAvailable: z.number().optional()
+});
 
 export type NodeResourceModel = z.infer<typeof nodeResourceZodModel>;

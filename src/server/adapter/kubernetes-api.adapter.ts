@@ -5,180 +5,186 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 
 export function kubernetesPatchOptions(contentType: PatchStrategy): ConfigurationOptions {
-    return {
-        middleware: [{
-            pre: (context) => {
-                context.setHeaderParam('Content-Type', contentType);
-                return new k8s.Observable(Promise.resolve(context));
-            },
-            post: (context) => new k8s.Observable(Promise.resolve(context)),
-        }],
-
-    };
+  return {
+    middleware: [
+      {
+        pre: (context) => {
+          context.setHeaderParam('Content-Type', contentType);
+          return new k8s.Observable(Promise.resolve(context));
+        },
+        post: (context) => new k8s.Observable(Promise.resolve(context))
+      }
+    ]
+  };
 }
 
 export class K3sApiAdapter {
+  core: k8s.CoreV1Api;
+  apps: k8s.AppsV1Api;
+  batch: k8s.BatchV1Api;
+  log: k8s.Log;
+  network: k8s.NetworkingV1Api;
+  storage: k8s.StorageV1Api;
+  customObjects: k8s.CustomObjectsApi;
+  metrics: k8s.Metrics;
 
-    core: k8s.CoreV1Api;
-    apps: k8s.AppsV1Api;
-    batch: k8s.BatchV1Api;
-    log: k8s.Log;
-    network: k8s.NetworkingV1Api;
-    storage: k8s.StorageV1Api;
-    customObjects: k8s.CustomObjectsApi;
-    metrics: k8s.Metrics;
+  constructor() {
+    this.core = this.getK8sCoreApiClient();
+    this.apps = this.getK8sAppsApiClient();
+    this.batch = this.getK8sBatchApiClient();
+    this.log = this.getK8sLogApiClient();
+    this.network = this.getK8sNetworkApiClient();
+    this.storage = this.getK8sStorageApiClient();
+    this.customObjects = this.getK8sCustomObjectsApiClient();
+    this.metrics = this.getMetricsApiClient();
+  }
 
-    constructor() {
-        this.core = this.getK8sCoreApiClient();
-        this.apps = this.getK8sAppsApiClient();
-        this.batch = this.getK8sBatchApiClient();
-        this.log = this.getK8sLogApiClient();
-        this.network = this.getK8sNetworkApiClient();
-        this.storage = this.getK8sStorageApiClient();
-        this.customObjects = this.getK8sCustomObjectsApiClient();
-        this.metrics = this.getMetricsApiClient();
+  /**
+   * Checks if the provided error is a k8s "Not Found" error (HTTP 404).
+   */
+  static isNotFoundError(error: any): boolean {
+    return error?.code === 404;
+  }
+
+  getKubeConfig = () => {
+    const kc = new k8s.KubeConfig();
+    if (process.env.NODE_ENV === 'production') {
+      kc.loadFromCluster();
+    } else {
+      kc.loadFromFile('/workspace/kube-config.config');
     }
+    return kc;
+  };
 
-    /**
-     * Checks if the provided error is a k8s "Not Found" error (HTTP 404).
-     */
-    static isNotFoundError(error: any): boolean {
-        return error?.code === 404;
-    }
+  getK8sCoreApiClient = () => {
+    const kc = this.getKubeConfig();
+    const k8sCoreClient = kc.makeApiClient(k8s.CoreV1Api);
+    return k8sCoreClient;
+  };
 
-    getKubeConfig = () => {
-        const kc = new k8s.KubeConfig();
-        if (process.env.NODE_ENV === 'production') {
-            kc.loadFromCluster();
-        } else {
-            kc.loadFromFile('/workspace/kube-config.config');
+  getK8sAppsApiClient = () => {
+    const kc = this.getKubeConfig();
+    const k8sCoreClient = kc.makeApiClient(k8s.AppsV1Api);
+    return k8sCoreClient;
+  };
+
+  getK8sBatchApiClient = () => {
+    const kc = this.getKubeConfig();
+    const k8sJobClient = kc.makeApiClient(k8s.BatchV1Api);
+    return k8sJobClient;
+  };
+
+  getK8sLogApiClient = () => {
+    const kc = this.getKubeConfig();
+    const logClient = new k8s.Log(kc);
+    return logClient;
+  };
+
+  getK8sCustomObjectsApiClient = () => {
+    const kc = this.getKubeConfig();
+    const client = kc.makeApiClient(k8s.CustomObjectsApi);
+    return client;
+  };
+
+  getK8sNetworkApiClient = () => {
+    const kc = this.getKubeConfig();
+    const networkClient = kc.makeApiClient(k8s.NetworkingV1Api);
+    return networkClient;
+  };
+
+  getK8sStorageApiClient = () => {
+    const kc = this.getKubeConfig();
+    const storageClient = kc.makeApiClient(k8s.StorageV1Api);
+    return storageClient;
+  };
+
+  getMetricsApiClient = () => {
+    return new k8s.Metrics(this.getKubeConfig());
+  };
+
+  /** Read the fixed kubelet summary endpoint through the Kubernetes API server. */
+  async getNodeSummary(nodeName: string): Promise<unknown> {
+    const config = this.getKubeConfig();
+    const cluster = config.getCurrentCluster();
+    if (!cluster) throw new Error('No Kubernetes cluster configured');
+    const url = new URL(cluster.server);
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/api/v1/nodes/${encodeURIComponent(nodeName)}/proxy/stats/summary`;
+    const options: https.RequestOptions = { method: 'GET', headers: { Accept: 'application/json' } };
+    await config.applyToHTTPSOptions(options);
+    const transport = url.protocol === 'https:' ? https : http;
+    return new Promise((resolve, reject) => {
+      const request = transport.request(url, options, (response) => {
+        if (response.statusCode !== 200) {
+          response.resume();
+          reject(new Error(`Node summary returned HTTP ${response.statusCode}`));
+          return;
         }
-        return kc;
-    }
-
-    getK8sCoreApiClient = () => {
-        const kc = this.getKubeConfig()
-        const k8sCoreClient = kc.makeApiClient(k8s.CoreV1Api);
-        return k8sCoreClient;
-    }
-
-    getK8sAppsApiClient = () => {
-        const kc = this.getKubeConfig()
-        const k8sCoreClient = kc.makeApiClient(k8s.AppsV1Api);
-        return k8sCoreClient;
-    }
-
-    getK8sBatchApiClient = () => {
-        const kc = this.getKubeConfig()
-        const k8sJobClient = kc.makeApiClient(k8s.BatchV1Api);
-        return k8sJobClient;
-    }
-
-    getK8sLogApiClient = () => {
-        const kc = this.getKubeConfig()
-        const logClient = new k8s.Log(kc)
-        return logClient;
-    }
-
-    getK8sCustomObjectsApiClient = () => {
-        const kc = this.getKubeConfig()
-        const client = kc.makeApiClient(k8s.CustomObjectsApi);
-        return client;
-    }
-
-    getK8sNetworkApiClient = () => {
-        const kc = this.getKubeConfig()
-        const networkClient = kc.makeApiClient(k8s.NetworkingV1Api);
-        return networkClient;
-    }
-
-    getK8sStorageApiClient = () => {
-        const kc = this.getKubeConfig()
-        const storageClient = kc.makeApiClient(k8s.StorageV1Api);
-        return storageClient;
-    }
-
-    getMetricsApiClient = () => {
-        return new k8s.Metrics(this.getKubeConfig());
-    }
-
-    /** Read the fixed kubelet summary endpoint through the Kubernetes API server. */
-    async getNodeSummary(nodeName: string): Promise<unknown> {
-        const config = this.getKubeConfig();
-        const cluster = config.getCurrentCluster();
-        if (!cluster) throw new Error('No Kubernetes cluster configured');
-        const url = new URL(cluster.server);
-        url.pathname = `${url.pathname.replace(/\/$/, '')}/api/v1/nodes/${encodeURIComponent(nodeName)}/proxy/stats/summary`;
-        const options: https.RequestOptions = { method: 'GET', headers: { Accept: 'application/json' } };
-        await config.applyToHTTPSOptions(options);
-        const transport = url.protocol === 'https:' ? https : http;
-        return new Promise((resolve, reject) => {
-            const request = transport.request(url, options, response => {
-                if (response.statusCode !== 200) {
-                    response.resume();
-                    reject(new Error(`Node summary returned HTTP ${response.statusCode}`));
-                    return;
-                }
-                let body = '';
-                response.setEncoding('utf8');
-                response.on('data', chunk => { body += chunk; });
-                response.on('error', reject);
-                response.on('end', () => {
-                    try { resolve(JSON.parse(body)); } catch (error) { reject(error); }
-                });
-            });
-            request.setTimeout(10000, () => request.destroy(new Error('Node summary timed out')));
-            request.on('error', reject);
-            request.end();
+        let body = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => {
+          body += chunk;
         });
+        response.on('error', reject);
+        response.on('end', () => {
+          try {
+            resolve(JSON.parse(body));
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+      request.setTimeout(10000, () => request.destroy(new Error('Node summary timed out')));
+      request.on('error', reject);
+      request.end();
+    });
+  }
+
+  /**
+   * Applies a single Kubernetes resource to the cluster
+   * @param kc KubeConfig instance
+   * @param spec Resource specification
+   */
+  public async applyResource(spec: any, namespace?: string): Promise<void> {
+    if (!spec || !spec.kind) {
+      console.error('Invalid resource specification:', spec);
+      throw new Error('Invalid resource specification');
     }
 
-    /**
-    * Applies a single Kubernetes resource to the cluster
-    * @param kc KubeConfig instance
-    * @param spec Resource specification
-    */
-    public async applyResource(spec: any, namespace?: string): Promise<void> {
-        if (!spec || !spec.kind) {
-            console.error('Invalid resource specification:', spec);
-            throw new Error('Invalid resource specification');
-        }
+    namespace = spec.metadata?.namespace || namespace;
 
-        namespace = spec.metadata?.namespace || namespace;
+    const name = spec.metadata?.name;
 
-        const name = spec.metadata?.name;
+    console.log(`Applying ${spec.kind}/${name}${namespace ? ` to namespace ${namespace}` : ''}`);
 
-        console.log(`Applying ${spec.kind}/${name}${namespace ? ` to namespace ${namespace}` : ''}`);
+    try {
+      const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
 
-        try {
-            const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
+      try {
+        await client.read(spec);
+        // If it exists, patch it
+        await client.patch(spec);
+        console.log(`Updated ${spec.kind}/${name}`);
+      } catch {
+        await client.create(spec);
+        console.log(`Created ${spec.kind}/${name}`);
+      }
+    } catch (error) {
+      console.error(`Failed to apply ${spec.kind}/${name}:`, error);
+      throw error;
+    }
+  }
 
-            try {
-                await client.read(spec);
-                // If it exists, patch it
-                await client.patch(spec);
-                console.log(`Updated ${spec.kind}/${name}`);
-            } catch {
-                await client.create(spec);
-                console.log(`Created ${spec.kind}/${name}`);
-            }
-        } catch (error) {
-            console.error(`Failed to apply ${spec.kind}/${name}:`, error);
-            throw error;
-        }
+  /**
+   * Deletes a single Kubernetes resource. The resource may be namespaced or cluster-scoped.
+   */
+  public async deleteResource(spec: any): Promise<void> {
+    if (!spec?.kind || !spec?.metadata?.name) {
+      throw new ServiceException('Kind and metadata.name are required in method deleteResource');
     }
 
-    /**
-     * Deletes a single Kubernetes resource. The resource may be namespaced or cluster-scoped.
-     */
-    public async deleteResource(spec: any): Promise<void> {
-        if (!spec?.kind || !spec?.metadata?.name) {
-            throw new ServiceException('Kind and metadata.name are required in method deleteResource');
-        }
-
-        const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
-        await client.delete(spec);
-    }
+    const client = k8s.KubernetesObjectApi.makeApiClient(this.getKubeConfig());
+    await client.delete(spec);
+  }
 }
 
 const k3s = new K3sApiAdapter();
