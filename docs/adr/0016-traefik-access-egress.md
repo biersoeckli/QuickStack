@@ -1,0 +1,5 @@
+# Allow Traefik egress as a separate Network Policy flag
+
+Apps and Agents must be able to reach other workloads through their App and Agent Domains, but the Internet Access egress rule excludes the cluster's private CIDRs. Traffic that reaches a node's public ingress address is translated to a Traefik Pod inside a private CIDR and is therefore denied. We add an independent `allowTraefikAccess` flag to the App and Agent Network Policy Configurations that permits egress to the Traefik Pods in `kube-system`, independent of Internet access. It defaults to `false` to preserve existing isolation.
+
+The rule targets the Traefik Pods without port restrictions. Reusing Internet access would widen egress to every private cluster destination, while selecting the Traefik Service IP is not expressible as a Network Policy peer. Explicitly allowing ports `80`/`443` would also fail because the k3s Traefik Pods listen on `8000`/`8443`; Network Policy matches the translated Pod port. Restricting the destination to the Traefik Pods keeps the exception narrowly scoped while covering HTTP and HTTPS entrypoints, including custom ones.

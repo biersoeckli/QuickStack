@@ -71,7 +71,7 @@ describe('svc.service', () => {
     it('merges an App Node Port into an ingress rule for the same container port and protocol', async () => {
         const app = createApp({
             appNetworkPolicy: {
-                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true,
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true, allowTraefikAccess: false,
                 createdAt: new Date(), updatedAt: new Date(),
                 rules: [{
                     id: 'rule-1', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 300, protocol: 'UDP',
@@ -112,7 +112,7 @@ describe('svc.service', () => {
     it('uses a Kubernetes-safe lowercase name for an ingress service port', async () => {
         const app = createApp({
             appNetworkPolicy: {
-                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true,
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true, allowTraefikAccess: false,
                 createdAt: new Date(), updatedAt: new Date(),
                 rules: [{
                     id: 'rule-1', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 3306, protocol: 'TCP',
@@ -133,7 +133,7 @@ describe('svc.service', () => {
         const app = createApp({
             appDomains: [{ id: 'domain-1', appId: 'demo-app', hostname: 'demo.example.com', port: 443, useSsl: true, redirectHttps: true, createdAt: new Date(), updatedAt: new Date() }],
             appNetworkPolicy: {
-                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true, createdAt: new Date(), updatedAt: new Date(),
+                id: 'policy-1', appId: 'demo-app', allowInternetAccess: true, allowTraefikAccess: false, createdAt: new Date(), updatedAt: new Date(),
                 rules: [
                     { id: 'rule-tcp', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 443, protocol: 'TCP', targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null, createdAt: new Date(), updatedAt: new Date() },
                     { id: 'rule-udp', appNetworkPolicyId: 'policy-1', type: 'INGRESS', port: 443, protocol: 'UDP', targetAppId: null, targetAgentId: null, targetApp: null, targetAgent: null, createdAt: new Date(), updatedAt: new Date() },

@@ -124,6 +124,7 @@ describe('agent.service integration - saveAgentExtendedModel', () => {
             agentFileMounts: [{ containerMountPath: '/fresh.txt', content: 'fresh' } as any],
             agentNetworkPolicy: {
                 allowInternetAccess: false,
+                allowTraefikAccess: true,
                 rules: [{ targetAppId: targetAppIdB, port: 8443, protocol: 'TCP' }],
             } as any,
         });
@@ -153,5 +154,6 @@ describe('agent.service integration - saveAgentExtendedModel', () => {
         expect(rules[0].id).not.toBe(staleRule.id);
 
         expect(refreshedPolicy.allowInternetAccess).toBe(false);
+        expect(refreshedPolicy.allowTraefikAccess).toBe(true);
     });
 });

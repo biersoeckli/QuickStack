@@ -186,7 +186,7 @@ describe('agent-template.service', () => {
 
     await agentTemplateService.createAgentFromTemplate('project-1', template);
 
-    expect(dbAgentNetworkPolicyMocks.create).toHaveBeenCalledWith({ data: { agentId: 'agent-opencode', allowInternetAccess: true } });
+    expect(dbAgentNetworkPolicyMocks.create).toHaveBeenCalledWith({ data: { agentId: 'agent-opencode', allowInternetAccess: true, allowTraefikAccess: false } });
     expect(dbAgentNetworkPolicyRuleMocks.create).toHaveBeenCalledWith({
       data: { agentNetworkPolicyId: 'policy-1', type: 'EGRESS', targetAppId: 'litellm-app', port: 4000, protocol: 'TCP' }
     });

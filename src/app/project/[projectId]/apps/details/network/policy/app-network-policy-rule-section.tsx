@@ -37,6 +37,8 @@ type AppNetworkPolicyRuleSectionProps = {
     projects: NetworkPolicyTargetProject[];
     internetAccess?: boolean;
     onInternetAccessChange?: (checked: boolean) => void;
+    traefikAccess?: boolean;
+    onTraefikAccessChange?: (checked: boolean) => void;
 };
 
 export default function AppNetworkPolicyRuleSection({
@@ -49,6 +51,8 @@ export default function AppNetworkPolicyRuleSection({
     projects,
     internetAccess,
     onInternetAccessChange,
+    traefikAccess,
+    onTraefikAccessChange,
 }: AppNetworkPolicyRuleSectionProps) {
     const ingress = direction === 'INGRESS';
     const title = ingress ? 'Ingress rules' : 'Egress rules';
@@ -79,6 +83,22 @@ export default function AppNetworkPolicyRuleSection({
                                     checked={internetAccess}
                                     disabled={readonly}
                                     onCheckedChange={onInternetAccessChange}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {!ingress && traefikAccess !== undefined && onTraefikAccessChange && (
+                        <Card>
+                            <CardContent className="flex items-center justify-between gap-4 p-4">
+                                <div>
+                                    <Label>Traefik Access</Label>
+                                    <p className="text-sm text-muted-foreground">Allow outgoing connections to apps and agents exposed through this cluster&apos;s Traefik ingress.</p>
+                                </div>
+                                <Switch
+                                    checked={traefikAccess}
+                                    disabled={readonly}
+                                    onCheckedChange={onTraefikAccessChange}
                                 />
                             </CardContent>
                         </Card>

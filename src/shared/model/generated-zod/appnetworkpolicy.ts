@@ -6,6 +6,7 @@ export const AppNetworkPolicyModel = z.object({
   id: z.string(),
   appId: z.string(),
   allowInternetAccess: z.boolean(),
+  allowTraefikAccess: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

@@ -9,6 +9,7 @@ function app(): AppExtendedModel {
         appDomains: [],
         appNetworkPolicy: {
             allowInternetAccess: false,
+            allowTraefikAccess: false,
             rules: [{
                 id: 'rule-a',
                 type: 'EGRESS',
@@ -31,6 +32,7 @@ describe('AppNetworkPolicyDraftUtils', () => {
             appId: 'app-a',
             useNetworkPolicy: true,
             allowInternetAccess: false,
+            allowTraefikAccess: false,
             rules: [{
                 id: 'rule-a',
                 type: 'EGRESS',
