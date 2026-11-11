@@ -92,17 +92,50 @@ class SecretService {
     }
 
     async updateSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
-        console.log(`Updating secret ${secretName}...`);
-        await this.deleteSecretIfExists(namespace, secretName);
-        await this.createSecret(namespace, secretManifest);
+        await this.saveSecret(namespace, secretName, secretManifest);
     }
 
     async saveSecret(namespace: string, secretName: string, secretManifest: V1Secret) {
-        const existingSecret = await this.getExistingSecret(namespace, secretName);
-        if (existingSecret) {
-            await this.updateSecret(namespace, secretName, secretManifest);
-        } else {
-            await this.createSecret(namespace, secretManifest);
+        //Sometimes issues occured, when starting a agent sandbox beecause of race conditions. Yes its ugly, but for now it works. Investiage in future releases.
+        const maxAttempts = 5;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            let existingSecret: V1Secret;
+            try {
+                existingSecret = await k3s.core.readNamespacedSecret({ namespace, name: secretName });
+            } catch (err) {
+                if ((err as ApiException<unknown>).code !== 404) throw err;
+                try {
+                    await this.createSecret(namespace, secretManifest);
+                    return;
+                } catch (createError) {
+                    if ((createError as ApiException<unknown>).code !== 409 || attempt === maxAttempts - 1) {
+                        throw createError;
+                    }
+                    continue;
+                }
+            }
+
+            try {
+                console.log('replacing bitch')
+                await k3s.core.replaceNamespacedSecret({
+                    namespace,
+                    name: secretName,
+                    body: {
+                        ...secretManifest,
+                        metadata: {
+                            ...existingSecret.metadata,
+                            ...secretManifest.metadata,
+                            resourceVersion: existingSecret.metadata?.resourceVersion,
+                        },
+                    },
+                });
+                return;
+            } catch (err) {
+                const code = (err as ApiException<unknown>).code;
+                if ((code !== 409 && code !== 404) || attempt === maxAttempts - 1) {
+                    throw err;
+                }
+            }
         }
     }
 
