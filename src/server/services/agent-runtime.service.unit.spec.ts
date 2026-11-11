@@ -158,6 +158,24 @@ describe('agent-runtime.service', () => {
         vi.mocked(liteLlmApiAdapter.listVirtualKeysByUserId).mockResolvedValue([]);
     });
 
+    describe('refreshRuntimeSecret', () => {
+        it('refreshes the secret when the legacy key was already deleted in LiteLLM', async () => {
+            vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent() as any);
+            vi.mocked(secretService.getDecodedSecret).mockResolvedValue({ QS_VIRTUAL_KEY: 'old-key' });
+            vi.mocked(liteLlmApiAdapter.deleteVirtualKey).mockRejectedValue(new ServiceException('LiteLLM request failed with status 404: No keys found'));
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await agentRuntimeService.refreshRuntimeSecret(AGENT_ID);
+
+            expect(secretService.deleteSecretSafe).toHaveBeenCalledWith(KubeObjectNameUtils.toSecretId(AGENT_ID), PROJECT.id);
+            expect(secretService.createOrReplaceGenericSecret).toHaveBeenCalledWith(
+                KubeObjectNameUtils.toSecretId(AGENT_ID), PROJECT.id,
+                { QS_GATEWAY_URL: GATEWAY.baseUrl, MY_KEY: 'my-secret' },
+            );
+            warn.mockRestore();
+        });
+    });
+
     describe('startSandbox', () => {
         it('starts Git source agents after the sandbox template has been deployed', async () => {
             vi.mocked(dataAccess.client.agent.findUnique).mockResolvedValue(mockAgent({ sourceType: 'GIT' }) as any);

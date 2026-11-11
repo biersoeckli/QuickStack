@@ -254,12 +254,16 @@ class AgentRuntimeService {
         const existingSecret = await secretService.getDecodedSecret(secretName, namespace);
 
         if (existingSecret?.QS_VIRTUAL_KEY && agent.llmGateway?.encryptedAdminKey) {
-            const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
-            await liteLlmApiAdapter.deleteVirtualKey(
-                agent.llmGateway.baseUrl,
-                adminKey,
-                existingSecret.QS_VIRTUAL_KEY,
-            );
+            try {
+                const adminKey = CryptoUtils.decrypt(agent.llmGateway.encryptedAdminKey);
+                await liteLlmApiAdapter.deleteVirtualKey(
+                    agent.llmGateway.baseUrl,
+                    adminKey,
+                    existingSecret.QS_VIRTUAL_KEY,
+                );
+            } catch (error) {
+                console.warn(`Failed to delete legacy LiteLLM virtual key during Agent deploy (agentId=${agentId}):`, error);
+            }
         }
 
         await secretService.deleteSecretSafe(secretName, namespace);
