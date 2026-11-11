@@ -251,6 +251,12 @@ function ProjectNetworkGraphEditor({
             allowInternetAccess: !draft.allowInternetAccess,
         }));
     }, [updateDraft]);
+    const toggleTraefikAccess = useCallback((appId: string) => {
+        updateDraft(appId, draft => ({
+            ...draft,
+            allowTraefikAccess: !draft.allowTraefikAccess,
+        }));
+    }, [updateDraft]);
     const saveChanges = async () => {
         const changed = Object.values(drafts).filter(draft => !AppNetworkPolicyDraftUtils.equals(draft, baseline[draft.appId]));
         if (!changed.length) { return; }
@@ -310,6 +316,8 @@ function ProjectNetworkGraphEditor({
                     role: appRole,
                     allowInternetAccess: draft.allowInternetAccess,
                     onToggleInternetAccess: () => toggleInternetAccess(app.id),
+                    allowTraefikAccess: draft.allowTraefikAccess,
+                    onToggleTraefikAccess: () => toggleTraefikAccess(app.id),
                     onOpenDrawerTab: (tab: DrawerTab) => {
                         drawerSession.openAppTab(app.id, tab);
                     },
@@ -330,7 +338,7 @@ function ProjectNetworkGraphEditor({
                 ),
             },
         };
-    }), [agents, apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalAgent, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess]);
+    }), [agents, apps, connectionSourceNodeId, connectionTargetNodeId, deleteLocalAgent, deleteLocalApp, drafts, drawerSession, layout?.edges, layout?.nodes, selectedNodeId, session, toggleInternetAccess, toggleTraefikAccess]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(projectedNodes);
     useEffect(() => setNodes(projectedNodes), [projectedNodes, setNodes]);

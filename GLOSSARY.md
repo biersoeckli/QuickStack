@@ -77,7 +77,7 @@ _Avoid_: advanced configuration, app firewall mode
 In an App Extended **Full Schema Write**, the App Network Policy Configuration is provided explicitly as either its complete value or `null`; omitting it is invalid.
 
 **Agent Network Policy Configuration**:
-The active egress network-policy configuration for an **Agent**, consisting of optional Internet access and detailed target-App rules.
+The active egress network-policy configuration for an **Agent**, consisting of optional Internet access, optional **Traefik Access**, and detailed target-App rules.
 _Avoid_: agent firewall, app network-policy configuration
 
 In an Agent Extended **Full Schema Write**, the Agent Network Policy Configuration is provided explicitly as either its complete value or `null`; omitting it is invalid.
@@ -113,6 +113,10 @@ _Avoid_: policy migration, extended upgrade
 **App Domain**:
 A configured domain that exposes an **App** through Traefik.
 _Avoid_: public app address, ingress rule
+
+**Traefik Access**:
+The network-policy permission that lets a workload reach other Apps and Agents through the cluster's Traefik ingress, including through their App Domains and Agent Domains.
+_Avoid_: Internet access, cluster egress, public access
 
 **Project Network Graph**:
 A visual representation of the effective traffic routes between the Apps and Agents visible from a **Project**, including Traefik ingress permitted by each **App Domain** even when that App has Network Policies disabled.
@@ -410,6 +414,9 @@ _Avoid_: manual initial port requirement
 - A **Network Policy Mode Migration** replaces an App's active **Simple App Network Policy Configuration** with its equivalent **Extended App Network Policy Configuration**.
 - An **Extended App Network Policy Configuration** can have zero or more **App Network Policy Rules** for ingress and zero or more for egress.
 - An **App Domain** permits Traefik ingress to its App when Network Policies are active.
+- **Traefik Access** is independent of Internet access.
+- A workload with **Traefik Access** enabled can reach another workload through its **App Domain** or Agent Domain even when Internet access is disabled.
+- **Traefik Access** only applies while Network Policies are active.
 - An extended ingress rule identifies an **App Network Policy Rule Source**; an extended egress rule identifies an **App Network Policy Rule Target**.
 - An **App Network Policy Rule** may reference an App in another project only when its user has a **Workload Permission** for that App.
 - A **Configured Source** belongs to exactly one **App**.

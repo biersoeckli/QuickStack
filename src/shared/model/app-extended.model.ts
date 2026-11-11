@@ -57,7 +57,11 @@ const appNetworkPolicyRuleWriteZodModel = AppNetworkPolicyRuleModel.omit({
 
 const appNetworkPolicyWriteZodModel = AppNetworkPolicyModel.omit({
     id: true, appId: true, createdAt: true, updatedAt: true,
-}).extend({ id: z.string().optional(), rules: appNetworkPolicyRuleWriteZodModel.array() });
+}).extend({
+    id: z.string().optional(),
+    allowTraefikAccess: z.boolean().optional().default(false),
+    rules: appNetworkPolicyRuleWriteZodModel.array(),
+});
 
 /** Write schema for POST upsert: id optional (absent = create), server meta fields stripped. */
 export const AppExtendedWriteZodModel = AppModel

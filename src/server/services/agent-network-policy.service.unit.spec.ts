@@ -59,6 +59,44 @@ describe('agent-network-policy.service', () => {
             Promise.resolve(where.id.in.map(id => ({ id, projectId: `project-${id}` }))));
     });
 
+    it('updates only the provided network policy setting', async () => {
+        dbMocks.client.agent.findFirstOrThrow.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' });
+        dbMocks.client.agentNetworkPolicy.findUnique.mockResolvedValue({
+            id: 'policy-1',
+            agentId: 'agent-1',
+            allowInternetAccess: true,
+            allowTraefikAccess: false,
+        });
+
+        await agentNetworkPolicyService.saveSettings({ agentId: 'agent-1', allowTraefikAccess: true });
+
+        expect(dbMocks.client.agentNetworkPolicy.update).toHaveBeenCalledWith({
+            where: { id: 'policy-1' },
+            data: { allowTraefikAccess: true },
+        });
+    });
+
+    it('updates both network policy settings when both are provided', async () => {
+        dbMocks.client.agent.findFirstOrThrow.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' });
+        dbMocks.client.agentNetworkPolicy.findUnique.mockResolvedValue({
+            id: 'policy-1',
+            agentId: 'agent-1',
+            allowInternetAccess: true,
+            allowTraefikAccess: false,
+        });
+
+        await agentNetworkPolicyService.saveSettings({
+            agentId: 'agent-1',
+            allowInternetAccess: false,
+            allowTraefikAccess: true,
+        });
+
+        expect(dbMocks.client.agentNetworkPolicy.update).toHaveBeenCalledWith({
+            where: { id: 'policy-1' },
+            data: { allowInternetAccess: false, allowTraefikAccess: true },
+        });
+    });
+
     it('removes the mirrored INGRESS counterpart when an egress rule is deleted', async () => {
         dbMocks.client.agentNetworkPolicyRule.findUnique.mockResolvedValue({
             id: 'rule-1',

@@ -26,6 +26,7 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
     const { openDialog } = useDialog();
     const rules = agent.agentNetworkPolicy?.rules ?? [];
     const [allowInternetAccess, setAllowInternetAccess] = useState(agent.agentNetworkPolicy?.allowInternetAccess !== false);
+    const [allowTraefikAccess, setAllowTraefikAccess] = useState(agent.agentNetworkPolicy?.allowTraefikAccess === true);
 
     const handleAllowInternetAccessChange = async (checked: boolean) => {
         setAllowInternetAccess(checked);
@@ -37,6 +38,19 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
             ), 'Successfully updated internet access setting.');
         } catch {
             setAllowInternetAccess(!checked);
+        }
+    };
+
+    const handleAllowTraefikAccessChange = async (checked: boolean) => {
+        setAllowTraefikAccess(checked);
+        try {
+            await Toast.fromAction(() => saveAgentNetworkPolicySettings(
+                undefined,
+                { allowTraefikAccess: checked },
+                agent.id,
+            ), 'Successfully updated Traefik access setting.');
+        } catch {
+            setAllowTraefikAccess(!checked);
         }
     };
 
@@ -70,7 +84,7 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
             <DrawerCardHeader>
                 <DrawerCardTitle>Network Policy</DrawerCardTitle>
                 <DrawerCardDescription>
-                    Control whether this agent has general internet access and define specific egress rules to other apps.
+                    Control whether this agent has general internet and Traefik access, and define specific egress rules to other apps.
                 </DrawerCardDescription>
             </DrawerCardHeader>
             <DrawerCardContent className="space-y-4">
@@ -86,6 +100,21 @@ export default function AgentNetworkPolicyCard({ agent, readonly }: {
                         disabled={readonly}
                         checked={allowInternetAccess}
                         onCheckedChange={handleAllowInternetAccessChange}
+                    />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                    <div className="space-y-0.5">
+                        <Label htmlFor="allow-traefik-access">Allow Traefik access</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Control whether this agent can reach apps and agents exposed through this cluster&apos;s Traefik ingress.
+                        </p>
+                    </div>
+                    <Switch
+                        id="allow-traefik-access"
+                        disabled={readonly}
+                        checked={allowTraefikAccess}
+                        onCheckedChange={handleAllowTraefikAccessChange}
                     />
                 </div>
 
