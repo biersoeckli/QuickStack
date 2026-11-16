@@ -15,7 +15,7 @@ export default function NodeMonitoringHistory() {
   const refresh = useCallback(async () => {
     try {
       const result = await getNodeMonitoringHistory();
-      if (result.status !== 'success' || !result.data) throw new Error('Unable to load monitoring history');
+      if (result.status !== 'success' || !result.data) { throw new Error('Unable to load monitoring history'); }
       setHistory(result.data);
       setError(false);
     } catch {
@@ -33,7 +33,7 @@ export default function NodeMonitoringHistory() {
         <Select
           value={selected.value}
           onValueChange={(value) => {
-            if (value) setRange(value);
+            if (value) { setRange(value); }
           }}
         >
           <SelectTrigger aria-label="History time range">
@@ -48,6 +48,7 @@ export default function NodeMonitoringHistory() {
           </SelectContent>
         </Select>
       </div>
+      <p className="text-sm text-muted-foreground">Totals include only nodes reporting each metric. Missing nodes or metrics are excluded.</p>
       {error && <p role="alert">Unable to load monitoring history.</p>}
       {history && history.points.length === 0 && <p>No measurements yet. History is collected every five minutes.</p>}
       {history?.points.at(-1)?.isGap && <p>Collection has stopped or is delayed. The chart shows a gap after the last sample.</p>}

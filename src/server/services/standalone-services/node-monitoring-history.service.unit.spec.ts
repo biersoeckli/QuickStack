@@ -32,5 +32,5 @@ it('returns sums and gaps from the retained samples', async () => {
     { id: '1', nodeName: 'a', appId: null, sampledAt: time, cpuCores: 1, ramBytes: 10, nodeFilesystemUsedBytes: 100, measuredAt: time },
     { id: '2', nodeName: 'b', appId: null, sampledAt: time, cpuCores: 2, ramBytes: null, nodeFilesystemUsedBytes: 200, measuredAt: time }
   ]);
-  expect(await history.getHistory()).toEqual({ retentionHours: 24, points: [{ time: time.getTime(), cpuCores: 3, ramBytes: null, diskBytes: 300 }] });
+  expect(await history.getHistory()).toEqual({ retentionHours: 24, points: [{ time: time.getTime(), cpuCores: 3, ramBytes: 10, diskBytes: 300 }] });
 });

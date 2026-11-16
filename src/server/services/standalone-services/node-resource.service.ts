@@ -6,12 +6,24 @@ import { NodeResourceModel } from '@/shared/model/node-resource.model';
 type NodeMonitoringResource = Omit<NodeResourceModel, 'cpuUsage' | 'ramUsage'> & { cpuUsage: number | null; ramUsage: number | null };
 
 class NodeResourceService {
+  private isFresh(timestamp: number): boolean {
+    const age = Date.now() - timestamp;
+    return Number.isFinite(timestamp) && age <= 5 * 60_000 && age >= -60_000;
+  }
+
+  private isValidDiskValue(value: number | undefined): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  }
+
   async getNodeResourceUsage(
     getSummary: (name: string) => Promise<unknown> = (name) => nodeResourceAdapter.getSummary(name)
   ): Promise<NodeMonitoringResource[]> {
     const topNodes = await nodeResourceAdapter.getNodes();
 
-    const metricsData: k8s.NodeMetricsList = await nodeResourceAdapter.getMetrics().catch(() => ({ items: [] }) as unknown as k8s.NodeMetricsList);
+    const metricsData: k8s.NodeMetricsList = await nodeResourceAdapter.getMetrics().catch((error) => {
+      console.error('Failed to fetch node metrics:', error);
+      return { items: [] } as unknown as k8s.NodeMetricsList;
+    });
 
     return await Promise.all(
       topNodes.map(async (node) => {
@@ -19,10 +31,12 @@ class NodeResourceService {
           .filter((item) => item.metadata.name === node.Node.metadata?.name)
           .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
         const timestamp = Date.parse(metric?.timestamp ?? '');
-        const fresh = Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 5 * 60_000;
+        const fresh = this.isFresh(timestamp);
         const convert = (value: string | undefined, converter: (input: string) => number): number | null => {
           try {
-            if (!fresh || !value) return null;
+            if (!fresh || !value) {
+              return null;
+            }
             const result = converter(value);
             return Number.isFinite(result) && result >= 0 ? result : null;
           } catch {
@@ -41,25 +55,18 @@ class NodeResourceService {
           const timestamp = Date.parse(fs?.time ?? '');
           if (
             fs &&
-            Number.isFinite(timestamp) &&
-            timestamp <= Date.now() &&
-            Date.now() - timestamp <= 5 * 60_000 &&
-            typeof fs.usedBytes === 'number' &&
-            Number.isFinite(fs.usedBytes) &&
-            fs.usedBytes >= 0 &&
-            typeof fs.availableBytes === 'number' &&
-            Number.isFinite(fs.availableBytes) &&
-            fs.availableBytes >= 0 &&
-            typeof fs.capacityBytes === 'number' &&
-            Number.isFinite(fs.capacityBytes) &&
+            this.isFresh(timestamp) &&
+            this.isValidDiskValue(fs.usedBytes) &&
+            this.isValidDiskValue(fs.availableBytes) &&
+            this.isValidDiskValue(fs.capacityBytes) &&
             fs.capacityBytes > 0 &&
             fs.usedBytes <= fs.capacityBytes &&
             fs.availableBytes <= fs.capacityBytes
           ) {
             filesystem = fs;
           }
-        } catch {
-          // A node without a summary must not hide the other nodes' metrics.
+        } catch (error) {
+          console.error(`Failed to fetch summary for node ${node.Node.metadata?.name}:`, error);
         }
 
         const measuredTimes = [...(cpuUsage !== null || ramUsage !== null ? [timestamp] : []), ...(filesystem?.time ? [Date.parse(filesystem.time)] : [])];
@@ -78,4 +85,5 @@ class NodeResourceService {
     );
   }
 }
-export default new NodeResourceService();
+const nodeResourceService = new NodeResourceService();
+export default nodeResourceService;

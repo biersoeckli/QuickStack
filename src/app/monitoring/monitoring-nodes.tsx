@@ -22,14 +22,14 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
   useEffect(() => setBreadcrumbs([{ name: 'Monitoring', url: '/monitoring' }]), [setBreadcrumbs]);
 
   const clusterStats = useMemo(() => {
-    if (!updatedNodeRessources) return { cpuUsage: 0, cpuCapacity: 1, ramUsage: 0, ramCapacity: 1, diskUsageAbsolut: 0, diskCapacity: 1 };
+    if (!updatedNodeRessources) { return { cpuUsage: 0, cpuCapacity: 1, ramUsage: 0, ramCapacity: 1, diskUsageAbsolut: 0, diskCapacity: 1 }; }
 
     return updatedNodeRessources.reduce(
       (acc, node) => ({
         cpuUsage: acc.cpuUsage + (node.cpuUsage ?? 0),
-        cpuCapacity: acc.cpuCapacity + node.cpuCapacity,
+        cpuCapacity: acc.cpuCapacity + (node.cpuUsage === null ? 0 : node.cpuCapacity),
         ramUsage: acc.ramUsage + (node.ramUsage ?? 0),
-        ramCapacity: acc.ramCapacity + node.ramCapacity,
+        ramCapacity: acc.ramCapacity + (node.ramUsage === null ? 0 : node.ramCapacity),
         diskUsageAbsolut: acc.diskUsageAbsolut + getDiskUsageAbsolut(node),
         diskCapacity: acc.diskCapacity + getDiskUsageCapacity(node)
       }),
@@ -38,8 +38,8 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
   }, [updatedNodeRessources]);
 
   const getUsageColor = (percentage: number) => {
-    if (percentage >= 90) return 'var(--chart-1)';
-    if (percentage >= 80) return 'var(--chart-4)';
+    if (percentage >= 90) { return 'var(--chart-1)'; }
+    if (percentage >= 80) { return 'var(--chart-4)'; }
     return 'var(--chart-2)';
   };
 
@@ -64,10 +64,13 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
         <Card className="flex flex-col">
           <CardHeader className="items-center pb-0">
             <CardTitle>Cluster CPU</CardTitle>
-            <CardDescription>Total Cores Usage</CardDescription>
+            <CardDescription>Usage of reporting nodes</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            {updatedNodeRessources.some((node) => node.cpuUsage === null) ? (
+            {updatedNodeRessources.some((node) => node.cpuUsage === null) && (
+              <p className="text-center text-sm text-muted-foreground">Incomplete: some node CPU metrics are unavailable.</p>
+            )}
+            {clusterStats.cpuCapacity <= 0 ? (
               <p className="py-12 text-center text-muted-foreground">Metrics unavailable</p>
             ) : (
               <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
@@ -101,10 +104,13 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
         <Card className="flex flex-col">
           <CardHeader className="items-center pb-0">
             <CardTitle>Cluster RAM</CardTitle>
-            <CardDescription>Total Memory Usage</CardDescription>
+            <CardDescription>Usage of reporting nodes</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            {updatedNodeRessources.some((node) => node.ramUsage === null) ? (
+            {updatedNodeRessources.some((node) => node.ramUsage === null) && (
+              <p className="text-center text-sm text-muted-foreground">Incomplete: some node memory metrics are unavailable.</p>
+            )}
+            {clusterStats.ramCapacity <= 0 ? (
               <p className="py-12 text-center text-muted-foreground">Metrics unavailable</p>
             ) : (
               <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
@@ -288,7 +294,7 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
                         const diskCapacity = getDiskUsageCapacity(node);
                         const diskUsedAndReserved = diskUsed;
                         const diskPercent = toPercent(diskUsedAndReserved, diskCapacity);
-                        if (node.diskUsageCapacity === undefined) return <span className="text-muted-foreground">Unavailable</span>;
+                        if (node.diskUsageCapacity === undefined) { return <span className="text-muted-foreground">Unavailable</span>; }
                         return (
                           <>
                             <div className="flex justify-between text-xs text-muted-foreground">
