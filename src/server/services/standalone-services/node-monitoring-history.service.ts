@@ -1,8 +1,9 @@
 import { MonitoringHistoryUtils } from '@/shared/utils/monitoring-history.utils';
 import nodeResourceService from './node-resource.service';
 import scheduleService from './schedule.service';
-import nodeHistoryAdapter from '@/server/adapter/node-monitoring-history.adapter';
-import appHistoryAdapter from '@/server/adapter/app-history.adapter';
+import dataAccess from '@/server/adapter/db.client';
+import { Prisma } from '@prisma/client';
+import monitoringHistoryService from './monitoring-history.service';
 import { NodeMonitoringHistoryUtils } from '@/shared/utils/node-monitoring-history.utils';
 
 class NodeMonitoringHistoryService {
@@ -19,7 +20,7 @@ class NodeMonitoringHistoryService {
     if (this.running) return;
     this.running = true;
     try {
-      const retention = await appHistoryAdapter.getRetentionHours();
+      const retention = await monitoringHistoryService.getRetentionHours();
       await this.collect(new Date(), retention);
     } catch (error) {
       console.error('Node monitoring history collection failed', error);
@@ -28,18 +29,33 @@ class NodeMonitoringHistoryService {
     }
   }
 
+  async save(samples: Prisma.MonitoringSampleCreateManyInput[], cutoff: Date) {
+    await dataAccess.client.$transaction((tx) => monitoringHistoryService.saveSamples(tx, samples, cutoff));
+  }
+
   async collect(sampledAt: Date, retentionHours: number) {
     const nodes = await nodeResourceService.getNodeResourceUsage();
-    await nodeHistoryAdapter.save(
-      nodes.map((node) => ({ sampledAt, nodeName: node.name, cpuCores: node.cpuUsage, ramBytes: node.ramUsage, diskBytes: node.diskUsageAbsolut ?? null })),
+    await this.save(
+      nodes.map((node) => ({
+        sampledAt,
+        nodeName: node.name,
+        cpuCores: node.cpuUsage,
+        ramBytes: node.ramUsage,
+        nodeFilesystemUsedBytes: node.diskUsageAbsolut ?? null,
+        measuredAt: node.measuredAt ?? null
+      })),
       new Date(sampledAt.getTime() - retentionHours * 3600_000)
     );
   }
 
   async getHistory() {
-    const retentionHours = await appHistoryAdapter.getRetentionHours();
-    const samples = await nodeHistoryAdapter.getHistory(new Date(Date.now() - retentionHours * 3600_000));
-    return { retentionHours, points: NodeMonitoringHistoryUtils.aggregate(samples) };
+    const retentionHours = await monitoringHistoryService.getRetentionHours();
+    const samples = await dataAccess.client.monitoringSample.findMany({
+      where: { nodeName: { not: null }, sampledAt: { gte: new Date(Date.now() - retentionHours * 3600_000) } },
+      orderBy: { sampledAt: 'asc' }
+    });
+    const points = samples.map((sample) => ({ ...sample, diskBytes: sample.nodeFilesystemUsedBytes }));
+    return { retentionHours, points: NodeMonitoringHistoryUtils.aggregate(points) };
   }
 }
 export default new NodeMonitoringHistoryService();

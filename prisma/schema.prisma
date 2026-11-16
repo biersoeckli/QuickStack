@@ -466,7 +466,7 @@ model App {
   appPorts           AppPort[]
   appNodePorts       AppNodePort[]
   appVolumes         AppVolume[]
-  monitoringSamples  AppMonitoringSample[]
+  monitoringSamples  MonitoringSample[]
   appFileMounts      AppFileMount[]
   appBasicAuths      AppBasicAuth[]
   appGitSshKey       AppGitSshKey?
@@ -649,17 +649,21 @@ model AppBasicAuth {
   updatedAt DateTime @updatedAt
 }
 
-// One row per known App and Volume at each collection time. Null values are gaps.
-model AppMonitoringSample {
-  id         String   @id @default(uuid())
-  sampledAt  DateTime
-  appId      String
-  app        App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  cpuCores   Float?
-  ramBytes   Float?
-  measuredAt DateTime?
+// One row per App or Node at each collection time. Null metric values are gaps.
+// The migration enforces exactly one owner and reserves filesystem usage for Nodes.
+model MonitoringSample {
+  id                      String   @id @default(uuid())
+  sampledAt               DateTime
+  measuredAt              DateTime?
+  appId                   String?
+  app                     App?     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  nodeName                String?
+  cpuCores                Float?
+  ramBytes                Float?
+  nodeFilesystemUsedBytes Float?
 
   @@index([appId, sampledAt])
+  @@index([nodeName, sampledAt])
   @@index([sampledAt])
 }
 
@@ -687,16 +691,4 @@ model AppVolumeMonitoringMembership {
 
   @@id([sampleId, volumeId])
   @@index([volumeId])
-}
-
-model NodeMonitoringSample {
-  id        String   @id @default(uuid())
-  sampledAt DateTime
-  nodeName  String
-  cpuCores  Float?
-  ramBytes  Float?
-  diskBytes Float?
-
-  @@index([sampledAt])
-  @@index([nodeName, sampledAt])
 }

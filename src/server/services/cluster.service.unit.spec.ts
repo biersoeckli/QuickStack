@@ -46,6 +46,16 @@ describe('cluster node storage', () => {
     expect(nodes[1]).toMatchObject({ cpuUsage: null, ramUsage: null, diskUsageAbsolut: 10 });
   });
 
+  it('reports the oldest source timestamp among valid node measurements', async () => {
+    const metricTime = new Date(Date.now() - 60_000).toISOString();
+    const filesystemTime = new Date(Date.now() - 120_000).toISOString();
+    mocks.getNodeMetrics.mockResolvedValue({ items: [{ metadata: { name: 'node-a' }, timestamp: metricTime, usage: { cpu: '1', memory: '100Mi' } }] });
+    mocks.getNodeSummary.mockResolvedValue({ node: { fs: { time: filesystemTime, usedBytes: 10, availableBytes: 90, capacityBytes: 100 } } });
+    const nodes = await clusterService.getNodeResourceUsage();
+    expect(nodes[0].measuredAt).toEqual(new Date(filesystemTime));
+    expect(nodes[1].measuredAt).toEqual(new Date(filesystemTime));
+  });
+
   it('does not present stale or incomplete filesystem measurements', async () => {
     mocks.getNodeSummary.mockImplementation(async (name: string) => ({
       node: {

@@ -62,7 +62,9 @@ class NodeResourceService {
           // A node without a summary must not hide the other nodes' metrics.
         }
 
+        const measuredTimes = [...(cpuUsage !== null || ramUsage !== null ? [timestamp] : []), ...(filesystem?.time ? [Date.parse(filesystem.time)] : [])];
         return {
+          measuredAt: measuredTimes.length ? new Date(Math.min(...measuredTimes)) : null,
           name: node.Node.metadata?.name!,
           cpuUsage: cpuUsage,
           cpuCapacity: Number(node.CPU?.Capacity!),

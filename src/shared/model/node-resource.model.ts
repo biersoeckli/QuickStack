@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const nodeResourceZodModel = z.object({
   name: z.string(),
+  measuredAt: z.date().nullable().optional(),
   cpuUsage: z.number().nullable(),
   cpuCapacity: z.number(),
   ramUsage: z.number().nullable(),

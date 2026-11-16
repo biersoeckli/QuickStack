@@ -2,7 +2,7 @@
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
 
 import { createPrismaTestContext } from '@/__tests__/prisma-test.utils';
-import adapter from '@/server/adapter/app-history.adapter';
+import nodeHistory from '@/server/services/standalone-services/node-monitoring-history.service';
 import history from '@/server/services/standalone-services/app-monitoring-history.service';
 import metrics from '@/server/services/standalone-services/app-history.service';
 import filesystem from '@/server/services/standalone-services/app-volume-filesystem.service';
@@ -15,7 +15,7 @@ describe('App monitoring history persistence', () => {
     await db.project.create({ data: { id: 'project', name: 'Project' } });
     await db.app.create({ data: { id: 'app', name: 'App', projectId: 'project' } });
     const cutoff = new Date(Date.now() - 3600_000);
-    await adapter.save(
+    await history.save(
       [
         { appId: 'app', sampledAt: new Date(cutoff.getTime() - 1), cpuCores: 1, ramBytes: 2 },
         { appId: 'app', sampledAt: cutoff, cpuCores: 3, ramBytes: 4 }
@@ -34,11 +34,11 @@ describe('App monitoring history persistence', () => {
     await db.project.create({ data: { id: 'project', name: 'Project' } });
     await db.app.create({ data: { id: 'app', name: 'App', projectId: 'project' } });
     const now = Date.now();
-    await adapter.save([{ appId: 'app', sampledAt: new Date(now - 2 * 3600_000), cpuCores: 1, ramBytes: 2 }], [], [], new Date(now - 24 * 3600_000));
-    await adapter.setRetentionHours(1);
+    await history.save([{ appId: 'app', sampledAt: new Date(now - 2 * 3600_000), cpuCores: 1, ramBytes: 2 }], [], [], new Date(now - 24 * 3600_000));
+    await history.setRetentionHours(1);
     expect((await history.getHistory(['app'])).points).toEqual([]);
-    await adapter.save([], [], [], new Date(now - (await adapter.getRetentionHours()) * 3600_000));
-    expect(await db.appMonitoringSample.count()).toBe(0);
+    await history.save([], [], [], new Date(now - (await history.getRetentionHours()) * 3600_000));
+    expect(await db.monitoringSample.count()).toBe(0);
   });
 
   it('stores shared Volume usage once and exposes it only through accessible mounts', async () => {
@@ -53,7 +53,7 @@ describe('App monitoring history persistence', () => {
     await db.appVolume.create({ data: { id: 'base', appId: 'one', containerMountPath: '/data', size: 1 } });
     await db.appVolume.create({ data: { id: 'shared', appId: 'two', containerMountPath: '/share', size: 1, sharedVolumeId: 'base' } });
     const sampledAt = new Date();
-    await adapter.save(
+    await history.save(
       [],
       [{ id: 'sample', volumeId: 'base', sampledAt, status: 'available', usedBytes: 42, measuredAt: sampledAt }],
       [
@@ -104,6 +104,24 @@ describe('App monitoring history persistence', () => {
     }
   });
 
+  it('keeps App and Node histories separate in the shared table', async () => {
+    const db = ctx.getDataAccess().client;
+    await db.project.create({ data: { id: 'project', name: 'Project' } });
+    await db.app.create({ data: { id: 'app', name: 'App', projectId: 'project' } });
+    const sampledAt = new Date();
+    const cutoff = new Date(sampledAt.getTime() - 3600_000);
+    await history.save([{ appId: 'app', sampledAt, cpuCores: 1, ramBytes: 2 }], [], [], cutoff);
+    await nodeHistory.save([{ nodeName: 'node', sampledAt, measuredAt: sampledAt, cpuCores: 3, ramBytes: 4, nodeFilesystemUsedBytes: 5 }], cutoff);
+    expect((await history.getRawHistory(['app'], cutoff))[0]).toHaveLength(1);
+    expect(await db.monitoringSample.findMany({ where: { nodeName: { not: null }, sampledAt: { gte: cutoff } } })).toMatchObject([
+      { nodeName: 'node', measuredAt: sampledAt, nodeFilesystemUsedBytes: 5 }
+    ]);
+    await db.app.delete({ where: { id: 'app' } });
+    expect(await db.monitoringSample.findMany({ where: { nodeName: { not: null }, sampledAt: { gte: cutoff } } })).toHaveLength(1);
+    await nodeHistory.save([], new Date(sampledAt.getTime() + 1));
+    expect(await db.monitoringSample.findMany({ where: { nodeName: { not: null }, sampledAt: { gte: cutoff } } })).toHaveLength(0);
+  });
+
   it('reads a day of five-minute history for 100 Apps', async () => {
     const db = ctx.getDataAccess().client;
     await db.project.create({ data: { id: 'project', name: 'Project' } });
@@ -113,7 +131,7 @@ describe('App monitoring history persistence', () => {
     const samples = Array.from({ length: 288 }, (_, index) =>
       appIds.map((appId) => ({ appId, sampledAt: new Date(now - index * 5 * 60_000), cpuCores: 0.25, ramBytes: 1024 }))
     ).flat();
-    await adapter.save(samples, [], [], new Date(now - 24 * 3600_000));
+    await history.save(samples, [], [], new Date(now - 24 * 3600_000));
     const result = await history.getHistory(appIds);
     expect(result.points).toHaveLength(288);
     expect(result.points[0]).toMatchObject({ cpuCores: 25, ramBytes: 102400 });
