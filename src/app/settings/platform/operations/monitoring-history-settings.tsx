@@ -31,8 +31,8 @@ export default function MonitoringHistorySettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>App monitoring history</CardTitle>
-        <CardDescription>Keep measurements for 1 to 168 hours. Default: 24 hours.</CardDescription>
+        <CardTitle>Monitoring history</CardTitle>
+        <CardDescription>Keep App and node measurements for 1 to 168 hours. Default: 24 hours.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

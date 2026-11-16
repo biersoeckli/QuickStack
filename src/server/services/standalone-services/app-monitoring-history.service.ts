@@ -1,3 +1,4 @@
+import nodeMonitoringHistoryService from './node-monitoring-history.service';
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import appHistoryService from './app-history.service';
@@ -132,6 +133,7 @@ class AppMonitoringHistoryService {
         }),
         appHistoryAdapter.getRetentionHours()
       ]);
+      await nodeMonitoringHistoryService.collect(sampledAt, retention).catch((error) => console.error('Node monitoring history collection failed', error));
       const samples = new Map<string, VolumeSample>();
       const memberships: Prisma.AppVolumeMonitoringMembershipCreateManyInput[] = [];
       for (const volume of volumes) {

@@ -1,5 +1,7 @@
 'use server';
 
+import nodeMonitoringHistoryService from '@/server/services/standalone-services/node-monitoring-history.service';
+
 import monitoringService from '@/server/services/monitoring.service';
 import clusterService from '@/server/services/cluster.service';
 import { getAuthUserSession, simpleAction } from '@/server/utils/action-wrapper.utils';
@@ -36,3 +38,9 @@ export const getReservedVolumeStorage = async () =>
     await getAuthUserSession();
     return await clusterService.getReservedVolumeStorage();
   }) as Promise<ServerActionResult<unknown, number>>;
+
+export const getNodeMonitoringHistory = async () =>
+  simpleAction(async () => {
+    await getAuthUserSession();
+    return nodeMonitoringHistoryService.getHistory();
+  });

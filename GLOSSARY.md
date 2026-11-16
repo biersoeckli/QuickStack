@@ -67,6 +67,10 @@ _Avoid_: global Add-on configuration, runtime version cache
 The Cluster Add-on that installs the Agent Sandbox controller and its extension CRDs, including SandboxTemplate and SandboxWarmPool. It does not create user workload resources.
 _Avoid_: Agent, Agent runtime
 
+**Node Monitoring History**:
+A record of CPU, memory, and occupied node filesystem usage over time for each cluster node. Cluster totals include all nodes measured at a given time.
+_Avoid_: App monitoring history, volume usage
+
 **App**:
 A deployable workload managed by QuickStack.
 

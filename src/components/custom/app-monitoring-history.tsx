@@ -13,7 +13,7 @@ import { AppMonitoringHistory } from '@/shared/model/app-monitoring-history.mode
 import { getAppMonitoringHistory as getOneHistory } from '@/app/project/[projectId]/apps/details/deployments/actions';
 import FullLoadingSpinner from '../ui/full-loading-spinnter';
 
-function HistoryChart({
+export function HistoryChart({
   title,
   data,
   dataKey,
@@ -114,6 +114,25 @@ function HistoryChart({
   );
 }
 
+export function getMonitoringRangeOptions(retentionHours: number) {
+  const options = [
+    { value: '1h', label: 'Last hour', hours: 1 },
+    { value: '5h', label: 'Last 5 hours', hours: 5 },
+    { value: 'today', label: 'Today', hours: 24 },
+    { value: '48h', label: 'Last 48 hours', hours: 48 },
+    { value: '7d', label: 'Last 7 days', hours: 168 }
+  ].filter((option) => option.hours <= retentionHours);
+  if (![1, 5, 48, 168].includes(retentionHours)) {
+    options.push({ value: 'all', label: `Last ${retentionHours} hours`, hours: retentionHours });
+  }
+  return options;
+}
+
+export function getMonitoringRangeStart(value: string, hours: number) {
+  const now = Date.now();
+  return value === 'today' ? new Date(new Date(now).setHours(0, 0, 0, 0)).getTime() : now - hours * 60 * 60_000;
+}
+
 export default function AppMonitoringHistoryView({ appId, currentUsage }: { appId: string; currentUsage?: PodsResourceInfoModel }) {
   const [history, setHistory] = useState<AppMonitoringHistory>();
   const [error, setError] = useState(false);
@@ -132,19 +151,9 @@ export default function AppMonitoringHistoryView({ appId, currentUsage }: { appI
   }, [appId]);
   usePolling(refresh, { intervalMs: 60_000, runImmediately: true });
   const retentionHours = history?.retentionHours ?? 1;
-  const options = [
-    { value: '1h', label: 'Last hour', hours: 1 },
-    { value: '5h', label: 'Last 5 hours', hours: 5 },
-    { value: 'today', label: 'Today', hours: 24 },
-    { value: '48h', label: 'Last 48 hours', hours: 48 },
-    { value: '7d', label: 'Last 7 days', hours: 168 }
-  ].filter((option) => option.hours <= retentionHours);
-  if (![1, 5, 48, 168].includes(retentionHours)) {
-    options.push({ value: 'all', label: `Last ${retentionHours} hours`, hours: retentionHours });
-  }
+  const options = getMonitoringRangeOptions(retentionHours);
   const selectedRange = options.find((option) => option.value === range) ?? options[0];
-  const now = Date.now();
-  const start = selectedRange.value === 'today' ? new Date(new Date(now).setHours(0, 0, 0, 0)).getTime() : now - selectedRange.hours * 60 * 60_000;
+  const start = getMonitoringRangeStart(selectedRange.value, selectedRange.hours);
   const visiblePoints = history?.points.filter((point) => point.time >= start) ?? [];
   const collectionStopped = history?.points.at(-1)?.isGap;
   const sampleCount = visiblePoints.filter((point) => !point.isGap).length;

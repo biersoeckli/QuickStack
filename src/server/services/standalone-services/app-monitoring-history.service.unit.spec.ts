@@ -1,3 +1,4 @@
+vi.mock('./node-monitoring-history.service', () => ({ default: { collect: vi.fn().mockResolvedValue(undefined) } }));
 vi.mock('@/server/adapter/app-history.adapter', () => ({ default: { getPopulation: vi.fn(), getRetentionHours: vi.fn(), save: vi.fn() } }));
 vi.mock('./app-history.service', () => ({ default: { getAppMetrics: vi.fn() } }));
 vi.mock('./app-volume-filesystem.service', () => ({ default: { getVolumeFilesystemUsage: vi.fn() } }));
