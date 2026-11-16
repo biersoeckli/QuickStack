@@ -1,7 +1,9 @@
-vi.mock('@/server/adapter/app-history.adapter', () => ({ default: { getRetentionHours: vi.fn().mockResolvedValue(24), getHistory: vi.fn() } }));
+vi.mock('@/server/adapter/db.client', () => ({ default: { client: {} } }));
+vi.mock('./monitoring-history.service', () => ({ default: { getRetentionHours: vi.fn().mockResolvedValue(24) } }));
 vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({ default: {} }));
-import adapter from '@/server/adapter/app-history.adapter';
 import historyService from '@/server/services/standalone-services/app-monitoring-history.service';
+
+const getRawHistory = vi.spyOn(historyService, 'getRawHistory');
 
 it('shows incomplete App totals as gaps and counts shared volumes once', async () => {
   const now = new Date();
@@ -24,7 +26,7 @@ it('shows incomplete App totals as gaps and counts shared volumes once', async (
     measuredAt: now,
     volume: { appId: id, sharedVolumeId, containerMountPath: '/data', app: { projectId: 'project' } }
   });
-  vi.mocked(adapter.getHistory).mockResolvedValue([
+  getRawHistory.mockResolvedValue([
     [app('one', 1), app('two', null)],
     [volume('base', null, 'available', 20), volume('shared', 'base', 'available', 20), volume('missing', null, 'unavailable', null)]
   ]);
@@ -43,7 +45,7 @@ it('inserts a gap across collection downtime', async () => {
     ramBytes: 100,
     measuredAt: new Date(time + offset)
   });
-  vi.mocked(adapter.getHistory).mockResolvedValue([[sample(0), sample(15 * 60_000)], []]);
+  getRawHistory.mockResolvedValue([[sample(0), sample(15 * 60_000)], []]);
   const result = await historyService.getHistory(['app']);
   expect(result.points.map((point) => point.cpuCores)).toEqual([1, null, 1]);
 });
@@ -51,7 +53,7 @@ it('inserts a gap across collection downtime', async () => {
 it('shows a trailing gap while collection remains stopped', async () => {
   const now = Date.now();
   const sampledAt = new Date(now - 30 * 60_000);
-  vi.mocked(adapter.getHistory).mockResolvedValue([
+  getRawHistory.mockResolvedValue([
     [{ id: 'one', appId: 'app', sampledAt, cpuCores: 1, ramBytes: 100, measuredAt: sampledAt }],
     [
       {

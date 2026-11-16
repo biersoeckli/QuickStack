@@ -1,7 +1,7 @@
+import nodeResourceService from './standalone-services/node-resource.service';
 import { getCachedNodeSummary } from './node-summary-cache.service';
 import volumeSummaryAdapter from '../adapter/volume-summary.adapter';
 import k3s, { kubernetesPatchOptions } from '../adapter/kubernetes-api.adapter';
-import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from '@/shared/model/node-info.model';
 import { NodeResourceModel } from '@/shared/model/node-resource.model';
 import { Tags } from '../utils/cache-tag-generator.utils';
@@ -117,66 +117,7 @@ class ClusterService {
   }
 
   async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
-    const topNodes = await k8s.topNodes(k3s.core);
-
-    const metricsData: k8s.NodeMetricsList = await k3s.metrics.getNodeMetrics();
-
-    return await Promise.all(
-      topNodes.map(async (node) => {
-        const nodeMetrics = metricsData.items
-          .filter((metric) => metric.metadata.name === node.Node.metadata?.name)
-          .map((metric) => {
-            return {
-              timestamp: new Date(metric.timestamp),
-              cpuUsage: KubeSizeConverter.fromNanoToFullCpu(KubeSizeConverter.fromKubeSizeToNanoCpu(metric.usage.cpu)),
-              ramUsage: KubeSizeConverter.fromKubeSizeToBytes(metric.usage.memory)
-            };
-          });
-
-        // sorted by timestamp descending
-        nodeMetrics.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-        const latestUsageItem = nodeMetrics[0];
-
-        let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
-        try {
-          const summary = (await getCachedNodeSummary(node.Node.metadata?.name!)) as { node?: { fs?: typeof filesystem } };
-          const fs = summary.node?.fs;
-          const timestamp = Date.parse(fs?.time ?? '');
-          if (
-            fs &&
-            Number.isFinite(timestamp) &&
-            timestamp <= Date.now() &&
-            Date.now() - timestamp <= 5 * 60_000 &&
-            typeof fs.usedBytes === 'number' &&
-            Number.isFinite(fs.usedBytes) &&
-            fs.usedBytes >= 0 &&
-            typeof fs.availableBytes === 'number' &&
-            Number.isFinite(fs.availableBytes) &&
-            fs.availableBytes >= 0 &&
-            typeof fs.capacityBytes === 'number' &&
-            Number.isFinite(fs.capacityBytes) &&
-            fs.capacityBytes > 0 &&
-            fs.usedBytes <= fs.capacityBytes &&
-            fs.availableBytes <= fs.capacityBytes
-          ) {
-            filesystem = fs;
-          }
-        } catch {
-          // A node without a summary must not hide the other nodes' metrics.
-        }
-
-        return {
-          name: node.Node.metadata?.name!,
-          cpuUsage: latestUsageItem.cpuUsage,
-          cpuCapacity: Number(node.CPU?.Capacity!),
-          ramUsage: latestUsageItem.ramUsage,
-          ramCapacity: Number(node.Memory?.Capacity!),
-          diskUsageAbsolut: filesystem?.usedBytes,
-          diskUsageAvailable: filesystem?.availableBytes,
-          diskUsageCapacity: filesystem?.capacityBytes
-        };
-      })
-    );
+    return nodeResourceService.getNodeResourceUsage(getCachedNodeSummary);
   }
 }
 

@@ -12,7 +12,9 @@ class AppHistoryService {
     for (const pod of pods) {
       const appId = pod.metadata?.labels?.app;
       const namespace = pod.metadata?.namespace;
-      if (!appId || !namespace || ['Succeeded', 'Failed'].includes(pod.status?.phase ?? '')) continue;
+      if (!appId || !namespace || ['Succeeded', 'Failed'].includes(pod.status?.phase ?? '')) {
+        continue;
+      }
       const key = `${namespace}/${appId}`;
       const group = podsByApp.get(key) ?? [];
       group.push(pod);
@@ -45,15 +47,23 @@ class AppHistoryService {
           for (const kind of ['cpu', 'memory'] as const) {
             let value = NaN;
             try {
-              if (usage?.[kind]) value = Number(quantityToScalar(usage[kind]));
+              if (usage?.[kind]) {
+                value = Number(quantityToScalar(usage[kind]));
+              }
             } catch {
               /* Invalid quantities are gaps. */
             }
             if (!Number.isFinite(value) || value < 0) {
-              if (kind === 'cpu') cpuComplete = false;
-              else ramComplete = false;
-            } else if (kind === 'cpu') cpu += value;
-            else ram += value;
+              if (kind === 'cpu') {
+                cpuComplete = false;
+              } else {
+                ramComplete = false;
+              }
+            } else if (kind === 'cpu') {
+              cpu += value;
+            } else {
+              ram += value;
+            }
           }
         }
       }

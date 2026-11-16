@@ -6,7 +6,9 @@ const inFlight = new Map<string, Promise<unknown>>();
 
 export function getCachedNodeSummary(nodeName: string): Promise<unknown> {
   const existing = inFlight.get(nodeName);
-  if (existing) return existing;
+  if (existing) {
+    return existing;
+  }
 
   const request = cachedSummary(nodeName).finally(() => inFlight.delete(nodeName));
   inFlight.set(nodeName, request);

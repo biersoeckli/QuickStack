@@ -1,5 +1,6 @@
 'use server'
 
+import ClusterHistoryOverview from "@/app/monitoring/cluster-history-overview";
 import { Button } from "@/components/ui/button";
 
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
@@ -21,7 +22,8 @@ export default async function ProjectPage() {
 
     return (
         <div className="flex-1 space-y-4 pt-6">
-            <div className="flex gap-4">
+            <ClusterHistoryOverview />
+            <div className="flex gap-4 pt-6">
                 <h2 className="text-3xl font-bold tracking-tight flex-1">Projects</h2>
                 {UserGroupUtils.isAdmin(session) && <EditProjectDialog>
                     <Button><Plus /> Create Project</Button>

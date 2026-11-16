@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppNodePort, RelatedAppNodePortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteAppMonitoringSample, RelatedAppMonitoringSampleModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteAgentNetworkPolicyRule, RelatedAgentNetworkPolicyRuleModel, CompleteAppNetworkPolicyRule, RelatedAppNetworkPolicyRuleModel } from "./index"
+import { CompleteProject, RelatedProjectModel, CompleteAppDomain, RelatedAppDomainModel, CompleteAppPort, RelatedAppPortModel, CompleteAppNodePort, RelatedAppNodePortModel, CompleteAppVolume, RelatedAppVolumeModel, CompleteMonitoringSample, RelatedMonitoringSampleModel, CompleteAppFileMount, RelatedAppFileMountModel, CompleteAppBasicAuth, RelatedAppBasicAuthModel, CompleteAppGitSshKey, RelatedAppGitSshKeyModel, CompleteAppNetworkPolicy, RelatedAppNetworkPolicyModel, CompleteRoleAppPermission, RelatedRoleAppPermissionModel, CompleteAgentNetworkPolicyRule, RelatedAgentNetworkPolicyRuleModel, CompleteAppNetworkPolicyRule, RelatedAppNetworkPolicyRuleModel } from "./index"
 
 export const AppModel = z.object({
   id: z.string(),
@@ -60,7 +60,7 @@ export interface CompleteApp extends z.infer<typeof AppModel> {
   appPorts: CompleteAppPort[]
   appNodePorts: CompleteAppNodePort[]
   appVolumes: CompleteAppVolume[]
-  monitoringSamples: CompleteAppMonitoringSample[]
+  monitoringSamples: CompleteMonitoringSample[]
   appFileMounts: CompleteAppFileMount[]
   appBasicAuths: CompleteAppBasicAuth[]
   appGitSshKey?: CompleteAppGitSshKey | null
@@ -81,7 +81,7 @@ export const RelatedAppModel: z.ZodSchema<CompleteApp> = z.lazy(() => AppModel.e
   appPorts: RelatedAppPortModel.array(),
   appNodePorts: RelatedAppNodePortModel.array(),
   appVolumes: RelatedAppVolumeModel.array(),
-  monitoringSamples: RelatedAppMonitoringSampleModel.array(),
+  monitoringSamples: RelatedMonitoringSampleModel.array(),
   appFileMounts: RelatedAppFileMountModel.array(),
   appBasicAuths: RelatedAppBasicAuthModel.array(),
   appGitSshKey: RelatedAppGitSshKeyModel.nullish(),

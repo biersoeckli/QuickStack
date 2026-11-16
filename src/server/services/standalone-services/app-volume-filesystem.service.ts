@@ -32,11 +32,14 @@ class AppVolumeFilesystemService {
         !Number.isFinite(timestamp) ||
         !sample.capacityBytes ||
         !values.every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0)
-      )
+      ) {
         continue;
+      }
       const key = AppVolumeIdentityUtils.observationKey(namespace, name);
       const previous = latestSampleByKey.get(key);
-      if (!previous || timestamp > Date.parse(previous.time!)) latestSampleByKey.set(key, sample);
+      if (!previous || timestamp > Date.parse(previous.time!)) {
+        latestSampleByKey.set(key, sample);
+      }
     }
     for (const volume of volumes) {
       const pvcName = KubeObjectNameUtils.toPvcName(AppVolumeIdentityUtils.underlyingId(volume.id, volume.sharedVolumeId));

@@ -153,7 +153,9 @@ describe('monitoringService.getAllAppVolumesUsage', () => {
     } as never);
     vi.mocked(k3s.core.listNode).mockResolvedValue({ items: [{ metadata: { name: 'broken' } }, { metadata: { name: 'healthy' } }] } as never);
     vi.mocked(k3s.getNodeSummary).mockImplementation(async (name) => {
-      if (name === 'broken') throw new Error('node unavailable');
+      if (name === 'broken') {
+        throw new Error('node unavailable');
+      }
       return {
         pods: [
           {

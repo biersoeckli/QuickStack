@@ -25,7 +25,9 @@ class VolumeSummaryAdapter {
     const nodes = await k3s.core.listNode();
     const summaries = await Promise.allSettled(
       nodes.items.map(async (node) => {
-        if (!node.metadata?.name) return [];
+        if (!node.metadata?.name) {
+          return [];
+        }
         const summary = (await getNodeSummary(node.metadata.name)) as NodeSummary;
         return summary.pods?.flatMap((pod) => pod.volume ?? []) ?? [];
       })

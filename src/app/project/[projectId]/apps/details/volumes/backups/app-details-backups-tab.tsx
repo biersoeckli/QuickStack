@@ -93,7 +93,9 @@ export function DrawerBackupsTab({
       description: `Create a ${scheduleLabels.get(schedule.id)?.toLowerCase()} now?`,
       okButton: 'Create Backup'
     });
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
     try {
       setRunningSchedule(schedule.id);
       await Toast.fromAction(() => runBackupVolumeSchedule(schedule.id), undefined, 'Creating backup...');
@@ -171,7 +173,7 @@ export function DrawerBackupsTab({
         <Table className="min-w-[560px] table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-38">Created</TableHead>
+              <TableHead className="w-52">Created</TableHead>
               <TableHead className="w-24">Size</TableHead>
               <TableHead>Backup Location</TableHead>
               <TableHead className="w-16">Type</TableHead>
@@ -185,7 +187,7 @@ export function DrawerBackupsTab({
               const backupId = `${backup.schedule.id}:${backup.key}`;
               return (
                 <TableRow key={backupId}>
-                  <TableCell>{formatDateTime(backup.backupDate, true)}</TableCell>
+                  <TableCell className="whitespace-normal">{formatDateTime(backup.backupDate, true)}</TableCell>
                   <TableCell>{backup.sizeBytes ? KubeSizeConverter.convertBytesToReadableSize(backup.sizeBytes) : 'Unknown'}</TableCell>
                   <TableCell>
                     <div className="truncate" title={backup.schedule.target.name}>

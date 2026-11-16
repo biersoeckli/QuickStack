@@ -1,12 +1,7 @@
-import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
-import { AgentFileMount } from "@prisma/client";
-import {
-    HARNESS_VIRTUAL_KEY_REFERENCE,
-    buildLiteLlmEnvironment,
-    createCliAgentTemplate,
-    setHarnessRuntimeEnvironment,
-} from "./agent-harness-template.utils";
+import { AgentExtendedModel } from '@/shared/model/agent-extended.model';
+import { AgentTemplatePostCreateContext } from '@/shared/model/agent-template.model';
+import { AgentFileMount } from '@prisma/client';
+import { HARNESS_VIRTUAL_KEY_REFERENCE, buildLiteLlmEnvironment, createCliAgentTemplate, setHarnessRuntimeEnvironment } from './agent-harness-template.utils';
 
 const CLAUDE_CODE_VERSION = '2.1.260';
 const CLAUDE_CODE_BOOTSTRAP_SCRIPT = `#!/bin/sh
@@ -35,40 +30,38 @@ ln -sf /workspace/.quickstack/bin/claude /usr/local/bin/claude
 exec sleep infinity
 `;
 
-export const claudeCodeAgentTemplate = createCliAgentTemplate(
-    'Claude Code CLI',
-    'node:24-bookworm',
-    'exec /bin/sh /workspace/quickstack-bootstrap.sh',
-    {
-        iconName: 'claude-code.svg',
-        description: 'Anthropic\'s terminal coding agent for exploring repositories, implementing changes, and running development workflows. It can use QuickStack LiteLLM or Anthropic directly.',
-        websiteUrl: 'https://code.claude.com/docs/en/overview',
-    },
-);
+export const claudeCodeAgentTemplate = createCliAgentTemplate('Claude Code CLI', 'node:24-bookworm', 'exec /bin/sh /workspace/quickstack-bootstrap.sh', {
+  iconName: 'claude-code.svg',
+  description:
+    "Anthropic's terminal coding agent for exploring repositories, implementing changes, and running development workflows. It can use QuickStack LiteLLM or Anthropic directly.",
+  websiteUrl: 'https://code.claude.com/docs/en/overview'
+});
 
 export async function postCreateClaudeCodeTemplate(
-    createdAgents: AgentExtendedModel[],
-    _context: AgentTemplatePostCreateContext,
+  createdAgents: AgentExtendedModel[],
+  _context: AgentTemplatePostCreateContext
 ): Promise<AgentExtendedModel[]> {
-    const agent = createdAgents[0];
-    if (!agent) return createdAgents;
-    const config = buildLiteLlmEnvironment(agent);
-    setHarnessRuntimeEnvironment(agent, config, [
-        { name: 'ANTHROPIC_BASE_URL', value: config.gatewayBaseUrl },
-        { name: 'ANTHROPIC_AUTH_TOKEN', value: HARNESS_VIRTUAL_KEY_REFERENCE },
-        { name: 'ANTHROPIC_API_KEY', value: HARNESS_VIRTUAL_KEY_REFERENCE },
-        { name: 'ANTHROPIC_MODEL', value: config.defaultModelAlias },
-        { name: 'DISABLE_AUTOUPDATER', value: '1' },
-    ]);
-    agent.agentFileMounts = [
-        {
-            containerMountPath: '/workspace/quickstack-harness.env',
-            content: config.environment,
-        } as AgentFileMount,
-        {
-            containerMountPath: '/workspace/quickstack-bootstrap.sh',
-            content: CLAUDE_CODE_BOOTSTRAP_SCRIPT,
-        } as AgentFileMount,
-    ];
-    return [agent];
+  const agent = createdAgents[0];
+  if (!agent) {
+    return createdAgents;
+  }
+  const config = buildLiteLlmEnvironment(agent);
+  setHarnessRuntimeEnvironment(agent, config, [
+    { name: 'ANTHROPIC_BASE_URL', value: config.gatewayBaseUrl },
+    { name: 'ANTHROPIC_AUTH_TOKEN', value: HARNESS_VIRTUAL_KEY_REFERENCE },
+    { name: 'ANTHROPIC_API_KEY', value: HARNESS_VIRTUAL_KEY_REFERENCE },
+    { name: 'ANTHROPIC_MODEL', value: config.defaultModelAlias },
+    { name: 'DISABLE_AUTOUPDATER', value: '1' }
+  ]);
+  agent.agentFileMounts = [
+    {
+      containerMountPath: '/workspace/quickstack-harness.env',
+      content: config.environment
+    } as AgentFileMount,
+    {
+      containerMountPath: '/workspace/quickstack-bootstrap.sh',
+      content: CLAUDE_CODE_BOOTSTRAP_SCRIPT
+    } as AgentFileMount
+  ];
+  return [agent];
 }

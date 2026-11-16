@@ -8,7 +8,7 @@
   "trailingComma": "none",
   "printWidth": 160,
   "arrowParens": "always",
-  "objectWrap": "collapse",
+  "objectWrap": "preserve",
   "plugins": ["prettier-plugin-tailwindcss"],
   "tailwindStylesheet": "src/app/globals.css",
   "tailwindFunctions": ["cn", "cva"],

@@ -1,7 +1,10 @@
+import { MonitoringHistoryUtils } from '@/shared/utils/monitoring-history.utils';
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import appHistoryService from './app-history.service';
-import appHistoryAdapter from '@/server/adapter/app-history.adapter';
+import dataAccess from '@/server/adapter/db.client';
+import monitoringHistoryService from './monitoring-history.service';
+import { ListUtils } from '@/shared/utils/list.utils';
 import { AppHistoryPoint, AppMonitoringHistory, AppVolumeHistory } from '@/shared/model/app-monitoring-history.model';
 import { AppVolumeIdentityUtils } from '@/shared/utils/app-volume-identity.utils';
 import appVolumeFilesystemService from './app-volume-filesystem.service';
@@ -9,9 +12,7 @@ import scheduleService from './schedule.service';
 
 type VolumeSample = Prisma.AppVolumeMonitoringSampleCreateManyInput & { id: string };
 
-const COLLECTION_INTERVAL_MINUTES = 5;
-const COLLECTION_INTERVAL_MS = COLLECTION_INTERVAL_MINUTES * 60_000;
-const GAP_THRESHOLD_MS = COLLECTION_INTERVAL_MS + 2 * 60_000;
+const { COLLECTION_INTERVAL_MINUTES, COLLECTION_INTERVAL_MS, GAP_THRESHOLD_MS } = MonitoringHistoryUtils;
 
 class AppMonitoringHistoryService {
   private running = false;
@@ -23,9 +24,52 @@ class AppMonitoringHistoryService {
     void this.collect();
   }
 
+  async getPopulation() {
+    const [apps, volumes] = await Promise.all([
+      dataAccess.client.app.findMany({ select: { id: true, projectId: true } }),
+      dataAccess.client.appVolume.findMany({ include: { app: { select: { projectId: true } } } })
+    ]);
+    return { apps, volumes };
+  }
+
+  async getRawHistory(appIds: string[], cutoff: Date) {
+    return Promise.all([
+      dataAccess.client.monitoringSample.findMany({
+        where: { appId: { in: appIds }, sampledAt: { gte: cutoff } },
+        select: { id: true, appId: true, sampledAt: true, cpuCores: true, ramBytes: true, measuredAt: true },
+        orderBy: { sampledAt: 'asc' }
+      }),
+      dataAccess.client.appVolumeMonitoringMembership
+        .findMany({
+          where: { volume: { appId: { in: appIds } }, sample: { sampledAt: { gte: cutoff } } },
+          include: { sample: true, volume: { select: { appId: true, sharedVolumeId: true, containerMountPath: true, app: { select: { projectId: true } } } } },
+          orderBy: { sample: { sampledAt: 'asc' } }
+        })
+        .then((items) => items.map((item) => ({ ...item.sample, volumeId: item.volumeId, volume: item.volume })))
+    ]);
+  }
+
+  async save(
+    apps: Prisma.MonitoringSampleCreateManyInput[],
+    volumes: Prisma.AppVolumeMonitoringSampleCreateManyInput[],
+    memberships: Prisma.AppVolumeMonitoringMembershipCreateManyInput[],
+    cutoff: Date
+  ) {
+    await dataAccess.client.$transaction(async (tx) => {
+      await monitoringHistoryService.saveSamples(tx, apps, cutoff);
+      for (const chunk of ListUtils.chunk(volumes, 100)) {
+        await tx.appVolumeMonitoringSample.createMany({ data: chunk });
+      }
+      for (const chunk of ListUtils.chunk(memberships, 100)) {
+        await tx.appVolumeMonitoringMembership.createMany({ data: chunk });
+      }
+      await tx.appVolumeMonitoringSample.deleteMany({ where: { sampledAt: { lt: cutoff } } });
+    });
+  }
+
   async getHistory(appIds: string[]): Promise<AppMonitoringHistory> {
-    const retention = await appHistoryAdapter.getRetentionHours();
-    const [apps, volumes] = await appHistoryAdapter.getHistory(appIds, new Date(Date.now() - retention * 3600_000));
+    const retention = await monitoringHistoryService.getRetentionHours();
+    const [apps, volumes] = await this.getRawHistory(appIds, new Date(Date.now() - retention * 3600_000));
     const appsByTime = new Map<number, typeof apps>();
     const volumesByTime = new Map<number, typeof volumes>();
     for (const item of apps) {
@@ -63,7 +107,9 @@ class AppMonitoringHistoryService {
       const uniqueVolumes = new Map<string, (typeof currentVolumes)[number]>();
       for (const item of currentVolumes) {
         const key = AppVolumeIdentityUtils.key(item.volume.app.projectId, item.volumeId, item.volume.sharedVolumeId);
-        if (!uniqueVolumes.has(key) || item.status === 'available') uniqueVolumes.set(key, item);
+        if (!uniqueVolumes.has(key) || item.status === 'available') {
+          uniqueVolumes.set(key, item);
+        }
         let series = volumeSeries.get(item.volumeId);
         if (!series) {
           series = { id: item.volumeId, label: item.volume.containerMountPath, points: [] };
@@ -108,19 +154,21 @@ class AppMonitoringHistoryService {
   }
 
   async getRetentionHours() {
-    return appHistoryAdapter.getRetentionHours();
+    return monitoringHistoryService.getRetentionHours();
   }
 
   async setRetentionHours(hours: number) {
-    await appHistoryAdapter.setRetentionHours(hours);
+    await monitoringHistoryService.setRetentionHours(hours);
   }
 
   async collect() {
-    if (this.running) return;
+    if (this.running) {
+      return;
+    }
     this.running = true;
     try {
       const sampledAt = new Date();
-      const { apps, volumes } = await appHistoryAdapter.getPopulation();
+      const { apps, volumes } = await this.getPopulation();
       const [metrics, filesystem, retention] = await Promise.all([
         appHistoryService.getAppMetrics(apps).catch((error) => {
           console.error('App metrics collection failed', error);
@@ -130,7 +178,7 @@ class AppMonitoringHistoryService {
           console.error('Volume metrics collection failed', error);
           return new Map();
         }),
-        appHistoryAdapter.getRetentionHours()
+        monitoringHistoryService.getRetentionHours()
       ]);
       const samples = new Map<string, VolumeSample>();
       const memberships: Prisma.AppVolumeMonitoringMembershipCreateManyInput[] = [];
@@ -154,7 +202,7 @@ class AppMonitoringHistoryService {
         }
         memberships.push({ sampleId: sample.id, volumeId: volume.id });
       }
-      await appHistoryAdapter.save(
+      await this.save(
         apps.map((app) => ({
           appId: app.id,
           sampledAt,
