@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMemo } from 'react';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { AppVolumeMonitoringUsageModel } from '@/shared/model/app-volume-monitoring-usage.model';
@@ -29,65 +28,51 @@ export default function AppVolumeMonitoring({ volumesUsage }: { volumesUsage?: A
   }, [volumesUsage]);
 
   if (!updatedVolumeUsage) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>App Volumes Capacity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FullLoadingSpinner />
-        </CardContent>
-      </Card>
-    );
+    return <FullLoadingSpinner />;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>App Volumes Capacity</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableCaption>
-            {updatedVolumeUsage.length} App Volumes | Total used {KubeSizeConverter.convertBytesToReadableSize(totals.used)} /{' '}
-            {KubeSizeConverter.convertBytesToReadableSize(totals.capacity)}
-            {totals.incomplete ? ' (incomplete)' : ''}
-          </TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Project</TableHead>
-              <TableHead>App</TableHead>
-              <TableHead>Mount Path</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead></TableHead>
+    <div className="pt-1">
+      <Table>
+        <TableCaption>
+          {updatedVolumeUsage.length} App Volumes | Total used {KubeSizeConverter.convertBytesToReadableSize(totals.used)} /{' '}
+          {KubeSizeConverter.convertBytesToReadableSize(totals.capacity)}
+          {totals.incomplete ? ' (incomplete)' : ''}
+        </TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Project</TableHead>
+            <TableHead>App</TableHead>
+            <TableHead>Mount Path</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {updatedVolumeUsage.map((item) => (
+            <TableRow key={`${item.appId}/${item.mountPath}`}>
+              <TableCell>{item.projectName}</TableCell>
+              <TableCell>{item.appName}</TableCell>
+              <TableCell>{item.mountPath}</TableCell>
+              <TableCell className="space-y-1">
+                {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.capacityBytes > 0 ? (
+                  <VolumeUsage usedBytes={item.usedBytes} capacityBytes={item.capacityBytes} />
+                ) : (
+                  <span>Unavailable ({item.status})</span>
+                )}
+              </TableCell>
+              <TableCell>
+                <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'settings')}>
+                  <Button variant="ghost" size="sm">
+                    <ExternalLink />
+                  </Button>
+                </Link>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {updatedVolumeUsage.map((item) => (
-              <TableRow key={`${item.appId}/${item.mountPath}`}>
-                <TableCell>{item.projectName}</TableCell>
-                <TableCell>{item.appName}</TableCell>
-                <TableCell>{item.mountPath}</TableCell>
-                <TableCell className="space-y-1">
-                  {item.status === 'available' && item.usedBytes !== undefined && item.capacityBytes !== undefined && item.capacityBytes > 0 ? (
-                    <VolumeUsage usedBytes={item.usedBytes} capacityBytes={item.capacityBytes} />
-                  ) : (
-                    <span>Unavailable ({item.status})</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'settings')}>
-                    <Button variant="ghost" size="sm">
-                      <ExternalLink />
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

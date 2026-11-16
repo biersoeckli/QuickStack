@@ -1,12 +1,5 @@
 'use client';
 
-
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import FullLoadingSpinner from '@/components/ui/full-loading-spinnter';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { KubeSizeConverter } from '@/shared/utils/kubernetes-size-converter.utils';
@@ -18,74 +11,57 @@ import PodStatusIndicator from '@/components/custom/pod-status-indicator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PathBuilderUtils } from '@/shared/utils/path-builder.utils';
 
-export default function AppRessourceMonitoring({
-    appsRessourceUsage
-}: {
-    appsRessourceUsage?: AppMonitoringUsageModel[]
-}) {
+export default function AppRessourceMonitoring({ appsRessourceUsage }: { appsRessourceUsage?: AppMonitoringUsageModel[] }) {
+  const updatedAppUsage = appsRessourceUsage;
 
-    const updatedAppUsage = appsRessourceUsage;
+  if (!updatedAppUsage) {
+    return <FullLoadingSpinner />;
+  }
 
-    if (!updatedAppUsage) {
-        return <Card>
-            <CardHeader>
-                <CardTitle>App Ressource Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <FullLoadingSpinner />
-            </CardContent>
-        </Card>
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>App Ressource Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableCaption>{updatedAppUsage.length} Apps</TableCaption>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Project</TableHead>
-                            <TableHead>App</TableHead>
-                            <TableHead>CPU</TableHead>
-                            <TableHead>RAM</TableHead>
-                            <TableHead></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {updatedAppUsage.map((item) => (
-                            <TableRow key={item.appId}>
-                                <TableCell>
-                                    <PodStatusIndicator appId={item.appId} showLabel={true} />
-                                </TableCell>
-                                <TableCell>{item.projectName}</TableCell>
-                                <TableCell>{item.appName}</TableCell>
-                                <TableCell>
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger render={<span className='font-semibold'>{item.cpuUsagePercent.toFixed(3)}%</span>} />
-                                            <TooltipContent>
-                                                <p>{item.cpuUsage.toFixed(5)} Cores</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </TableCell>
-                                <TableCell>{KubeSizeConverter.convertBytesToReadableSize(item.ramUsageBytes)}</TableCell>
-                                <TableCell>
-                                    <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'stats')} >
-                                        <Button variant="ghost" size="sm">
-                                            <ExternalLink />
-                                        </Button>
-                                    </Link>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
+  return (
+    <div className="pt-1">
+      <Table>
+        <TableCaption>{updatedAppUsage.length} Apps</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Status</TableHead>
+            <TableHead>Project</TableHead>
+            <TableHead>App</TableHead>
+            <TableHead>CPU</TableHead>
+            <TableHead>RAM</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {updatedAppUsage.map((item) => (
+            <TableRow key={item.appId}>
+              <TableCell>
+                <PodStatusIndicator appId={item.appId} showLabel={true} />
+              </TableCell>
+              <TableCell>{item.projectName}</TableCell>
+              <TableCell>{item.appName}</TableCell>
+              <TableCell>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="font-semibold">{item.cpuUsagePercent.toFixed(3)}%</span>} />
+                    <TooltipContent>
+                      <p>{item.cpuUsage.toFixed(5)} Cores</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </TableCell>
+              <TableCell>{KubeSizeConverter.convertBytesToReadableSize(item.ramUsageBytes)}</TableCell>
+              <TableCell>
+                <Link href={PathBuilderUtils.projectAppDrawer(item.projectId, item.appId, 'stats')}>
+                  <Button variant="ghost" size="sm">
+                    <ExternalLink />
+                  </Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }

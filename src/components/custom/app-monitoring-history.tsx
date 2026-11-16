@@ -21,7 +21,10 @@ export function HistoryChart({
   currentValue,
   currentPercent,
   selectedRangeHours,
-  useCurrentValue = false
+  useCurrentValue = false,
+  compact = false,
+  subtitle,
+  embedded = false
 }: {
   title: string;
   data: object[];
@@ -31,17 +34,22 @@ export function HistoryChart({
   currentValue?: number;
   currentPercent?: number;
   useCurrentValue?: boolean;
+  compact?: boolean;
+  subtitle?: string;
+  embedded?: boolean;
 }) {
   const visibleSamples = data.filter((point) => (point as Record<string, unknown>)[dataKey] != null);
   const latestValue = [...visibleSamples].reverse().map((point) => (point as Record<string, number>)[dataKey])[0];
   const formatValue = (value: number, axis = false) =>
-    unit === 'bytes'
-      ? KubeSizeConverter.convertBytesToReadableSize(value, axis ? 1 : 2)
-      : `${new Intl.NumberFormat(undefined, { maximumSignificantDigits: axis ? 2 : 6 }).format(value)}${axis ? '' : ' cores'}`;
+    unit === 'percent'
+      ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: axis ? 0 : 2 }).format(value)}%`
+      : unit === 'bytes'
+        ? KubeSizeConverter.convertBytesToReadableSize(value, axis ? 1 : 2)
+        : `${new Intl.NumberFormat(undefined, { maximumSignificantDigits: axis ? 2 : 6 }).format(value)}${axis ? '' : ' cores'}`;
   const config = { [dataKey]: { label: title, color: 'var(--chart-2)' } } satisfies ChartConfig;
-  return (
-    <Card size="sm" className="min-w-0">
-      <CardHeader>
+  const content = (
+    <>
+      <CardHeader className="-space-y-1.5">
         <CardTitle>{title}</CardTitle>
         {currentPercent !== undefined && currentValue !== undefined ? (
           <TooltipProvider>
@@ -63,15 +71,17 @@ export function HistoryChart({
                 : formatValue(latestValue)}
           </div>
         )}
+        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </CardHeader>
       <CardContent>
         {visibleSamples.length === 0 ? (
           <p className="text-sm text-muted-foreground">No measurements available.</p>
         ) : (
-          <ChartContainer config={config} className="h-48 w-full">
+          <ChartContainer config={config} className={compact ? 'h-20 w-full' : 'h-48 w-full'}>
             <LineChart accessibilityLayer data={data}>
-              <CartesianGrid vertical={false} />
+              {!compact && <CartesianGrid vertical={false} />}
               <XAxis
+                hide={compact}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -84,7 +94,14 @@ export function HistoryChart({
                   })
                 }
               />
-              <YAxis width={70} tickLine={false} axisLine={false} tickFormatter={(value) => formatValue(value, true)} />
+              <YAxis
+                hide={compact}
+                domain={compact ? [0, 'auto'] : undefined}
+                width={70}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => formatValue(value, true)}
+              />
               <ChartTooltip
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) {
@@ -112,6 +129,13 @@ export function HistoryChart({
           </ChartContainer>
         )}
       </CardContent>
+    </>
+  );
+  return embedded ? (
+    <div className="flex min-w-0 flex-col gap-2">{content}</div>
+  ) : (
+    <Card size="sm" className="min-w-0 pb-0">
+      {content}
     </Card>
   );
 }
@@ -121,10 +145,11 @@ export function getMonitoringRangeOptions(retentionHours: number) {
     { value: '1h', label: 'Last hour', hours: 1 },
     { value: '5h', label: 'Last 5 hours', hours: 5 },
     { value: 'today', label: 'Today', hours: 24 },
+    { value: '24h', label: 'Last 24 hours', hours: 24 },
     { value: '48h', label: 'Last 48 hours', hours: 48 },
     { value: '7d', label: 'Last 7 days', hours: 168 }
   ].filter((option) => option.hours <= retentionHours);
-  if (![1, 5, 48, 168].includes(retentionHours)) {
+  if (![1, 5, 24, 48, 168].includes(retentionHours)) {
     options.push({ value: 'all', label: `Last ${retentionHours} hours`, hours: retentionHours });
   }
   return options;
