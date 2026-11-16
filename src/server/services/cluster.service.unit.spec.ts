@@ -37,12 +37,12 @@ describe('cluster node storage', () => {
     mocks.getNodeSummary.mockResolvedValue({ node: { fs: { time: new Date().toISOString(), usedBytes: 10, availableBytes: 90, capacityBytes: 100 } } });
     mocks.getNodeMetrics.mockResolvedValue({
       items: [
-        { metadata: { name: 'node-a' }, timestamp: new Date().toISOString(), usage: { cpu: 'invalid', memory: '100Mi' } },
+        { metadata: { name: 'node-a' }, timestamp: new Date().toISOString(), usage: { cpu: 'invalid', memory: '1234' } },
         { metadata: { name: 'node-b' }, timestamp: '2000-01-01T00:00:00Z', usage: { cpu: '1', memory: '100Mi' } }
       ]
     });
     const nodes = await clusterService.getNodeResourceUsage();
-    expect(nodes[0]).toMatchObject({ cpuUsage: null, ramUsage: 104857600, diskUsageAbsolut: 10 });
+    expect(nodes[0]).toMatchObject({ cpuUsage: null, ramUsage: 1234, diskUsageAbsolut: 10 });
     expect(nodes[1]).toMatchObject({ cpuUsage: null, ramUsage: null, diskUsageAbsolut: 10 });
   });
 

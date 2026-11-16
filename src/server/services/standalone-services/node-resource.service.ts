@@ -6,7 +6,9 @@ import { NodeResourceModel } from '@/shared/model/node-resource.model';
 type NodeMonitoringResource = Omit<NodeResourceModel, 'cpuUsage' | 'ramUsage'> & { cpuUsage: number | null; ramUsage: number | null };
 
 class NodeResourceService {
-  async getNodeResourceUsage(getSummary: (name: string) => Promise<unknown> = (name) => nodeResourceAdapter.getSummary(name)): Promise<NodeMonitoringResource[]> {
+  async getNodeResourceUsage(
+    getSummary: (name: string) => Promise<unknown> = (name) => nodeResourceAdapter.getSummary(name)
+  ): Promise<NodeMonitoringResource[]> {
     const topNodes = await nodeResourceAdapter.getNodes();
 
     const metricsData: k8s.NodeMetricsList = await nodeResourceAdapter.getMetrics().catch(() => ({ items: [] }) as unknown as k8s.NodeMetricsList);
@@ -28,7 +30,9 @@ class NodeResourceService {
           }
         };
         const cpuUsage = convert(metric?.usage?.cpu, (value) => KubeSizeConverter.fromNanoToFullCpu(KubeSizeConverter.fromKubeSizeToNanoCpu(value)));
-        const ramUsage = convert(metric?.usage?.memory, (value) => KubeSizeConverter.fromKubeSizeToBytes(value));
+        const ramUsage = convert(metric?.usage?.memory, (value) =>
+          /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : KubeSizeConverter.fromKubeSizeToBytes(value)
+        );
 
         let filesystem: { usedBytes?: number; availableBytes?: number; capacityBytes?: number; time?: string } | undefined;
         try {

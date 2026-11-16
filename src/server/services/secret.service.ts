@@ -116,7 +116,6 @@ class SecretService {
             }
 
             try {
-                console.log('replacing bitch')
                 await k3s.core.replaceNamespacedSecret({
                     namespace,
                     name: secretName,
