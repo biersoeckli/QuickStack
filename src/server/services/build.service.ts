@@ -251,7 +251,7 @@ class BuildService {
             ]);
             const schedulableNames = new Set(nodeInfos.filter(n => n.schedulable).map(n => n.name));
             const bestNode = nodeResources
-                .filter(n => schedulableNames.has(n.name))
+                .filter((n): n is typeof n & { ramUsage: number } => schedulableNames.has(n.name) && n.ramUsage !== null)
                 .sort((a, b) => (b.ramCapacity - b.ramUsage) - (a.ramCapacity - a.ramUsage))[0];
             if (bestNode) {
                 nodeSelector = { 'kubernetes.io/hostname': bestNode.name };

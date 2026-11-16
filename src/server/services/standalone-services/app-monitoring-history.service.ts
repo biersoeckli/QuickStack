@@ -1,4 +1,4 @@
-import nodeMonitoringHistoryService from './node-monitoring-history.service';
+import { MonitoringHistoryUtils } from '@/shared/utils/monitoring-history.utils';
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import appHistoryService from './app-history.service';
@@ -10,9 +10,7 @@ import scheduleService from './schedule.service';
 
 type VolumeSample = Prisma.AppVolumeMonitoringSampleCreateManyInput & { id: string };
 
-const COLLECTION_INTERVAL_MINUTES = 5;
-const COLLECTION_INTERVAL_MS = COLLECTION_INTERVAL_MINUTES * 60_000;
-const GAP_THRESHOLD_MS = COLLECTION_INTERVAL_MS + 2 * 60_000;
+const { COLLECTION_INTERVAL_MINUTES, COLLECTION_INTERVAL_MS, GAP_THRESHOLD_MS } = MonitoringHistoryUtils;
 
 class AppMonitoringHistoryService {
   private running = false;
@@ -133,7 +131,6 @@ class AppMonitoringHistoryService {
         }),
         appHistoryAdapter.getRetentionHours()
       ]);
-      await nodeMonitoringHistoryService.collect(sampledAt, retention).catch((error) => console.error('Node monitoring history collection failed', error));
       const samples = new Map<string, VolumeSample>();
       const memberships: Prisma.AppVolumeMonitoringMembershipCreateManyInput[] = [];
       for (const volume of volumes) {

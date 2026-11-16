@@ -26,9 +26,9 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
 
     return updatedNodeRessources.reduce(
       (acc, node) => ({
-        cpuUsage: acc.cpuUsage + node.cpuUsage,
+        cpuUsage: acc.cpuUsage + (node.cpuUsage ?? 0),
         cpuCapacity: acc.cpuCapacity + node.cpuCapacity,
-        ramUsage: acc.ramUsage + node.ramUsage,
+        ramUsage: acc.ramUsage + (node.ramUsage ?? 0),
         ramCapacity: acc.ramCapacity + node.ramCapacity,
         diskUsageAbsolut: acc.diskUsageAbsolut + getDiskUsageAbsolut(node),
         diskCapacity: acc.diskCapacity + getDiskUsageCapacity(node)
@@ -67,29 +67,33 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
             <CardDescription>Total Cores Usage</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
-              <PieChart>
-                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                <Pie data={getChartData(clusterStats.cpuUsage, clusterStats.cpuCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
-                  <Label
-                    content={({ viewBox }) => {
-                      if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                        return (
-                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                            <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                              {((clusterStats.cpuUsage / clusterStats.cpuCapacity) * 100).toFixed(0)}%
-                            </tspan>
-                            <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
-                              Used
-                            </tspan>
-                          </text>
-                        );
-                      }
-                    }}
-                  />
-                </Pie>
-              </PieChart>
-            </ChartContainer>
+            {updatedNodeRessources.some((node) => node.cpuUsage === null) ? (
+              <p className="py-12 text-center text-muted-foreground">Metrics unavailable</p>
+            ) : (
+              <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
+                <PieChart>
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                  <Pie data={getChartData(clusterStats.cpuUsage, clusterStats.cpuCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                          return (
+                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                              <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
+                                {((clusterStats.cpuUsage / clusterStats.cpuCapacity) * 100).toFixed(0)}%
+                              </tspan>
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
+                                Used
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -100,32 +104,36 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
             <CardDescription>Total Memory Usage</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-0">
-            <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
-              <PieChart>
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel formatter={(value) => KubeSizeConverter.convertBytesToReadableSize(value as number)} />}
-                />
-                <Pie data={getChartData(clusterStats.ramUsage, clusterStats.ramCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
-                  <Label
-                    content={({ viewBox }) => {
-                      if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                        return (
-                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                            <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                              {((clusterStats.ramUsage / clusterStats.ramCapacity) * 100).toFixed(0)}%
-                            </tspan>
-                            <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
-                              Used
-                            </tspan>
-                          </text>
-                        );
-                      }
-                    }}
+            {updatedNodeRessources.some((node) => node.ramUsage === null) ? (
+              <p className="py-12 text-center text-muted-foreground">Metrics unavailable</p>
+            ) : (
+              <ChartContainer config={pieChartConfig} className="mx-auto aspect-square max-h-[250px]">
+                <PieChart>
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel formatter={(value) => KubeSizeConverter.convertBytesToReadableSize(value as number)} />}
                   />
-                </Pie>
-              </PieChart>
-            </ChartContainer>
+                  <Pie data={getChartData(clusterStats.ramUsage, clusterStats.ramCapacity)} dataKey="value" nameKey="status" innerRadius={60} strokeWidth={5}>
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                          return (
+                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                              <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
+                                {((clusterStats.ramUsage / clusterStats.ramCapacity) * 100).toFixed(0)}%
+                              </tspan>
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
+                                Used
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -244,26 +252,34 @@ export default function ResourcesNodes({ resourcesNodes, reservedVolumeStorage }
                 <TableRow key={node.name}>
                   <TableCell className="font-medium">{node.name}</TableCell>
                   <TableCell className="w-[25%]">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{((node.cpuUsage / node.cpuCapacity) * 100).toFixed(0)}%</span>
-                        <span>
-                          {node.cpuUsage.toFixed(2)} / {node.cpuCapacity} Cores
-                        </span>
+                    {node.cpuUsage === null ? (
+                      <span className="text-muted-foreground">Unavailable</span>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{((node.cpuUsage / node.cpuCapacity) * 100).toFixed(0)}%</span>
+                          <span>
+                            {node.cpuUsage.toFixed(2)} / {node.cpuCapacity} Cores
+                          </span>
+                        </div>
+                        <Progress value={(node.cpuUsage / node.cpuCapacity) * 100} className="h-2" />
                       </div>
-                      <Progress value={(node.cpuUsage / node.cpuCapacity) * 100} className="h-2" />
-                    </div>
+                    )}
                   </TableCell>
                   <TableCell className="w-[25%]">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{((node.ramUsage / node.ramCapacity) * 100).toFixed(0)}%</span>
-                        <span>
-                          {KubeSizeConverter.convertBytesToReadableSize(node.ramUsage)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
-                        </span>
+                    {node.ramUsage === null ? (
+                      <span className="text-muted-foreground">Unavailable</span>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{((node.ramUsage / node.ramCapacity) * 100).toFixed(0)}%</span>
+                          <span>
+                            {KubeSizeConverter.convertBytesToReadableSize(node.ramUsage)} / {KubeSizeConverter.convertBytesToReadableSize(node.ramCapacity)}
+                          </span>
+                        </div>
+                        <Progress value={(node.ramUsage / node.ramCapacity) * 100} className="h-2" />
                       </div>
-                      <Progress value={(node.ramUsage / node.ramCapacity) * 100} className="h-2" />
-                    </div>
+                    )}
                   </TableCell>
                   <TableCell className="w-[25%]">
                     <div className="space-y-1">

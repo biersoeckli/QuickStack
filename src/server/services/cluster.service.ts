@@ -118,8 +118,7 @@ class ClusterService {
   }
 
   async getNodeResourceUsage(): Promise<NodeResourceModel[]> {
-    const nodes = await nodeResourceService.getNodeResourceUsage(getCachedNodeSummary);
-    return nodes.filter((node): node is NodeResourceModel => node.cpuUsage !== null && node.ramUsage !== null);
+    return nodeResourceService.getNodeResourceUsage(getCachedNodeSummary);
   }
 }
 

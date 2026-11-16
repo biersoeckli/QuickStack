@@ -11,6 +11,7 @@ import { Constants } from './shared/utils/constants';
 import backupService from './server/services/standalone-services/backup.service';
 import maintenanceService from './server/services/standalone-services/maintenance.service';
 import appMonitoringHistoryService from './server/services/standalone-services/app-monitoring-history.service';
+import nodeMonitoringHistoryService from './server/services/standalone-services/node-monitoring-history.service';
 import passwordChangeService from './server/services/standalone-services/password-change.service';
 
 declare global {
@@ -56,6 +57,7 @@ async function initializeNextJs() {
   await backupService.registerAllBackups();
   maintenanceService.configureMaintenanceCronJobs();
   appMonitoringHistoryService.initialize();
+  nodeMonitoringHistoryService.initialize();
 
   const app = next({ dev });
   const handle = app.getRequestHandler();
