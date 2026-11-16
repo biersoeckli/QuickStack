@@ -19,7 +19,9 @@ class MonitoringHistoryService {
   }
 
   async saveSamples(tx: Prisma.TransactionClient, samples: Prisma.MonitoringSampleCreateManyInput[], cutoff: Date) {
-    for (const chunk of ListUtils.chunk(samples, 100)) await tx.monitoringSample.createMany({ data: chunk });
+    for (const chunk of ListUtils.chunk(samples, 100)) {
+      await tx.monitoringSample.createMany({ data: chunk });
+    }
     await tx.monitoringSample.deleteMany({ where: { sampledAt: { lt: cutoff } } });
   }
 }

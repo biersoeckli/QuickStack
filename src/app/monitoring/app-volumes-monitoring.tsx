@@ -17,7 +17,9 @@ export default function AppVolumeMonitoring({ volumesUsage }: { volumesUsage?: A
   const updatedVolumeUsage = volumesUsage;
   const totals = useMemo(() => {
     const unique = new Map<string, AppVolumeMonitoringUsageModel>();
-    for (const volume of volumesUsage ?? []) unique.set(AppVolumeIdentityUtils.observationKey(volume.projectId, volume.pvcName), volume);
+    for (const volume of volumesUsage ?? []) {
+      unique.set(AppVolumeIdentityUtils.observationKey(volume.projectId, volume.pvcName), volume);
+    }
     const values = [...unique.values()];
     return {
       used: values.reduce((sum, value) => sum + (value.usedBytes ?? 0), 0),

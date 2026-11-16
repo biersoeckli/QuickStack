@@ -57,8 +57,12 @@ class AppMonitoringHistoryService {
   ) {
     await dataAccess.client.$transaction(async (tx) => {
       await monitoringHistoryService.saveSamples(tx, apps, cutoff);
-      for (const chunk of ListUtils.chunk(volumes, 100)) await tx.appVolumeMonitoringSample.createMany({ data: chunk });
-      for (const chunk of ListUtils.chunk(memberships, 100)) await tx.appVolumeMonitoringMembership.createMany({ data: chunk });
+      for (const chunk of ListUtils.chunk(volumes, 100)) {
+        await tx.appVolumeMonitoringSample.createMany({ data: chunk });
+      }
+      for (const chunk of ListUtils.chunk(memberships, 100)) {
+        await tx.appVolumeMonitoringMembership.createMany({ data: chunk });
+      }
       await tx.appVolumeMonitoringSample.deleteMany({ where: { sampledAt: { lt: cutoff } } });
     });
   }
@@ -103,7 +107,9 @@ class AppMonitoringHistoryService {
       const uniqueVolumes = new Map<string, (typeof currentVolumes)[number]>();
       for (const item of currentVolumes) {
         const key = AppVolumeIdentityUtils.key(item.volume.app.projectId, item.volumeId, item.volume.sharedVolumeId);
-        if (!uniqueVolumes.has(key) || item.status === 'available') uniqueVolumes.set(key, item);
+        if (!uniqueVolumes.has(key) || item.status === 'available') {
+          uniqueVolumes.set(key, item);
+        }
         let series = volumeSeries.get(item.volumeId);
         if (!series) {
           series = { id: item.volumeId, label: item.volume.containerMountPath, points: [] };
@@ -156,7 +162,9 @@ class AppMonitoringHistoryService {
   }
 
   async collect() {
-    if (this.running) return;
+    if (this.running) {
+      return;
+    }
     this.running = true;
     try {
       const sampledAt = new Date();

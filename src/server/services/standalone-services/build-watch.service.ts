@@ -15,163 +15,170 @@ import { AppBuildMethodUtils } from '@/shared/utils/app-build-method.utils';
 import buildStatusService from './build-status-pub-sub.service';
 
 declare global {
-    var buildWatchServiceInstance: BuildWatchService | undefined;
+  var buildWatchServiceInstance: BuildWatchService | undefined;
 }
 
 class BuildWatchService {
-    private isWatchRunning = false;
-    private processedJobs = new Set<string>();
+  private isWatchRunning = false;
+  private processedJobs = new Set<string>();
 
-    async startWatch() {
-        if (this.isWatchRunning) {
-            console.log('[BuildWatch] Watch already running, skipping start.');
-            return;
-        }
-        this.isWatchRunning = true;
-        console.log('[BuildWatch] Starting build job watch...');
+  async startWatch() {
+    if (this.isWatchRunning) {
+      console.log('[BuildWatch] Watch already running, skipping start.');
+      return;
+    }
+    this.isWatchRunning = true;
+    console.log('[BuildWatch] Starting build job watch...');
 
-        try {
-            await buildStatusService.ensureSeeded();
-        } catch (error) {
-            // The watch must keep processing build completions when its status
-            // cache cannot be rebuilt. The SSE route will surface the seed error.
-            console.error('[BuildWatch] Failed to seed build statuses:', error);
-        }
-
-        try {
-            await this.seedProcessedJobs();
-        } catch (error) {
-            // Without a successful seed a restarted watch would replay every
-            // existing build job as "ADDED" and redeploy old builds.
-            console.error('[BuildWatch] Failed to seed existing build jobs:', error);
-        }
-
-        const kc = k3s.getKubeConfig();
-        const watch = new k8s.Watch(kc);
-
-        await watch.watch(
-            `/apis/batch/v1/namespaces/${BUILD_NAMESPACE}/jobs`,
-            {},
-            async (type: string, apiObj: unknown) => {
-                const job = apiObj as V1Job;
-                try {
-                    await buildStatusService.applyJobEvent(type, job);
-                } catch (e) {
-                    console.error('[BuildWatch] Status update failed:', e);
-                }
-                await this.handleJobEvent(type, job);
-            },
-            (err: unknown) => {
-                if (err) console.error('[BuildWatch] Watch error:', err);
-                console.log('[BuildWatch] Watch ended, restarting in 5s...');
-                this.isWatchRunning = false;
-                setTimeout(() => this.startWatch(), 5000);
-            }
-        );
+    try {
+      await buildStatusService.ensureSeeded();
+    } catch (error) {
+      // The watch must keep processing build completions when its status
+      // cache cannot be rebuilt. The SSE route will surface the seed error.
+      console.error('[BuildWatch] Failed to seed build statuses:', error);
     }
 
-    /**
-     * Marks already finished build jobs as processed before the watch starts.
-     *
-     * A watch without a resourceVersion first replays every existing job as a
-     * synthetic ADDED event ("Get State and Start at Most Recent"). Without this
-     * seed, a restart would redeploy old successful builds, and because jobs are
-     * replayed in list order an older build could win over the newest one.
-     *
-     * Running and pending jobs stay unseeded so they still deploy on completion.
-     */
-    private async seedProcessedJobs() {
-        const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
-        for (const job of jobs.items ?? []) {
-            const jobName = job.metadata?.name;
-            if (!jobName) continue;
-
-            const status = buildService.getJobStatusString(job.status);
-            if (status === 'SUCCEEDED' || status === 'FAILED') {
-                this.processedJobs.add(jobName);
-            }
-        }
-        console.log('[BuildWatch] Seeded existing build jobs.');
+    try {
+      await this.seedProcessedJobs();
+    } catch (error) {
+      // Without a successful seed a restarted watch would replay every
+      // existing build job as "ADDED" and redeploy old builds.
+      console.error('[BuildWatch] Failed to seed existing build jobs:', error);
     }
 
-    private async handleJobEvent(type: string, job: V1Job) {
-        if (type === 'DELETED') return;
+    const kc = k3s.getKubeConfig();
+    const watch = new k8s.Watch(kc);
 
-        const jobName = job.metadata?.name;
-        if (!jobName || this.processedJobs.has(jobName)) return;
-
-        const status = buildService.getJobStatusString(job.status);
-
-        if (status === 'SUCCEEDED') {
-            this.processedJobs.add(jobName);
-            await this.handleSucceeded(job);
-        } else if (status === 'FAILED') {
-            this.processedJobs.add(jobName);
-            await this.handleFailed(job);
-        }
-    }
-
-    private async handleSucceeded(job: V1Job) {
-        const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
-        const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
-        const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
-        const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE]
-            ?? (agentId ? 'agent' : 'app');
-        const gitCommitHash = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
-        const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
-        const buildJobName = job.metadata?.name;
-        const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
-        const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
-        const isRollback = RollbackAnnotationUtils.isRollbackAnnotation(job.metadata?.annotations);
-
-        if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
-            console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
-            return;
-        }
-
+    await watch.watch(
+      `/apis/batch/v1/namespaces/${BUILD_NAMESPACE}/jobs`,
+      {},
+      async (type: string, apiObj: unknown) => {
+        const job = apiObj as V1Job;
         try {
-            console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for ${workloadType} ${appId ?? agentId}`);
-            await dlog(deploymentId, `*************************************`);
-            await dlog(deploymentId, ` ✓ Build job completed successfully. `);
-            await dlog(deploymentId, `*************************************`);
-            await dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
-            if (workloadType === 'agent') {
-                await agentService.deployBuiltAgent(agentId!, deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
-            } else {
-                const app = await appService.getExtendedById(appId!, false);
-                await deploymentService.createDeployment(deploymentId, app, {
-                    buildJobName,
-                    gitCommitHash,
-                    gitCommitMessage,
-                    buildMethod: buildMethod ?? AppBuildMethodUtils.normalize(app.buildMethod),
-                    isRollback,
-                });
-            }
+          await buildStatusService.applyJobEvent(type, job);
         } catch (e) {
-            console.error(`[BuildWatch] Error triggering deployment for ${workloadType} ${appId ?? agentId}:`, e);
-            if (deploymentId) {
-                await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
-            }
-        } finally {
-            await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+          console.error('[BuildWatch] Status update failed:', e);
         }
+        await this.handleJobEvent(type, job);
+      },
+      (err: unknown) => {
+        if (err) {
+          console.error('[BuildWatch] Watch error:', err);
+        }
+        console.log('[BuildWatch] Watch ended, restarting in 5s...');
+        this.isWatchRunning = false;
+        setTimeout(() => this.startWatch(), 5000);
+      }
+    );
+  }
+
+  /**
+   * Marks already finished build jobs as processed before the watch starts.
+   *
+   * A watch without a resourceVersion first replays every existing job as a
+   * synthetic ADDED event ("Get State and Start at Most Recent"). Without this
+   * seed, a restart would redeploy old successful builds, and because jobs are
+   * replayed in list order an older build could win over the newest one.
+   *
+   * Running and pending jobs stay unseeded so they still deploy on completion.
+   */
+  private async seedProcessedJobs() {
+    const jobs = await k3s.batch.listNamespacedJob({ namespace: BUILD_NAMESPACE });
+    for (const job of jobs.items ?? []) {
+      const jobName = job.metadata?.name;
+      if (!jobName) {
+        continue;
+      }
+
+      const status = buildService.getJobStatusString(job.status);
+      if (status === 'SUCCEEDED' || status === 'FAILED') {
+        this.processedJobs.add(jobName);
+      }
+    }
+    console.log('[BuildWatch] Seeded existing build jobs.');
+  }
+
+  private async handleJobEvent(type: string, job: V1Job) {
+    if (type === 'DELETED') {
+      return;
     }
 
-    private async handleFailed(job: V1Job) {
-        const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
-        const buildJobName = job.metadata?.name;
-        const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
-        if (!deploymentId) {
-            await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
-            return;
-        }
-
-        console.log(`[BuildWatch] Build job ${buildJobName} failed, logging error.`);
-        await dlog(deploymentId, `*********************`);
-        await dlog(deploymentId, ` ⚠ Build job failed. `);
-        await dlog(deploymentId, `*********************`);
-        await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+    const jobName = job.metadata?.name;
+    if (!jobName || this.processedJobs.has(jobName)) {
+      return;
     }
+
+    const status = buildService.getJobStatusString(job.status);
+
+    if (status === 'SUCCEEDED') {
+      this.processedJobs.add(jobName);
+      await this.handleSucceeded(job);
+    } else if (status === 'FAILED') {
+      this.processedJobs.add(jobName);
+      await this.handleFailed(job);
+    }
+  }
+
+  private async handleSucceeded(job: V1Job) {
+    const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
+    const appId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_APP_ID];
+    const agentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_AGENT_ID];
+    const workloadType = job.metadata?.annotations?.[Constants.QS_ANNOTATION_WORKLOAD_TYPE] ?? (agentId ? 'agent' : 'app');
+    const gitCommitHash = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT];
+    const gitCommitMessage = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_COMMIT_MESSAGE];
+    const buildJobName = job.metadata?.name;
+    const buildMethod = job.metadata?.annotations?.[Constants.QS_ANNOTATION_BUILD_METHOD] as AppBuildMethod | undefined;
+    const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
+    const isRollback = RollbackAnnotationUtils.isRollbackAnnotation(job.metadata?.annotations);
+
+    if (!deploymentId || !buildJobName || (workloadType === 'app' && !appId) || (workloadType === 'agent' && !agentId)) {
+      console.error('[BuildWatch] handleSucceeded: missing required annotations on job', job.metadata?.name);
+      return;
+    }
+
+    try {
+      console.log(`[BuildWatch] Build job ${buildJobName} succeeded, triggering deployment for ${workloadType} ${appId ?? agentId}`);
+      await dlog(deploymentId, `*************************************`);
+      await dlog(deploymentId, ` ✓ Build job completed successfully. `);
+      await dlog(deploymentId, `*************************************`);
+      await dlog(deploymentId, `Starting deployment with output from build "${buildJobName}"`);
+      if (workloadType === 'agent') {
+        await agentService.deployBuiltAgent(agentId!, deploymentId, buildJobName, gitCommitHash, gitCommitMessage);
+      } else {
+        const app = await appService.getExtendedById(appId!, false);
+        await deploymentService.createDeployment(deploymentId, app, {
+          buildJobName,
+          gitCommitHash,
+          gitCommitMessage,
+          buildMethod: buildMethod ?? AppBuildMethodUtils.normalize(app.buildMethod),
+          isRollback
+        });
+      }
+    } catch (e) {
+      console.error(`[BuildWatch] Error triggering deployment for ${workloadType} ${appId ?? agentId}:`, e);
+      if (deploymentId) {
+        await dlog(deploymentId, `[ERROR] Deployment failed after build: ${e}`);
+      }
+    } finally {
+      await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+    }
+  }
+
+  private async handleFailed(job: V1Job) {
+    const deploymentId = job.metadata?.annotations?.[Constants.QS_ANNOTATION_DEPLOYMENT_ID];
+    const buildJobName = job.metadata?.name;
+    const gitSshSecretName = job.metadata?.annotations?.[Constants.QS_ANNOTATION_GIT_SSH_SECRET];
+    if (!deploymentId) {
+      await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+      return;
+    }
+
+    console.log(`[BuildWatch] Build job ${buildJobName} failed, logging error.`);
+    await dlog(deploymentId, `*********************`);
+    await dlog(deploymentId, ` ⚠ Build job failed. `);
+    await dlog(deploymentId, `*********************`);
+    await appGitSshKeyService.deleteTemporaryBuildSecret(gitSshSecretName);
+  }
 }
 
 const buildWatchService = globalThis.buildWatchServiceInstance ?? new BuildWatchService();

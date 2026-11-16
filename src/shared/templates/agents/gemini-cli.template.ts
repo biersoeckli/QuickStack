@@ -1,12 +1,7 @@
-import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
-import { AgentFileMount } from "@prisma/client";
-import {
-    HARNESS_VIRTUAL_KEY_REFERENCE,
-    buildLiteLlmEnvironment,
-    createCliAgentTemplate,
-    setHarnessRuntimeEnvironment,
-} from "./agent-harness-template.utils";
+import { AgentExtendedModel } from '@/shared/model/agent-extended.model';
+import { AgentTemplatePostCreateContext } from '@/shared/model/agent-template.model';
+import { AgentFileMount } from '@prisma/client';
+import { HARNESS_VIRTUAL_KEY_REFERENCE, buildLiteLlmEnvironment, createCliAgentTemplate, setHarnessRuntimeEnvironment } from './agent-harness-template.utils';
 
 const GEMINI_VERSION = '0.58.0';
 const GEMINI_BOOTSTRAP_SCRIPT = `#!/bin/sh
@@ -29,38 +24,36 @@ ln -sf /workspace/.quickstack/bin/gemini /usr/local/bin/gemini
 exec sleep infinity
 `;
 
-export const geminiCliAgentTemplate = createCliAgentTemplate(
-    'Gemini CLI',
-    'node:24-bookworm',
-    'exec /bin/sh /workspace/quickstack-bootstrap.sh',
-    {
-        iconName: 'gemini-cli.svg',
-        description: 'Google\'s terminal coding agent for understanding codebases, editing files, and running commands. It can use QuickStack LiteLLM or Google Gemini directly.',
-        websiteUrl: 'https://github.com/google-gemini/gemini-cli',
-    },
-);
+export const geminiCliAgentTemplate = createCliAgentTemplate('Gemini CLI', 'node:24-bookworm', 'exec /bin/sh /workspace/quickstack-bootstrap.sh', {
+  iconName: 'gemini-cli.svg',
+  description:
+    "Google's terminal coding agent for understanding codebases, editing files, and running commands. It can use QuickStack LiteLLM or Google Gemini directly.",
+  websiteUrl: 'https://github.com/google-gemini/gemini-cli'
+});
 
 export async function postCreateGeminiCliTemplate(
-    createdAgents: AgentExtendedModel[],
-    _context: AgentTemplatePostCreateContext,
+  createdAgents: AgentExtendedModel[],
+  _context: AgentTemplatePostCreateContext
 ): Promise<AgentExtendedModel[]> {
-    const agent = createdAgents[0];
-    if (!agent) return createdAgents;
-    const config = buildLiteLlmEnvironment(agent);
-    setHarnessRuntimeEnvironment(agent, config, [
-        { name: 'GEMINI_API_KEY', value: HARNESS_VIRTUAL_KEY_REFERENCE },
-        { name: 'GEMINI_MODEL', value: config.defaultModelAlias },
-        { name: 'GOOGLE_GEMINI_BASE_URL', value: config.gatewayBaseUrl },
-    ]);
-    agent.agentFileMounts = [
-        {
-            containerMountPath: '/workspace/quickstack-harness.env',
-            content: config.environment,
-        } as AgentFileMount,
-        {
-            containerMountPath: '/workspace/quickstack-bootstrap.sh',
-            content: GEMINI_BOOTSTRAP_SCRIPT,
-        } as AgentFileMount,
-    ];
-    return [agent];
+  const agent = createdAgents[0];
+  if (!agent) {
+    return createdAgents;
+  }
+  const config = buildLiteLlmEnvironment(agent);
+  setHarnessRuntimeEnvironment(agent, config, [
+    { name: 'GEMINI_API_KEY', value: HARNESS_VIRTUAL_KEY_REFERENCE },
+    { name: 'GEMINI_MODEL', value: config.defaultModelAlias },
+    { name: 'GOOGLE_GEMINI_BASE_URL', value: config.gatewayBaseUrl }
+  ]);
+  agent.agentFileMounts = [
+    {
+      containerMountPath: '/workspace/quickstack-harness.env',
+      content: config.environment
+    } as AgentFileMount,
+    {
+      containerMountPath: '/workspace/quickstack-bootstrap.sh',
+      content: GEMINI_BOOTSTRAP_SCRIPT
+    } as AgentFileMount
+  ];
+  return [agent];
 }

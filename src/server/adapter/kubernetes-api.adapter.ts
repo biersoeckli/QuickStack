@@ -106,7 +106,9 @@ export class K3sApiAdapter {
   async getNodeSummary(nodeName: string): Promise<unknown> {
     const config = this.getKubeConfig();
     const cluster = config.getCurrentCluster();
-    if (!cluster) throw new Error('No Kubernetes cluster configured');
+    if (!cluster) {
+      throw new Error('No Kubernetes cluster configured');
+    }
     const url = new URL(cluster.server);
     url.pathname = `${url.pathname.replace(/\/$/, '')}/api/v1/nodes/${encodeURIComponent(nodeName)}/proxy/stats/summary`;
     const options: https.RequestOptions = { method: 'GET', headers: { Accept: 'application/json' } };

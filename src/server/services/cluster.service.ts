@@ -2,7 +2,6 @@ import nodeResourceService from './standalone-services/node-resource.service';
 import { getCachedNodeSummary } from './node-summary-cache.service';
 import volumeSummaryAdapter from '../adapter/volume-summary.adapter';
 import k3s, { kubernetesPatchOptions } from '../adapter/kubernetes-api.adapter';
-import * as k8s from '@kubernetes/client-node';
 import { NodeInfoModel } from '@/shared/model/node-info.model';
 import { NodeResourceModel } from '@/shared/model/node-resource.model';
 import { Tags } from '../utils/cache-tag-generator.utils';

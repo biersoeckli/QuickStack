@@ -109,7 +109,9 @@ class SecretService {
       try {
         existingSecret = await k3s.core.readNamespacedSecret({ namespace, name: secretName });
       } catch (err) {
-        if ((err as ApiException<unknown>).code !== 404) throw err;
+        if ((err as ApiException<unknown>).code !== 404) {
+          throw err;
+        }
         try {
           await this.createSecret(namespace, secretManifest);
           return;

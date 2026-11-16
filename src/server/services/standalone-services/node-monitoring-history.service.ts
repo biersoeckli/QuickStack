@@ -17,7 +17,9 @@ class NodeMonitoringHistoryService {
   }
 
   private async collectScheduled() {
-    if (this.running) return;
+    if (this.running) {
+      return;
+    }
     this.running = true;
     try {
       const retention = await monitoringHistoryService.getRetentionHours();

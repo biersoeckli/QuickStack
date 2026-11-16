@@ -87,7 +87,9 @@ export function HistoryChart({
               <YAxis width={70} tickLine={false} axisLine={false} tickFormatter={(value) => formatValue(value, true)} />
               <ChartTooltip
                 content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
+                  if (!active || !payload?.length) {
+                    return null;
+                  }
                   const item = payload[0];
                   return (
                     <div className="rounded-lg border bg-background p-3 text-sm shadow-sm">
@@ -167,7 +169,9 @@ export default function AppMonitoringHistoryView({ appId, currentUsage }: { appI
             <Select
               value={selectedRange.value}
               onValueChange={(value) => {
-                if (value) setRange(value);
+                if (value) {
+                  setRange(value);
+                }
               }}
             >
               <SelectTrigger aria-label="History time range">

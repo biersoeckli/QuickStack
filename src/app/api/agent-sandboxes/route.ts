@@ -1,111 +1,110 @@
-import k3s from "@/server/adapter/kubernetes-api.adapter";
-import {
-    BASE_SANDBOX_API_GROUP,
-    CLAIM_PLURAL,
-    SANDBOX_API_GROUP,
-    SANDBOX_API_VERSION,
-    SANDBOX_PLURAL,
-} from "@/server/adapter/agent-sandbox.adapter";
-import agentRuntimeService from "@/server/services/agent-runtime.service";
-import agentService from "@/server/services/agent.service";
-import { isAuthorizedReadForWorkload, simpleRoute } from "@/server/utils/action-wrapper.utils";
-import { Constants } from "@/shared/utils/constants";
+import k3s from '@/server/adapter/kubernetes-api.adapter';
+import { BASE_SANDBOX_API_GROUP, CLAIM_PLURAL, SANDBOX_API_GROUP, SANDBOX_API_VERSION, SANDBOX_PLURAL } from '@/server/adapter/agent-sandbox.adapter';
+import agentRuntimeService from '@/server/services/agent-runtime.service';
+import agentService from '@/server/services/agent.service';
+import { isAuthorizedReadForWorkload, simpleRoute } from '@/server/utils/action-wrapper.utils';
+import { Constants } from '@/shared/utils/constants';
 import * as k8s from '@kubernetes/client-node';
-import z from "zod";
-import { AgentSandboxUtils } from "@/server/utils/agent-sandbox.utils";
+import z from 'zod';
+import { AgentSandboxUtils } from '@/server/utils/agent-sandbox.utils';
 
 // Prevents this route's response from being cached
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-    return simpleRoute(async () => {
+  return simpleRoute(async () => {
+    const inputParam = z
+      .object({
+        agentId: z.string()
+      })
+      .parse(await request.json());
 
-        const inputParam = z.object({
-            agentId: z.string(),
-        }).parse(await request.json());
+    await isAuthorizedReadForWorkload(inputParam.agentId);
+    const agent = await agentService.getById(inputParam.agentId);
+    const namespace = agent.project.id;
 
-        await isAuthorizedReadForWorkload(inputParam.agentId);
-        const agent = await agentService.getById(inputParam.agentId);
-        const namespace = agent.project.id;
+    const encoder = new TextEncoder();
+    let shouldStopStreaming = false;
+    let watchRequest: { abort: () => void } | null = null;
 
-        const encoder = new TextEncoder();
-        let shouldStopStreaming = false;
-        let watchRequest: { abort: () => void } | null = null;
+    let agentSandboxes = await agentRuntimeService.listSandboxes(agent.id);
 
-        let agentSandboxes = await agentRuntimeService.listSandboxes(agent.id);
+    const customReadable = new ReadableStream({
+      async start(controller) {
+        const send = (data: any) => {
+          if (shouldStopStreaming) {
+            return;
+          }
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch (e) {
+            console.error(`[ENQUEUE ERROR] Error while enqueueing Agent Sandbox Status data: `, e);
+            shouldStopStreaming = true;
+            controller.close();
+          }
+        };
 
-        const customReadable = new ReadableStream({
-            async start(controller) {
+        // 1. Send full initial snapshot
+        send({ type: 'FULL', data: agentSandboxes });
 
-                const send = (data: any) => {
-                    if (shouldStopStreaming) return;
-                    try {
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-                    } catch (e) {
-                        console.error(`[ENQUEUE ERROR] Error while enqueueing Agent Sandbox Status data: `, e);
-                        shouldStopStreaming = true;
-                        controller.close();
-                    }
-                };
-
-                // 1. Send full initial snapshot
-                send({ type: 'FULL', data: agentSandboxes });
-
-
-                // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
-                const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
-                const watchPath = usesDirectSandbox
-                    ? `/apis/${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${SANDBOX_PLURAL}`
-                    : `/apis/${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${CLAIM_PLURAL}`;
-                const kc = k3s.getKubeConfig();
-                const watch = new k8s.Watch(kc);
-                console.log("[START] Starting watch for agent sandboxes in namespace", namespace);
-                watchRequest = await watch.watch(
-                    watchPath,
-                    { labelSelector: `${Constants.QS_ANNOTATION_AGENT_ID}=${inputParam.agentId}` },
-                    async (type, apiObj) => {
-                        if (shouldStopStreaming) return;
-
-                        // DELETED: only need the name — apiObj is the deleted object
-                        if (type === 'DELETED') {
-                            const name = apiObj?.metadata?.name;
-                            if (name) {
-                                send({ type: 'DELETED', sandbox: { name } });
-                            }
-                            return;
-                        }
-
-                        // ADDED / MODIFIED: map full object to sandbox DTO
-                        const sandbox = usesDirectSandbox
-                            ? agentRuntimeService.mapSandboxToSandbox(apiObj, namespace)
-                            : agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
-                        send({ type, sandbox });
-                    },
-                    (err) => {
-                        if (err) console.error('agent sandboxes watch error', err);
-                        console.log('agent sandboxes watch ended');
-                        if (!shouldStopStreaming) {
-                            controller.close();
-                        }
-                    }
-                );
-            },
-            cancel() {
-                console.log("[LEAVE] Cancelling informer for agent sandboxes");
-                shouldStopStreaming = true;
-                if (watchRequest && typeof watchRequest.abort === 'function') {
-                    watchRequest.abort();
-                }
+        // 2. Watch for changes — direct base Sandboxes for PER_CUSTOM_TAG agents, claims otherwise
+        const usesDirectSandbox = AgentSandboxUtils.usesPerCustomTagVolume(agent.agentVolumes);
+        const watchPath = usesDirectSandbox
+          ? `/apis/${BASE_SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${SANDBOX_PLURAL}`
+          : `/apis/${SANDBOX_API_GROUP}/${SANDBOX_API_VERSION}/namespaces/${namespace}/${CLAIM_PLURAL}`;
+        const kc = k3s.getKubeConfig();
+        const watch = new k8s.Watch(kc);
+        console.log('[START] Starting watch for agent sandboxes in namespace', namespace);
+        watchRequest = await watch.watch(
+          watchPath,
+          { labelSelector: `${Constants.QS_ANNOTATION_AGENT_ID}=${inputParam.agentId}` },
+          async (type, apiObj) => {
+            if (shouldStopStreaming) {
+              return;
             }
-        });
 
-        return new Response(customReadable, {
-            headers: {
-                Connection: "keep-alive",
-                "Content-Encoding": "none",
-                "Cache-Control": "no-cache, no-transform",
-                "Content-Type": "text/event-stream; charset=utf-8",
-            },
-        });
+            // DELETED: only need the name — apiObj is the deleted object
+            if (type === 'DELETED') {
+              const name = apiObj?.metadata?.name;
+              if (name) {
+                send({ type: 'DELETED', sandbox: { name } });
+              }
+              return;
+            }
+
+            // ADDED / MODIFIED: map full object to sandbox DTO
+            const sandbox = usesDirectSandbox
+              ? agentRuntimeService.mapSandboxToSandbox(apiObj, namespace)
+              : agentRuntimeService.mapClaimToSandbox(apiObj, namespace);
+            send({ type, sandbox });
+          },
+          (err) => {
+            if (err) {
+              console.error('agent sandboxes watch error', err);
+            }
+            console.log('agent sandboxes watch ended');
+            if (!shouldStopStreaming) {
+              controller.close();
+            }
+          }
+        );
+      },
+      cancel() {
+        console.log('[LEAVE] Cancelling informer for agent sandboxes');
+        shouldStopStreaming = true;
+        if (watchRequest && typeof watchRequest.abort === 'function') {
+          watchRequest.abort();
+        }
+      }
     });
+
+    return new Response(customReadable, {
+      headers: {
+        Connection: 'keep-alive',
+        'Content-Encoding': 'none',
+        'Cache-Control': 'no-cache, no-transform',
+        'Content-Type': 'text/event-stream; charset=utf-8'
+      }
+    });
+  });
 }

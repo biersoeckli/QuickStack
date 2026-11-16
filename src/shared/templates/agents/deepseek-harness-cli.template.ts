@@ -1,11 +1,7 @@
-import { AgentExtendedModel } from "@/shared/model/agent-extended.model";
-import { AgentTemplatePostCreateContext } from "@/shared/model/agent-template.model";
-import { AgentFileMount } from "@prisma/client";
-import {
-    buildLiteLlmEnvironment,
-    createCliAgentTemplate,
-    setHarnessRuntimeEnvironment,
-} from "./agent-harness-template.utils";
+import { AgentExtendedModel } from '@/shared/model/agent-extended.model';
+import { AgentTemplatePostCreateContext } from '@/shared/model/agent-template.model';
+import { AgentFileMount } from '@prisma/client';
+import { buildLiteLlmEnvironment, createCliAgentTemplate, setHarnessRuntimeEnvironment } from './agent-harness-template.utils';
 
 const DEEPSEEK_HARNESS_VERSION = '0.1.2-rc.1';
 const DEEPSEEK_HARNESS_BOOTSTRAP_SCRIPT = `#!/bin/sh
@@ -33,54 +29,55 @@ exec sleep infinity
 `;
 
 export const deepSeekHarnessCliAgentTemplate = createCliAgentTemplate(
-    'DeepSeek Harness CLI',
-    'node:24-bookworm',
-    'exec /bin/sh /workspace/quickstack-bootstrap.sh',
-    {
-        iconName: 'deepseek-harness.svg',
-        description: 'A plugin-based terminal harness for coding agents, with tools, sessions, and configurable providers. It can use QuickStack LiteLLM or a directly configured OpenAI-compatible provider.',
-        websiteUrl: 'https://github.com/deepseek-ai/deepseek-harness',
-    },
+  'DeepSeek Harness CLI',
+  'node:24-bookworm',
+  'exec /bin/sh /workspace/quickstack-bootstrap.sh',
+  {
+    iconName: 'deepseek-harness.svg',
+    description:
+      'A plugin-based terminal harness for coding agents, with tools, sessions, and configurable providers. It can use QuickStack LiteLLM or a directly configured OpenAI-compatible provider.',
+    websiteUrl: 'https://github.com/deepseek-ai/deepseek-harness'
+  }
 );
 
 export async function postCreateDeepSeekHarnessCliTemplate(
-    createdAgents: AgentExtendedModel[],
-    _context: AgentTemplatePostCreateContext,
+  createdAgents: AgentExtendedModel[],
+  _context: AgentTemplatePostCreateContext
 ): Promise<AgentExtendedModel[]> {
-    const agent = createdAgents[0];
-    if (!agent) return createdAgents;
-    const config = buildLiteLlmEnvironment(agent);
-    setHarnessRuntimeEnvironment(agent, config, [
-        { name: 'DSH_HOME', value: '/workspace/.quickstack/deepseek/home' },
-    ]);
-    const deepSeekConfig = [
-        'llm-pi-ai:',
-        '  providers:',
-        '    quickstack-litellm:',
-        '      displayName: QuickStack LiteLLM',
-        '      apiKeyEnv: QS_VIRTUAL_KEY',
-        '      api: openai-completions',
-        `      baseURL: ${config.baseUrl}`,
-        '      compat:',
-        '        supportsDeveloperRole: false',
-        '        maxTokensField: max_tokens',
-        '      models:',
-        ...config.modelAliases.map((model) => `        - id: ${model}`),
-        '',
-    ].join('\n');
-    agent.agentFileMounts = [
-        {
-            containerMountPath: '/workspace/quickstack-harness.env',
-            content: config.environment,
-        } as AgentFileMount,
-        {
-            containerMountPath: '/workspace/quickstack-bootstrap.sh',
-            content: DEEPSEEK_HARNESS_BOOTSTRAP_SCRIPT,
-        } as AgentFileMount,
-        {
-            containerMountPath: '/workspace/quickstack-dsh-settings.yaml',
-            content: deepSeekConfig,
-        } as AgentFileMount,
-    ];
-    return [agent];
+  const agent = createdAgents[0];
+  if (!agent) {
+    return createdAgents;
+  }
+  const config = buildLiteLlmEnvironment(agent);
+  setHarnessRuntimeEnvironment(agent, config, [{ name: 'DSH_HOME', value: '/workspace/.quickstack/deepseek/home' }]);
+  const deepSeekConfig = [
+    'llm-pi-ai:',
+    '  providers:',
+    '    quickstack-litellm:',
+    '      displayName: QuickStack LiteLLM',
+    '      apiKeyEnv: QS_VIRTUAL_KEY',
+    '      api: openai-completions',
+    `      baseURL: ${config.baseUrl}`,
+    '      compat:',
+    '        supportsDeveloperRole: false',
+    '        maxTokensField: max_tokens',
+    '      models:',
+    ...config.modelAliases.map((model) => `        - id: ${model}`),
+    ''
+  ].join('\n');
+  agent.agentFileMounts = [
+    {
+      containerMountPath: '/workspace/quickstack-harness.env',
+      content: config.environment
+    } as AgentFileMount,
+    {
+      containerMountPath: '/workspace/quickstack-bootstrap.sh',
+      content: DEEPSEEK_HARNESS_BOOTSTRAP_SCRIPT
+    } as AgentFileMount,
+    {
+      containerMountPath: '/workspace/quickstack-dsh-settings.yaml',
+      content: deepSeekConfig
+    } as AgentFileMount
+  ];
+  return [agent];
 }
