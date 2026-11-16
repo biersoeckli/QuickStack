@@ -85,6 +85,7 @@ describe('app-network-policy.service', () => {
             appId: 'app-1',
             useNetworkPolicy: false,
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [
                 { type: 'INGRESS', targetType: 'APP', targetId: 'app-2', port: 8080, protocol: 'TCP' },
                 { id: 'rule-keep', type: 'EGRESS', targetType: 'APP', targetId: 'app-3', port: 443, protocol: 'TCP' },
@@ -102,7 +103,7 @@ describe('app-network-policy.service', () => {
         });
         expect(dbMocks.client.appNetworkPolicy.update).toHaveBeenCalledWith({
             where: { id: 'policy-1' },
-            data: { allowInternetAccess: true },
+            data: { allowInternetAccess: true, allowTraefikAccess: false },
         });
 
         expect(dbMocks.client.appNetworkPolicyRule.create).toHaveBeenCalledWith({
@@ -138,6 +139,21 @@ describe('app-network-policy.service', () => {
         expect(revalidateTag).toHaveBeenCalledWith('apps-project-app-3');
     });
 
+    it('persists the Traefik access setting', async () => {
+        await appNetworkPolicyService.savePolicyConfiguration({
+            appId: 'app-1',
+            useNetworkPolicy: true,
+            allowInternetAccess: false,
+            allowTraefikAccess: true,
+            rules: [],
+        });
+
+        expect(dbMocks.client.appNetworkPolicy.update).toHaveBeenCalledWith({
+            where: { id: 'policy-1' },
+            data: { allowInternetAccess: false, allowTraefikAccess: true },
+        });
+    });
+
     it('removes mirrored counterparts when a rule is dropped from a saved rule set', async () => {
         dbMocks.client.appNetworkPolicyRule.findMany.mockResolvedValue([
             { type: 'EGRESS', targetAppId: 'app-3', targetAgentId: null, port: 443, protocol: 'TCP' },
@@ -149,6 +165,7 @@ describe('app-network-policy.service', () => {
             appId: 'app-1',
             useNetworkPolicy: true,
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [
                 { id: 'rule-keep', type: 'INGRESS', targetType: 'APP', targetId: 'app-2', port: 8080, protocol: 'TCP' },
             ],
@@ -173,6 +190,7 @@ describe('app-network-policy.service', () => {
             appId: 'app-1',
             useNetworkPolicy: true,
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [{ type: 'INGRESS', targetType: 'AGENT', targetId: 'agent-2', port: 8080, protocol: 'TCP' }],
         });
 
@@ -185,6 +203,7 @@ describe('app-network-policy.service', () => {
             appId: 'app-1',
             useNetworkPolicy: true,
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [
                 { type: 'EGRESS', targetType: 'APP', targetId: 'app-1', port: 80, protocol: 'TCP' },
             ],

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Box, Globe2, Hammer, Logs, Play, Rocket, RotateCwClock, Settings, Square, Trash2, Zap } from 'lucide-react';
+import { Box, Globe2, Hammer, Logs, Network, Play, Rocket, RotateCwClock, Settings, Square, Trash2, Zap } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -24,6 +24,8 @@ export type ProjectNetworkGraphAppContextMenuProps = {
     role?: RolePermissionEnum;
     allowInternetAccess: boolean;
     onToggleInternetAccess: () => void;
+    allowTraefikAccess: boolean;
+    onToggleTraefikAccess: () => void;
     onOpenDrawerTab: (tab: 'deployments' | 'logs' | 'backups' | 'settings') => void;
     onShowEnvironment: () => void;
     onDelete: () => void;
@@ -35,6 +37,8 @@ export function ProjectNetworkGraphAppContextMenu({
     role,
     allowInternetAccess,
     onToggleInternetAccess,
+    allowTraefikAccess,
+    onToggleTraefikAccess,
     onDelete,
     children,
     onOpenDrawerTab,
@@ -113,6 +117,10 @@ export function ProjectNetworkGraphAppContextMenu({
                     <ContextMenuItem onClick={onToggleInternetAccess}>
                         <Globe2 />
                         {allowInternetAccess ? 'Disable' : 'Enable'} Egress Internet Access
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={onToggleTraefikAccess}>
+                        <Network />
+                        {allowTraefikAccess ? 'Disable' : 'Enable'} Egress Traefik Access
                     </ContextMenuItem>
                 </>}
                 {lifecycle.canManage && <ContextMenuItem variant="destructive" onClick={onDelete}>

@@ -32,6 +32,7 @@ export class AppNetworkPolicyDraftUtils {
             appId: app.id,
             useNetworkPolicy: app.useNetworkPolicy,
             allowInternetAccess: app.appNetworkPolicy?.allowInternetAccess !== false,
+            allowTraefikAccess: app.appNetworkPolicy?.allowTraefikAccess === true,
             rules: (app.appNetworkPolicy?.rules ?? []).flatMap(rule => {
                 const target = rule.targetApp ?? rule.targetAgent;
                 const targetId = rule.targetAppId ?? rule.targetAgentId;
@@ -68,7 +69,7 @@ export class AppNetworkPolicyDraftUtils {
         const rules = draft.rules
             .map(rule => NetworkPolicyRuleUtils.contentSignature(NetworkPolicyRuleUtils.fromEditRule(rule)))
             .sort();
-        return [draft.appId, draft.useNetworkPolicy, draft.allowInternetAccess, ...rules].join(':');
+        return [draft.appId, draft.useNetworkPolicy, draft.allowInternetAccess, draft.allowTraefikAccess, ...rules].join(':');
     }
 
     static equals(left: AppNetworkPolicyDraft, right: AppNetworkPolicyDraft): boolean {
@@ -119,6 +120,7 @@ export class AppNetworkPolicyDraftUtils {
             appId: draft.appId,
             useNetworkPolicy: draft.useNetworkPolicy,
             allowInternetAccess: draft.allowInternetAccess,
+            allowTraefikAccess: draft.allowTraefikAccess,
             rules: draft.rules.map(rule => ({
                 ...(rule.persistedId ? { id: rule.persistedId } : {}),
                 type: rule.type,
@@ -154,6 +156,7 @@ export class AppNetworkPolicyDraftUtils {
             appNetworkPolicy: {
                 ...app.appNetworkPolicy,
                 allowInternetAccess: draft.allowInternetAccess,
+                allowTraefikAccess: draft.allowTraefikAccess,
                 rules: this.toGraphRules(draft),
             },
         } as AppExtendedModel;

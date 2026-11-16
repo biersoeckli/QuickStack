@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { Bot, Globe2, Settings, Trash2 } from 'lucide-react';
+import { Bot, Globe2, Network, Settings, Trash2 } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -28,11 +28,17 @@ export function ProjectNetworkGraphAgentContextMenu({
     children,
 }: ProjectNetworkGraphAgentContextMenuProps) {
     const internetAccessEnabled = agent.agentNetworkPolicy?.allowInternetAccess !== false;
+    const traefikAccessEnabled = agent.agentNetworkPolicy?.allowTraefikAccess === true;
     const [allowsInternetAccess, setAllowsInternetAccess] = useState(internetAccessEnabled);
+    const [allowsTraefikAccess, setAllowsTraefikAccess] = useState(traefikAccessEnabled);
 
     useEffect(() => {
         setAllowsInternetAccess(internetAccessEnabled);
     }, [internetAccessEnabled]);
+
+    useEffect(() => {
+        setAllowsTraefikAccess(traefikAccessEnabled);
+    }, [traefikAccessEnabled]);
 
     const toggleInternetAccess = async () => {
         const nextAllowsInternetAccess = !allowsInternetAccess;
@@ -48,6 +54,23 @@ export function ProjectNetworkGraphAgentContextMenu({
             );
         } catch {
             setAllowsInternetAccess(!nextAllowsInternetAccess);
+        }
+    };
+
+    const toggleTraefikAccess = async () => {
+        const nextAllowsTraefikAccess = !allowsTraefikAccess;
+        setAllowsTraefikAccess(nextAllowsTraefikAccess);
+        try {
+            await Toast.fromAction(
+                () => saveAgentNetworkPolicySettings(
+                    undefined,
+                    { allowTraefikAccess: nextAllowsTraefikAccess },
+                    agent.id,
+                ),
+                `Egress Traefik access ${nextAllowsTraefikAccess ? 'enabled' : 'disabled'}.`,
+            );
+        } catch {
+            setAllowsTraefikAccess(!nextAllowsTraefikAccess);
         }
     };
 
@@ -69,6 +92,12 @@ export function ProjectNetworkGraphAgentContextMenu({
                 >
                     <Globe2 />
                     {allowsInternetAccess ? 'Disable' : 'Enable'} Egress Internet Access
+                </ContextMenuItem>
+                <ContextMenuItem
+                    onClick={() => void toggleTraefikAccess()}
+                >
+                    <Network />
+                    {allowsTraefikAccess ? 'Disable' : 'Enable'} Egress Traefik Access
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem variant="destructive" onClick={onDelete}>

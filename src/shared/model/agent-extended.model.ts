@@ -83,6 +83,7 @@ const agentNetworkPolicyWriteMeta = z.object({
     id: z.string().optional(),
     agentId: z.string().optional(),
     allowInternetAccess: z.boolean().optional().default(true),
+    allowTraefikAccess: z.boolean().optional().default(false),
     createdAt: z.date().optional(),
     updatedAt: z.date().optional(),
 });

@@ -61,6 +61,7 @@ class AgentTemplateService {
     ): NonNullable<AgentExtendedWriteModel['agentNetworkPolicy']> {
         return {
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [{
                 type: 'EGRESS',
                 targetAppId,

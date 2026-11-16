@@ -10,6 +10,7 @@ export class NetworkPolicyTemplateUtils {
 
         const configuration: NonNullable<AppExtendedWriteModel['appNetworkPolicy']> = {
             allowInternetAccess: false,
+            allowTraefikAccess: app.appNetworkPolicy?.allowTraefikAccess ?? false,
             rules: existingRules,
         };
 
@@ -28,6 +29,7 @@ export class NetworkPolicyTemplateUtils {
 
         const configuration: NonNullable<AppExtendedWriteModel['appNetworkPolicy']> = {
             allowInternetAccess,
+            allowTraefikAccess: app.appNetworkPolicy?.allowTraefikAccess ?? false,
             rules: [
                 ...existingRules,
                 { type, targetAppId: target.id, targetAgentId: null, port, protocol: 'TCP' },

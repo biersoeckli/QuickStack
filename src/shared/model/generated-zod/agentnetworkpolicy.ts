@@ -6,6 +6,7 @@ export const AgentNetworkPolicyModel = z.object({
   id: z.string(),
   agentId: z.string(),
   allowInternetAccess: z.boolean(),
+  allowTraefikAccess: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })

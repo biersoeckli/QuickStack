@@ -31,6 +31,7 @@ export const appNetworkPolicyConfigurationZodModel = z.object({
     appId: z.string(),
     useNetworkPolicy: stringToBoolean,
     allowInternetAccess: stringToBoolean.optional().default(true),
+    allowTraefikAccess: stringToBoolean.optional().default(false),
     rules: z.array(appNetworkPolicyRuleEditZodModel).default([]),
 });
 export type AppNetworkPolicyConfigurationModel = z.infer<typeof appNetworkPolicyConfigurationZodModel>;

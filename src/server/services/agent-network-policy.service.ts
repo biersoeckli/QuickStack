@@ -50,7 +50,10 @@ class AgentNetworkPolicyService {
             projectId = pid;
             await db.agentNetworkPolicy.update({
                 where: { id: policy.id },
-                data: { allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    ...(input.allowInternetAccess !== undefined && { allowInternetAccess: input.allowInternetAccess }),
+                    ...(input.allowTraefikAccess !== undefined && { allowTraefikAccess: input.allowTraefikAccess }),
+                },
             });
         } finally {
             if (!tx) {
@@ -146,10 +149,17 @@ class AgentNetworkPolicyService {
         const policy = existingPolicy
             ? await db.agentNetworkPolicy.update({
                 where: { id: existingPolicy.id },
-                data: { allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    allowInternetAccess: input.allowInternetAccess,
+                    allowTraefikAccess: input.allowTraefikAccess,
+                },
             })
             : await db.agentNetworkPolicy.create({
-                data: { agentId, allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    agentId,
+                    allowInternetAccess: input.allowInternetAccess,
+                    allowTraefikAccess: input.allowTraefikAccess,
+                },
             });
 
         await this.replaceEgressRules(db, policy.id, input.rules.map(rule => ({

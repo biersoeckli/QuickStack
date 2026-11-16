@@ -2,7 +2,8 @@ import { stringToBoolean } from "@/shared/utils/zod.utils";
 import { z } from "zod";
 
 export const agentNetworkPolicySettingsZodModel = z.object({
-    allowInternetAccess: stringToBoolean,
+    allowInternetAccess: stringToBoolean.optional(),
+    allowTraefikAccess: stringToBoolean.optional(),
 });
 
 export type AgentNetworkPolicySettingsModel = z.infer<typeof agentNetworkPolicySettingsZodModel>;

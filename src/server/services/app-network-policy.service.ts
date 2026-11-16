@@ -169,10 +169,17 @@ class AppNetworkPolicyService {
         const policy = existingPolicy
             ? await db.appNetworkPolicy.update({
                 where: { id: existingPolicy.id },
-                data: { allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    allowInternetAccess: input.allowInternetAccess,
+                    allowTraefikAccess: input.allowTraefikAccess,
+                },
             })
             : await db.appNetworkPolicy.create({
-                data: { appId, allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    appId,
+                    allowInternetAccess: input.allowInternetAccess,
+                    allowTraefikAccess: input.allowTraefikAccess,
+                },
             });
 
         await this.replaceRules(db, appId, policy.id, input.rules.map(rule => ({
@@ -189,6 +196,7 @@ class AppNetworkPolicyService {
         appId: string;
         useNetworkPolicy: boolean;
         allowInternetAccess: boolean;
+        allowTraefikAccess: boolean;
         rules: AppNetworkPolicyRuleEditModel[];
     }, session?: UserSession): Promise<NetworkPolicyMirrorTouch[]> {
         const { app, counterpartAgents, counterpartApps, touches } = await dataAccess.client.$transaction(async (db) => {
@@ -201,7 +209,10 @@ class AppNetworkPolicyService {
             });
             await db.appNetworkPolicy.update({
                 where: { id: policy.id },
-                data: { allowInternetAccess: input.allowInternetAccess },
+                data: {
+                    allowInternetAccess: input.allowInternetAccess,
+                    allowTraefikAccess: input.allowTraefikAccess,
+                },
             });
 
             // Snapshot the current rules before replaceRules deletes the ones

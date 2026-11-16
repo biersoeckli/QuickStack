@@ -10,6 +10,7 @@ import { QS_AUTH_PROXY_SERVICE_NAME } from "./qs-auth-proxy.service";
 
 export type AgentSandboxTemplateNetworkPolicyConfig = {
     allowInternetAccess: boolean;
+    allowTraefikAccess: boolean;
     rules: AgentNetworkPolicyRuleWithTargetAppModel[];
 } | null;
 
@@ -60,7 +61,12 @@ class NetworkPolicyService {
                 },
                 policyTypes: ["Ingress", "Egress"],
                 ingress: this.getExtendedIngressRules(app.id, app.appNetworkPolicy?.rules ?? [], (app.appDomains?.length ?? 0) > 0, app.appNodePorts),
-                egress: this.getExtendedEgressRules(app.id, app.appNetworkPolicy?.rules ?? [], app.appNetworkPolicy?.allowInternetAccess !== false)
+                egress: this.getExtendedEgressRules(
+                    app.id,
+                    app.appNetworkPolicy?.rules ?? [],
+                    app.appNetworkPolicy?.allowInternetAccess !== false,
+                    app.appNetworkPolicy?.allowTraefikAccess === true,
+                )
             }
         };
         await this.applyNetworkPolicy(namespace, policyName, policy);
@@ -129,10 +135,16 @@ class NetworkPolicyService {
         return [...result, ...this.getNodePortIngressRules(nodePorts)];
     }
 
-    private getExtendedEgressRules(appId: string, rules: AppNetworkPolicyRuleWithTargetModel[], allowInternetAccess: boolean): V1NetworkPolicyEgressRule[] {
+    private getExtendedEgressRules(
+        appId: string,
+        rules: AppNetworkPolicyRuleWithTargetModel[],
+        allowInternetAccess: boolean,
+        allowTraefikAccess: boolean,
+    ): V1NetworkPolicyEgressRule[] {
         // Traffic between replicas of the same App is always allowed on all ports.
         const result: V1NetworkPolicyEgressRule[] = [{ to: [this.getSelfPeer(appId)] }, this.getDnsEgressRule()];
         if (allowInternetAccess) result.push(this.getInternetEgressRule());
+        if (allowTraefikAccess) result.push(this.getTraefikEgressRule());
         for (const rule of rules.filter(rule => rule.type === 'EGRESS')) result.push(this.getTargetEgressRule(rule));
         return result;
     }
@@ -176,6 +188,15 @@ class NetworkPolicyService {
         };
     }
 
+    private getTraefikEgressRule(): V1NetworkPolicyEgressRule {
+        return {
+            to: [{
+                namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } },
+                podSelector: { matchLabels: { 'app.kubernetes.io/name': 'traefik' } },
+            }],
+        };
+    }
+
     private getNodePortIngressRules(nodePorts: { port: number; protocol?: string }[]): V1NetworkPolicyIngressRule[] {
         if (!nodePorts.length) return [];
         return [{ _from: [{ ipBlock: { cidr: '0.0.0.0/0' } }], ports: nodePorts.map(nodePort => ({ protocol: (nodePort.protocol || 'TCP'), port: nodePort.port })) }];
@@ -196,6 +217,10 @@ class NetworkPolicyService {
 
         if (agentNetworkPolicy.allowInternetAccess) {
             egress.push(this.getInternetEgressRule());
+        }
+
+        if (agentNetworkPolicy.allowTraefikAccess) {
+            egress.push(this.getTraefikEgressRule());
         }
 
         const seen = new Set<string>();

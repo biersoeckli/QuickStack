@@ -503,6 +503,7 @@ function createAgentPayload(
         agentFileMounts: [{ containerMountPath: '/workspace/config.json', content: '{}' }],
         agentNetworkPolicy: {
             allowInternetAccess: true,
+            allowTraefikAccess: false,
             rules: [{ type: 'EGRESS', targetAppId, port: 443, protocol: 'TCP' }],
         },
     };

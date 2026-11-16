@@ -85,6 +85,10 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
         setDraft(current => ({ ...current, allowInternetAccess: nextInternet }));
     };
 
+    const changeTraefikAccess = (nextTraefik: boolean) => {
+        setDraft(current => ({ ...current, allowTraefikAccess: nextTraefik }));
+    };
+
     const openRuleDialog = (direction: AppNetworkPolicyDirection) => openDialog(<AppNetworkPolicyRuleDialog
         direction={direction}
         targets={targets}
@@ -110,7 +114,7 @@ export default function NetworkPolicy({ app, readonly }: { app: AppExtendedModel
             </TabsList>
             <TabsContent value="rules" className="mt-5 space-y-8">
                 <AppNetworkPolicyRuleSection direction="INGRESS" rules={draft.rules.filter(rule => rule.type === 'INGRESS')} readonly={readonly} onAdd={() => openRuleDialog('INGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} />
-                <AppNetworkPolicyRuleSection direction="EGRESS" rules={draft.rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={draft.allowInternetAccess} onInternetAccessChange={changeInternetAccess} />
+                <AppNetworkPolicyRuleSection direction="EGRESS" rules={draft.rules.filter(rule => rule.type === 'EGRESS')} readonly={readonly} onAdd={() => openRuleDialog('EGRESS')} onDeleteRule={deleteRule} currentProjectId={app.project.id} projects={projects} internetAccess={draft.allowInternetAccess} onInternetAccessChange={changeInternetAccess} traefikAccess={draft.allowTraefikAccess} onTraefikAccessChange={changeTraefikAccess} />
             </TabsContent>
             <TabsContent value="graph" className="mt-5">
                 <NetworkPolicyGraph appId={app.id} appName={app.name} appProjectId={app.project.id} rules={graphRules} allowInternetAccess={draft.allowInternetAccess} domainLabels={app.appDomains.map(domain => `${domain.hostname}:${domain.port}`)} projects={projects} />

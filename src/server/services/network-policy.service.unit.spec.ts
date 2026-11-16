@@ -19,6 +19,15 @@ vi.mock('@/server/adapter/kubernetes-api.adapter', () => ({
 import networkPolicyService from './network-policy.service';
 import { AppExtendedModel } from '@/shared/model/app-extended.model';
 
+function traefikEgressRule() {
+    return {
+        to: [{
+            namespaceSelector: { matchLabels: { 'kubernetes.io/metadata.name': 'kube-system' } },
+            podSelector: { matchLabels: { 'app.kubernetes.io/name': 'traefik' } },
+        }],
+    };
+}
+
 describe('network-policy.service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -60,6 +69,7 @@ describe('network-policy.service', () => {
     it('allows auth proxy ingress from the quickstack namespace to all sandbox ports', () => {
         const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
             allowInternetAccess: false,
+            allowTraefikAccess: false,
             rules: [],
         });
 
@@ -82,6 +92,7 @@ describe('network-policy.service', () => {
     it('allows QuickStack ingress to all sandbox ports', () => {
         const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
             allowInternetAccess: false,
+            allowTraefikAccess: false,
             rules: [],
         });
 
@@ -156,6 +167,66 @@ describe('network-policy.service', () => {
         expect(policy.spec.egress).toEqual(expect.arrayContaining([expect.objectContaining({
             to: [{ podSelector: { matchLabels: { app: 'demo-app' } } }],
         })]));
+    });
+
+    it('allows egress to Traefik for an App when Traefik access is enabled', async () => {
+        const app = {
+            id: 'demo-app',
+            projectId: 'app-project',
+            useNetworkPolicy: true,
+            appDomains: [],
+            appNodePorts: [],
+            appNetworkPolicy: {
+                allowInternetAccess: false,
+                allowTraefikAccess: true,
+                rules: [],
+            },
+        } as unknown as AppExtendedModel;
+
+        await networkPolicyService.reconcileNetworkPolicy(app);
+
+        const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
+        expect(policy.spec.egress).toEqual(expect.arrayContaining([traefikEgressRule()]));
+    });
+
+    it('does not allow egress to Traefik for an App when Traefik access is disabled', async () => {
+        const app = {
+            id: 'demo-app',
+            projectId: 'app-project',
+            useNetworkPolicy: true,
+            appDomains: [],
+            appNodePorts: [],
+            appNetworkPolicy: {
+                allowInternetAccess: true,
+                allowTraefikAccess: false,
+                rules: [],
+            },
+        } as unknown as AppExtendedModel;
+
+        await networkPolicyService.reconcileNetworkPolicy(app);
+
+        const policy = k3sMocks.createNamespacedNetworkPolicy.mock.calls[0][0].body;
+        expect(policy.spec.egress).not.toEqual(expect.arrayContaining([traefikEgressRule()]));
+    });
+
+    it('allows egress to Traefik for an Agent sandbox when Traefik access is enabled', () => {
+        const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
+            allowInternetAccess: false,
+            allowTraefikAccess: true,
+            rules: [],
+        });
+
+        expect(policy?.egress).toEqual(expect.arrayContaining([traefikEgressRule()]));
+    });
+
+    it('does not allow egress to Traefik for an Agent sandbox when Traefik access is disabled', () => {
+        const policy = networkPolicyService.buildAgentSandboxTemplateNetworkPolicy({
+            allowInternetAccess: true,
+            allowTraefikAccess: false,
+            rules: [],
+        });
+
+        expect(policy?.egress).not.toEqual(expect.arrayContaining([traefikEgressRule()]));
     });
 
     it('selects all sandboxes of an agent by agent ID label', async () => {

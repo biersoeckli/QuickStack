@@ -157,6 +157,7 @@ describe('app.service integration - subitem ownership guards', () => {
             id: sourceApp.id,
             appNetworkPolicy: {
                 allowInternetAccess: false,
+                allowTraefikAccess: true,
                 rules: [{
                     id: rule.id,
                     targetAppId: targetApp.id,
@@ -170,6 +171,7 @@ describe('app.service integration - subitem ownership guards', () => {
 
         expect(savedApp.appNetworkPolicy).toMatchObject({
             allowInternetAccess: false,
+            allowTraefikAccess: true,
             rules: [expect.objectContaining({ id: rule.id, port: 8443 })],
         });
     });
@@ -182,6 +184,7 @@ describe('app.service integration - subitem ownership guards', () => {
             id: sourceApp.id,
             appNetworkPolicy: {
                 allowInternetAccess: true,
+                allowTraefikAccess: false,
                 rules: [{
                     targetAppId: sourceApp.id,
                     targetAgentId: null,
@@ -208,6 +211,7 @@ describe('app.service integration - subitem ownership guards', () => {
             id: sourceApp.id,
             appNetworkPolicy: {
                 allowInternetAccess: true,
+                allowTraefikAccess: false,
                 rules: [rule, rule],
             },
         })).rejects.toThrow('A matching network policy rule already exists.');

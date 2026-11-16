@@ -166,7 +166,7 @@ Returns stdout, stderr and exitCode. The command is executed inside the live Pod
             summary: 'Create or update app.',
             description: 'Creates an app when id is omitted, otherwise replaces the existing app. projectId cannot be changed. Call deployApp afterwards to roll out the desired state.',
             'x-mcp-description': `Upsert one App.
-- Omit id to create: projectId is required. appDomains, appNodePorts, appFileMounts, appVolumes and appBasicAuths are required arrays (empty allowed), and appNetworkPolicy must be null or an object.
+- Omit id to create: projectId is required. appDomains, appNodePorts, appFileMounts, appVolumes and appBasicAuths are required arrays (empty allowed), and appNetworkPolicy must be null or an object. appNetworkPolicy.allowTraefikAccess is optional and defaults to false.
 - Send id to update: projectId must equal the existing app's projectId and cannot be changed. The request replaces the stored app, so omitted or empty sub-resource arrays delete the existing entries. Call getApp first, then send the full object back with the ids of sub-resources you want to keep.
 - When MCP secret redaction is enabled, getApp omits envVars, buildArgs, gitToken, containerRegistryPassword and appBasicAuths[].password. Obtain the existing values from a secure source and include them when updating; do not substitute empty strings, which can overwrite secrets. If the values are unavailable, do not update the app.
 - This only saves desired state. Call deployApp afterwards to roll it out. Saving revalidates server caches but does not change Kubernetes resources.

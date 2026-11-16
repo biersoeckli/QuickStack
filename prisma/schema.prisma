@@ -319,6 +319,7 @@ model AgentNetworkPolicy {
   agentId             String  @unique
   agent               Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
   allowInternetAccess Boolean @default(true)
+  allowTraefikAccess  Boolean @default(false)
 
   rules AgentNetworkPolicyRule[]
 
@@ -484,6 +485,7 @@ model AppNetworkPolicy {
   appId               String  @unique
   app                 App     @relation(fields: [appId], references: [id], onDelete: Cascade)
   allowInternetAccess Boolean @default(true)
+  allowTraefikAccess  Boolean @default(false)
 
   rules AppNetworkPolicyRule[]
 
