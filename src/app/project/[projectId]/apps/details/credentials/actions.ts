@@ -2,6 +2,7 @@
 
 import appService from "@/server/services/app.service";
 import dbGateService from "@/server/services/db-tool-services/dbgate.service";
+import volumeDownloadGrantService from "@/server/services/volume-download-grant.service";
 import pgAdminService from "@/server/services/db-tool-services/pgadmin.service";
 import phpMyAdminService from "@/server/services/db-tool-services/phpmyadmin.service";
 import { isAuthorizedReadForApp, isAuthorizedWriteForApp, simpleAction } from "@/server/utils/action-wrapper.utils";
@@ -76,7 +77,8 @@ export const deleteDbToolDeploymentForAppIfExists = async (appId: string, dbTool
 
 export const downloadDbGateFilesForApp = async (appId: string) =>
     simpleAction(async () => {
-        await isAuthorizedWriteForApp(appId);
+        const session = await isAuthorizedWriteForApp(appId);
         const url = await dbGateService.downloadDbGateFilesForApp(appId);
+        volumeDownloadGrantService.grant(url, session.userId);
         return new SuccessActionResult(url);
     }) as Promise<ServerActionResult<unknown, string>>;

@@ -3,6 +3,7 @@
 import { appVolumeEditZodModel } from '@/shared/model/volume-edit.model';
 import { ServerActionResult, SuccessActionResult } from '@/shared/model/server-action-error-return.model';
 import appService from '@/server/services/app.service';
+import volumeDownloadGrantService from '@/server/services/volume-download-grant.service';
 import {
   isAuthorizedReadForApp,
   isAuthorizedWriteForApp,
@@ -119,8 +120,9 @@ export const getShareableVolumes = async (appId: string) =>
 
 export const downloadPvcData = async (volumeId: string) =>
   simpleAction(async () => {
-    await validateVolumeReadAuthorization(volumeId);
+    const session = await validateVolumeReadAuthorization(volumeId);
     const fileNameOfDownloadedFile = await pvcService.downloadPvcData(volumeId);
+    volumeDownloadGrantService.grant(fileNameOfDownloadedFile, session.userId);
     return new SuccessActionResult(fileNameOfDownloadedFile, 'Successfully zipped volume data'); // returns the download path on the server
   }) as Promise<ServerActionResult<any, string>>;
 
@@ -174,11 +176,12 @@ export const getBackupsForVolumeSchedule = async (backupVolumeId: string) =>
 
 export const downloadBackupForVolumeSchedule = async (backupVolumeId: string, backupKey: string) =>
   simpleAction(async () => {
-    await validateBackupVolumeReadAuthorization(backupVolumeId);
+    const session = await validateBackupVolumeReadAuthorization(backupVolumeId);
 
     const validatedData = z.object({ backupVolumeId: z.string(), backupKey: z.string() }).parse({ backupVolumeId, backupKey });
     const volumeBackup = await volumeBackupService.getById(validatedData.backupVolumeId);
     const fileName = await backupService.downloadBackupForS3TargetAndKey(volumeBackup.targetId, validatedData.backupKey);
+    volumeDownloadGrantService.grant(fileName, session.userId);
 
     return new SuccessActionResult(fileName, 'Starting download...');
   }) as Promise<ServerActionResult<any, string>>;
@@ -197,7 +200,7 @@ async function validateVolumeWriteAuthorization(volumeId: string) {
 
 async function validateVolumeReadAuthorization(volumeId: string) {
   const volume = await appService.getVolumeWithAppById(volumeId);
-  await isAuthorizedReadForApp(volume.appId);
+  return await isAuthorizedReadForApp(volume.appId);
 }
 
 async function validateFileMountWriteAuthorization(fileMountId: string) {
@@ -212,5 +215,5 @@ async function validateBackupVolumeWriteAuthorization(backupVolumeId: string) {
 
 async function validateBackupVolumeReadAuthorization(backupVolumeId: string) {
   const appId = await volumeBackupService.getAppIdById(backupVolumeId);
-  await isAuthorizedReadForApp(appId);
+  return await isAuthorizedReadForApp(appId);
 }

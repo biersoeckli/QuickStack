@@ -7,12 +7,13 @@ import fs from 'fs/promises';
 import { Readable } from "stream";
 import { getAuthUserSession } from "@/server/utils/action-wrapper.utils";
 import { ServiceException } from "@/shared/model/service.exception.model";
+import volumeDownloadGrantService from "@/server/services/volume-download-grant.service";
 
 export const dynamic = 'force-dynamic' // defaults to auto
 
 export async function GET(request: NextRequest) {
     try {
-        await getAuthUserSession();
+        const session = await getAuthUserSession();
         const requestUrl = new URL(request.url);
         const fileName = requestUrl.searchParams.get('fileName');
         if (!fileName) {
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
         if (fileName.includes('..') || fileName.includes('/')) {
             throw new ServiceException('Invalid file name.');
         }
+
+        volumeDownloadGrantService.assertAllowed(fileName, session.userId);
 
         const dirOfTempDoanloadedData = PathUtils.tempVolumeDownloadPath;
         const tarPath = path.join(dirOfTempDoanloadedData, fileName);

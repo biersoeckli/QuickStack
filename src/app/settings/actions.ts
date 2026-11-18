@@ -5,6 +5,7 @@ import paramService, { ParamService } from "@/server/services/param.service";
 import { QsIngressSettingsModel, qsIngressSettingsZodModel } from "@/shared/model/qs-settings.model";
 import { QsLetsEncryptSettingsModel, qsLetsEncryptSettingsZodModel } from "@/shared/model/qs-letsencrypt-settings.model";
 import quickStackService from "@/server/services/qs.service";
+import volumeDownloadGrantService from "@/server/services/volume-download-grant.service";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import registryService from "@/server/services/registry.service";
 import { RegistryStorageLocationSettingsModel, registryStorageLocationSettingsZodModel } from "@/shared/model/registry-storage-location-settings.model";
@@ -393,7 +394,7 @@ export const uploadAndRestoreSystemBackup = async (formData: FormData) =>
 
 export const downloadSystemBackup = async (backupKey: string) =>
   simpleAction(async () => {
-    await getAdminUserSession();
+    const session = await getAdminUserSession();
 
     const systemBackupLocationId = await paramService.getString(ParamService.QS_SYSTEM_BACKUP_LOCATION);
 
@@ -402,6 +403,7 @@ export const downloadSystemBackup = async (backupKey: string) =>
     }
 
     const fileName = await systemBackupService.downloadSystemBackup(systemBackupLocationId, backupKey);
+    volumeDownloadGrantService.grant(fileName, session.userId);
 
     return new SuccessActionResult(fileName, 'Starting download...');
   }) as Promise<ServerActionResult<any, string>>;
