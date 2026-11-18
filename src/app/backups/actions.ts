@@ -1,13 +1,14 @@
 'use server'
 
 import backupService from "@/server/services/standalone-services/backup.service";
+import volumeDownloadGrantService from "@/server/services/volume-download-grant.service";
 import { isAuthorizedForBackups, simpleAction } from "@/server/utils/action-wrapper.utils";
 import { ServerActionResult, SuccessActionResult } from "@/shared/model/server-action-error-return.model";
 import { z } from "zod";
 
 export const downloadBackup = async (s3TargetId: string, s3Key: string) =>
     simpleAction(async () => {
-        await isAuthorizedForBackups();
+        const session = await isAuthorizedForBackups();
 
         const validatetData = z.object({
             s3TargetId: z.string(),
@@ -18,6 +19,7 @@ export const downloadBackup = async (s3TargetId: string, s3Key: string) =>
         });
 
         const fileNameOfDownloadedFile = await backupService.downloadBackupForS3TargetAndKey(validatetData.s3TargetId, validatetData.s3Key);
+        volumeDownloadGrantService.grant(fileNameOfDownloadedFile, session.userId);
         return new SuccessActionResult(fileNameOfDownloadedFile, 'Starting download...'); // returns the download path on the server
     }) as Promise<ServerActionResult<any, string>>;
 
